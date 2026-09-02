@@ -10,7 +10,8 @@ the ticket that decided it.
 **Vocabulary is not defined here.** [`CONTEXT.md`](../CONTEXT.md) is the glossary
 and is canonical. Capitalised terms — Requester, Reviewer, Request, Decision,
 Extract, Extract archive, Download token, Attempt, Delivery, Probe, Alert,
-Re-run, Snapshot, Redaction — mean exactly what it says they mean. Read it first.
+Re-run, Snapshot, Redaction, Disease group, Report code — mean exactly what it
+says they mean. Read it first.
 
 ---
 
@@ -83,12 +84,14 @@ Named here so nobody adds them back without reopening the decision.
 ## 2. The workflow
 
 ```
-Requester fills the form
+Requester fills the form ──► reaches the queue at once, row count pending
    │
-   ├─ Probe runs (§5.4) ────────────────────────► probe_performed
+   ├─ Probe runs behind, off the submit path (§5.4) ─► probe_performed
+   │     └─ no call completes for 15 min ──────────► Probe stalled Alert (§10.6)
    │
    ▼
 Request: pending ──── 24 business hours elapse ──► expired          (terminal)
+   │     (approve is disabled until the Probe's count lands)
    │
    ├── Reviewer rejects ────────────────────────► rejected          (terminal)
    │      └─ rejection email, no reason given
@@ -160,7 +163,7 @@ deliberately off the surface.
 
 | Parameter | Cardinality | Rules |
 |---|---|---|
-| **Disease group** | exactly one, required | Chosen from a picker, never typed. 24 values, `201`–`224`, seeded from `docs/research/003-disease-group-codes.md` — there is no upstream lookup endpoint. The picker shows the Thai disease name; the Requester never types `201`. |
+| **Disease group** | exactly one, required | Chosen from a picker, never typed. A **named family of one or more Report codes** (§4.9), not a raw code. The picker shows the Thai family name; the Requester never sees `201`. |
 | **Date range** | one inclusive `from`/`to`, required | Maximum span **365 days**, **rejected, never split** (§4.2). |
 | **Area selection** | optional; when set, exactly one | Empty means national. Otherwise **one province** *or* **one health region**. Not a province plus a region, not two regions. |
 
@@ -170,12 +173,13 @@ filtering, any row cap, any date floor.
 
 Three deliberate absences, each with a reason:
 
-- **No row count shown to the Requester at submit.** Upstream's count ignores the
-  area filter, so a Requester filtering to one province could be shown a number
-  70× what they will receive. A wrong number is worse than none. *The same
-  number is shown to the Reviewer* (§5.4) — same number, different audience,
-  different meaning. Do not "fix" the inconsistency.
-- **No zero-row gate.** A header-only CSV is a true answer, and group `210`
+- **No row count shown to the Requester at submit.** Two reasons now. Upstream's
+  count ignores the area filter, so a Requester filtering to one province could
+  be shown a number 70× what they will receive — a wrong number is worse than
+  none. And since §5.4 the count does not *exist* at submit: the Probe runs off
+  the submit path. *The count is shown to the Reviewer* — same number, different
+  audience, different meaning. Do not "fix" the inconsistency.
+- **No zero-row gate.** A header-only CSV is a true answer, and a Disease group
   returning zero rows for a quarter is a normal outcome for this audience.
 - **No date floor.** Usable history appears to start in 2025 for the one group
   profiled, but bounding the picker would hardcode one group's sample as if it
@@ -191,10 +195,12 @@ Surfaced, not hidden. Enforced in **two places**: the date picker greys out any
 against direct API calls. **The server's message names the cap as upstream's**,
 because when a Requester asks why, "the DDC API caps it" is the true answer.
 
-Splitting a wider Request server-side was rejected on cost: the Probe runs one
-call per date-chunk synchronously at submit, so a multi-year Request would leave
-the Requester waiting minutes on a form. Someone wanting 2025-to-date submits two
-Requests.
+Splitting a wider Request server-side stays rejected, but **its original reason
+is gone** — that reason was the Probe running synchronously at submit, and §5.4
+moved it off that path. What remains is simpler and sufficient: upstream refuses
+the span, the cap is therefore upstream's to explain, and a split Request is one
+ask the Reviewer would have to judge as several. Someone wanting 2025-to-date
+submits two Requests.
 
 ### 4.3 Dates are inclusive to the human
 
@@ -280,6 +286,43 @@ a control. It survives the approval gate unchanged: the gate replaces it as a
 
 ---
 
+### 4.9 Disease groups and Report codes
+
+**A Report code is upstream's unit; a Disease group is the Requester's.** There
+are **25 Report codes today** — `201`–`224` plus `501` (Heat Stroke, โรคลมแดด) —
+seeded from `docs/research/003-disease-group-codes.md`; there is no upstream
+lookup endpoint. **The set is neither 24-valued nor contiguous**, and code must
+never assume it is: `501` sits far outside the EnvOcc block and arrived after the
+first 24 were written down. A **Disease group** is a named family of one or more
+of them, classified by DDC's own officers. See ADR 0006.
+
+- The classification is a **partition**: every Report code sits in exactly one
+  Disease group, none is left out, and a code that belongs alone is a group of
+  one. A code in no
+  group is data nobody can ask for; a code in two makes *which Extract did this
+  case land in* unanswerable.
+- It is **ours, not upstream's** — an editorial act inside a de-identified
+  release. It is therefore **published in the Data dictionary** shipped in every
+  Extract archive (§8.2 rule 8), never held only as a lookup table in code.
+- It is **amendable, and demonstrably so**. 216–224 were added by announcement in
+  ธ.ค. 2567 and `501` after that; the list will change again, so the group **is expanded at submit and the expansion
+  is stored** (§12.3) — the same treatment a health region gets in §4.4. A
+  Re-run refetches the codes the first run fetched, not the codes the group means
+  today.
+- **The merge is a plain union.** No ICD-10 predicate narrows it: a filter would
+  put this service in the business of deciding what counts as the disease, and a
+  row it dropped would be indistinguishable from a case never reported.
+  `diagnosis_icd10` rides on every row for anyone who wants to narrow afterwards.
+- **No de-duplication, because none is possible.** One case carries exactly one
+  Report code, so the union is disjoint by construction.
+- **No width cap at runtime.** A Request is never rejected for spanning many
+  codes; a rejection the Requester could only satisfy by shortening their dates
+  is a bad conversation. If a family is too wide to serve, that is the
+  classification's problem at design time — the pesticide block (`209`–`218`,
+  ten codes differing only by location) is the one candidate.
+
+---
+
 ## 5. The upstream API
 
 `GET https://exchange.ddc.moph.go.th/api/d506/v1/disease-groups`,
@@ -311,7 +354,10 @@ field here with no substitute) and `x-process-time-ms`.
 - `page_size`: **minimum 20** (undocumented), maximum 10,000. Never emit below 20.
 - `page`: 1-based index. `page=0` → `422`.
 - **An unknown `group_code` returns `200` with `data: []`**, not a `404`. A
-  typo'd or stale code is indistinguishable from "no cases this period".
+  typo'd or stale code is indistinguishable from "no cases this period". This
+  bites harder since §4.9: a Disease group expands to several codes, and one
+  mistyped member of the family goes missing in silence inside an otherwise
+  plausible Extract.
 - **Unknown query parameters are silently ignored.** A deliberately bogus
   parameter returned `200` with an unchanged response. So **send only known-good
   parameter names, and assert `meta` echoes what was asked** — a mistyped
@@ -359,19 +405,31 @@ Annual row volumes, for sizing: `02` 1,141,658 · `03` 146,734 · `401` 87,281 �
 
 ### 5.4 The Probe
 
-**One `page_size=20` upstream call per date-chunk, made at submit**, purely to
-read exact `meta.total_items`.
+**One `page_size=20` upstream call per (Report code, date-chunk) pair**, purely
+to read exact `meta.total_items`. The Request's total is the sum across the
+Disease group's codes.
+
+**It runs off the synchronous submit path.** Fan-out (§4.9) turns *chunks* into
+*codes × chunks* — a ten-code family over a year is ~130 calls at ~3.5 s, minutes
+of spinner on a form. So submit returns immediately, the queue item appears at
+once with its row count **pending**, and the Probe fills it in behind.
 
 - It fetches **no data for the Extract**.
+- **A Reviewer cannot approve a Request whose count has not landed.** The count
+  is the proportionality signal the gate exists for; approving without it throws
+  the gate away to save a few minutes nobody is waiting through.
+- **A Probe that never completes raises an Alert** (§10.6). Without it, moving
+  off the submit path strands a Request where no one is looking.
 - Its cost is off the Requester's critical path — they are waiting for a human
   regardless.
 - **Its row count is shown to the Reviewer**, who is judging proportionality.
   "This person is asking for 1.14 M rows" is precisely the signal a human gate
   exists to catch.
 - It sizes the queue for the Reviewer's advisory drain projection (§13.3).
-- It catches the zero-row Request at submit, which matters because of the
-  cheerful-empty-200 behaviour in §5.2.
-- It is **recorded** as `probe_performed` (§12.4). A **rejected or expired**
+- It catches the zero-row Request — **on the queue now, not at submit** — which
+  matters because of the cheerful-empty-200 behaviour in §5.2.
+- It is **recorded** as `probe_performed` (§12.4), once per Request, carrying the
+  per-code counts. A **rejected or expired**
   Request spends real upstream calls, and the approval gate makes the reject path
   common — without this event that traffic exists in no record anywhere.
 
@@ -433,34 +491,40 @@ slip a field through.
 back to that field is precisely what rule 6 forbids. The blank is accepted; see
 the dev-cycle ask in §17.2.
 
-### 6.2 The Extract's 22 columns
+### 6.2 The Extract's 23 columns
 
-**20 upstream passthrough + 2 derived.** Fixed, in this order, always — see §7.4.
+**21 upstream passthrough + 2 derived.** Fixed, in this order, always — see §7.4.
 
 | # | Column | Class | Source |
 |---|---|---|---|
 | 1 | `epidem_report_guid` | record identity | upstream |
-| 2 | `diagnosis_icd10` | disease | upstream |
-| 3 | `diagnosis_icd10_list` | disease | upstream |
-| 4 | `birth_date` | person | upstream |
-| 5 | `gender` | person | upstream |
-| 6 | `prefix` | person | upstream |
-| 7 | `nationality` | person | upstream |
-| 8 | `occupation` | person | upstream |
-| 9 | `marital_status_id` | person | upstream |
-| 10 | `chw_code` | geography (registered) | upstream |
-| 11 | `amp_code` | geography (registered) | upstream |
-| 12 | `epidem_chw_code` | geography (survey-time) | upstream |
-| 13 | `epidem_health_zone` | geography (survey-time) | **derived** from 12 |
-| 14 | `epidem_amp_code` | geography (survey-time) | upstream |
-| 15 | `hospital_code` | facility | upstream |
-| 16 | `onset_date` | dates | upstream |
-| 17 | `onset_age` | person | **derived** from 16 + 4 |
-| 18 | `treated_date` | dates | upstream |
-| 19 | `diagnosis_date` | dates | upstream |
-| 20 | `death_date` | dates | upstream |
-| 21 | `report_datetime` | dates | upstream |
-| 22 | `update_datetime` | dates | upstream |
+| 2 | `epidem_report_group_code` | disease | upstream |
+| 3 | `diagnosis_icd10` | disease | upstream |
+| 4 | `diagnosis_icd10_list` | disease | upstream |
+| 5 | `birth_date` | person | upstream |
+| 6 | `gender` | person | upstream |
+| 7 | `prefix` | person | upstream |
+| 8 | `nationality` | person | upstream |
+| 9 | `occupation` | person | upstream |
+| 10 | `marital_status_id` | person | upstream |
+| 11 | `chw_code` | geography (registered) | upstream |
+| 12 | `amp_code` | geography (registered) | upstream |
+| 13 | `epidem_chw_code` | geography (survey-time) | upstream |
+| 14 | `epidem_health_zone` | geography (survey-time) | **derived** from 13 |
+| 15 | `epidem_amp_code` | geography (survey-time) | upstream |
+| 16 | `hospital_code` | facility | upstream |
+| 17 | `onset_date` | dates | upstream |
+| 18 | `onset_age` | person | **derived** from 17 + 5 |
+| 19 | `treated_date` | dates | upstream |
+| 20 | `diagnosis_date` | dates | upstream |
+| 21 | `death_date` | dates | upstream |
+| 22 | `report_datetime` | dates | upstream |
+| 23 | `update_datetime` | dates | upstream |
+
+**Column 2 is the Report code the row was fetched under**, admitted on #30. It
+was previously dropped as redundant — true only while one Request meant one code.
+With a Disease group spanning several (§4.9), it is the only thing telling merged
+rows apart, and it discloses nothing: it is what the Requester asked for.
 
 **Ordering rule:** each derived column sits **immediately after its input**, so a
 reader scanning the header sees each computed column beside what produced it.
@@ -564,7 +628,8 @@ reconstructs `birth_date` exactly) and upstream `health_zone` (§6.3).
 Redundant: `treated_hospital_code` — measured **identical to `hospital_code` on
 99.6–100% of rows** across four groups; it was never a second facility.
 `hospital_name` (leaves the Extract with an opaque code; see §6.7).
-`epidem_report_group_code`, `isolate_chw_code`, `municipal`, `generation_datetime`.
+`isolate_chw_code`, `municipal`, `generation_datetime`. (`epidem_report_group_code`
+was on this list until #30 and is now column 2 — see §6.2.)
 
 ### 6.6 There is no fixed upstream schema
 
@@ -622,10 +687,13 @@ before the next page is fetched. **Raw responses are never persisted — not to 
 scratch volume, not to logs, not to the audit table.** Only post-allowlist output
 ever touches disk.
 
-### 7.2 Fetch: contiguous half-open calendar months
+### 7.2 Fetch: contiguous half-open calendar months, per Report code
 
 The Request's span is split into **calendar months**, walked **sequentially**, at
-`page_size=10000`.
+`page_size=10000`, **once per Report code in the Disease group** (§4.9). Codes are
+walked in ascending order, and each code's months in ascending order — that order
+is the Extract's row order (§8.2) and must not be varied for throughput, which
+§5.3 shows there is none to gain.
 
 - Months are **derivable from the Request alone**, with no upstream call — which
   the Probe requires, since submit and run must agree on boundaries.
@@ -651,10 +719,10 @@ column and not `chw_code`.
 
 ### 7.4 Project
 
-Owns the **fixed 22-column set**, the **fixed column order**, and **both
+Owns the **fixed 23-column set**, the **fixed column order**, and **both
 derivations**.
 
-- Emits exactly those 22 columns in that order; a missing upstream key becomes an
+- Emits exactly those 23 columns in that order; a missing upstream key becomes an
   empty cell.
 - Computes `onset_age` and `epidem_health_zone` per §6.3.
 - **Raises rule 1's unknown-field alert.** Project already compares observed
@@ -666,11 +734,11 @@ derivations**.
 
 ### 7.5 Completeness
 
-**Asserted on rows *received*, per chunk, against that chunk's
+**Asserted on rows *received*, per (Report code, chunk) pair, against that pair's
 `meta.total_items`.** Never on rows *written* — the area filter legitimately
 changes that number, so a rows-written assert would fire on every filtered
-Request. Across the month joins, the final CSV's line count must equal the sum of
-per-chunk rows written.
+Request. Across the month joins **and the code joins**, the final CSV's line count must
+equal the sum of per-pair rows written.
 
 **On mismatch: fail the job and publish nothing.** No partial Extract, no link.
 Both counts go to the audit record. A truncated CSV that looks complete is worse
@@ -679,18 +747,20 @@ of synchronous streaming.
 
 ### 7.6 Retry, resume and stall
 
-**The chunk is the atomic unit.** A 504 is expected, not exceptional.
+**The (Report code, chunk) pair is the atomic unit** — the chunk alone was, until
+a Disease group could span several codes (§4.9). A 504 is expected, not
+exceptional.
 
-- A failed chunk retries **from page 1**, **3 attempts, exponential backoff**.
-- Each completed month persists on the scratch volume as a **checkpoint**, so a
-  job resuming after a worker restart redoes at most one month.
+- A failed pair retries **from page 1**, **3 attempts, exponential backoff**.
+- Each completed pair persists on the scratch volume as a **checkpoint**, so a
+  job resuming after a worker restart redoes at most one month of one code.
 - **No mid-chunk resume.** Restarting at page 7 assumes the OFFSET window has not
   shifted; a partial chunk plus a fresh tail is how a quietly-wrong file ships.
-- On retry, the chunk's `total_items` is compared against the previous attempt.
-  **If it moved, the chunk is discarded and restarted.**
-- The job fails only when a chunk exhausts its attempts.
+- On retry, the pair's `total_items` is compared against the previous attempt.
+  **If it moved, the pair is discarded and restarted.**
+- The job fails only when a pair exhausts its attempts.
 - **Per-request timeout is 60 s**, matching the gateway.
-- **Stall detection, not a duration cap: the job fails if no chunk completes for
+- **Stall detection, not a duration cap: the job fails if no pair completes for
   15 minutes.** A legitimate worst case runs tens of minutes, so a wall-clock
   limit either kills valid work or lets a wedged job sit for hours. Lack of
   progress is the fault signal; duration is a legitimate variable. A hard ceiling
@@ -752,7 +822,14 @@ parameter surface allows must be served, including the ~1.14 M-row worst case.
 
 ### 8.1 One flat CSV, zipped
 
-**One Request = one CSV.** The header is emitted once across the month joins.
+**One Request = one CSV.** The header is emitted once across the code and month
+joins.
+
+**Row order is fetch order: Report code ascending, then month ascending** (§7.2).
+So a Disease group of two codes yields all of the first code's rows, then all of
+the second's — the file reads as what it is. The Extract fingerprint is a hash of
+the bytes as written (§8.4) and must be reproducible, and any date-interleaved
+order would mean sorting a million rows that arrived already grouped.
 
 The zip earns its place on transfer size: ~150–200 MB of CSV compresses to
 roughly **20–30 MB**, and สคร. staff download over ordinary internet. It is also
@@ -769,7 +846,7 @@ what makes the ministry edge irrelevant (§16.2).
 
 ### 8.2 The eight writer rules
 
-The writer receives a fixed, ordered 22-column row and **carries no column
+The writer receives a fixed, ordered 23-column row and **carries no column
 semantics**.
 
 | # | Rule |
@@ -798,7 +875,7 @@ the data. **This is a required test, not a comment** (§17.1).
 **Rules 3 + 4.** Project collapses absent-key and `""` into "empty cell"; the
 writer emits it bare. **The trim is the load-bearing half** — without it a
 whitespace-only upstream value survives to the file and there are *three* null
-representations again. Trimming is safe only because every one of the 22 retained
+representations again. Trimming is safe only because every one of the 23 retained
 columns is a code, a date or an id; none has meaningful edge whitespace. Had
 `address` survived the allowlist, this answer would have been different.
 
@@ -817,9 +894,13 @@ this specification, and any column list shown to a privacy officer all use. Thre
 documents saying the same word about the same column.
 
 **Rule 8.** The Data dictionary answers the concern rule 7 creates — the header is
-the only documentation travelling with the file. A **static 22-row Thai/English
-CSV, checked into the repo and copied into every archive under a fixed filename**.
-It is a property of the service, never of the Request. Free per job.
+the only documentation travelling with the file. A **static Thai/English CSV — 23
+column rows plus the Disease group classification — checked into the repo and
+copied into every archive under a fixed filename**. It carries the classification
+because that taxonomy is **ours, not upstream's** (§4.9): a Requester who asked
+for ซิลิโคสิส must be able to read which Report codes we took that to mean,
+without asking us. It is a property of the service, never of the Request. Free per
+job.
 
 ### 8.3 Archive naming
 
@@ -1028,9 +1109,12 @@ verify.
 Shows, and only shows:
 
 - The **five contact fields** (name, surname, tel, email, workplace).
-- The **Request parameters in human terms** — disease group *name*, inclusive
-  dates, area *name*. Never codes.
-- The **Probe row count**.
+- The **Request parameters in human terms** — Disease group *name*, inclusive
+  dates, area *name*. Never codes. The Report codes the group expanded to sit
+  **beneath the name**, available but not the headline: the name is what is being
+  judged, the expansion is what makes the Decision legible years later (§12.3).
+- The **Probe row count** — or **"pending"** while the Probe is still running
+  (§5.4). **Approve is disabled until it lands**; reject is not.
 - **Submit time and time remaining** on the business-hours clock, shown so a
   Reviewer feels the clock without the queue reading as an alarm.
 - The **advisory projected drain** (§13.3).
@@ -1131,6 +1215,7 @@ Three kinds:
 
 | Alert | Raised by | Assigned to | Cleared by | Outcomes |
 |---|---|---|---|---|
+| **Probe stalled** | no Probe call completing for 15 minutes (§5.4) | the queue, no named Reviewer | **any Reviewer** | `re_probed` / `rejected` / `no_action_needed` |
 | **Send abandoned** | 5 failed send tries (§11.3) | approving Reviewer | that Reviewer | (as collection lapse) |
 | **Collection lapse** | 24 business hours, zero Attempts (§11.4) | **the approving Reviewer, by name** | that Reviewer, or `system` on late collection | reached the Requester / could not reach the Requester / no action needed |
 | **Extraction failure** | a job reaching `failed` (§14.3) | the approving Reviewer | **any Reviewer** | `re_ran` / `contacted_requester` / `abandoned` |
@@ -1138,6 +1223,12 @@ Three kinds:
 **Why collection lapse is assigned strictly by name:** the action is *phone the
 Requester you personally vouched for*, and that Reviewer already formed a
 judgement about this person and has the telephone number in front of them.
+
+**Why a stalled Probe is an Alert and not a silent retry:** the Probe moved off
+the submit path (§5.4) and its Request cannot be approved without a row count, so
+a wedged Probe leaves a real person waiting behind a screen nobody is looking at.
+It has no approving Reviewer yet — there has been no Decision — so it belongs to
+the queue rather than to a name.
 
 **Why an extraction-failure Alert may be cleared by anyone:** the action is often
 just "re-run", and two reachable people is the real availability unit — with a
@@ -1383,14 +1474,18 @@ to filter out the first. **Token prefix only, never the full presented token** �
 logging it in full would put working credentials in a permanent trail.
 
 **Human form and upstream form are both stored, in different places.** The
-`request` row stores the ask **as the human made it** — inclusive dates, and the
-province list a region expanded into. That is what the Reviewer judged and what
+`request` row stores the ask **as the human made it** — inclusive dates, the
+Disease group's name, and the two expansions it and a region resolved to: the
+**Report code list** (§4.9) and the province list. **The expansions are
+authoritative**, because both taxonomies are amendable and a Re-run must refetch
+what the first run fetched, not what the names mean today. That is what the Reviewer judged and what
 the Snapshot copies. **Each chunk fetch writes its own event** carrying the exact
 `group_code`, half-open `start_date`/`end_date`, page count, and the upstream
 **`x-request-id`**.
 
-**The Snapshot** copies disease group, date range, Area selection, Probe row count
-and `workplace` — what the Reviewer had on screen. It does **not** copy the
+**The Snapshot** copies the Disease group name **over the Report codes it expanded
+to**, date range, Area selection, Probe row count and `workplace` — what the
+Reviewer had on screen. It does **not** copy the
 contact fields. A Reviewer cannot modify a Request, so content cannot drift; the
 Snapshot exists to make the Decision legible on its own years later.
 
@@ -1403,7 +1498,7 @@ Snapshot exists to make the Decision legible on its own years later.
 | Type | Actor | Notes |
 |---|---|---|
 | `submitted` | `requester` | carries IP, user agent |
-| `probe_performed` | `system` | chunk count, calls made, `total_items`, upstream `x-request-id`s. **Fires at submit, before any Decision** — this is what makes the reject path's upstream traffic accountable |
+| `probe_performed` | `system` | Report codes probed, pair count, calls made, per-pair and total `total_items`, upstream `x-request-id`s. **Fires when the Probe finishes — after submit, before any Decision** (§5.4) — this is what makes the reject path's upstream traffic accountable |
 | `approved` | `reviewer` | carries the Snapshot |
 | `rejected` | `reviewer` | carries the Snapshot and the **mandatory internal note** |
 | `note_amended` | `reviewer` | cites the event it corrects |
@@ -1615,9 +1710,9 @@ was watching; now somebody is. **Keeping a hard refusal would let a Reviewer
 approve a Request the system then rejects — two gates disagreeing, which is worse
 than either.**
 
-Drain is computed from the Probe: span `total_items` → pages via
-`ceil(total / 10000)`, chunk count from the dates, drain projected as
-`chunks × 3.5 s + pages × ~6 s`. The area filter does not disturb this: filtering
+Drain is computed from the Probe: per (Report code, chunk) `total_items` → pages
+via `ceil(total / 10000)`, the pair count from the dates **and the Disease
+group's code count**, drain projected as `pairs × 3.5 s + pages × ~6 s`. The area filter does not disturb this: filtering
 is client-side, so upstream's count is *exactly* the page count we walk.
 
 ### 13.4 Download endpoint
@@ -2257,9 +2352,6 @@ which they will never read.
   until the Decision email arrives (§12.5).
 - **`cid` is not a stable person key**, so repeat-patient detection and
   de-duplication are impossible from this feed (§6.5).
-- **A Requester concatenating two Extracts cannot recover which disease group a row
-  came from** except through `diagnosis_icd10` — the group appears in the filename
-  and nowhere in the CSV.
 - **The holiday config can drift mid-flight**, accepted and not defended (§15.2).
 
 ---
@@ -2270,6 +2362,7 @@ which they will never read.
 |---|---|---|
 | Upstream API behaviour, timings, failure taxonomy | §5 | [#4](https://github.com/rawinan-soma/dds-sharing/issues/4) |
 | Disease group codes | §4.1 | [#3](https://github.com/rawinan-soma/dds-sharing/issues/3), `docs/research/003-disease-group-codes.md` |
+| Disease group as a family of Report codes; the async Probe; column 2 | §4.9, §5.4, §6.2, §7.2, §8.1 | [#30](https://github.com/rawinan-soma/dds-sharing/issues/30), [ADR 0006](adr/0006-a-disease-group-is-a-family-of-report-codes.md) |
 | Network reach; de-identification as the standing control | §3.1 | [#13](https://github.com/rawinan-soma/dds-sharing/issues/13) |
 | The allowlist and its rules 1–5 | §6.1, §6.5 | [#2](https://github.com/rawinan-soma/dds-sharing/issues/2) |
 | The 63-field inventory; no fixed upstream schema | §6.6 | [#14](https://github.com/rawinan-soma/dds-sharing/issues/14) |

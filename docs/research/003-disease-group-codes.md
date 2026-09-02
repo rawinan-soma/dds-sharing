@@ -9,14 +9,15 @@
 
 `group_code` is the deck's **`รหัสรายงานโรค`** (disease report code) — confirmed by the repo owner against p.19.
 
-There are **24 valid values, `201`–`224`, contiguous**, each mapping 1:1 to a primary ICD-10 code and carrying an official Thai and English disease name. They split into two provenance blocks:
+There are **25 known values today — `201`–`224` plus `501` — and the set is neither contiguous nor closed.** Each maps 1:1 to a primary ICD-10 code and carries an official Thai and English disease name. They fall into three provenance blocks:
 
 - **201–215** — the codes established under พ.ร.บ.ควบคุมโรคจากการประกอบอาชีพและโรคสิ่งแวดล้อม พ.ศ. 2562. The deck heads these as *"ทั้งหมด 5 กลุ่มโรค จำนวน 15 รหัสโรค"* (p.19).
 - **216–224** — *"การเพิ่มเติมรหัสโรค (ICD-10) ใหม่ ในระบบ DDS จำนวน 9 รหัส"* (p.24–25), added to DDS from ธ.ค. 2567 (p.15).
+- **501** — Heat Stroke (โรคลมแดด), supplied by the repo owner 2026-09-02 from a further DDC sheet, *"รหัส ICD-10 ที่กำหนดให้รายงานข้อมูลผ่านระบบเฝ้าระวังโรคดิจิทัล (DDS) — โรค Heat Stroke"*. **Outside the EnvOcc 201–224 block entirely**, which is the standing proof that no code may assume the range or the count.
 
 **No companion lookup endpoint is documented** — see below.
 
-For the Request form: this list must be **seeded from this deck**, not fetched. Display the Thai name (`ชื่อโรคภาษาไทย`); the Requester never types `201`.
+For the Request form: this list must be **seeded from these DDC sources**, not fetched. Display the Thai name (`ชื่อโรคภาษาไทย`); the Requester never types `201`. Since #30 the form does not show Report codes at all — it shows a **Disease group**, a locally-classified family of them (ADR 0006).
 
 ## The code list
 
@@ -56,6 +57,28 @@ Codes 209–215 (and 216–218 below) share the Thai prefix `การเป็�
 | 223 | Z57.1 | การสัมผัสรังสีจากการทำงาน | Occupational exposure to radiation |
 | 224 | Z58.4 | การสัมผัสรังสี | Exposure to radiation |
 
+### 501 — Heat Stroke (source: DDC sheet, supplied 2026-09-02)
+
+| group_code | ICD-10 | ชื่อโรคภาษาไทย | English |
+|---|---|---|---|
+| 501 | T67.0XXA | โรคลมแดด | Heatstroke and sunstroke, initial encounter |
+
+Companion ICD-10 codes listed on the same sheet, all under `501`:
+
+| ICD-10 | English |
+|---|---|
+| T67.1 | Heat syncope |
+| T67.2 | Heat cramp |
+| T67.3 | Heat exhaustion, anhidrotic |
+| T67.4 | Heat exhaustion due to salt depletion |
+| T67.5 | Heat exhaustion, unspecified |
+| T67.6 | Heat fatigue, transient |
+| T67.7 | Heat edema |
+| T67.8 | Other effects of heat and light |
+| T67.9 | Effect of heat and light, unspecified |
+
+Note `T67.0XXA` carries an ICD-10-**CM** style 7th-character extension (`XXA`, initial encounter) that the rest of this list does not use. Whether the upstream `diagnosis_icd10` column holds it verbatim is unconfirmed — a dev-cycle check, not an assumption.
+
 ### `รหัส ICD-10 ร่วม` (companion ICD-10 codes)
 
 Recorded where the deck lists them; blank elsewhere.
@@ -87,8 +110,8 @@ Since every documented path is authenticated, an unauthenticated `GET /api/d506/
 2. **Does `group_code` populate `epidem_report_group_id`?** Inferred from p.18. Confirm with กองระบาดวิทยา or a sample request.
 3. **Lookup endpoint** — ask กองระบาดวิทยา directly (contact below) whether the catalogue exposes a disease-group lookup, or whether clients are expected to embed this list.
 4. **43-แฟ้ม / `EPIDEMIC` file alignment** — check the สนย./ศทส. structure docs for the 506 `DISEASECODE` code set and compare.
-5. **Form design (feeds #7):** 201–224 is not a usable flat dropdown — 209–218 are ten pesticide entries differing only by location. Group by disease family first (the deck's own 8-family breakdown on p.26–27: PM2.5, ซิลิโคสิส, แอสเบสโตสิส, สารกำจัดศัตรูพืช, ตะกั่ว, อับอากาศ, รังสีแตกตัว, รังสีก่อไอออน), then location.
-6. **Versioning:** 216–224 were added ธ.ค. 2567; ประกาศกรมควบคุมโรค พ.ศ. 2568 took effect 2 ต.ค. 68. The list is amendable by announcement — do not treat it as frozen.
+5. ~~**Form design (feeds #7)**~~ — **resolved 2026-09-02 on #30 / ADR 0006.** The finding was larger than the dropdown: a **Disease group** is now a named family of Report codes, classified locally as a partition of the whole list, fanned out at extraction and merged into one Extract.
+6. **Versioning:** 216–224 were added ธ.ค. 2567; ประกาศกรมควบคุมโรค พ.ศ. 2568 took effect 2 ต.ค. 68; `501` surfaced later still, outside the range. The list is amendable by announcement — **do not treat it as frozen, contiguous, or 24-valued**, and expect further additions outside 201–224.
 
 **Contact (from p.34):** กองโรคจากการประกอบอาชีพและสิ่งแวดล้อม — 02 590 3864, envocc4.0@gmail.com.
 
@@ -103,5 +126,6 @@ Since every documented path is authenticated, an unauthenticated `GET /api/d506/
 | same, p.16–17, 29–31 | Data flow, four submission paths, MoPH account + Provider ID (RBAC) auth, D506 Portal URL |
 | same, p.5–11, 15 | Legal basis (พ.ร.บ. 2562, ประกาศ สธ. 2565, ประกาศ คร. 2568), DDS timeline, EnvOcc codes added ธ.ค. 2567 |
 | same, p.34 | กองโรคจากการประกอบอาชีพและสิ่งแวดล้อม contact details |
+| DDC sheet *"รหัส ICD-10 … โรค Heat Stroke"*, supplied by the repo owner 2026-09-02 | Report code `501`, its primary ICD-10 `T67.0XXA`, and the T67.1–T67.9 companions |
 
-No external/web sources were consulted; the deck is first-party DDC material and answered the question directly.
+No external/web sources were consulted; both sources are first-party DDC material and answered the question directly.
