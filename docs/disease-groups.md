@@ -34,23 +34,32 @@ Probed 2026-09-02 over 2025-08-27 → 2026-08-27, `meta.total_items` only
 ([#33](https://github.com/rawinan-soma/dds-sharing/issues/33)). Kept here because
 the classification is the only place a group's *cost* is visible.
 
-| Disease group | rows/yr | Probe calls, full-year Request |
+| Disease group | rows/yr | upstream calls, full-year Request |
 |---|---|---|
-| `air-pollution` | 1,952 | 12 |
-| `work-related` | 970 | 12 |
-| `heat` | 401 | 12 |
-| `environmental-pollution` | 194 | 12 |
-| `silicosis` | 129 | 24 |
-| `lead` | 95 | 12 |
-| `asbestos` | 73 | 48 |
-| `pesticides` | 28 | **120** |
-| `confined-space` | 15 | 12 |
-| `radiation` | 4 | 36 |
+| `air-pollution` | 1,952 | 1 |
+| `work-related` | 970 | 1 |
+| `heat` | 401 | 1 |
+| `environmental-pollution` | 194 | 1 |
+| `silicosis` | 129 | 2 |
+| `lead` | 95 | 1 |
+| `asbestos` | 73 | 4 |
+| `pesticides` | 28 | **10** |
+| `confined-space` | 15 | 1 |
+| `radiation` | 4 | 3 |
 
 **The whole domain is 3,861 rows a year.** Codes 212, 215, 217 and 224 returned
-zero. Note the inversion: **`pesticides` is the most expensive group to serve and
-the second-smallest to receive** — 120 calls for 28 rows. Cost tracks group
-*width*, never volume.
+zero.
+
+**A group costs one upstream call per Report code**, because every group's entire
+year fits in a single `page_size=10000` page (spec §7.2,
+[ADR 0008](adr/0008-the-pipeline-is-sized-for-one-page.md)). At ~3.5 s per call
+the widest full-year Request in the catalogue takes **~35 s**. The figures above
+were **120 / 48 / 36 / 24 / 12** under monthly date-chunking, which #34 removed.
+
+Note the inversion that remains: **`pesticides` is the most expensive group to
+serve and the second-smallest to receive** — 10 calls for 28 rows. Cost tracks
+group *width* in Report codes, never volume. It is the group to split if any group
+ever is.
 
 **Partition verified:** 25 Report codes, each in exactly one group, none left out
 and none in two — 1 + 2 + 4 + 1 + 10 + 1 + 3 + 1 + 1 + 1 = 25.

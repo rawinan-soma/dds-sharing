@@ -63,8 +63,12 @@ The case's age in completed years at `onset_date` — a property of the case, no
 **epidem_health_zone**:
 The health region of `epidem_chw_code` — the address that answers *"cases I investigated"*. Deliberately not called `health_zone`: the source's column of that name follows `isolate_chw_code`, the treating unit's address, and the two disagree on roughly 7% of rows. The `epidem_` prefix says which address it came from.
 
+**Span builder**:
+The single function turning a Request into the half-open date range the service asks upstream for — `from` to `to` plus one day, because the human's `to` is inclusive and upstream's `end_date` is not. Both the Probe and the extraction job call it, which is the whole point: one expression of the range, so the two can never disagree about which days they covered. A second copy of that conversion is how 3,196 rows were once lost. It replaced a per-month chunk builder that had held the same guarantee as a side effect of tiling.
+_Avoid_: Chunk builder, date splitter, window
+
 **Probe**:
-A single `page_size=20` upstream call made per Report code over a Request's whole span, purely to read exact `meta.total_items`. It fetches no data for the Extract. It runs off the submit path, so a Request reaches the queue before its count does. **Nothing a human does waits on it**: the count is informational — it catches the zero-row Request, sizes the queue, and makes reject-path upstream traffic accountable — and a Reviewer may decide without it, because size is not a ground for a Decision. Only the extraction job waits, for the disk pre-check — and it waits for a bounded time, because a Probe whose calls exhaust their retries is **abandoned**, releasing the job with that check skipped.
+A single `page_size=20` upstream call made per Report code over a Request's whole span, purely to read exact `meta.total_items`. It fetches no data for the Extract, and it asks upstream the same question the extraction job later asks — same span, same one-call-per-code shape — differing only in `page_size`. It runs off the submit path, so a Request reaches the queue before its count does. **Nothing waits on it, human or machine**: a Reviewer may decide without it because size is not a ground for a Decision, and since the Span builder and the fixed disk floor, the extraction job no longer needs it either. The count survives for one reason worth the calls — catching the Request whose codes matched **nothing**, before the Requester waits — plus accountability for reject-path upstream traffic. A Probe whose calls exhaust their retries is **abandoned**, and only that catch is lost.
 _Avoid_: Count query, pre-flight, dry run
 
 **Download token**:
