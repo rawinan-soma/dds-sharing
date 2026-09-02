@@ -30,11 +30,15 @@ The free-text organisation a Requester names for themselves. An input to the Rev
 ### The data
 
 **Extract**:
-The generated CSV — de-identified case-level rows, one flat file — zipped together with the Data dictionary. Has its own lifetime, delivery, and expiry, distinct from the Request that produced it.
+The generated CSV — de-identified case-level rows, one flat file. Has its own lifetime, delivery, and expiry, distinct from the Request that produced it. It travels inside an Extract archive but is not the archive: every safety rule this service has — the allowlist, the granularity line, the 72-hour destruction — is about these rows, and the container is transport.
 _Avoid_: Export, download, dataset, report
 
+**Extract archive**:
+The zip holding exactly one Extract and one Data dictionary — what a Download token delivers, and the only form in which an Extract leaves the service. Named `dds-envocc-sharing-{YYYYMMDD}-{HHMMSS}.zip` from the Request's submit moment in Asia/Bangkok, with a `-r2`, `-r3` suffix per Re-run, so two archives of one Request never share a name. Deliberately not fingerprinted: its bytes are not reproducible across runs, and the Data dictionary inside it is identical in every archive ever made.
+_Avoid_: Zip, bundle, package, download
+
 **Data dictionary**:
-The fixed Thai/English gloss of the Extract's columns, shipped in every zip. It exists because the column names are English and the audience reads Thai, and it is the same file in every Extract — a property of the service, never of the Request.
+The fixed Thai/English gloss of the Extract's columns, shipped in every Extract archive under a fixed filename. It exists because the column names are English and the audience reads Thai, and it is the same file in every Extract — a property of the service, never of the Request.
 _Avoid_: Schema, codebook, legend, README
 
 **Derived column**:
@@ -104,7 +108,7 @@ Whoever or whatever caused a Request event. One of four kinds: a Requester (know
 The copy of what a Reviewer had on screen, carried by their Decision — the disease group, the dates, the Area selection, the Probe row count, and the Workplace. Never the contact details. It makes a Decision legible on its own, years later.
 
 **Extract fingerprint**:
-The description of a released Extract that outlives the Extract itself — row count, column count, size, and a checksum. It answers what was released, where the record alone would only say that a release happened. The rows are never kept. What the checksum is taken over is unsettled: a zip's bytes are not reproducible, and the archive now holds the Data dictionary as well as the Extract.
+The description of a released Extract that outlives the Extract itself — row count, column count, the size of the Extract, the size of its Extract archive, and a SHA-256 of the Extract's bytes as written. It answers what was released, where the record alone would only say that a release happened. The rows are never kept. It attests **content, not provenance**: two Requests asking the same question of the same data release identical bytes and so share a fingerprint, and every empty Extract shares one — so a match narrows to a set of Requests, never to one. The checksums of the reference data that produced the Extract are recorded beside it, never inside it: they describe what made the Extract, not what was released.
 _Avoid_: Manifest, receipt
 
 **Redaction**:
