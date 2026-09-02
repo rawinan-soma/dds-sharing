@@ -17,7 +17,7 @@ _Avoid_: Admin, approver, moderator
 ### The request
 
 **Request**:
-A Requester's parameterized ask — one disease group, one inclusive date range of at most 365 days, and an optional single area — together with the contact details they supplied.
+A Requester's parameterized ask — one Disease group, one inclusive date range of at most 365 days, and an optional single area — together with the contact details they supplied. A stored Request names Report codes, never a Disease group alone: the group is expanded at submit and the expansion is what a Re-run refetches.
 _Avoid_: Query, job, application
 
 **Decision**:
@@ -30,8 +30,16 @@ The free-text organisation a Requester names for themselves. An input to the Rev
 ### The data
 
 **DDS** (Digital Disease Surveillance):
-DDC's digital disease surveillance scheme — ระบบเฝ้าระวังโรคดิจิทัล. EnvOcc's part of it carries 24 disease report codes, `201`–`224`: 15 established under พ.ร.บ.ควบคุมโรคจากการประกอบอาชีพและโรคสิ่งแวดล้อม พ.ศ. 2562, and 9 added from ธ.ค. 2567. **DDS names the scheme**, and attributively its data — *DDS surveillance data*, the case-level records this service extracts from. Where the distinction matters, say **the upstream API** or **the upstream DDC system** for the authenticated platform the data is fetched *from*, so that a sentence like §18.4's "every documented path into the upstream system is RBAC" does not collapse into a circle.
+DDC's digital disease surveillance scheme — ระบบเฝ้าระวังโรคดิจิทัล. EnvOcc's part of it carries 25 disease report codes: `201`–`224` — 15 established under พ.ร.บ.ควบคุมโรคจากการประกอบอาชีพและโรคสิ่งแวดล้อม พ.ศ. 2562 and 9 added from ธ.ค. 2567 — plus `501` (Heat Stroke, โรคลมแดด). The set is amendable by announcement and is **not** contiguous. **DDS names the scheme**, and attributively its data — *DDS surveillance data*, the case-level records this service extracts from. Where the distinction matters, say **the upstream API** or **the upstream DDC system** for the authenticated platform the data is fetched *from*, so that a sentence like §18.4's "every documented path into the upstream system is RBAC" does not collapse into a circle.
 _Avoid_: D506 (the former name here, retained only in `docs/research/` where it is quoted verbatim from cited sources — the `D506 Portal` URL among them)
+
+**Disease group**:
+The unit of disease a Request asks for — one named family of one or more Report codes, classified by DDC's own officers rather than received from upstream. A Requester picks exactly one and never sees a Report code. The classification is a partition of every Report code, is published in the Data dictionary because it is our editorial act and not upstream's, and is amendable — so a Request stores the codes its group expanded to, not just the name.
+_Avoid_: Disease, group_code, category, disease family
+
+**Report code**:
+One upstream `group_code` — `201`–`224` plus `501`, the deck's `รหัสรายงานโรค`, each mapping 1:1 to a primary ICD-10 code. Neither contiguous nor fixed in number. It is upstream's unit, not the Requester's: it names a query the extractor makes, and it reaches the Requester only as a column of the Extract.
+_Avoid_: Disease code, group, ICD code
 
 **Extract**:
 The generated CSV — de-identified case-level rows, one flat file. Has its own lifetime, delivery, and expiry, distinct from the Request that produced it. It travels inside an Extract archive but is not the archive: every safety rule this service has — the allowlist, the granularity line, the 72-hour destruction — is about these rows, and the container is transport.
@@ -42,7 +50,7 @@ The zip holding exactly one Extract and one Data dictionary — what a Download 
 _Avoid_: Zip, bundle, package, download
 
 **Data dictionary**:
-The fixed Thai/English gloss of the Extract's columns, shipped in every Extract archive under a fixed filename. It exists because the column names are English and the audience reads Thai, and it is the same file in every Extract — a property of the service, never of the Request.
+The fixed Thai/English gloss of the Extract's columns, shipped in every Extract archive under a fixed filename. It exists because the column names are English and the audience reads Thai, and it also publishes the Disease group classification, which is ours rather than upstream's and so must travel with the data. The same file in every Extract — a property of the service, never of the Request.
 _Avoid_: Schema, codebook, legend, README
 
 **Derived column**:
@@ -56,7 +64,7 @@ The case's age in completed years at `onset_date` — a property of the case, no
 The health region of `epidem_chw_code` — the address that answers *"cases I investigated"*. Deliberately not called `health_zone`: the source's column of that name follows `isolate_chw_code`, the treating unit's address, and the two disagree on roughly 7% of rows. The `epidem_` prefix says which address it came from.
 
 **Probe**:
-A single `page_size=20` upstream call made at submit time, per date-chunk, purely to read exact `meta.total_items`. It gives the Reviewer a row count to judge against and sizes the queue; it fetches no data for the Extract.
+A single `page_size=20` upstream call made per Report code per date-chunk, purely to read exact `meta.total_items`. It gives the Reviewer a row count to judge against and sizes the queue; it fetches no data for the Extract. It runs off the submit path — a Request reaches the queue before its count does, and cannot be approved until it lands.
 
 **Download token**:
 The unguessable, time-limited capability that lets a Requester collect one Extract. Carried in the delivery email, never shown on a page. Expires 72 hours after the extraction job completes and is never extended by use. Not single-use — time-limited and attempt-capped instead.
@@ -109,7 +117,7 @@ One immutable entry in a Reviewer's own history — a sign-in, a failed sign-in,
 Whoever or whatever caused a Request event. One of four kinds: a Requester (known only by network origin), a named Reviewer, the system itself, or an anonymous presenter of a Download token. The kind is part of the record, so "which human did this" is never a guess.
 
 **Snapshot**:
-The copy of what a Reviewer had on screen, carried by their Decision — the disease group, the dates, the Area selection, the Probe row count, and the Workplace. Never the contact details. It makes a Decision legible on its own, years later.
+The copy of what a Reviewer had on screen, carried by their Decision — the Disease group's name over the Report codes it expanded to, the dates, the Area selection, the Probe row count, and the Workplace. Never the contact details. It makes a Decision legible on its own, years later.
 
 **Extract fingerprint**:
 The description of a released Extract that outlives the Extract itself — row count, column count, the size of the Extract, the size of its Extract archive, and a SHA-256 of the Extract's bytes as written. It answers what was released, where the record alone would only say that a release happened. The rows are never kept. It attests **content, not provenance**: two Requests asking the same question of the same data release identical bytes and so share a fingerprint, and every empty Extract shares one — so a match narrows to a set of Requests, never to one. The checksums of the reference data that produced the Extract are recorded beside it, never inside it: they describe what made the Extract, not what was released.
