@@ -1,13 +1,13 @@
 # DDS Sharing
 
-A web application for requesting de-identified case-level extracts of Thai DDC (กรมควบคุมโรค) D506 epidemiological surveillance data. Every request is reviewed by a named human before any data is fetched.
+A web application for requesting de-identified case-level extracts of Thai DDC (กรมควบคุมโรค) DDS epidemiological surveillance data. Every request is reviewed by a named human before any data is fetched.
 
 ## Language
 
 ### People
 
 **Requester**:
-The person filling in the request form. Intended audience is epidemiologists at DDC and the regional offices (สคร.). Not authenticated and never verified by the system.
+The person filling in the request form. Intended audience is officers at DDC and the regional offices (สคร.). Not authenticated and never verified by the system.
 _Avoid_: User, client, applicant
 
 **Reviewer**:
@@ -28,6 +28,10 @@ _Avoid_: Approval, review, verdict
 The free-text organisation a Requester names for themselves. An input to the Reviewer's human judgement, never a credential and never validated.
 
 ### The data
+
+**DDS**:
+The Thai DDC (กรมควบคุมโรค) case-level epidemiological surveillance dataset this service extracts from — occupational- and environmental-disease (EnvOcc) case reports. **DDS names the data, never the system that holds it**: the authenticated MoPH platform the data is fetched from is *the upstream API* or *the upstream DDC system*, and writing "DDS" for it collapses the distinction §18.4 depends on. Every request for it here is de-identified to the allowlist before anything is written.
+_Avoid_: D506 (the former name, retained only in `docs/research/` where it is quoted verbatim from cited sources), the source, upstream data
 
 **Extract**:
 The generated CSV — de-identified case-level rows, one flat file. Has its own lifetime, delivery, and expiry, distinct from the Request that produced it. It travels inside an Extract archive but is not the archive: every safety rule this service has — the allowlist, the granularity line, the 72-hour destruction — is about these rows, and the container is transport.
