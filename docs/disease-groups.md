@@ -18,8 +18,8 @@ is the order below.
 | # | id | Disease group | Report codes |
 |---|---|---|---|
 | 1 | `air-pollution` | โรคจากการสัมผัสมลพิษทางอากาศ | 201 |
-| 2 | `silicosis` | Silicosis | 202, 203 |
-| 3 | `asbestos` | Asbestos-related disease | 204, 205, 206, 207 |
+| 2 | `silicosis` | โรคซิลิโคสิส | 202, 203 |
+| 3 | `asbestos` | โรคจากแร่ใยหิน | 204, 205, 206, 207 |
 | 4 | `lead` | โรคจากตะกั่วและสารประกอบของตะกั่ว | 208 |
 | 5 | `pesticides` | โรคจากสารกำจัดศัตรูพืช | 209, 210, 211, 212, 213, 214, 215, 216, 217, 218 |
 | 6 | `confined-space` | การบาดเจ็บจากภาวะอับอากาศ | 219 |
@@ -33,12 +33,12 @@ and none in two — 1 + 2 + 4 + 1 + 10 + 1 + 3 + 1 + 1 + 1 = 25.
 
 ## Notes on the classification
 
-- **`pesticides` is the wide one.** Ten Report codes differing only by where the
-  poisoning happened, kept as one group because that is the disease. Cost, so
-  nobody is surprised: ten upstream calls per month, so a full-year Request probes
-  ~130 times (~8 minutes) before extraction starts. This is why the Probe runs off
-  the submit path (§5.4) and why there is no runtime width cap (§4.9). If it ever
-  needs splitting, split it **here**, as a naming decision.
+- **`pesticides` is the widest group** — ten Report codes differing only by where
+  the poisoning happened, kept as one group because that is the disease. The cost
+  is **calls, not rows**: reported volumes in DDS are low, but the Probe spends
+  ~3.5 s per call whatever comes back, so the group's width sets the floor. This is
+  why the Probe runs off the submit path (§5.4). If it ever needs splitting, split
+  it **here**, as a naming decision, not as a runtime rejection.
 - **`work-related` and `environmental-pollution` are groups of one, deliberately.**
   The deck presents Y96 and Y97 as companion codes on `208`, but DDS carries them
   as report codes in their own right, so cases arrive under them and they need a
@@ -48,9 +48,8 @@ and none in two — 1 + 2 + 4 + 1 + 10 + 1 + 3 + 1 + 1 + 1 = 25.
   one this audience asks along.
 - **`heat` is new and stands alone.** `501` sits outside the EnvOcc `201`–`224`
   block. Expect more codes outside that block, not fewer.
-- **Two names are English** (`silicosis`, `asbestos`) where the other eight are
-  Thai. Kept verbatim as classified — these are the words the audience uses. The
-  picker shows these strings exactly.
+- **All ten names are Thai.** The picker shows these strings exactly, and the ids
+  beside them are ASCII only because they are keys, never display text.
 
 ## Changing this file
 
