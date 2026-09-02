@@ -34,7 +34,7 @@ DDC's digital disease surveillance scheme — ระบบเฝ้าระว�
 _Avoid_: D506 (the former name here, retained only in `docs/research/` where it is quoted verbatim from cited sources — the `D506 Portal` URL among them)
 
 **Disease group**:
-The unit of disease a Request asks for — one named family of one or more Report codes, classified by DDC's own officers rather than received from upstream. A Requester picks exactly one and never sees a Report code. The classification is a partition of every Report code, is published in the Data dictionary because it is our editorial act and not upstream's, and is amendable — so a Request stores the codes its group expanded to, not just the name.
+The unit of disease a Request asks for — one named family of one or more Report codes, classified by DDC's own officers rather than received from upstream. A Requester picks exactly one and never sees a Report code. The classification is `docs/disease-groups.md` — ten groups, a partition of every Report code, each with a stable id that outlives its name — is published in the Data dictionary because it is our editorial act and not upstream's, and is amendable — so a Request stores the codes its group expanded to, not just the name.
 _Avoid_: Disease, group_code, category, disease family
 
 **Report code**:

@@ -296,6 +296,11 @@ never assume it is: `501` sits far outside the EnvOcc block and arrived after th
 first 24 were written down. A **Disease group** is a named family of one or more
 of them, classified by DDC's own officers. See ADR 0006.
 
+**The classification is `docs/disease-groups.md`** — ten groups over the 25 Report
+codes, seeded from there and from nowhere else. Each group has a **stable id**;
+the name and the code list may be revised, the id may not, because stored Requests
+and Decision Snapshots reference it.
+
 - The classification is a **partition**: every Report code sits in exactly one
   Disease group, none is left out, and a code that belongs alone is a group of
   one. A code in no
@@ -318,8 +323,15 @@ of them, classified by DDC's own officers. See ADR 0006.
 - **No width cap at runtime.** A Request is never rejected for spanning many
   codes; a rejection the Requester could only satisfy by shortening their dates
   is a bad conversation. If a family is too wide to serve, that is the
-  classification's problem at design time — the pesticide block (`209`–`218`,
-  ten codes differing only by location) is the one candidate.
+  classification's problem at design time. **`โรคจากสารกำจัดศัตรูพืช` is the widest
+  group — ten Report codes** (`209`–`218`), so a full-year Request there probes
+  ~130 times, ~8 minutes, before extraction starts. That group is the reason the
+  Probe is asynchronous.
+- **Adding a Report code upstream is two edits, not one** — the code list in
+  `docs/research/003-disease-group-codes.md` and a group for it in
+  `docs/disease-groups.md`. A code in no group is unreachable data and **nothing
+  in the system will notice**; the seed's own test is that the groups partition
+  the code list exactly (§17.1).
 
 ---
 
@@ -2065,6 +2077,10 @@ judge.**
   gap.
 - **Completeness assert fires.** A chunk whose received count disagrees with
   `total_items` must fail the job and publish nothing.
+- **The classification partitions the code list.** Assert that the groups in
+  `docs/disease-groups.md` cover every Report code in the seed exactly once — none
+  missing, none repeated. This is the only thing that will ever notice a new
+  upstream code arriving with no group, and the check is three lines.
 - **Large-download smoke test through the real ministry edge** — see §17.4.
 
 ### 17.2 Dev-cycle asks
