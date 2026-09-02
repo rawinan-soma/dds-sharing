@@ -324,9 +324,10 @@ and Decision Snapshots reference it.
   codes; a rejection the Requester could only satisfy by shortening their dates
   is a bad conversation. If a family is too wide to serve, that is the
   classification's problem at design time. **`โรคจากสารกำจัดศัตรูพืช` is the widest
-  group — ten Report codes** (`209`–`218`), so a full-year Request there probes
-  ~130 times, ~8 minutes, before extraction starts. That group is the reason the
-  Probe is asynchronous.
+  group — ten Report codes** (`209`–`218`). Its cost is **calls, not rows**:
+  reported pesticide volumes in DDS are low, but each Probe call costs ~3.5 s
+  whatever comes back, so group width alone sets the floor. That is what makes the
+  Probe asynchronous.
 - **Adding a Report code upstream is two edits, not one** — the code list in
   `docs/research/003-disease-group-codes.md` and a group for it in
   `docs/disease-groups.md`. A code in no group is unreachable data and **nothing
