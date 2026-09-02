@@ -1,6 +1,9 @@
 # DDS Sharing — Specification
 
-**Status:** complete for implementation. Version 1.0, 2026-09-02.
+**Status:** complete for implementation. Version 1.1, 2026-09-02.
+One open item, flagged at the end of §19 and tracked as
+[#33](https://github.com/rawinan-soma/dds-sharing/issues/33): the worst-case row
+volume rests on a Report code no Disease group can reach.
 **Source of authority:** every requirement here was decided on an issue of
 [Map: DDS surveillance data-sharing service](https://github.com/rawinan-soma/dds-sharing/issues/1).
 Where this document and a closed issue disagree, this document wins and the
@@ -88,6 +91,9 @@ Requester fills the form ──► reaches the queue at once, row count pending
    │
    ├─ Probe runs behind, off the submit path (§5.4) ─► probe_performed
    │     (~35 s; nothing waits on it — approve is NOT blocked)
+   │     └─ calls exhaust 3 attempts ──────────────► probe_failed
+   │           (count reads "failed"; the job starts later with the
+   │            disk pre-check skipped, and never waits for ever)
    │
    ▼
 Request: pending ──── 24 business hours elapse ──► expired          (terminal)
@@ -180,9 +186,9 @@ Three deliberate absences, each with a reason:
   audience, different meaning. Do not "fix" the inconsistency.
 - **No zero-row gate.** A header-only CSV is a true answer, and a Disease group
   returning zero rows for a quarter is a normal outcome for this audience.
-- **No date floor.** Usable history appears to start in 2025 for the one group
-  profiled, but bounding the picker would hardcode one group's sample as if it
-  held for all 24.
+- **No date floor.** Usable history appears to start in 2025 for the one Report
+  code profiled, but bounding the picker would hardcode one code's sample as if it
+  held for all 25.
 
 ### 4.2 The 365-day cap
 
@@ -461,9 +467,33 @@ proceeds, and correctness rests on the run-time totals (§7.5), which the Probe
 never fed.
 
 **One thing does wait on it: an approved Request does not start extracting until
-its count lands.** The disk pre-check (§7.8) needs the number. This is a queue
-wait of at most ~35 s behind a Decision that took minutes or hours, and it is the
-Probe's only remaining gate — on the *job*, never on the *human*.
+its count lands *or the Probe is abandoned*.** The disk pre-check (§7.8) needs the
+number. This is a queue wait of at most ~35 s behind a Decision that took minutes
+or hours, and it is the Probe's only remaining gate — on the *job*, never on the
+*human*.
+
+**The Probe therefore needs a bounded end, and it has one.** Each call retries on
+the same discipline as a fetch pair (§7.6) — **3 attempts, exponential backoff,
+60 s per-request timeout**. When a code's calls exhaust their attempts the whole
+Probe is **abandoned**, recorded as `probe_failed` (§12.4), and the count is
+displayed as **failed** rather than *pending*.
+
+> ⚠️ **A wedged Probe must never leave an approved job queued indefinitely.**
+> Removing the Probe stalled Alert (§10.6) was right about the *human* — nobody is
+> waiting on the count. It said nothing about the *job*, which this section gates
+> on the same number. Without a terminal state for the Probe, an approved Request
+> would sit in the queue for ever, and no watcher would notice: `extraction` on
+> `/health` needs two consecutive **failures** (§14.1), and a job that never starts
+> never fails.
+
+**An abandoned Probe does not fail the Request.** The job starts and **skips the
+disk pre-check**, because there is no projection to check against. That is a
+deliberate degradation to the behaviour this service had before the pre-check
+existed: the worst case becomes a job that runs and dies at the upload step, which
+is the failure §7.8 exists to make cheaper — not to make impossible. It is loud,
+it raises the extraction-failure Alert (§10.6), and it is strictly better than a
+Request that waits silently for ever. **The zero-row catch (below) is also lost for
+that Request**, which is the second cost and is accepted for the same reason.
 
 The count's uses are all informational:
 
@@ -753,6 +783,11 @@ is the Extract's row order (§8.2) and must not be varied for throughput, which
 
 - Months are **derivable from the Request alone**, with no upstream call — which
   the Probe requires, since submit and run must agree on boundaries.
+- **The first and last chunks are partial months**, not snapped outward:
+  `chunks[0].start` is the Request's `from` and `chunks[last].end` is the day after
+  its `to`. A Request for 15 Jan – 20 Feb tiles as `[15 Jan, 1 Feb)`,
+  `[1 Feb, 21 Feb)`. Snapping to whole months would fetch days nobody asked for,
+  and would make §5.4's Probe span wider than the run's.
 - Volume fits: group `02` averages ~95 k rows/month ≈ 10 pages, and a 2×
   outbreak month stays near 20 — well under the ~50-page 504 cliff.
 - **Adaptive chunk sizing off `total_items` is rejected**: it buys nothing here
@@ -863,6 +898,10 @@ copy exists after completion.**
 and dies at the upload step. The projection comes from the Probe row count. **An
 approved Request whose count has not yet landed waits in the queue until it
 does** (§5.4) — the check has no input otherwise, and the wait is ~35 s.
+
+**If the Probe was abandoned (§5.4), the job starts with the pre-check skipped.**
+Waiting on a number that will never arrive is the one outcome worse than running
+without it.
 
 ### 7.9 Worst case
 
@@ -1170,8 +1209,9 @@ Shows, and only shows:
   dates, area *name*. Never codes. The Report codes the group expanded to sit
   **beneath the name**, available but not the headline: the name is what is being
   judged, the expansion is what makes the Decision legible years later (§12.3).
-- The **Probe row count** — or **"pending"** while the Probe is still running
-  (§5.4) — as a **single summed number**. Neither Decision waits on it (§5.4):
+- The **Probe row count** — or **"pending"** while the Probe is still running, or
+  **"failed"** if it was abandoned (§5.4) — as a **single summed number**. A
+  Decision waits on none of the three (§5.4):
   size is not a ground for rejection. The per-code breakdown is on
   `probe_performed` (§12.4) and is deliberately not the headline; the sum is the
   whole informational signal, and ten numbers on a screen read as something to
@@ -1291,6 +1331,11 @@ judgement about this person and has the telephone number in front of them.
 > and, at worst, an approved job queued behind ~35 s of work — not a human in
 > front of a screen. An Alert must be a **must-clear queue item**, and this one
 > would be a must-clear item for a condition nobody is harmed by.
+>
+> **What replaced it is a terminal state, not an Alert**: §5.4 abandons a Probe
+> whose calls exhaust their retries, so the *job* it gates is released rather than
+> queued for ever. That is the half the removal originally left open, and it is
+> machinery, not a queue item — nobody has to clear it.
 
 **Why an extraction-failure Alert may be cleared by anyone:** the action is often
 just "re-run", and two reachable people is the real availability unit — with a
@@ -1547,9 +1592,9 @@ the Snapshot copies. **Each chunk fetch writes its own event** carrying the exac
 
 **The Snapshot** copies the Disease group name **over the Report codes it expanded
 to**, date range, Area selection, Probe row count and `workplace` — what the
-Reviewer had on screen. Since §5.4 the count may be **`pending`** there, because
-approve does not wait on it; the Snapshot records what was on screen, not what
-was eventually learned. It does **not** copy the
+Reviewer had on screen. Since §5.4 the count may be **`pending`** or **`failed`**
+there, because approve does not wait on it; the Snapshot records what was on
+screen, not what was eventually learned. It does **not** copy the
 contact fields. A Reviewer cannot modify a Request, so content cannot drift; the
 Snapshot exists to make the Decision legible on its own years later.
 
@@ -1563,6 +1608,7 @@ Snapshot exists to make the Decision legible on its own years later.
 |---|---|---|
 | `submitted` | `requester` | carries IP, user agent |
 | `probe_performed` | `system` | Report codes probed, calls made (**one per code**, §5.4), the probed span, **per-code and total `total_items`**, upstream `x-request-id`s. **Fires when the Probe finishes — after submit, and usually but not necessarily before any Decision**, since approve no longer waits on it (§5.4) — this is what makes the reject path's upstream traffic accountable |
+| `probe_failed` | `system` | a Report code's Probe calls exhausted their 3 attempts (§5.4). Carries the code, the relay of upstream errors and their `x-request-id`s. **Terminal for the Probe** — the count never lands, and the job it gates starts with the disk pre-check skipped (§7.8) |
 | `approved` | `reviewer` | carries the Snapshot |
 | `rejected` | `reviewer` | carries the Snapshot and the **mandatory internal note** |
 | `note_amended` | `reviewer` | cites the event it corrects |
@@ -1829,7 +1875,9 @@ noticing and revoking us**, which no retry recovers from. "How much traffic are
 you sending?" must be answerable.
 
 - `chunk_fetched` covers running jobs; **`probe_performed` covers submits,
-  including those that are rejected or expire** (§12.4).
+  including those that are rejected or expire** (§12.4). `probe_failed` covers the
+  calls an abandoned Probe spent before giving up — traffic spent either way, and
+  the retries make it more than a successful Probe's, not less.
 - **A CLI report on the Docker host** counts upstream calls over a date range,
   split by Probe and fetch. Not a dashboard and not an endpoint: this question
   gets asked by a human a handful of times a year, and a dashboard nobody opens is
@@ -2004,7 +2052,8 @@ excludes the API prefix so it cannot swallow API responses.
 
 **No SSR**, rejected on all three of its benefits: search indexing does not apply
 (a Requester is given the address by DDC), there is no per-request server data on
-the form (the disease group list is a fixed 24-value seed; the confirmation page
+the form (the Disease group list is a fixed ten-value seed from
+`docs/disease-groups.md`; the confirmation page
 is client state), and a faster first paint precedes a wait of up to 24 business
 hours. The cost — a second runtime on the host that the kill switch would have to
 account for, plus hydration as a failure mode — is not worth it.
@@ -2380,7 +2429,8 @@ Excel's type inference ignores quotes.
 Two repairs were considered and rejected: **`="01"` formula-escaping** corrupts the
 file for pandas in order to fix it for Excel, and puts a formula-injection vector
 into a file handed to strangers; **shipping `.xlsx`** contradicts the one-flat-CSV
-decision and cannot hold the 1.05 M-row worst case anyway.
+decision and cannot hold the worst case anyway — the format's own ceiling is the
+same 1,048,576 rows, which §18.6's ~1.14 M-row Extract exceeds.
 
 > **Note the interaction with the audience: the BOM exists to get these users into
 > Excel, and Excel is where the corruption happens.** We are optimising for the
@@ -2469,3 +2519,13 @@ which they will never read.
 | UI structure, ordering rules, copy as deliverable | §10.2, §16.4 | [#11](https://github.com/rawinan-soma/dds-sharing/issues/11) |
 | PDPA position ruled out of scope; the five carried risks | §18.1–§18.4 | [#22](https://github.com/rawinan-soma/dds-sharing/issues/22) |
 | Fake upstream harness requirements | §17.3 | [#6](https://github.com/rawinan-soma/dds-sharing/issues/6) |
+| The Probe's bounded end — retries, `probe_failed`, the skipped disk pre-check | §5.4, §7.8, §10.2, §10.6, §12.3, §12.4, §13.6 | audit of this document against all 30 tickets, 2026-09-02 |
+
+> ⚠️ **One number in this document is not settled: the worst-case row volume.**
+> §5.3's sizing table, §7.9's worst case, §13.5's disk bound and §18.6's Excel
+> truncation all rest on Report code `02` at ~1.14 M rows/year — **a code that is
+> in no Disease group** (`docs/disease-groups.md` partitions `201`–`224` plus
+> `501`). Either the seed is incomplete or the sizing model has no measured basis.
+> Open as [#33](https://github.com/rawinan-soma/dds-sharing/issues/33). Nothing
+> else in this specification depends on which way it resolves, but the numbers in
+> those four sections may move by orders of magnitude.
