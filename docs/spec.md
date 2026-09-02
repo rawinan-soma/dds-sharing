@@ -16,14 +16,14 @@ Re-run, Snapshot, Redaction — mean exactly what it says they mean. Read it fir
 
 ## 1. What this service is
 
-A web application that lets an epidemiologist ask for a de-identified,
-case-level extract of Thai DDC (กรมควบคุมโรค) **D506** occupational- and
+A web application that lets an officer ask for a de-identified,
+case-level extract of Thai DDC (กรมควบคุมโรค) **DDS** occupational- and
 environmental-disease surveillance data. Every Request is read and decided by a
 named human before any data is fetched. An approved Request produces one CSV,
 delivered as a zip through a time-limited link in an email, and destroyed 72
 hours later.
 
-Audience: epidemiologists at DDC and the regional offices (สคร.), working from
+Audience: officers at DDC and the regional offices (สคร.), working from
 ordinary internet connections, reading Thai, and analysing in Excel, R or Python.
 
 Deployment: a single Docker host inside DDC infrastructure, reachable from the
@@ -48,7 +48,7 @@ something that is not local to the code they are editing.
 5. **Rate limiting is a load control on the upstream DDC relationship and on this
    server's disk. It is not a data-protection control.** See §13.
 6. **"Data does not linger" is a claim about surveillance data only.** The
-   patient-derived Extract is destroyed after 72 hours; the epidemiologist's
+   patient-derived Extract is destroyed after 72 hours; the officer's
    telephone number is kept for ever. See §12.7 and
    [ADR 0004](adr/0004-personal-data-is-retained-indefinitely.md).
 7. **Everything the machinery does absorbs *upstream's* limits, not ours.** Strip
@@ -226,7 +226,7 @@ frequently surveyed far from where they are registered.
   audit record stays truthful without versioning a lookup table.
 - **Province selection is one at a time.** This is a UI simplicity choice, not a
   cost one — one province and thirty cost identically.
-- `epidem_chw_code` is mandatory in D506 reporting, so the null case does not
+- `epidem_chw_code` is mandatory in DDS reporting, so the null case does not
   arise. **Count rows where it is absent and raise an operational alert if the
   count is non-zero** rather than silently dropping them: "this cannot happen" is
   exactly the assumption worth instrumenting.
@@ -240,7 +240,7 @@ the spec and the picker use.
 Two other 13-way vocabularies exist and neither is this one: สช.'s
 `เขตสุขภาพเพื่อประชาชน` (same groupings, different institution) and **สคร.**,
 DDC's own regional disease control offices. **State this plainly in the UI copy**,
-because a สคร. epidemiologist reading "เขต 8" will otherwise assume it means
+because a สคร. officer reading "เขต 8" will otherwise assume it means
 their office's catchment.
 
 ### 4.6 Geography codes
@@ -1532,7 +1532,7 @@ consent.
   sentence saying it without that qualifier is wrong.
 
 > **The contrast, carried verbatim and not paraphrased: *the patient-derived
-> Extract is destroyed after 72 hours; the epidemiologist's telephone number is
+> Extract is destroyed after 72 hours; the officer's telephone number is
 > kept for ever.***
 
 ### 12.8 Redaction — a courtesy, bounded, and not a retention rule
@@ -1944,7 +1944,7 @@ the 24-business-hour service promise, and the telephone number. It must read as
 
 **A worked example for acceptance testing:** seed the Reviewer queue with a
 request that is genuinely hard to judge — an "independent researcher" on a
-`gmail.com` address, beside a plainly legitimate DDC epidemiologist asking for
+`gmail.com` address, beside a plainly legitimate DDC officer asking for
 1.14 M rows, a สคร. request, a hospital request, and a sloppy one returning zero
 rows. **A review screen is only judgeable against a request that is hard to
 judge.**
@@ -2020,7 +2020,7 @@ queue.** This is the escape hatch for §18's residual risk. Removing the *route*
 the edge team's and is slower, but is not needed to stop serving data.
 
 **Infra is told what this publishes.** The VM request states that the service is
-internet-facing and serves case-level (de-identified) D506 surveillance data. A VM
+internet-facing and serves case-level (de-identified) DDS surveillance data. A VM
 granted under "internal tool" assumptions is a mismatch that surfaces at the worst
 moment, and the person granting it carries part of §18's question knowingly.
 
@@ -2132,7 +2132,7 @@ deliberately; it is not a gap nobody noticed.
 a named human accountable per release, which is real and which the design
 previously lacked. It supplies nothing else on this question.
 
-**No DDC sign-off exists on releasing case-level D506 data to the open internet.**
+**No DDC sign-off exists on releasing case-level DDS data to the open internet.**
 Separate from the PDPA question and also not sought. §17.4 fixes part of it by
 requiring the VM request to state what the service publishes, so the person
 granting it carries part of the decision knowingly.
@@ -2189,10 +2189,10 @@ province, and a two-tier open/gated split.
 
 ### 18.4 Upstream is authenticated; this service is not
 
-Every documented path into DDS is MoPH account / Provider ID RBAC — **no anonymous
-access**. The Requester surface here has no login. As specified, this service is a
-weaker door onto records derived from the same source, with a human gate in front
-of it rather than a credential.
+Every documented path into the upstream DDC system that holds DDS is MoPH
+account / Provider ID RBAC — **no anonymous access**. The Requester surface here
+has no login. As specified, this service is a weaker door onto records derived
+from the same source, with a human gate in front of it rather than a credential.
 
 ### 18.5 Excel silently corrupts the leading-zero geography codes
 
