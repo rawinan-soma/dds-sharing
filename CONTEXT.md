@@ -38,7 +38,7 @@ The unit of disease a Request asks for — one named family of one or more Repor
 _Avoid_: Disease, group_code, category, disease family
 
 **Report code**:
-One upstream `group_code` — `201`–`224` plus `501`, the deck's `รหัสรายงานโรค`, each mapping 1:1 to a primary ICD-10 code. Neither contiguous nor fixed in number. It is upstream's unit, not the Requester's: it names a query the extractor makes, and it reaches the Requester only as a column of the Extract.
+One upstream `group_code` — `201`–`224` plus `501`, the deck's `รหัสรายงานโรค`, each mapping 1:1 to a primary ICD-10 code. Neither contiguous nor fixed in number. It is upstream's unit, not the Requester's: it names a query the extractor makes, and it reaches the Requester only as a column of the Extract. **Those 25 are this service's scope, not upstream's vocabulary**: the same endpoint answers to the general D506 notifiable-disease codes too (`02` acute diarrhoea, `301` tuberculosis, `601` hepatitis B, and more), and this service serves the EnvOcc block alone by decision. So *in-scope Report code* and *code upstream accepts* are different sets, and only the first is ever a Disease group's member.
 _Avoid_: Disease code, group, ICD code
 
 **Extract**:

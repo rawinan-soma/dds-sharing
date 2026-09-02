@@ -58,7 +58,9 @@ something that is not local to the code they are editing.
 7. **Everything the machinery does absorbs *upstream's* limits, not ours.** Strip
    away the 365-day cap, the OFFSET timeout cliff and the ~3.5 s fixed request
    cost and the extraction pipeline collapses to a controller method. A later
-   reader will otherwise assume the complexity is self-inflicted.
+   reader will otherwise assume the complexity is self-inflicted. ⚠️ **And the
+   volumes are tiny** — 3,861 rows a year across the whole domain (§5.3). The
+   pipeline is shaped by upstream's *call cost and cliffs*, never by data size.
 8. **No PDPA §26 lawful basis and no DDC sign-off are on record**, by decision,
    not by oversight. See §18.
 
@@ -117,9 +119,11 @@ Request: pending ──── 24 business hours elapse ──► expired        
                  └── no Attempt by 72 h ───────► expired_uncollected (terminal)
 ```
 
-**Wall-clock from submit to Extract is hours or days, not minutes.** The
-pipeline's 10–25 minutes were never the dominant term and now are barely a term
-at all. Weigh any future optimisation of the pipeline against that.
+**Wall-clock from submit to Extract is hours or days, not minutes.** The pipeline
+takes **single-digit minutes at worst** (§7.9) against a human gate measured in
+business hours. It was never the dominant term and now is not a term at all.
+**Optimising the pipeline cannot improve what a Requester experiences** — weigh
+every future proposal there against that sentence.
 
 ---
 
@@ -302,7 +306,17 @@ first 24 were written down. A **Disease group** is a named family of one or more
 of them, classified by DDC's own officers. See ADR 0006.
 
 **The classification is `docs/disease-groups.md`** — ten groups over the 25 Report
-codes, seeded from there and from nowhere else. Each group has a **stable id**;
+codes, seeded from there and from nowhere else.
+
+> ⚠️ **The 25 codes are this service's *scope*, not upstream's whole domain.**
+> Probing on 2026-09-02 ([#33](https://github.com/rawinan-soma/dds-sharing/issues/33))
+> established that the same endpoint also serves the general D506
+> notifiable-disease block — `01` cholera, `02` acute diarrhoea, `03` food
+> poisoning, `07`–`09` typhoid, `301`–`303` tuberculosis, `401` animal bite, `502`
+> snakebite, `601` hepatitis B, and more nobody has enumerated. **This service
+> serves the EnvOcc block only** (`201`–`224` plus `501`), by decision. A
+> communicable-disease code appearing in `docs/disease-groups.md` is a scope
+> change, not a classification fix. Each group has a **stable id**;
 the name and the code list may be revised, the id may not, because stored Requests
 and Decision Snapshots reference it.
 
@@ -336,8 +350,10 @@ and Decision Snapshots reference it.
 - **Adding a Report code upstream is two edits, not one** — the code list in
   `docs/research/003-disease-group-codes.md` and a group for it in
   `docs/disease-groups.md`. A code in no group is unreachable data and **nothing
-  in the system will notice**; the seed's own test is that the groups partition
-  the code list exactly (§17.1).
+  in the system will notice.** §17.1's partition test does **not** close this: it
+  checks the classification against the seed, so a code that exists upstream and
+  is missing from the *seed* is invisible to it. The control is the periodic
+  human re-probe in §17.1, not a build.
 
 ---
 
@@ -409,17 +425,52 @@ Cost also climbs with page depth — pagination is `OFFSET`-based:
 | 100 | **HTTP 504 after 60 s** |
 
 **There is a ~60 s gateway timeout, so pages past roughly 50 are unreachable.**
-A full-year group `02` extract is 1,141,658 rows = 115 pages: **not slow,
-impossible** by page-walking. Date-chunking is therefore **mandatory for
-correctness**, not an optimisation (§7.2).
+That cliff is real, and it is what date-chunking exists to stay clear of (§7.2).
+
+⚠️ **No in-scope Request comes near it.** The cliff was originally established
+against Report code `02` at 1,141,658 rows a year = 115 pages — *"not slow,
+impossible"*. `02` is **not in this service's domain**: it is acute diarrhoea in
+the general D506 notifiable-disease block, and this service serves the 25 EnvOcc
+codes only (§4.9, [#33](https://github.com/rawinan-soma/dds-sharing/issues/33)).
+The largest Request anyone can actually submit is **~1,952 rows — one page**.
+Chunking is therefore **headroom against upstream volume growth, not a
+correctness requirement at today's volumes**. Say so plainly wherever the
+machinery is described, so a later reader does not infer a load that has never
+existed.
 
 **Concurrency buys nothing.** Eight concurrent requests all returned `200` but
 degraded from ~3.9 s to ~14.3 s each — the upstream serializes. Extraction stays
 sequential and the global concurrency budget is 1 (§13.2). Record *why* in any
 config comment, so a later operator does not tune it upward expecting throughput.
 
-Annual row volumes, for sizing: `02` 1,141,658 · `03` 146,734 · `401` 87,281 ·
-`301` 12,083 · `201` 1,952 · others 51–627.
+**Annual row volumes for sizing — all 25 in-scope Report codes**, measured
+2026-09-02 over 2025-08-27 → 2026-08-27
+([#33](https://github.com/rawinan-soma/dds-sharing/issues/33)):
+
+| Disease group | Report codes | rows/yr |
+|---|---|---|
+| `air-pollution` | 201 | **1,952** |
+| `work-related` | 220 | 970 |
+| `heat` | 501 | 401 |
+| `environmental-pollution` | 221 | 194 |
+| `silicosis` | 202, 203 | 129 |
+| `lead` | 208 | 95 |
+| `asbestos` | 204–207 | 73 |
+| `pesticides` | 209–218 | 28 |
+| `confined-space` | 219 | 15 |
+| `radiation` | 222–224 | 4 |
+
+**The entire in-scope domain is 3,861 rows a year.** The worst case a Requester
+can express — a full-year national `air-pollution` Extract — is **1,952 rows**,
+returned in a single `page_size=10000` call. Codes 212, 215, 217 and 224 returned
+**zero** over the full year; a Disease group legitimately extracting to nothing is
+the normal case here, not a fault (§7.7).
+
+**Out-of-scope volumes, recorded only so nobody re-imports them as sizing.** The
+same endpoint serves the general D506 notifiable-disease domain — `02` acute
+diarrhoea 1,141,443 · `03` food poisoning 146,559 · `401` animal bite 87,281 ·
+`601` hepatitis B 51,517 · `301` TB 12,059. **None of these is reachable through
+this service.**
 
 ### 5.4 The Probe
 
@@ -788,8 +839,12 @@ is the Extract's row order (§8.2) and must not be varied for throughput, which
   its `to`. A Request for 15 Jan – 20 Feb tiles as `[15 Jan, 1 Feb)`,
   `[1 Feb, 21 Feb)`. Snapping to whole months would fetch days nobody asked for,
   and would make §5.4's Probe span wider than the run's.
-- Volume fits: group `02` averages ~95 k rows/month ≈ 10 pages, and a 2×
-  outbreak month stays near 20 — well under the ~50-page 504 cliff.
+- Volume fits with enormous margin: the **largest in-scope Disease group is 1,952
+  rows a year** (§5.3), so a month is typically a fraction of one page. The old
+  sizing here — *"group `02` averages ~95 k rows/month ≈ 10 pages"* — was measured
+  on an **out-of-scope** code and is withdrawn. Monthly chunking is retained as
+  headroom and as the thing that keeps the Probe and the run agreeing on
+  boundaries, **not** because any Request needs it.
 - **Adaptive chunk sizing off `total_items` is rejected**: it buys nothing here
   and breaks the Probe.
 - If a month ever *does* exceed ~50 pages, that is an upstream-volume event that
@@ -905,12 +960,28 @@ without it.
 
 ### 7.9 Worst case
 
-Full-year group `02`, chunked monthly: ~115 shallow pages, **roughly 10–25
-minutes**, versus ~75 minutes for a single deep walk that would 504 long before
-finishing.
+**The worst case is a full-year national Extract of the widest Disease group.**
+Cost is dominated by *call count*, not rows (§5.3's ~3.5 s fixed cost).
 
-**Oversized Requests are never refused.** There is no size gate. Every Request the
-parameter surface allows must be served, including the ~1.14 M-row worst case.
+- **Widest by calls: `pesticides`** — 10 Report codes × 12 monthly chunks = **120
+  calls ≈ 7 minutes**, returning **28 rows**.
+- **Widest by rows: `air-pollution`** — 1 code × 12 chunks = 12 calls ≈ 42 s,
+  returning **1,952 rows**.
+
+So the ceiling is **single-digit minutes, and it is bought entirely by the group's
+*width* in Report codes, not by data volume.** This is the number to weigh any
+future optimisation against — and the reason `pesticides` is called out as the
+splittable group in `docs/disease-groups.md`.
+
+⚠️ **The former figure — *"full-year group `02`, ~115 shallow pages, roughly 10–25
+minutes"* — is withdrawn.** `02` is out of scope
+([#33](https://github.com/rawinan-soma/dds-sharing/issues/33)); no Request can
+reach it. Every *"10–25 minute"* reference elsewhere in this document inherits
+that correction.
+
+**Oversized Requests are never refused.** There is no size gate. This survives
+unchanged — it was never a bet on the worst case being small, and it is what keeps
+the Reviewer's advisory judgement (§13.3) the only volume gate.
 
 ---
 
@@ -927,18 +998,24 @@ the second's — the file reads as what it is. The Extract fingerprint is a hash
 the bytes as written (§8.4) and must be reproducible, and any date-interleaved
 order would mean sorting a million rows that arrived already grouped.
 
-The zip earns its place on transfer size: ~150–200 MB of CSV compresses to
-roughly **20–30 MB**, and สคร. staff download over ordinary internet. It is also
-what makes the ministry edge irrelevant (§16.2).
+**The zip's original justification — transfer size — no longer holds.** It was
+*"~150–200 MB of CSV compresses to roughly 20–30 MB"*, sized on out-of-scope code
+`02`. The real worst case is **1,952 rows ≈ 400 KB, compressing to tens of KB**
+(§5.3). Downloading that over ordinary สคร. internet is not a problem anyone has.
 
-> ⚠️ **Accepted residual risk: silent Excel truncation.** A full-year group `02`
-> Extract is ~1.14 M rows in one file. Excel loads the first 1,048,576 and
-> **reports no error** — roughly 95,000 rows vanish with nothing telling the
-> Requester. Per-month splitting and an explicit over-a-million warning were both
-> offered and declined, on the judgement that anyone pulling a 1.14 M-row Extract
-> is working in R or Python. The row count is already computed for the
-> completeness assert, so **adding a warning later is a display change, not a
-> pipeline change.**
+**The zip stays anyway, on a different and now-primary reason:** the archive
+carries **two** files — the Extract and the Data dictionary (§8.2 rule 8) — and a
+container is the only way to deliver a CSV alongside the document that explains
+its columns. Recorded explicitly because the size argument is the one a later
+reader will remember, and it is the one that died.
+
+> ✅ **Excel truncation is no longer a risk — this entry is retired.** It read: *"a
+> full-year group `02` Extract is ~1.14 M rows … Excel loads the first 1,048,576
+> and reports no error."* `02` is out of scope
+> ([#33](https://github.com/rawinan-soma/dds-sharing/issues/33)). The largest
+> Extract this service can produce is **1,952 rows — 0.19% of Excel's ceiling**,
+> and the whole 25-code domain over a full year is 3,861 rows. Excel opens every
+> Extract this service will ever generate, intact. See §18.6.
 
 ### 8.2 The eight writer rules
 
@@ -1085,8 +1162,8 @@ the archive with range-request support or redirects to `/link-expired`.
 
 > ⚠️ **Consequence, and it is load-bearing: an Extract stays collectable even if a
 > front-end asset fails to load.** Any design that put collection behind the
-> Angular bundle would let a completed 10–25 minute extraction become unreachable
-> inside its 72 hours because of a static asset.
+> Angular bundle would let a completed extraction become unreachable inside its
+> 72 hours because of a static asset.
 
 ### 9.2 The token
 
@@ -1302,7 +1379,10 @@ degradation.
 
 **CSRF:** double-submit token on every state-changing `/reviewer` post, on top of
 `SameSite=Lax`. Justified because the thing protected is a one-click irreversible
-release of up to ~1.14 M rows with a named human's identity attached.
+release of case-level personal data with a named human's identity attached. The
+justification is the **irreversibility and the sensitivity**, not the volume —
+the largest Extract is ~1,952 rows (§5.3), and a smaller release is not a safer
+one.
 
 ### 10.6 Alerts on the queue
 
@@ -1465,7 +1545,7 @@ nobody's fault.**
 **There is no receipt email on submit.** Offered and declined; the Requester gets
 a confirmation *page* instead (§16.3). **Accepted cost, recorded knowingly: bounce
 detection is lost.** A mistyped address now surfaces only after a Reviewer has
-spent time and a 10–25 minute job has run. Mitigated by §11.4, not eliminated —
+spent time and an extraction job has run. Mitigated by §11.4, not eliminated —
 and by an explicit warning on the email field, which is the only place a Requester
 is told a typo will not be caught.
 
@@ -1831,10 +1911,15 @@ pairs       = C x the Disease group's code count
 drain       ~ pairs x 3.5 s  +  SUM pages(code) x ~6 s
 ```
 
-The true value is bounded above by `C + ceil(T/10000) - 1`. For the only volume
-that matters — full-year group `02`, true 120 pages — the bound gives 115, within
-4%; for the low-volume codes it is exact. **A 4% error on an advisory number is
-not worth 13x the upstream calls** (§5.4). The area filter does not disturb this:
+The true value is bounded above by `C + ceil(T/10000) - 1`. **At in-scope volumes
+the bound is exact**: every Disease group's full-year total is under 10,000 rows
+(§5.3), so `ceil(T/10000)` is 1 and the estimate reduces to the chunk count. The
+former justification — *"for the only volume that matters, full-year group `02`,
+true 120 pages, the bound gives 115, within 4%"* — was computed on an
+**out-of-scope** code and is withdrawn; the 4% error it accepted does not arise.
+**The bound is kept as written**, because it stays correct if upstream volumes
+grow and the exactness is a property of today's data, not of the formula. The area
+filter does not disturb this:
 filtering is client-side, so upstream's count is *exactly* the page count we walk.
 
 ### 13.4 Download endpoint
@@ -1850,14 +1935,21 @@ pattern is.**
 
 ```
 worst-case stored bytes  =  (retention window / worst-case job duration) × archive size
-                         =  (72 h / 25 min) × ~30 MB  ≈  5 GB
+                         =  (72 h / 7 min) × ~50 KB  ≈  31 MB
 ```
 
 > **The counterintuitive inversion belongs in the spec: the faster the extractor
 > gets, the more disk it needs.** The formula is the durable part; the number has
-> already moved once, by an order of magnitude, when retention dropped from 7 days
-> to 72 h, scratch became immediately deleted, and the stored object became the
-> ~30 MB zip rather than the ~80 MB CSV.
+> now moved twice — first when retention dropped from 7 days to 72 h, and again
+> when [#33](https://github.com/rawinan-soma/dds-sharing/issues/33) established
+> that the archive is tens of KB rather than ~30 MB. **The old ~5 GB bound was
+> sized on out-of-scope code `02` and is withdrawn.**
+
+> ⚠️ **Disk is no longer a real constraint, and the thresholds below are worth
+> keeping anyway.** ~31 MB of extracts will not fill anything; but `/health`'s
+> `disk` component watches the *volume*, which also carries PostgreSQL, logs and
+> the container images. Keep the check, and do not justify it with the extract
+> figure.
 
 - **Warn at 75%, unhealthy at 90%**, on `/health`'s `disk` component.
 - **The responder is the service owner with shell access, never a Reviewer.** A
@@ -2164,8 +2256,9 @@ the 24-business-hour service promise, and the telephone number. It must read as
 
 **A worked example for acceptance testing:** seed the Reviewer queue with a
 request that is genuinely hard to judge — an "independent researcher" on a
-`gmail.com` address, beside a plainly legitimate DDC officer asking for
-1.14 M rows, a สคร. request, a hospital request, and a sloppy one returning zero
+`gmail.com` address, beside a plainly legitimate DDC officer asking for a
+full-year national `air-pollution` Extract (the largest Request that exists,
+§7.9), a สคร. request, a hospital request, and one for `radiation` returning zero
 rows. **A review screen is only judgeable against a request that is hard to
 judge.**
 
@@ -2191,9 +2284,27 @@ judge.**
 - **Completeness assert fires.** A chunk whose received count disagrees with
   `total_items` must fail the job and publish nothing.
 - **The classification partitions the code list.** Assert that the groups in
-  `docs/disease-groups.md` cover every Report code in the seed exactly once — none
-  missing, none repeated. This is the only thing that will ever notice a new
-  upstream code arriving with no group, and the check is three lines.
+  `docs/disease-groups.md` cover every Report code in the seed
+  (`docs/research/003-disease-group-codes.md`) exactly once — none missing, none
+  repeated. The check is three lines.
+
+  > ⚠️ **This test compares the classification against the *seed*, so it is
+  > structurally blind to a code that exists **upstream** and is missing from the
+  > seed.** It previously claimed to be *"the only thing that will ever notice a
+  > new upstream code arriving with no group"*; that claim was false and
+  > [#33](https://github.com/rawinan-soma/dds-sharing/issues/33) is exactly the
+  > case it could not see. **Nothing automated closes that gap**, and nothing
+  > should pretend to: discovering a new upstream code means probing codes nobody
+  > has enumerated, against a live token, in a test that would either hit
+  > production upstream on every CI run or be permanently skipped. The honest
+  > control is the periodic re-probe below, done by a human.
+- **Periodic upstream domain re-probe — a documented operator task, not a test.**
+  Once a year, or on any DDC announcement of new `รหัสรายงานโรค`, re-run
+  [#33](https://github.com/rawinan-soma/dds-sharing/issues/33)'s probe: `page_size=20`,
+  full-year span, one call per candidate code, reading `meta.total_items` only and
+  **writing no response data to disk**. An unknown code returns `200` with
+  `data: []` (§5.2), so absence and emptiness are indistinguishable — which is why
+  this needs a human comparing against a DDC announcement, not a green build.
 - **Large-download smoke test through the real ministry edge** — see §17.4.
 
 ### 17.2 Dev-cycle asks
@@ -2233,11 +2344,15 @@ administer is a precondition for the system working.
 | **DDC infra team** | the VM, and registering the public route through the ministry-managed edge. Its timeouts, buffering and body caps are shared ministry policy and are **not assumed tunable** |
 | **Service owner** | the VM's Docker host, the application, everything from the TCP connection inward, and sign-off on what is published |
 
-**Three decisions make the edge irrelevant**: the archive is always the delivery
-form (~20–30 MB on the wire, never the ~200 MB Extract — a proxy that buffers a
-whole response body survives 30 MB on any plausible default and would have been
-fatal at 200 MB); the download endpoint supports range requests; and the base URL
-is explicit configuration.
+**The edge is irrelevant, and the reason is now simply size.** The largest archive
+this service can produce is **tens of KB** (§5.3, §8.1) — below any plausible proxy
+body cap, buffer or timeout. Range-request support on the download endpoint and an
+explicitly configured base URL are retained, both cheap and both still correct.
+
+⚠️ *The former argument — "~20–30 MB on the wire, never the ~200 MB Extract" — was
+sized on out-of-scope code `02` and is withdrawn
+([#33](https://github.com/rawinan-soma/dds-sharing/issues/33)). The conclusion
+survives; only the margin changed, from comfortable to overwhelming.*
 
 **Kill switch: `docker compose down` on the VM — minutes, not the edge team's
 queue.** This is the escape hatch for §18's residual risk. Removing the *route* is
@@ -2262,10 +2377,12 @@ moment, and the person granting it carries part of §18's question knowingly.
   reachability.** Being unreachable *through the edge* is automatic; being
   unreachable from any DDC desktop is not. **Host-level firewalling is required,
   not just edge routing.**
-- ⚠️ **A large-download smoke test as a first-deploy gate.** The 20–30 MB download
-  through the real ministry edge is the item most likely to break and the last one
-  testable, since no public route exists before production. **Exercise it
+- ⚠️ **An end-to-end download smoke test as a first-deploy gate** — the route, the
+  token and the archive through the real ministry edge, which is the last thing
+  testable since no public route exists before production. **Exercise it
   deliberately on first deploy rather than discovering it through a Requester.**
+  *No longer a **large**-download test: at tens of KB there is nothing to stress.
+  The gate is about the path existing, not the payload surviving.*
 - ⚠️ **NTP sync on the Docker host.** TOTP is clock-dependent and there is no email
   reset path, so **drift beyond ~30 seconds locks out every Reviewer
   simultaneously**, and the only fix is shell access to the machine that is
@@ -2430,16 +2547,27 @@ Two repairs were considered and rejected: **`="01"` formula-escaping** corrupts 
 file for pandas in order to fix it for Excel, and puts a formula-injection vector
 into a file handed to strangers; **shipping `.xlsx`** contradicts the one-flat-CSV
 decision and cannot hold the worst case anyway — the format's own ceiling is the
-same 1,048,576 rows, which §18.6's ~1.14 M-row Extract exceeds.
+same 1,048,576 rows. *(That last objection no longer bites — no Extract comes near a
+million rows, §18.6 — but the first two stand on their own and the one-flat-CSV
+decision is unchanged.)*
 
 > **Note the interaction with the audience: the BOM exists to get these users into
 > Excel, and Excel is where the corruption happens.** We are optimising for the
 > tool that breaks the data, knowingly, because the alternative is mojibake for
 > everyone.
 
-### 18.6 Excel silently truncates above 1,048,576 rows
+### 18.6 ~~Excel silently truncates above 1,048,576 rows~~ — RETIRED 2026-09-02
 
-See §8.1. A full-year group `02` Extract loses roughly 95,000 rows with no error.
+**This risk does not exist and never did.** It read: *"see §8.1 — a full-year group
+`02` Extract loses roughly 95,000 rows with no error."* Report code `02` is out of
+this service's scope ([#33](https://github.com/rawinan-soma/dds-sharing/issues/33));
+the largest Extract this service can produce is **1,952 rows**, and the entire
+25-code domain over a full year is **3,861** (§5.3).
+
+Kept as a struck entry rather than deleted, because the reasoning that accepted it
+— *"anyone pulling a 1.14 M-row Extract is working in R or Python"* — was a
+judgement about the audience, and someone will make it again. **It was accepted on
+a volume nobody had measured.** The lesson is the entry; the risk is gone.
 
 ### 18.7 The record cannot say which Request produced an Extract
 
@@ -2520,12 +2648,21 @@ which they will never read.
 | PDPA position ruled out of scope; the five carried risks | §18.1–§18.4 | [#22](https://github.com/rawinan-soma/dds-sharing/issues/22) |
 | Fake upstream harness requirements | §17.3 | [#6](https://github.com/rawinan-soma/dds-sharing/issues/6) |
 | The Probe's bounded end — retries, `probe_failed`, the skipped disk pre-check | §5.4, §7.8, §10.2, §10.6, §12.3, §12.4, §13.6 | audit of this document against all 30 tickets, 2026-09-02 |
+| Scope is the 25 EnvOcc codes; the whole sizing model re-anchored on measured volumes | §4.9, §5.3, §7.2, §7.9, §8.1, §13.3, §13.5, §16.5, §17.1, §17.4, §18.5, §18.6 | [#33](https://github.com/rawinan-soma/dds-sharing/issues/33) |
 
-> ⚠️ **One number in this document is not settled: the worst-case row volume.**
-> §5.3's sizing table, §7.9's worst case, §13.5's disk bound and §18.6's Excel
-> truncation all rest on Report code `02` at ~1.14 M rows/year — **a code that is
-> in no Disease group** (`docs/disease-groups.md` partitions `201`–`224` plus
-> `501`). Either the seed is incomplete or the sizing model has no measured basis.
-> Open as [#33](https://github.com/rawinan-soma/dds-sharing/issues/33). Nothing
-> else in this specification depends on which way it resolves, but the numbers in
-> those four sections may move by orders of magnitude.
+> ✅ **The worst-case row volume is now settled, and it is small.** All 25 in-scope
+> Report codes were probed over a full year on 2026-09-02
+> ([#33](https://github.com/rawinan-soma/dds-sharing/issues/33)): **3,861 rows for
+> the entire domain, 1,952 for the largest single Request.** The former model —
+> ~1.14 M rows from Report code `02` — was measured on a code in the general D506
+> notifiable-disease block, **outside this service's scope**, and every figure
+> resting on it has been withdrawn: §7.9's 10–25 minutes, §13.5's ~5 GB, §17.4's
+> 20–30 MB edge argument, §18.6's Excel truncation.
+>
+> **Read this before deleting machinery.** §7's chunking, retry and completeness
+> apparatus now has far more headroom than it needs. That is not a reason to strip
+> it — chunking is also what keeps the Probe and the run agreeing on date
+> boundaries (§5.4), and upstream volumes are not ours to hold still. But **do not
+> justify any of it by load**, and do not let a later reader infer a load that has
+> never existed. Whether §7 should be simplified is an open design question, not a
+> settled one.

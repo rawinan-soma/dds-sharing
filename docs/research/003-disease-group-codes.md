@@ -17,6 +17,40 @@ There are **25 known values today — `201`–`224` plus `501` — and the set i
 
 **No companion lookup endpoint is documented** — see below.
 
+## ⚠️ Amendment, 2026-09-02 — the seed is scope, not the domain
+
+Live probing under [#33](https://github.com/rawinan-soma/dds-sharing/issues/33)
+established that **`group_code` accepts a far wider set than these 25.** Verified
+by reading `epidem_report_group_code` and `diagnosis_icd10` off page 1 of each
+response:
+
+| code | ICD-10 seen | what it is | rows/yr |
+|---|---|---|---|
+| `01` | A00.0, A00.9 | อหิวาตกโรค — cholera | 76 |
+| `02` | A08.3/.4, A09.0/.9 | อุจจาระร่วงเฉียบพลัน — acute diarrhoea | 1,141,443 |
+| `03` | A05, A05.9 | อาหารเป็นพิษ — food poisoning | 146,559 |
+| `05` | A03.x | บิดชิเกลลา — shigellosis | 360 |
+| `06` | A06.x | บิดอะมีบา — amoebiasis | 1,861 |
+| `07`–`09` | A01.x | ไข้ไทฟอยด์ / พาราไทฟอยด์ | 235 / 1,839 / 434 |
+| `301`–`303` | A15.0/.1/.2 | วัณโรค — tuberculosis | 12,059 / 627 / 296 |
+| `401` | W54.x | สัตว์กัด — animal bite | 87,290 |
+| `402` | Z20.3 | สัมผัสโรคพิษสุนัขบ้า — rabies contact | 2,343 |
+| `502` | T63.0 | งูพิษกัด — venomous snakebite | 1,554 |
+| `601` | B18.0/.1 | ไวรัสตับอักเสบบี — hepatitis B | 51,517 |
+
+These are the **general D506 notifiable-disease surveillance domain** sharing the
+same endpoint. The list above is a sample, not an enumeration — nobody has swept
+the full space. `999` and `abc` both returned `200` with `data: []`, confirming
+that an unknown code is indistinguishable from an empty one (spec §5.2), which is
+why the domain cannot be discovered by scanning.
+
+**This service serves the EnvOcc block only** — the 25 codes below — by decision
+on [#33](https://github.com/rawinan-soma/dds-sharing/issues/33). The primary
+source above is an **EnvOcc** deck, so it was never going to describe the wider
+domain; the error was reading its 25 codes as upstream's whole vocabulary. `502`
+snakebite sitting immediately beside our `501` heat stroke is the sharpest
+illustration: **adjacency in the code space is not membership in the scope.**
+
 For the Request form: this list must be **seeded from these DDC sources**, not fetched. Display the Thai name (`ชื่อโรคภาษาไทย`); the Requester never types `201`. Since #30 the form does not show Report codes at all — it shows a **Disease group**, a locally-classified family of them (ADR 0006).
 
 ## The code list
