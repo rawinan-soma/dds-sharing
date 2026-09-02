@@ -108,5 +108,5 @@ The description of a released Extract that outlives the Extract itself — row c
 _Avoid_: Manifest, receipt
 
 **Redaction**:
-The manual removal of one Requester's contact details, performed on the host by a named operator. It is a courtesy to someone who asks, never an automatic expiry, and it is itself recorded as a Request event.
+The manual removal of one Requester's contact details, performed on the host by a named operator. It is a courtesy to someone who asks, never an automatic expiry, and it is itself recorded as a Request event. It reaches the contact details and nothing else — never a Decision, never a Snapshot, never a Reviewer — and it is unavailable while the Request is still in flight. Nothing else in the record is ever removed.
 _Avoid_: Erasure, purge, deletion
