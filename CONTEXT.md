@@ -29,9 +29,9 @@ The free-text organisation a Requester names for themselves. An input to the Rev
 
 ### The data
 
-**DDS**:
-The Thai DDC (กรมควบคุมโรค) case-level epidemiological surveillance dataset this service extracts from — occupational- and environmental-disease (EnvOcc) case reports. **DDS names the data, never the system that holds it**: the authenticated MoPH platform the data is fetched from is *the upstream API* or *the upstream DDC system*, and writing "DDS" for it collapses the distinction §18.4 depends on. Every request for it here is de-identified to the allowlist before anything is written.
-_Avoid_: D506 (the former name, retained only in `docs/research/` where it is quoted verbatim from cited sources), the source, upstream data
+**DDS** (Digital Disease Surveillance):
+DDC's digital disease surveillance scheme — ระบบเฝ้าระวังโรคดิจิทัล. EnvOcc's part of it carries 24 disease report codes, `201`–`224`: 15 established under พ.ร.บ.ควบคุมโรคจากการประกอบอาชีพและโรคสิ่งแวดล้อม พ.ศ. 2562, and 9 added from ธ.ค. 2567. **DDS names the scheme**, and attributively its data — *DDS surveillance data*, the case-level records this service extracts from. Where the distinction matters, say **the upstream API** or **the upstream DDC system** for the authenticated platform the data is fetched *from*, so that a sentence like §18.4's "every documented path into the upstream system is RBAC" does not collapse into a circle.
+_Avoid_: D506 (the former name here, retained only in `docs/research/` where it is quoted verbatim from cited sources — the `D506 Portal` URL among them)
 
 **Extract**:
 The generated CSV — de-identified case-level rows, one flat file. Has its own lifetime, delivery, and expiry, distinct from the Request that produced it. It travels inside an Extract archive but is not the archive: every safety rule this service has — the allowlist, the granularity line, the 72-hour destruction — is about these rows, and the container is transport.
