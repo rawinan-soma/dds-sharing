@@ -83,32 +83,157 @@ reading Thai, analysing in Excel, R or Python.
 
 ### BUSINESS CASE (ประโยชน์ทางธุรกิจ)
 
-| | |
+#### The surveillance scheme this serves
+
+**DDS is DDC's digital disease surveillance scheme** — ระบบเฝ้าระวังโรคดิจิทัล.
+EnvOcc's part of it carries **24 disease report codes, `201`–`224`**, each mapping
+1:1 to an ICD-10 code: **15 established under พ.ร.บ.ควบคุมโรคจากการประกอบอาชีพและ
+โรคสิ่งแวดล้อม พ.ศ. 2562**, and **9 added to DDS from ธ.ค. 2567**.
+
+What the scheme watches, in its own categories: pneumoconioses and
+asbestos-related disease (`202`–`206`), mesothelioma (`207`), lead toxicity
+(`208`), air-pollution exposure (`201`), low-oxygen environments (`219`),
+ionizing-radiation exposure (`222`–`224`), and a **block of ten
+pesticide-poisoning codes (`209`–`218`) distinguished by nothing except where
+the poisoning happened** — home, dormitory, school, sports field, road,
+commercial area, industrial site, farmland, other, unspecified.
+
+> **That last block is the shape of the whole scheme in miniature.** Ten codes
+> that differ only by location exist because **the intervention differs by
+> location.** Pesticide poisoning on farmland is an agricultural-extension and
+> licensing problem; the same poisoning in a dormitory is a housing and employer
+> problem; in a school it is a child-safety problem. The scheme is built to
+> answer *where*, because *where* is what the department can act on.
+
+#### How the data is used
+
+Surveillance is a cycle — **report → collect → analyse → act → evaluate** — and
+the data earns its keep only in the last three steps.
+
+| Use | What it needs from the data |
 |---|---|
-| **Accountability that does not exist today** | Every release carries a named Reviewer, a recorded Decision, and a Snapshot of exactly what was approved. The single largest gap in the current process. |
-| **A safety control that cannot drift** | De-identification moves from human care to a strict allowlist in code (§6). A field reaches the Extract only by being on the list; an unknown upstream field raises an alert rather than passing through. |
-| **Removes manual handling** | The two administrators stop assembling extracts by hand and instead spend minutes per Request on the judgement the gate exists for — is this person who they say they are, and is this ask proportionate? |
-| **Solves upstream's limits once, centrally** | Date-chunking, retry, resume and the completeness assert are built once here (§7) instead of being rediscovered by every officer who tries and gets a `504`. |
-| **Better decision-making in the field** | สคร. officers get analysable line-list data on a predictable turnaround instead of an ad-hoc favour. |
+| **Situation assessment** — how much EnvOcc disease is occurring, where, and in whom | Case counts cross-tabulated by disease group × area × time, at a granularity the analyst chooses after seeing the data, not before |
+| **Trend and signal detection** — is silicosis rising in this province, is a pesticide cluster forming in this district | A consistent line list over a long enough span that a change is distinguishable from reporting noise |
+| **Targeting interventions** — which employers, which districts, which crops or industries | The location and occupational coding, at district level, joined to the disease code |
+| **Programme evaluation** — is the พ.ร.บ. 2562 scheme detecting what it was written to detect; did the 9 codes added in ธ.ค. 2567 change what is seen | Comparable extracts across periods, reproducible so two analysts get the same file |
+| **Regional (สคร.) operational work** — investigating and responding in one's own area | Filtering to one's own area, on demand, without asking Bangkok |
+| **Reporting upward** — to the division, the department, and statutory reporting under the พ.ร.บ. | Figures that can be traced back to the extract they came from |
+
+**Why case-level, and not an aggregate table.** Every use above is a
+cross-tabulation the analyst does not know in advance. A pre-aggregated report
+answers the question it was designed for and no other; a **line list — one row
+per reported event, 22 columns — answers the question that has not been asked
+yet.** This is why the service ships a case-level Extract and why officers
+analyse it in Excel, R or Python rather than reading a dashboard.
+
+**Why de-identified.** None of these uses needs to know *who* the person is.
+They need the disease, the place, the time and the coded demographics. **The
+analytic value of this data survives de-identification almost entirely — that is
+the fact the whole design rests on.**
+
+#### Where the scheme already works, and where it stops
+
+**Reporting *into* DDS is solved.** Four documented submission paths exist — the
+HIS API (HosXP, HosMy, HosPCU, JHCIS), the Semi-Offline Excel batch API, key-in
+at the DDS Portal, and other-vendor APIs coordinated with กองระบาดวิทยา. Data
+flows HIS → API → DDS collection / Data Hub → analytics.
+
+**Getting case-level data back *out*, to the officers whose job is to analyse
+it, is not solved.** Every documented path into the upstream system is MoPH
+account / Provider ID RBAC, scoped to a reporting unit rather than to an
+analytic question, and there is no de-identified case-level extract route at all.
+So the analytic step of the cycle runs on **ad-hoc manual requests handled by two
+administrators, with no record of what was released to whom.**
+
+**The scheme's collection arm is instrumented and its analysis arm is not.** That
+asymmetry is what this project addresses.
+
+#### What this system supports
+
+| Contribution to the scheme | How |
+|---|---|
+| **Closes the analysis arm of the surveillance cycle** | A standing, self-service route to case-level EnvOcc surveillance data, replacing an ad-hoc favour with a predictable ≤24-business-hour turnaround |
+| **Serves the *where* question the scheme is built around** | Area filter to district (อำเภอ), on the address recorded during case investigation — answering *"cases I investigated"*, not *"cases treated near me"* (§4.4) |
+| **Makes the analysis reproducible** | The same rows written twice produce one fingerprint (§8.4), so a figure in a report can be traced to the exact extract behind it |
+| **Makes releases accountable, which they are not today** | Every release carries a named Reviewer, a recorded Decision and a Snapshot of what was approved — the single largest gap in the current process |
+| **Makes de-identification a control that cannot drift** | A strict 22-column allowlist in code (§6). A field reaches the Extract only by being on the list; an unknown upstream field raises an alert rather than passing through |
+| **Makes the impossible asks possible** | A full-year group `02` extract is 1,141,658 rows = 115 pages, a `504` rather than a long wait. Date-chunking, retry, resume and the completeness assert are built once here (§7) instead of defeating every officer separately |
+| **Returns administrator time to judgement** | The two administrators stop assembling extracts by hand and spend minutes per Request on what the gate exists for — is this person who they say they are, and is this ask proportionate? |
+| **Extends the scheme's reach to สคร.** | Regional officers work from ordinary internet connections, so the service is internet-facing by design (§3.1) rather than locked to the DDC network |
+
+> **What this project is not.** It does not change what is reported, add a
+> surveillance code, or alter the พ.ร.บ. scheme in any way. It is **retrieval
+> infrastructure for a scheme that already exists** — the missing return path in a
+> cycle whose outbound half is already built.
 
 ### GOALS / METRICS (เป้าหมาย / ตัวชี้วัด)
 
-| Goal | Metric | Target | Spec |
-|---|---|---|---|
-| Every release is attributable | Releases with a named Reviewer Decision + Snapshot | **100%** | §3.2, §10.3 |
-| Surveillance data never lingers | Case rows persisted at rest | **0** | §1.1, §7.1 |
-| De-identification holds | Columns in the Extract | **exactly 22** (20 passthrough + 2 derived) | §6.2 |
-| | Free-text fields · sub-district geography · coordinates | **0 · 0 · 0** | §6.1 |
-| Extracts are complete or absent | Chunks published with `received ≠ total_items` | **0** (job fails, publishes nothing) | §7.5 |
-| Extracts are reproducible | Same rows written twice ⇒ one fingerprint | **byte-identical** | §8.4, §17.1 |
-| Requesters get an answer | Decision within 24 business hours | **100%** of Requests reach a terminal state | §2, §10 |
-| The Extract is destroyed | Extract archives surviving past 72 h | **0** | §9.3, §9.5 |
-| The service is usable at worst case | Full-year group `02` (1,141,658 rows) | **completes, 10–25 min** | §7.9 |
-| Oversized asks are served, not refused | Requests refused on size | **0** — there is no size gate | §7.9 |
+Grouped by what each one buys **the surveillance scheme**, not by what it buys
+the software. Every target below is verifiable on the built system.
+
+#### A. The analysis arm of the cycle actually runs
+
+*Surveillance data that cannot be got hold of has no surveillance value.*
+
+| Metric | Target | Spec |
+|---|---|---|
+| Requests reaching a terminal state within **24 business hours** | **100%** | §2, §10 |
+| Full-year group `02` extract — **1,141,658 rows**, today a `504` rather than a long wait | **completes, 10–25 min** | §7.9 |
+| Requests refused for being too large | **0** — there is no size gate | §7.9 |
+| Extraction failures that leave the Requester uninformed | **0** — every failure emails the Requester and raises an Alert | §14.3 |
+
+#### B. The Extract fits the surveillance questions it exists to answer
+
+*A line list that cannot be trusted or cannot be reproduced cannot support a
+statutory report.*
+
+| Metric | Target | Why it matters to the scheme |
+|---|---|---|
+| Columns in the Extract | **exactly 22** (20 passthrough + 2 derived) | The analysable surface: disease code, coded demographics, clinical dates, reporting facility, area (§6.2) |
+| Finest area granularity available to the analyst | **district (อำเภอ)** | The *where* the scheme is built to answer — the ten pesticide codes differ by nothing else (§6.1) |
+| Chunks published with `received ≠ total_items` | **0** — the job fails and publishes nothing | **A line list with silent gaps is worse than no line list**: a trend computed on it is wrong and looks right (§7.5) |
+| Same rows written twice ⇒ one fingerprint | **byte-identical** | A figure in a report can be traced to the exact extract behind it (§8.4, §17.1) |
+| Area filter basis | **the address recorded during case investigation** | Answers *"cases I investigated"*, not *"cases treated near me"* — the สคร. question (§4.4) |
+
+#### C. The scheme's duty of care to the people in the data holds
+
+*The scheme's licence to collect this data at all depends on what happens to it
+afterwards.*
+
+| Metric | Target | Spec |
+|---|---|---|
+| Case rows persisted at rest, anywhere | **0** | §1.1, §7.1 |
+| Free-text fields · sub-district geography · point coordinates in the Extract | **0 · 0 · 0** | §6.1 |
+| Extract archives surviving past **72 hours** | **0** | §9.3, §9.5 |
+| Extracts released without a human having read the Request first | **0** | §3.2 |
+
+#### D. Every release is accountable
+
+*Today there is no record of what EnvOcc surveillance data was released to whom.
+This goes from zero to complete.*
+
+| Metric | Target | Spec |
+|---|---|---|
+| Releases carrying a named Reviewer Decision + Snapshot | **100%** | §3.2, §10.3 |
+| Named Reviewers reachable during business hours | **≥ 2**, enforced by the CLI | §17.5 |
+
+#### E. Scheme-level outcomes — to be baselined
+
+*These are what the sponsor should be judged on a year from now. None can be
+targeted yet, because the current manual process is unmeasured (assumption A11).*
+
+| Outcome metric | Baseline | Target |
+|---|---|---|
+| EnvOcc surveillance data requests served per year | `TBD` | `TBD` — expected to rise once the route is standing rather than a favour |
+| Median wait from ask to data, today vs. after | `TBD` | ≤ 24 business hours to a Decision |
+| สคร. offices using the service at least once in the first year | 0 | `TBD` — reach beyond DDC headquarters is the point of an internet-facing design |
+| Administrator hours per request | `TBD` | Minutes of judgement, not hours of assembly |
 
 > ⚠️ **None of these metrics is a data-protection guarantee about the audit
-> record.** "Data does not linger" is a claim about *surveillance data only*
-> (§1.1 premise 6). See ASSUMPTIONS and RISKS.
+> record.** "Data does not linger" is a claim about **surveillance data only**
+> (§1.1 premise 6). Requester contact details, network data, the Decision chain
+> and staff performance data are retained **indefinitely**, by decision. See
+> ASSUMPTIONS A3 and RISKS R9–R10.
 
 ### EXPECTED DELIVERABLES (สิ่งส่งมอบ / ผลลัพธ์ที่คาดหวัง)
 
