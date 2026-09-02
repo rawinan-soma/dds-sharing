@@ -21,7 +21,7 @@ A Requester's parameterized ask — one Disease group, one inclusive date range 
 _Avoid_: Query, job, application
 
 **Decision**:
-A Reviewer's approve-or-reject act on a Request, carrying the Reviewer's identity, a timestamp, and (on reject) an internal note never shown to the Requester.
+A Reviewer's approve-or-reject act on a Request, carrying the Reviewer's identity, a timestamp, and (on reject) an internal note never shown to the Requester. **The judgement is about who is asking** — identity, Workplace, legitimacy — **never about how much they ask for**: a large Request is slow, not illegitimate, and a long extraction completes rather than being refused. Size therefore never blocks or grounds a Decision, which is why nothing about a Decision waits on the Probe.
 _Avoid_: Approval, review, verdict
 
 **Workplace**:
@@ -64,7 +64,8 @@ The case's age in completed years at `onset_date` — a property of the case, no
 The health region of `epidem_chw_code` — the address that answers *"cases I investigated"*. Deliberately not called `health_zone`: the source's column of that name follows `isolate_chw_code`, the treating unit's address, and the two disagree on roughly 7% of rows. The `epidem_` prefix says which address it came from.
 
 **Probe**:
-A single `page_size=20` upstream call made per Report code per date-chunk, purely to read exact `meta.total_items`. It gives the Reviewer a row count to judge against and sizes the queue; it fetches no data for the Extract. It runs off the submit path — a Request reaches the queue before its count does, and cannot be approved until it lands.
+A single `page_size=20` upstream call made per Report code over a Request's whole span, purely to read exact `meta.total_items`. It fetches no data for the Extract. It runs off the submit path, so a Request reaches the queue before its count does. **Nothing a human does waits on it**: the count is informational — it catches the zero-row Request, sizes the queue, and makes reject-path upstream traffic accountable — and a Reviewer may decide without it, because size is not a ground for a Decision. Only the extraction job waits, for the disk pre-check.
+_Avoid_: Count query, pre-flight, dry run
 
 **Download token**:
 The unguessable, time-limited capability that lets a Requester collect one Extract. Carried in the delivery email, never shown on a page. Expires 72 hours after the extraction job completes and is never extended by use. Not single-use — time-limited and attempt-capped instead.

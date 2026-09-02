@@ -87,11 +87,10 @@ Named here so nobody adds them back without reopening the decision.
 Requester fills the form ──► reaches the queue at once, row count pending
    │
    ├─ Probe runs behind, off the submit path (§5.4) ─► probe_performed
-   │     └─ no call completes for 15 min ──────────► Probe stalled Alert (§10.6)
+   │     (~35 s; nothing waits on it — approve is NOT blocked)
    │
    ▼
 Request: pending ──── 24 business hours elapse ──► expired          (terminal)
-   │     (approve is disabled until the Probe's count lands)
    │
    ├── Reviewer rejects ────────────────────────► rejected          (terminal)
    │      └─ rejection email, no reason given
@@ -326,8 +325,8 @@ and Decision Snapshots reference it.
   classification's problem at design time. **`โรคจากสารกำจัดศัตรูพืช` is the widest
   group — ten Report codes** (`209`–`218`). Its cost is **calls, not rows**:
   reported pesticide volumes in DDS are low, but each Probe call costs ~3.5 s
-  whatever comes back, so group width alone sets the floor. That is what makes the
-  Probe asynchronous.
+  whatever comes back, so group width alone sets the floor — **ten calls, ~35 s**
+  (§5.4). That is what keeps the Probe asynchronous.
 - **Adding a Report code upstream is two edits, not one** — the code list in
   `docs/research/003-disease-group-codes.md` and a group for it in
   `docs/disease-groups.md`. A code in no group is unreachable data and **nothing
@@ -418,33 +417,77 @@ Annual row volumes, for sizing: `02` 1,141,658 · `03` 146,734 · `401` 87,281 �
 
 ### 5.4 The Probe
 
-**One `page_size=20` upstream call per (Report code, date-chunk) pair**, purely
-to read exact `meta.total_items`. The Request's total is the sum across the
-Disease group's codes.
+**One `page_size=20` upstream call per Report code, over the Request's whole
+span**, purely to read exact `meta.total_items`. The Request's total is the sum
+across the Disease group's codes.
 
-**It runs off the synchronous submit path.** Fan-out (§4.9) turns *chunks* into
-*codes × chunks* — a ten-code family over a year is ~130 calls at ~3.5 s, minutes
-of spinner on a form. So submit returns immediately, the queue item appears at
-once with its row count **pending**, and the Probe fills it in behind.
+**Why per code and not per (Report code, chunk) pair.** A Request's span is
+capped at 365 days (§4.2) and upstream's own cap is 365 days, so **the whole span
+is always one legal call**. Per-chunk probing turned the widest Disease group's
+full-year Request into ~130 calls — ~7.6 minutes holding the single upstream slot
+(§13.2), queued ahead of every extraction job, and spent as often on the reject
+path as anywhere. Per code it is **10 calls, ~35 s**, for the identical number.
+The one thing per-chunk probing bought — a submit-time check that no month
+exceeds the ~50-page cliff — is already ruled by §7.2 to **fail loudly at run
+time**, so it would only ever be a second gate agreeing with the first.
+
+**Its date range is built by the extraction job's own chunk builder** —
+`chunks[0].start` to `chunks[last].end`, with the conversion to upstream's
+inclusive `end_date` in the API client and nowhere else (§4.3, §7.2). *The Probe
+must not know how to build a date range.* Under per-pair probing the Probe and
+the run could not disagree about which days they covered; one call over the span
+is a second expression of the same range, and §7.2's ⚠️ records that two
+expressions of one range is exactly how the 3,196-row loss happened.
+
+**It runs off the synchronous submit path.** 35 s is still too long for a form.
+Submit returns immediately, the queue item appears at once with its row count
+**pending**, and the Probe fills it in behind.
 
 - It fetches **no data for the Extract**.
-- **A Reviewer cannot approve a Request whose count has not landed.** The count
-  is the proportionality signal the gate exists for; approving without it throws
-  the gate away to save a few minutes nobody is waiting through.
-- **A Probe that never completes raises an Alert** (§10.6). Without it, moving
-  off the submit path strands a Request where no one is looking.
-- Its cost is off the Requester's critical path — they are waiting for a human
-  regardless.
-- **Its row count is shown to the Reviewer**, who is judging proportionality.
-  "This person is asking for 1.14 M rows" is precisely the signal a human gate
-  exists to catch.
-- It sizes the queue for the Reviewer's advisory drain projection (§13.3).
-- It catches the zero-row Request — **on the queue now, not at submit** — which
-  matters because of the cheerful-empty-200 behaviour in §5.2.
-- It is **recorded** as `probe_performed` (§12.4), once per Request, carrying the
-  per-code counts. A **rejected or expired**
-  Request spends real upstream calls, and the approval gate makes the reject path
-  common — without this event that traffic exists in no record anywhere.
+
+> ⚠️ **A Reviewer MAY approve before the count lands. Do not "fix" this.** An
+> earlier draft disabled approve until it did, on the stated ground that the count
+> was "the proportionality signal the gate exists for". **That ground is false.**
+> The Reviewer's gate is about **who is asking** — identity, Workplace,
+> legitimacy — not about how much they ask for. A Request that needs hours
+> completes in hours; **long runtime is not a reason to reject**, and §13.3
+> already makes the drain projection advisory for the same reason. Blocking
+> approve made a real person wait for a number they are not permitted to act on.
+
+**There is therefore no Probe stalled Alert.** It existed only to rescue a
+Request that could not be approved without its count (§10.6). With approve
+unblocked a wedged Probe strands nobody: the count stays *pending*, the Decision
+proceeds, and correctness rests on the run-time totals (§7.5), which the Probe
+never fed.
+
+**One thing does wait on it: an approved Request does not start extracting until
+its count lands.** The disk pre-check (§7.8) needs the number. This is a queue
+wait of at most ~35 s behind a Decision that took minutes or hours, and it is the
+Probe's only remaining gate — on the *job*, never on the *human*.
+
+The count's uses are all informational:
+
+- **The zero-row catch.** §5.2's cheerful-empty-`200` makes a typo'd or stale
+  Report code indistinguishable from "no cases this period", and since §4.9 one
+  silent member of a ten-code family vanishes inside an otherwise plausible
+  Extract. This is the **only** reason the Probe stays pre-Decision rather than
+  folding into the job after approval: folding it in would spend nothing on
+  rejected Requests, but a Requester would then wait hours to be told their codes
+  matched nothing. At 10 calls the reject-path waste is trivial.
+- **The advisory drain projection** shown to the Reviewer (§13.3).
+- **The disk pre-check** before a job starts (§7.8).
+- **Accountability.** Recorded as `probe_performed` (§12.4), once per Request,
+  carrying the **per-code** counts. A rejected or expired Request spends real
+  upstream calls, and the approval gate makes the reject path common — without
+  this event that traffic exists in no record anywhere.
+
+**The Probe's total and the run's fetched total will differ, and that is
+legitimate.** Hours to days pass between them — the approval gate guarantees it —
+and upstream keeps receiving reports for past dates. The difference is
+**recorded on `job_completed`, never asserted**: failing on it would fail
+correct jobs. It is kept because it is the only witness that would ever show the
+Probe's range builder and the job's had diverged, which §7.5 cannot see — that
+assert compares a run against itself.
 
 ### 5.5 Failure taxonomy
 
@@ -817,8 +860,9 @@ copy exists after completion.**
 **A job refuses to start when free disk is below the projected archive size**
 (§14.2). This converts the worst failure mode into the cheapest one: a job that
 *waits* rather than one that runs 25 minutes, spends the whole upstream budget,
-and dies at the upload step. The projection comes from the Probe row count
-already on the Decision Snapshot.
+and dies at the upload step. The projection comes from the Probe row count. **An
+approved Request whose count has not yet landed waits in the queue until it
+does** (§5.4) — the check has no input otherwise, and the wait is ~35 s.
 
 ### 7.9 Worst case
 
@@ -1127,7 +1171,11 @@ Shows, and only shows:
   **beneath the name**, available but not the headline: the name is what is being
   judged, the expansion is what makes the Decision legible years later (§12.3).
 - The **Probe row count** — or **"pending"** while the Probe is still running
-  (§5.4). **Approve is disabled until it lands**; reject is not.
+  (§5.4) — as a **single summed number**. Neither Decision waits on it (§5.4):
+  size is not a ground for rejection. The per-code breakdown is on
+  `probe_performed` (§12.4) and is deliberately not the headline; the sum is the
+  whole informational signal, and ten numbers on a screen read as something to
+  judge.
 - **Submit time and time remaining** on the business-hours clock, shown so a
   Reviewer feels the clock without the queue reading as an alarm.
 - The **advisory projected drain** (§13.3).
@@ -1228,7 +1276,6 @@ Three kinds:
 
 | Alert | Raised by | Assigned to | Cleared by | Outcomes |
 |---|---|---|---|---|
-| **Probe stalled** | no Probe call completing for 15 minutes (§5.4) | the queue, no named Reviewer | **any Reviewer** | `re_probed` / `rejected` / `no_action_needed` |
 | **Send abandoned** | 5 failed send tries (§11.3) | approving Reviewer | that Reviewer | (as collection lapse) |
 | **Collection lapse** | 24 business hours, zero Attempts (§11.4) | **the approving Reviewer, by name** | that Reviewer, or `system` on late collection | reached the Requester / could not reach the Requester / no action needed |
 | **Extraction failure** | a job reaching `failed` (§14.3) | the approving Reviewer | **any Reviewer** | `re_ran` / `contacted_requester` / `abandoned` |
@@ -1237,11 +1284,13 @@ Three kinds:
 Requester you personally vouched for*, and that Reviewer already formed a
 judgement about this person and has the telephone number in front of them.
 
-**Why a stalled Probe is an Alert and not a silent retry:** the Probe moved off
-the submit path (§5.4) and its Request cannot be approved without a row count, so
-a wedged Probe leaves a real person waiting behind a screen nobody is looking at.
-It has no approving Reviewer yet — there has been no Decision — so it belongs to
-the queue rather than to a name.
+> ⚠️ **There is deliberately no "Probe stalled" Alert, and adding one is a
+> regression.** One was specified while approve was blocked on the Probe's count;
+> §5.4 removed that block, and with it the only person a wedged Probe could
+> strand. A stalled Probe now leaves a Request approvable with a *pending* count
+> and, at worst, an approved job queued behind ~35 s of work — not a human in
+> front of a screen. An Alert must be a **must-clear queue item**, and this one
+> would be a must-clear item for a condition nobody is harmed by.
 
 **Why an extraction-failure Alert may be cleared by anyone:** the action is often
 just "re-run", and two reachable people is the real availability unit — with a
@@ -1266,8 +1315,8 @@ A Re-run:
 
 - produces a **fresh Extract, fresh Download token, fresh 72 h clock** (a new
   object, so completion-anchored retention applies from the new completion);
-- **does not re-Probe** — the row count is already on the Decision Snapshot, and
-  re-probing would spend upstream budget to re-learn a known number;
+- **does not re-Probe** — the row count is already on `probe_performed` (§12.4),
+  and re-probing would spend upstream budget to re-learn a known number;
 - carries the **original Decision's id**;
 - takes the next `-rN` filename suffix (§8.3).
 
@@ -1498,7 +1547,9 @@ the Snapshot copies. **Each chunk fetch writes its own event** carrying the exac
 
 **The Snapshot** copies the Disease group name **over the Report codes it expanded
 to**, date range, Area selection, Probe row count and `workplace` — what the
-Reviewer had on screen. It does **not** copy the
+Reviewer had on screen. Since §5.4 the count may be **`pending`** there, because
+approve does not wait on it; the Snapshot records what was on screen, not what
+was eventually learned. It does **not** copy the
 contact fields. A Reviewer cannot modify a Request, so content cannot drift; the
 Snapshot exists to make the Decision legible on its own years later.
 
@@ -1511,7 +1562,7 @@ Snapshot exists to make the Decision legible on its own years later.
 | Type | Actor | Notes |
 |---|---|---|
 | `submitted` | `requester` | carries IP, user agent |
-| `probe_performed` | `system` | Report codes probed, pair count, calls made, per-pair and total `total_items`, upstream `x-request-id`s. **Fires when the Probe finishes — after submit, before any Decision** (§5.4) — this is what makes the reject path's upstream traffic accountable |
+| `probe_performed` | `system` | Report codes probed, calls made (**one per code**, §5.4), the probed span, **per-code and total `total_items`**, upstream `x-request-id`s. **Fires when the Probe finishes — after submit, and usually but not necessarily before any Decision**, since approve no longer waits on it (§5.4) — this is what makes the reject path's upstream traffic accountable |
 | `approved` | `reviewer` | carries the Snapshot |
 | `rejected` | `reviewer` | carries the Snapshot and the **mandatory internal note** |
 | `note_amended` | `reviewer` | cites the event it corrects |
@@ -1528,7 +1579,7 @@ reading the ticket record alone would find `job_queued` and nothing else.
 | `job_deferred_low_disk` | `system` | free space below projected archive size (§7.8) |
 | `job_started` | `system` | |
 | `chunk_fetched` | `system` | exact upstream params, page count, `x-request-id`, rows received vs `total_items` |
-| `job_completed` | `system` | the two-group payload below |
+| `job_completed` | `system` | the two-group payload below, plus the **Probe-vs-run drift**: the Probe's per-code totals against the run's. **Recorded, never asserted** (§5.4) — real drift between Probe and run is expected and legitimate |
 | `job_failed` | `system` | **cause**: `upstream_5xx` / `auth_expiry` / `completeness_mismatch` / `stall` / `internal`, plus the upstream `x-request-id`. **Operator-facing only** |
 | `extraction_alert_raised` | `system` | |
 | `extraction_alert_cleared` | `reviewer` | closed outcome `re_ran`/`contacted_requester`/`abandoned`; carries **both** the assigned and the clearing Reviewer |
@@ -1723,10 +1774,22 @@ was watching; now somebody is. **Keeping a hard refusal would let a Reviewer
 approve a Request the system then rejects — two gates disagreeing, which is worse
 than either.**
 
-Drain is computed from the Probe: per (Report code, chunk) `total_items` → pages
-via `ceil(total / 10000)`, the pair count from the dates **and the Disease
-group's code count**, drain projected as `pairs × 3.5 s + pages × ~6 s`. The area filter does not disturb this: filtering
-is client-side, so upstream's count is *exactly* the page count we walk.
+Drain is computed from the Probe. Since §5.4 the Probe holds **one total per
+Report code over the whole span**, not one per chunk, so the exact page count
+`Σ ceil(tᵢ / 10000)` is not available. Use its **lower bound**:
+
+```
+chunks C   = pair count, derived from the dates alone (§7.2)
+pages(code) = max(C, ceil(T_code / 10000))          # every chunk costs >= 1 page
+pairs       = C x the Disease group's code count
+drain       ~ pairs x 3.5 s  +  SUM pages(code) x ~6 s
+```
+
+The true value is bounded above by `C + ceil(T/10000) - 1`. For the only volume
+that matters — full-year group `02`, true 120 pages — the bound gives 115, within
+4%; for the low-volume codes it is exact. **A 4% error on an advisory number is
+not worth 13x the upstream calls** (§5.4). The area filter does not disturb this:
+filtering is client-side, so upstream's count is *exactly* the page count we walk.
 
 ### 13.4 Download endpoint
 
@@ -2389,6 +2452,7 @@ which they will never read.
 | Request parameter surface, the 365-day cap, `epidem_chw_code` | §4 | [#7](https://github.com/rawinan-soma/dds-sharing/issues/7) |
 | Region vocabulary and the province table | §4.5, §4.6 | [#15](https://github.com/rawinan-soma/dds-sharing/issues/15) |
 | Rate limiting, `N=1`, the Probe, disk formula, Non-goals | §13 | [#5](https://github.com/rawinan-soma/dds-sharing/issues/5) |
+| Probe granularity; the Reviewer's gate is identity, not size; no Probe stalled Alert | §5.4, §10.2, §10.6, §12.3, §13.3 | [#31](https://github.com/rawinan-soma/dds-sharing/issues/31), [ADR 0007](adr/0007-the-reviewers-gate-is-identity-not-size.md) |
 | Extraction pipeline, chunking, retry, completeness, stall | §7 | [#8](https://github.com/rawinan-soma/dds-sharing/issues/8) |
 | CSV writer's eight rules, Data dictionary, Excel leading zeros | §8.2, §18.5 | [#25](https://github.com/rawinan-soma/dds-sharing/issues/25) |
 | The fingerprint, archive naming, verification command | §8.3, §8.4 | [#29](https://github.com/rawinan-soma/dds-sharing/issues/29), [ADR 0005](adr/0005-the-fingerprint-covers-the-extract-not-the-archive.md) |
