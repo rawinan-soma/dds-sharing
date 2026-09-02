@@ -3,3 +3,6 @@
 # Source material — not for public distribution
 docs/*.pdf
 docs/*.png
+
+# Local secrets
+.env
