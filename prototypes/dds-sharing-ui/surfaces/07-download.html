@@ -1,0 +1,95 @@
+<!doctype html>
+<!-- SURFACE 7 · "/d/<token>" · NestJS, not Angular · spec §9, ADR 0003
+     ═══════════════════════════════════════════════════════════════════════
+     THIS ROUTE HAS NO PAGE ON THE SUCCESS PATH, AND THAT IS THE DESIGN.
+
+     §9.1: NestJS counts the Attempt, checks the token, then either streams the
+     archive (with range-request support) or redirects to /link-expired. An
+     interstitial "your download is starting" page would put collection behind
+     a page render, and §9.1's load-bearing consequence is that an Extract must
+     stay collectable even if a front-end asset fails to load. So the success
+     path is bytes, and there is nothing here to design.
+
+     What IS designed for this route is the failure page — surface 3
+     (03-link-expired.html) — and the constraint that it must render with the
+     Angular bundle absent. That is why the whole design system is a CSS token
+     file rather than a component library: a NestJS-rendered page and an Angular
+     route can share a stylesheet, but they cannot share a component.
+
+     This file exists so the seventh surface is not silently missing from the
+     set, and so the two headers below are written down somewhere a reviewer
+     will find them.
+     ═══════════════════════════════════════════════════════════════════════ -->
+<html lang="th">
+<head>
+<meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>/d/&lt;token&gt; — บันทึกการออกแบบ</title>
+<link rel="stylesheet" href="../assets/fonts.css" /><link rel="stylesheet" href="../assets/tokens.css" />
+<link rel="stylesheet" href="../assets/base.css" /><link rel="stylesheet" href="../assets/components.css" />
+</head>
+<body>
+<div class="shell shell-narrow">
+  <div class="masthead">
+    <span class="mark">DDS</span>
+    <span class="name">/d/&lt;token&gt;</span>
+    <span class="tag">NestJS · spec §9 · ADR 0003</span>
+  </div>
+
+  <div class="stack" style="--flow: var(--space-5)">
+
+    <div class="notice notice-info">
+      <h2>เส้นทางนี้ไม่มีหน้าเว็บ และนั่นคือการออกแบบ</h2>
+      <p class="prose t-md" style="margin-top: var(--space-3); line-height: var(--lh-prose)">
+        เมื่อผู้ขอกดลิงก์ในอีเมล NestJS จะนับครั้งที่เปิดลิงก์ ตรวจ token แล้ว
+        <strong>ส่งไฟล์เป็นสตรีมทันที</strong> หรือ <strong>redirect ไปยัง /link-expired</strong>
+        ไม่มีหน้า “กำลังเริ่มดาวน์โหลด” คั่นกลาง เพราะหน้าคั่นจะทำให้การรับไฟล์ขึ้นกับการเรนเดอร์หน้าเว็บ
+        ซึ่งเป็นสิ่งเดียวที่ §9.1 ห้ามไว้
+      </p>
+    </div>
+
+    <div class="panel stack" style="--flow: var(--space-4)">
+      <h2 class="t-sm semibold" style="font-size: var(--fs-md)">สองสิ่งที่ผู้ใช้สัมผัสได้จริงบนเส้นทางนี้</h2>
+
+      <div>
+        <h3 class="t-sm">ชื่อไฟล์ที่ปรากฏในโฟลเดอร์ดาวน์โหลด</h3>
+        <p class="help" style="margin-top: var(--space-2)">
+          นี่คือ “ส่วนติดต่อผู้ใช้” ทั้งหมดของเส้นทางนี้ — สิ่งเดียวที่ผู้ขอเห็นและเก็บไว้
+          รูปแบบมาจาก §8.3 อ้างอิงเวลาที่ส่งคำขอตามเขตเวลา Asia/Bangkok
+        </p>
+        <p class="code-grid" style="margin-top: var(--space-3)"><span>dds-envocc-sharing-20690828-075012.zip</span></p>
+        <p class="help">การสั่งดึงข้อมูลใหม่แต่ละครั้งต่อท้ายด้วย <span class="mono">-r2</span>, <span class="mono">-r3</span> ไฟล์สองไฟล์ของคำขอเดียวกันจึงไม่ชนกัน</p>
+      </div>
+
+      <hr class="divider" />
+
+      <div>
+        <h3 class="t-sm">หัวข้อ HTTP ที่การออกแบบนี้ต้องการ</h3>
+        <p class="help" style="margin-top: var(--space-2)">
+          §16.2 กำหนดให้รองรับ range request เพราะสายของ สคร. หลุดกลางคันได้
+          และการหลุดที่ 80% ต้องดาวน์โหลดต่อ ไม่ใช่เริ่มใหม่
+        </p>
+        <div class="code-grid" style="margin-top: var(--space-3)">
+          <span>Accept-Ranges: bytes</span>
+          <span>Content-Disposition: attachment; filename*=UTF-8''…</span>
+          <span>Content-Type: application/zip</span>
+          <span>Cache-Control: no-store</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="notice notice-warn">
+      <h3 class="t-sm">ข้อสังเกตที่ต้องให้เจ้าของ repo ตัดสิน</h3>
+      <p class="prose t-sm" style="margin-top: var(--space-2)">
+        §16.2 ระบุว่า <span class="mono">/link-expired</span> เป็นเส้นทางของ Angular แต่ §9.1
+        กำหนดว่าเส้นทางการรับไฟล์ต้องทำงานได้แม้ bundle ของ Angular โหลดไม่ขึ้น
+        ทั้งสองข้อขัดกันตรงหน้าที่ redirect ไปหา — ดู ADR 0009 หัวข้อ “คำถามเดียวที่ยังเปิดอยู่”
+        การออกแบบนี้จึงทำให้หน้า <span class="mono">/link-expired</span> ไม่ใช้คอมโพเนนต์ Angular เลย
+        เสิร์ฟทางไหนก็หน้าตาเหมือนกัน
+      </p>
+      <p style="margin-top: var(--space-4)"><a class="btn btn-secondary btn-sm" href="03-link-expired.html">ดูหน้า /link-expired →</a></p>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

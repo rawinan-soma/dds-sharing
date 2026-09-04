@@ -1,0 +1,58 @@
+<!doctype html>
+<!-- SURFACE 2 · "/submitted" · Angular · spec §16.4
+     Client state only — nothing in the address. Must read as "you are done",
+     not as "something went wrong". No error colour anywhere on this page. -->
+<html lang="th">
+<head>
+<meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ส่งคำขอแล้ว</title>
+<link rel="stylesheet" href="../assets/fonts.css" /><link rel="stylesheet" href="../assets/tokens.css" />
+<link rel="stylesheet" href="../assets/base.css" /><link rel="stylesheet" href="../assets/components.css" />
+</head>
+<body>
+<div class="shell" style="max-width: 40rem">
+  <div class="masthead">
+    <span class="mark">DDS</span>
+    <span class="name" data-i18n="app_name">ระบบขอข้อมูลเฝ้าระวัง DDS</span>
+  </div>
+
+  <div class="stack" style="--flow: var(--space-5)">
+
+    <!-- The heading is the whole message. Green, and stated as a fact about
+         where the Request now is — not as "success", which invites the reading
+         "the data is on its way". -->
+    <div class="notice notice-good" style="padding: var(--space-6)">
+      <h1 style="color: var(--state-good-text)" data-i18n="confirm_heading">คำขอของคุณอยู่ระหว่างการพิจารณา</h1>
+      <p class="t-md" style="margin-top: var(--space-3); line-height: var(--lh-prose)" data-i18n="confirm_promise">เจ้าหน้าที่จะพิจารณาภายใน 24 ชั่วโมงทำการ (จันทร์–ศุกร์ 08:30–16:30 เว้นวันหยุดราชการ) และจะแจ้งผลทางอีเมลไม่ว่าผลจะเป็นอย่างไร</p>
+    </div>
+
+    <!-- The reference number is the largest single element on the page, because
+         it is the only thing here the Requester has to keep. Monospace: it is
+         read aloud over the telephone. -->
+    <div class="panel">
+      <p class="t-2xs dim" data-i18n="confirm_ref_label">เลขที่คำขอ</p>
+      <p class="refnum" style="margin-top: var(--space-1)">REQ-2569-0144</p>
+    </div>
+
+    <div class="panel">
+      <h2 class="t-sm semibold" style="margin-bottom: var(--space-4)" data-i18n="confirm_restatement_heading">สิ่งที่คุณขอ</h2>
+      <dl class="kv">
+        <dt data-i18n="req_field_group">กลุ่มโรค</dt><dd>โรคซิลิโคสิส</dd>
+        <dt data-i18n="req_field_dates">ช่วงวันที่</dt><dd>1 ม.ค. 2568 ถึง 31 ธ.ค. 2568 <span class="sub" data-i18n="date_range_inclusive_note">นับรวมทั้งสองวัน</span></dd>
+        <dt data-i18n="req_field_area">พื้นที่</dt><dd>เขตสุขภาพที่ 7 <span class="sub">(4 จังหวัด)</span></dd>
+        <dt data-i18n="req_field_email">อีเมล</dt><dd class="mono">kittipong.s@moph.go.th</dd>
+      </dl>
+    </div>
+
+    <div class="panel panel-tight">
+      <p class="t-2xs dim" data-i18n="confirm_phone_label">สอบถามเกี่ยวกับคำขอนี้</p>
+      <p class="semibold t-md" style="margin-top: var(--space-1)"><a href="tel:025903000" data-i18n="confirm_phone_number">02-590-3000</a></p>
+    </div>
+
+    <p class="prose t-sm muted" data-i18n="confirm_no_receipt">หน้านี้คือหลักฐานการส่งคำขอ ระบบไม่ส่งอีเมลยืนยัน อีเมลฉบับถัดไปที่คุณได้รับจากเราคือผลการพิจารณา</p>
+    <p class="prose t-sm muted" data-i18n="confirm_close_tab">ขณะนี้ไม่ต้องดำเนินการอะไรเพิ่ม ปิดหน้านี้ได้เลย</p>
+
+  </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,169 @@
+<!doctype html>
+<!-- SURFACE 6 · "/reviewer/<request>" · Angular · spec §10.2
+     THE ORDERING RULE, and it is a requirement not styling:
+     the decision buttons sit BELOW the identity fields and the ask. Approve
+     must not be reachable without passing what is being judged.
+
+     Enforced here by three things, all deliberate:
+       · the decision block is the LAST element in the document;
+       · it is NOT sticky and NOT a fixed footer bar — a sticky bar would put
+         approve back on screen without the scroll, which is exactly what the
+         rule forbids;
+       · the identity fields are the largest type on the page, because they
+         are the thing being judged.
+
+     Shows, and ONLY shows: the five contact fields · the parameters in human
+     terms · the Probe row count as a single summed number · submit time and
+     time remaining · how many Requests are ahead.
+
+     NOT shown, by requirement: any projected runtime estimate, prior-Request
+     history, or a per-code count breakdown as the headline. The Report codes
+     appear beneath the group name, available but never the headline. -->
+<html lang="th" class="surface-reviewer">
+<head>
+<meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex" />
+<title>พิจารณาคำขอ REQ-2569-0141</title>
+<link rel="stylesheet" href="../assets/fonts.css" /><link rel="stylesheet" href="../assets/tokens.css" />
+<link rel="stylesheet" href="../assets/base.css" /><link rel="stylesheet" href="../assets/components.css" />
+</head>
+<body class="surface-reviewer">
+<div class="shell shell-narrow">
+
+  <div class="masthead">
+    <span class="mark">DDS</span>
+    <span class="name" data-i18n="app_name">ระบบขอข้อมูลเฝ้าระวัง DDS</span>
+    <span class="right t-2xs muted">ณัฐพล ธีรวัฒน์</span>
+  </div>
+
+  <a class="btn btn-ghost btn-sm" href="05-reviewer-queue.html" style="margin-bottom: var(--space-5)">
+    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+    <span data-i18n="rev_back_to_queue">กลับไปหน้าคิว</span>
+  </a>
+
+  <div class="stack" style="--flow: var(--space-6)">
+
+    <header class="spread row-wrap">
+      <div>
+        <h1 data-i18n="rev_detail_heading">พิจารณาคำขอนี้</h1>
+        <p class="mono t-sm dim" style="margin-top: var(--space-1)">REQ-2569-0141</p>
+      </div>
+      <div style="text-align: end">
+        <span class="chip chip-bad" data-i18n="rev_remaining_label">เหลือเวลา 1 ชม. 05 น.</span>
+        <p class="t-3xs dim" style="font-size: var(--fs-3xs); margin-top: var(--space-2)" data-i18n="rev_remaining_business">นับเฉพาะเวลาราชการ จันทร์–ศุกร์ 08:30–16:30 เท่านั้น</p>
+      </div>
+    </header>
+
+    <!-- ① THE QUESTION. The screen states what is being asked of the Reviewer
+         before it shows anything to judge. -->
+    <section class="notice notice-info" aria-labelledby="q-h">
+      <h2 id="q-h" style="font-size: var(--fs-lg)" data-i18n="rev_identity_heading">ผู้ขอเป็นบุคคลตามที่แจ้งจริงหรือไม่</h2>
+      <p class="prose t-sm" style="margin-top: var(--space-2)" data-i18n="rev_identity_lede">ห้าช่องนี้ไม่มีการตรวจสอบใด ๆ ดุลยพินิจของคุณคือด่านเดียวที่ระบบนี้มี</p>
+      <p class="prose t-sm" style="margin-top: var(--space-2)" data-i18n="rev_size_is_not_a_ground">ขนาดของคำขอไม่ใช่เหตุผลในการไม่อนุมัติ คำขอที่ใหญ่คือคำขอที่ช้า ไม่ใช่คำขอที่ไม่ชอบธรรม</p>
+    </section>
+
+    <!-- ② THE IDENTITY. Largest type on the page. Five fields, nothing else. -->
+    <section class="panel" aria-labelledby="id-h">
+      <h2 id="id-h" class="t-sm semibold" style="font-size: var(--fs-md); margin-bottom: var(--space-5)" data-i18n="rev_contact_heading">ข้อมูลติดต่อ</h2>
+      <dl class="kv" style="font-size: var(--fs-md); row-gap: var(--space-4)">
+        <dt data-i18n="req_field_name">ชื่อ</dt><dd>สุนิสา</dd>
+        <dt data-i18n="req_field_surname">นามสกุล</dt><dd>แก้วประเสริฐ</dd>
+        <dt data-i18n="req_field_workplace">หน่วยงาน</dt><dd>นักวิจัยอิสระ</dd>
+        <dt data-i18n="req_field_tel">โทรศัพท์</dt><dd class="mono">081-234-5678</dd>
+        <dt data-i18n="req_field_email">อีเมล</dt><dd class="mono">sunisa.res@gmail.com</dd>
+      </dl>
+    </section>
+
+    <!-- ③ THE ASK, in human terms. Never codes as the headline. -->
+    <section class="panel" aria-labelledby="ask-h">
+      <h2 id="ask-h" class="t-sm semibold" style="font-size: var(--fs-md); margin-bottom: var(--space-5)" data-i18n="rev_ask_heading">สิ่งที่ผู้ขอต้องการ</h2>
+      <dl class="kv">
+        <dt data-i18n="req_field_group">กลุ่มโรค</dt>
+        <dd>
+          โรคจากการสัมผัสมลพิษทางอากาศ
+          <!-- The expansion sits BENEATH the name: available, never the
+               headline. The name is what is being judged; the expansion is
+               what makes the Decision legible years later. -->
+          <span class="sub">
+            <span data-i18n="rev_expanded_to">ขยายเป็นรหัสรายงานโรค</span>
+            <span class="mono">201</span>
+          </span>
+        </dd>
+
+        <dt data-i18n="req_field_dates">ช่วงวันที่</dt>
+        <dd>1 ม.ค. 2568 ถึง 31 ธ.ค. 2568 <span class="sub">นับรวมทั้งสองวัน · 365 วัน</span></dd>
+
+        <dt data-i18n="req_field_area">พื้นที่</dt>
+        <dd>ทั้งประเทศ</dd>
+
+        <!-- The Probe row count as a SINGLE SUMMED NUMBER. Ten numbers on a
+             screen read as something to judge; the sum is the whole signal. -->
+        <dt data-i18n="rev_rows_label">จำนวนแถวที่จะได้</dt>
+        <dd>
+          1,952 <span class="t-sm" style="font-weight: var(--fw-regular)" data-i18n="rev_rows_unit">แถว</span>
+          <span class="sub" data-i18n="rev_rows_probe_note">นับจากระบบต้นทาง เป็นตัวเลขจริง ไม่ใช่ประมาณการ ตัวเลขนี้ไม่ใช่เหตุผลในการตัดสิน</span>
+        </dd>
+
+        <dt data-i18n="rev_submitted_label">ส่งเมื่อ</dt>
+        <dd>พฤ. 28 ส.ค. 2569 07:50</dd>
+
+        <!-- §13.3 — how many are ahead, and nothing more precise. No ETA. -->
+        <dt data-i18n="rev_ahead_label">คิวก่อนหน้า</dt>
+        <dd data-i18n="rev_ahead_value">มี 2 คำขอที่อนุมัติแล้วรออยู่ก่อน</dd>
+      </dl>
+    </section>
+
+    <!-- The Probe's other two states. Kept in the prototype so the implementer
+         sees all three; only one renders at a time. A Decision waits on none
+         of them. -->
+    <section class="panel panel-tight" style="border-style: dashed">
+      <p class="t-3xs dim" style="font-size: var(--fs-3xs); margin-bottom: var(--space-3)">▽ ต้นแบบ — อีกสองสถานะของช่อง “จำนวนแถวที่จะได้” แสดงทีละสถานะเท่านั้น</p>
+      <dl class="kv">
+        <dt data-i18n="rev_rows_label">จำนวนแถวที่จะได้</dt>
+        <dd><span class="chip chip-warn" data-i18n="rev_rows_pending">กำลังนับ</span><span class="sub" data-i18n="rev_rows_pending_note">ยังนับไม่เสร็จ ตัดสินได้เลยโดยไม่ต้องรอ</span></dd>
+        <dt data-i18n="rev_rows_label">จำนวนแถวที่จะได้</dt>
+        <dd><span class="chip chip-bad" data-i18n="rev_rows_failed">นับไม่สำเร็จ</span><span class="sub" data-i18n="rev_rows_failed_note">นับไม่สำเร็จและเลิกนับแล้ว ไม่กระทบการอนุมัติหรือการดึงข้อมูล</span></dd>
+      </dl>
+    </section>
+
+    <!-- ④ THE DECISION. Last element in the document. Never sticky. -->
+    <section class="decision" aria-labelledby="dec-h">
+      <h2 id="dec-h" class="t-sm semibold" style="font-size: var(--fs-md)" data-i18n="rev_decision_heading">การตัดสิน</h2>
+      <p class="prose t-sm muted" style="margin-top: var(--space-2)" data-i18n="rev_approve_confirm">การอนุมัติจะเริ่มดึงข้อมูลทันที และบันทึกชื่อคุณเป็นผู้อนุญาตให้เผยแพร่</p>
+      <p class="prose t-sm muted" style="margin-top: var(--space-2)" data-i18n="decision_recorded">บันทึกถาวรในชื่อของคุณ · ณัฐพล ธีรวัฒน์</p>
+
+      <div class="actions">
+        <button class="btn btn-approve" data-i18n="rev_approve">อนุมัติและเริ่มดึงข้อมูล</button>
+        <button class="btn btn-reject" data-i18n="rev_reject">ไม่อนุมัติ</button>
+      </div>
+
+      <!-- Reject opens the mandatory internal note in place, below the buttons.
+           Never persisted client-side — a shared สคร. desktop is the wrong
+           place for internal notes to linger (§10.5). -->
+      <div class="notice notice-bad stack" style="--flow: var(--space-3); margin-top: var(--space-5)">
+        <div>
+          <h3 class="t-sm" data-i18n="rev_note_heading">บันทึกภายใน</h3>
+          <p class="t-2xs" style="margin-top: var(--space-1)" data-i18n="rev_note_required">จำเป็นต้องกรอก บันทึกถาวร และไม่แสดงต่อผู้ขอ</p>
+        </div>
+        <textarea placeholder="เหตุผลที่ไม่อนุมัติ" aria-label="บันทึกภายใน"></textarea>
+        <p class="t-2xs" data-i18n="rev_reject_tells_nothing">ผู้ขอจะได้รับแจ้งเพียงว่าคำขอไม่ได้รับอนุมัติ ไม่มีการส่งเหตุผลใด ๆ ออกไป</p>
+        <p class="t-2xs" data-i18n="rev_note_not_saved">ระบบไม่เก็บร่างข้อความนี้ไว้ หากคุณออกจากระบบก่อนกดยืนยัน จะต้องพิมพ์ใหม่</p>
+        <div class="row">
+          <button class="btn btn-reject-solid" data-i18n="rev_reject_confirm">ยืนยันไม่อนุมัติ</button>
+          <button class="btn btn-secondary" data-i18n="rev_note_cancel">ยกเลิก</button>
+        </div>
+      </div>
+
+      <!-- §10.4 — expiry beats a late Decision. Not a bare error: the Reviewer
+           just spent real attention on this Request, so the screen says plainly
+           that it expired while they were reading. -->
+      <div class="notice notice-warn" role="alert" style="margin-top: var(--space-5)">
+        <h3 class="t-sm" data-i18n="rev_expired_while_reading_heading">คำขอนี้หมดอายุระหว่างที่คุณกำลังอ่าน</h3>
+        <p class="prose t-sm" style="margin-top: var(--space-2)" data-i18n="rev_expired_while_reading_body">เวลา 24 ชั่วโมงทำการของคำขอนี้ครบแล้ว ระบบจึงไม่รับการตัดสิน ผู้ขอได้รับแจ้งว่าคำขอหมดอายุ และต้องยื่นใหม่หากยังต้องการข้อมูล ระบบบันทึกไว้แล้วว่ามีการพยายามตัดสินหลังหมดอายุ</p>
+      </div>
+    </section>
+
+  </div>
+</div>
+</body>
+</html>

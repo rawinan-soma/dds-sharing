@@ -1,0 +1,40 @@
+<!doctype html>
+<!-- SURFACE 3 · "/link-expired" · spec §9.4
+     ONE page, ONE sentence, plus the telephone number. Identical for all four
+     failure states: expired token, exhausted attempts, deleted object, and a
+     token that never existed.
+
+     NO reference number. NO prefill. NO resubmit link. NO "try again".
+     There is deliberately nothing else on this page — anything more would tell
+     someone walking the token space which guesses landed.
+
+     ⚠️ SERVING NOTE for the implementer, see ADR 0009 §"the one open question":
+     §16.2 lists this as an Angular route, but §9.1 requires the collection path
+     to survive the Angular bundle failing to load. This page therefore uses no
+     Angular component and nothing but the shared CSS, so it can be served
+     either way without the design changing. -->
+<html lang="th">
+<head>
+<meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex" />
+<title>ลิงก์นี้ใช้ไม่ได้แล้ว</title>
+<link rel="stylesheet" href="../assets/fonts.css" /><link rel="stylesheet" href="../assets/tokens.css" />
+<link rel="stylesheet" href="../assets/base.css" /><link rel="stylesheet" href="../assets/components.css" />
+</head>
+<body>
+<div class="shell" style="max-width: 34rem; padding-top: var(--space-16)">
+  <div class="masthead">
+    <span class="mark">DDS</span>
+    <span class="name" data-i18n="app_name">ระบบขอข้อมูลเฝ้าระวัง DDS</span>
+  </div>
+
+  <div class="panel" style="padding: var(--space-8)">
+    <h1 class="prose" style="line-height: var(--lh-snug)" data-i18n="expired_sentence">ลิงก์ดาวน์โหลดนี้ใช้ไม่ได้แล้ว</h1>
+    <p class="prose t-md" style="margin-top: var(--space-4); line-height: var(--lh-prose)" data-i18n="expired_body">หากคุณยังต้องการไฟล์นี้ กรุณาโทรติดต่อเจ้าหน้าที่ตามหมายเลขด้านล่าง</p>
+    <hr class="divider" style="margin: var(--space-6) 0" />
+    <p class="t-2xs dim" data-i18n="expired_phone_label">ติดต่อเจ้าหน้าที่</p>
+    <p class="semibold" style="font-size: var(--fs-xl); margin-top: var(--space-1)"><a href="tel:025903000" data-i18n="confirm_phone_number">02-590-3000</a></p>
+  </div>
+</div>
+</body>
+</html>

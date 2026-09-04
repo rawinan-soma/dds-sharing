@@ -1,0 +1,135 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   DDS Sharing — reset, Thai typography, focus
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-body);
+  color: var(--text-primary);
+  background: var(--surface-page);
+  -webkit-font-smoothing: antialiased;
+
+  /* Thai-specific, and each line is load-bearing:
+     - no letter-spacing anywhere: Thai renders as clusters, and tracking
+       reads as word breaks in a script that has none.
+     - never justify: with no spaces to stretch, justification stretches
+       glyphs and the line turns to mush.
+     - hanging-punctuation and ligature defaults left alone; Thai shaping
+       depends on them. */
+  letter-spacing: 0;
+  text-align: start;
+  hyphens: none;
+  word-break: normal;
+  overflow-wrap: break-word;
+}
+
+h1, h2, h3, h4 {
+  margin: 0;
+  line-height: var(--lh-tight);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0;
+  text-wrap: balance;
+}
+h1 { font-size: var(--fs-2xl); }
+h2 { font-size: var(--fs-xl); }
+h3 { font-size: var(--fs-lg); }
+h4 { font-size: var(--fs-sm); font-weight: var(--fw-semibold); }
+
+/* Thai headings under 1.25rem need the snug line-height back — tone marks on
+   a 1.35 line at 17px collide with the descenders above. */
+h3, h4 { line-height: var(--lh-snug); }
+
+p { margin: 0; }
+p + p { margin-top: var(--space-3); }
+
+ul, ol { margin: 0; padding-inline-start: var(--space-5); }
+li + li { margin-top: var(--space-1); }
+
+a {
+  color: var(--text-link);
+  text-underline-offset: 0.2em;
+  text-decoration-thickness: 1px;
+}
+a:hover { text-decoration-thickness: 2px; }
+
+/* One focus treatment everywhere. WCAG 2.2 asks for a 2px-thick indicator
+   with 3:1 contrast against both the component and what is behind it — the
+   white inner ring is what buys the second half on a dark button fill. */
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+.btn-primary:focus-visible,
+.btn-approve:focus-visible,
+.btn-reject:focus-visible {
+  outline-color: var(--text-primary);
+  box-shadow: 0 0 0 2px var(--c-white);
+}
+
+/* Never remove it. Left here as the thing a later change would have to delete
+   on purpose. */
+:focus:not(:focus-visible) { outline: none; }
+
+::selection { background: var(--c-brand-100); color: var(--text-primary); }
+
+.mono {
+  font-family: var(--font-mono);
+  font-size: 0.94em;   /* Plex Mono runs large beside Plex Sans Thai */
+  font-variant-ligatures: none;
+}
+
+.prose { max-width: var(--measure-prose); line-height: var(--lh-prose); }
+.t-md  { font-size: var(--fs-md); }
+.t-sm  { font-size: var(--fs-xs); }
+.t-xs  { font-size: var(--fs-2xs); }
+.t-2xs { font-size: var(--fs-3xs); }
+.muted { color: var(--text-secondary); }
+.dim   { color: var(--text-tertiary); }
+.semibold { font-weight: var(--fw-semibold); }
+
+.visually-hidden {
+  position: absolute; width: 1px; height: 1px;
+  margin: -1px; padding: 0; overflow: hidden;
+  clip: rect(0 0 0 0); clip-path: inset(50%); white-space: nowrap;
+}
+
+/* Skip link — the Requester page is long by requirement (§16.4), so a
+   keyboard user must be able to reach the form past the notice blocks. */
+.skip-link {
+  position: absolute; left: var(--space-4); top: -4rem;
+  z-index: 100; padding: var(--space-2) var(--space-4);
+  background: var(--surface-panel); color: var(--text-link);
+  border: 2px solid var(--focus-ring); border-radius: var(--radius-sm);
+  transition: top var(--dur-fast) var(--ease);
+}
+.skip-link:focus { top: var(--space-4); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Layout primitives. Deliberately four, not a utility framework: templates
+   stay readable as structure, so a copy change reads as a copy change
+   (§16.3's whole argument for keeping sentences out of templates). */
+.stack > * + * { margin-top: var(--flow, var(--space-4)); }
+.row { display: flex; align-items: center; gap: var(--space-3); }
+.row-wrap { flex-wrap: wrap; }
+.spread { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-4); }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); }
+.grow { flex: 1; min-width: 0; }
+
+@media (max-width: 40rem) {
+  .grid-2 { grid-template-columns: 1fr; }
+}

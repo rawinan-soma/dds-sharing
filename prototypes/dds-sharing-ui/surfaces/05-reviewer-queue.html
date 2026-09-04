@@ -1,0 +1,236 @@
+<!doctype html>
+<!-- SURFACE 5 · "/reviewer" · Angular · spec §10.1, §10.6, §15.3
+     Split queue: list left, detail right.
+
+     THE QUEUE NEVER AUTO-REFRESHES (§10.5). Polling would reset the 1-hour idle
+     timer for ever, and an idle timeout that never fires is not a timeout. The
+     design answer is an explicit refresh control with an "as of" timestamp
+     beside it, so the screen states its own staleness instead of hiding it.
+
+     Also here: the scheduler-stopped banner (§15.3), Alerts as must-clear items
+     above the pending Requests (§10.6), and the T-5-minute session toast (§10.5)
+     bottom-left — never a modal, never a banner. -->
+<html lang="th" class="surface-reviewer">
+<head>
+<meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex" />
+<title>คำขอที่รอพิจารณา</title>
+<link rel="stylesheet" href="../assets/fonts.css" /><link rel="stylesheet" href="../assets/tokens.css" />
+<link rel="stylesheet" href="../assets/base.css" /><link rel="stylesheet" href="../assets/components.css" />
+</head>
+<body class="surface-reviewer">
+
+<!-- ── Scheduler banner (§15.3) ────────────────────────────────────────────
+     Rendered from a heartbeat stale for >5 min. Amber, not red: automatic
+     processing has stopped, which is not the same as the service being down.
+     It states what it means for THIS person's work — not an error code. -->
+<div class="banner" role="status">
+  <div class="banner-inner">
+    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>
+    <p class="t-sm">
+      <strong data-i18n="banner_scheduler_stopped_heading">การประมวลผลอัตโนมัติหยุดทำงาน</strong>
+      <span data-i18n="banner_scheduler_stopped_body">ขณะนี้ระบบไม่ได้เดินงานตามเวลาโดยอัตโนมัติ คำขอที่คุณอนุมัติจะยังไม่เริ่มดึงข้อมูล นาฬิกา 24 ชั่วโมงทำการยังเดินอยู่ตามปกติ และคำขอจะหมดอายุตามกำหนดเดิม กรุณาแจ้งผู้ดูแลเครื่องแม่ข่าย</span>
+      <span class="dim"> · </span><span class="dim" data-i18n="banner_scheduler_since">หยุดตั้งแต่ 09:12 น.</span>
+    </p>
+  </div>
+</div>
+
+<div class="shell">
+  <div class="masthead">
+    <span class="mark">DDS</span>
+    <span class="name" data-i18n="app_name">ระบบขอข้อมูลเฝ้าระวัง DDS</span>
+    <span class="tag" data-i18n="nav_reviewer">ฝั่งผู้พิจารณา</span>
+    <span class="right row t-2xs">
+      <span class="muted">ณัฐพล ธีรวัฒน์</span>
+      <a class="btn btn-ghost btn-sm" href="08-reviewer-password-change.html" data-i18n="rev_change_password">เปลี่ยนรหัสผ่าน</a>
+      <a class="btn btn-ghost btn-sm" href="04-reviewer-sign-in.html" data-i18n="rev_sign_out">ออกจากระบบ</a>
+    </span>
+  </div>
+
+  <div class="split">
+
+    <!-- ── LEFT: the list ─────────────────────────────────────────────── -->
+    <div class="panel panel-flush">
+      <div class="panel-head" style="display:block">
+        <div class="spread">
+          <h1 class="t-sm semibold" style="font-size: var(--fs-md)" data-i18n="rev_queue_heading">คำขอที่รอพิจารณา</h1>
+          <span class="chip chip-info" data-i18n="rev_queue_count">รออยู่ 4 คำขอ</span>
+        </div>
+        <!-- The screen states its own staleness, because it will not refresh itself. -->
+        <div class="spread" style="margin-top: var(--space-3)">
+          <span class="t-3xs dim" data-i18n="rev_queue_as_of" style="font-size: var(--fs-3xs)">ข้อมูล ณ 09:41 น.</span>
+          <button class="btn btn-secondary btn-sm">
+            <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.6-6.4M21 3v6h-6"/></svg>
+            <span data-i18n="rev_queue_refresh">โหลดใหม่</span>
+          </button>
+        </div>
+        <p class="t-3xs dim" style="font-size: var(--fs-3xs); margin-top: var(--space-2)" data-i18n="rev_queue_no_autorefresh">หน้านี้ไม่รีเฟรชเอง เพื่อไม่ให้ตัวจับเวลาหมดอายุการใช้งานถูกรีเซ็ตตลอดเวลา</p>
+      </div>
+
+      <!-- Alerts sit ABOVE the pending Requests: a must-clear item is not a
+           notification, and a passive list at the bottom is a list nobody
+           looks at (§10.6). -->
+      <div class="panel-head" style="background: var(--surface-sunken); padding-block: var(--space-2)">
+        <h2 class="t-3xs semibold" style="font-size: var(--fs-3xs); color: var(--state-bad-text)" data-i18n="rev_alerts_heading">ต้องจัดการก่อน · 2 รายการ</h2>
+      </div>
+      <ul class="queue-list">
+        <li>
+          <button class="queue-item alert-item">
+            <span class="chip chip-bad" data-i18n="alert_kind_extraction_failure">ดึงข้อมูลไม่สำเร็จ</span>
+            <span style="display:block; margin-top: var(--space-2)">
+              <span class="who">สมชาย วงศ์อารีย์</span>
+              <span class="where" style="display:block">สคร.7 ขอนแก่น · โรคจากสารกำจัดศัตรูพืช</span>
+            </span>
+            <span class="meta">
+              <span class="ref">REQ-2569-0138</span>
+              <span class="t-3xs" style="font-size: var(--fs-3xs); color: var(--state-bad-text)" data-i18n="alert_assigned_to_you">มอบหมายให้คุณ</span>
+            </span>
+          </button>
+        </li>
+        <li>
+          <button class="queue-item alert-item">
+            <span class="chip chip-bad" data-i18n="alert_kind_collection_lapse">ผู้ขอยังไม่มารับไฟล์</span>
+            <span style="display:block; margin-top: var(--space-2)">
+              <span class="who">อารยา พงษ์เจริญ</span>
+              <span class="where" style="display:block">โรงพยาบาลมหาราชนครเชียงใหม่ · โรคจากแร่ใยหิน</span>
+            </span>
+            <span class="meta">
+              <span class="ref">REQ-2569-0135</span>
+              <span class="t-3xs" style="font-size: var(--fs-3xs); color: var(--state-bad-text)" data-i18n="alert_assigned_to_you">มอบหมายให้คุณ</span>
+            </span>
+          </button>
+        </li>
+      </ul>
+
+      <div class="panel-head" style="background: var(--surface-sunken); padding-block: var(--space-2)">
+        <h2 class="t-3xs semibold" style="font-size: var(--fs-3xs)" data-i18n="rev_queue_pending_heading">รอพิจารณา</h2>
+        <span class="t-3xs dim" style="font-size: var(--fs-3xs)" data-i18n="rev_queue_oldest">เรียงจากเก่าสุด</span>
+      </div>
+      <ul class="queue-list">
+        <li>
+          <button class="queue-item" aria-current="true">
+            <span class="who">สุนิสา แก้วประเสริฐ</span>
+            <span class="where" style="display:block">นักวิจัยอิสระ · โรคจากการสัมผัสมลพิษทางอากาศ</span>
+            <span class="meta">
+              <span class="ref">REQ-2569-0141</span>
+              <span class="chip chip-bad" data-i18n="rev_remaining_label">เหลือ 1 ชม. 05 น.</span>
+            </span>
+          </button>
+        </li>
+        <li>
+          <button class="queue-item">
+            <span class="who">กิตติพงษ์ ศรีสมบัติ</span>
+            <span class="where" style="display:block">สคร.7 ขอนแก่น · โรคซิลิโคสิส</span>
+            <span class="meta">
+              <span class="ref">REQ-2569-0142</span>
+              <span class="chip chip-warn">เหลือ 6 ชม.</span>
+            </span>
+          </button>
+        </li>
+        <li>
+          <button class="queue-item">
+            <span class="who">อารยา พงษ์เจริญ</span>
+            <span class="where" style="display:block">โรงพยาบาลมหาราชนครเชียงใหม่ · โรคจากรังสี</span>
+            <span class="meta">
+              <span class="ref">REQ-2569-0143</span>
+              <span class="chip">เหลือ 18 ชม.</span>
+            </span>
+          </button>
+        </li>
+        <li>
+          <button class="queue-item">
+            <span class="who">ธนกฤต บุญมาก</span>
+            <span class="where" style="display:block">กองโรคจากการประกอบอาชีพฯ · โรคจากความร้อน</span>
+            <span class="meta">
+              <span class="ref">REQ-2569-0144</span>
+              <span class="chip">เหลือ 22 ชม.</span>
+            </span>
+          </button>
+        </li>
+      </ul>
+    </div>
+
+    <!-- ── RIGHT: the detail. Shown here holding an Alert, because an Alert is
+         cleared from the same pane a Request is judged in. The review screen
+         itself is surface 6. ──────────────────────────────────────────── -->
+    <div class="stack" style="--flow: var(--space-5)">
+
+      <div class="panel stack" style="--flow: var(--space-4); border-top: 3px solid var(--state-bad-text)">
+        <div>
+          <span class="chip chip-bad" data-i18n="alert_kind_extraction_failure">ดึงข้อมูลไม่สำเร็จ</span>
+          <h2 style="margin-top: var(--space-3)" data-i18n="alert_extraction_failure_heading">การดึงข้อมูลของคำขอนี้ล้มเหลว</h2>
+          <p class="prose t-sm muted" style="margin-top: var(--space-2)" data-i18n="alert_extraction_failure_body">งานนี้ลองใหม่จนครบแล้วและยังไม่สำเร็จ ผู้ขอได้รับอีเมลแจ้งว่าดึงข้อมูลไม่สำเร็จแล้ว คุณเลือกได้ว่าจะสั่งดึงใหม่ หรือโทรแจ้งผู้ขอ</p>
+        </div>
+
+        <dl class="kv">
+          <dt data-i18n="confirm_ref_label">เลขที่คำขอ</dt><dd class="mono">REQ-2569-0138</dd>
+          <dt data-i18n="req_field_name">ผู้ขอ</dt><dd>สมชาย วงศ์อารีย์ <span class="sub">สคร.7 ขอนแก่น · 043-222-000</span></dd>
+          <dt data-i18n="rev_approved_by">อนุมัติโดย</dt><dd>ณัฐพล ธีรวัฒน์ <span class="sub">28 ส.ค. 2569 14:02</span></dd>
+        </dl>
+
+        <hr class="divider" />
+
+        <!-- Re-run and Resend (§10.7, §10.8). Re-run is a button, never
+             automatic. Resend can never reveal the Download token. -->
+        <div>
+          <h3 class="t-sm semibold" data-i18n="rev_alert_actions_heading">สิ่งที่ทำได้</h3>
+          <div class="row row-wrap" style="margin-top: var(--space-3)">
+            <button class="btn btn-primary">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-2.6-6.4M21 3v6h-6"/></svg>
+              <span data-i18n="rev_rerun">สั่งดึงข้อมูลใหม่</span>
+            </button>
+            <button class="btn btn-secondary">
+              <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h16v16H4z"/><path d="m4 6 8 6 8-6"/></svg>
+              <span data-i18n="rev_resend">ส่งอีเมลซ้ำ</span>
+            </button>
+          </div>
+          <p class="help" data-i18n="rev_rerun_help">การสั่งดึงข้อมูลใหม่ไม่ใช่การตัดสินใหม่ คำขอ ผู้ขอ และการอนุมัติเดิมไม่เปลี่ยน ระบบจะสร้างไฟล์ใหม่ ลิงก์ใหม่ และเริ่มนับ 72 ชั่วโมงใหม่</p>
+          <p class="help" data-i18n="rev_resend_help">การส่งซ้ำไปยังอีเมลเดิมไม่ยืดอายุลิงก์ หากต้องส่งไปอีเมลอื่น ระบบจะถือเป็นการตัดสินใหม่ ออกลิงก์ใหม่ และยกเลิกลิงก์เดิม</p>
+        </div>
+
+        <hr class="divider" />
+
+        <!-- An Alert is cleared ONLY by naming an outcome from a closed set.
+             Radios, never a text box: the count of each outcome is the only
+             measure this service has of how often its silent failures happen. -->
+        <div class="field">
+          <span class="label" id="clear-label" data-i18n="rev_alert_clear_heading">ปิดรายการนี้โดยระบุผลที่เกิดขึ้น</span>
+          <div class="radio-set" role="radiogroup" aria-labelledby="clear-label" style="flex-direction: column; align-items: stretch">
+            <label><input type="radio" name="outcome" /><span data-i18n="outcome_re_ran">สั่งดึงข้อมูลใหม่แล้ว</span></label>
+            <label><input type="radio" name="outcome" /><span data-i18n="outcome_contacted_requester">ติดต่อผู้ขอแล้ว</span></label>
+            <label><input type="radio" name="outcome" /><span data-i18n="outcome_abandoned">ยุติเรื่องนี้</span></label>
+          </div>
+          <p class="help" data-i18n="rev_alert_clear_help">ต้องเลือกหนึ่งข้อ ไม่มีช่องพิมพ์ข้อความ รายการนี้จะยังค้างอยู่บนคิวจนกว่าจะเลือก</p>
+          <button class="btn btn-primary" style="margin-top: var(--space-4)" data-i18n="rev_alert_clear_submit">ปิดรายการ</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ── T-5-minute session warning (§10.5) ──────────────────────────────────
+     Bottom-left toast. NOT a modal — a modal would steal focus from a Reviewer
+     mid-judgement and could be dismissed by a stray Enter that was aimed at
+     the approve button. NOT a banner — a banner at the top of a long review
+     screen is off-screen exactly when it matters.
+
+     role="alert" so it is announced once. It does NOT auto-dismiss: the usual
+     3–5 s toast rule is wrong here, because the thing it warns about does not
+     go away. -->
+<div class="toast-region">
+  <div class="toast" role="alert">
+    <svg class="icon" viewBox="0 0 24 24" aria-hidden="true" style="margin-top:.2em"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+    <div class="body">
+      <h4 data-i18n="session_warn_heading">อีก 5 นาทีระบบจะออกจากระบบให้อัตโนมัติ</h4>
+      <p data-i18n="session_warn_body">กดปุ่มด้านล่างเพื่อทำงานต่อ หากคุณกำลังพิมพ์บันทึกภายในอยู่ ระบบจะไม่เก็บข้อความนั้นไว้ให้</p>
+      <button class="btn btn-secondary btn-sm" style="margin-top: var(--space-3)" data-i18n="session_warn_extend">ทำงานต่อ</button>
+    </div>
+    <button class="toast-close" aria-label="ปิด">
+      <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>
+    </button>
+  </div>
+</div>
+
+</body>
+</html>

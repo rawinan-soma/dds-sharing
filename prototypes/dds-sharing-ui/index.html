@@ -1,0 +1,133 @@
+<!doctype html>
+<!-- Contact sheet — every surface in the design, on one page. -->
+<html lang="th">
+<head>
+<meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>DDS Sharing — การออกแบบส่วนติดต่อผู้ใช้</title>
+<link rel="stylesheet" href="assets/fonts.css" /><link rel="stylesheet" href="assets/tokens.css" />
+<link rel="stylesheet" href="assets/base.css" /><link rel="stylesheet" href="assets/components.css" />
+<style>
+  .sheet { display: grid; grid-template-columns: repeat(auto-fill, minmax(20rem, 1fr)); gap: var(--space-4); }
+  .card { display: block; text-decoration: none; color: inherit; }
+  .card .panel { height: 100%; transition: border-color var(--dur-base) var(--ease), box-shadow var(--dur-base) var(--ease); }
+  .card:hover .panel { border-color: var(--action-fill); box-shadow: 0 2px 10px rgba(18,24,31,.10); }
+  .card .route { font-family: var(--font-mono); font-size: var(--fs-2xs); color: var(--text-link); }
+  .swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(8rem, 1fr)); gap: var(--space-3); }
+  .sw { border: 1px solid var(--line-hairline); border-radius: var(--radius-sm); overflow: hidden; }
+  .sw .chipbox { height: 3rem; }
+  .sw .lbl { padding: var(--space-2); font-size: var(--fs-3xs); }
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="masthead">
+    <span class="mark">DDS</span>
+    <span class="name">DDS Sharing — การออกแบบส่วนติดต่อผู้ใช้</span>
+    <span class="tag">ต้นแบบความละเอียดสูง · ประกอบ issue #38 และ ADR 0009</span>
+  </div>
+
+  <div class="stack" style="--flow: var(--space-8)">
+
+    <section>
+      <h2 style="margin-bottom: var(--space-4)">เจ็ดหน้าจอตามข้อกำหนด §16.2</h2>
+      <div class="sheet">
+        <a class="card" href="surfaces/01-request-form.html"><div class="panel">
+          <span class="route">/</span><h3 class="t-sm" style="margin-top: var(--space-2)">แบบฟอร์มขอข้อมูล</h3>
+          <p class="help">Angular · §16.4 · หน้าเดียวเลื่อนยาว ลำดับตายตัว บล็อกการตัดตัวระบุตัวตนเปิดค้างเหนือฟอร์ม</p></div></a>
+        <a class="card" href="surfaces/02-submitted.html"><div class="panel">
+          <span class="route">/submitted</span><h3 class="t-sm" style="margin-top: var(--space-2)">ยืนยันการส่งคำขอ</h3>
+          <p class="help">Angular · §16.4 · เก็บสถานะไว้ฝั่งเบราว์เซอร์เท่านั้น ไม่มีอะไรอยู่ใน address bar</p></div></a>
+        <a class="card" href="surfaces/03-link-expired.html"><div class="panel">
+          <span class="route">/link-expired</span><h3 class="t-sm" style="margin-top: var(--space-2)">ลิงก์ใช้ไม่ได้แล้ว</h3>
+          <p class="help">§9.4 · หนึ่งประโยคกับหมายเลขโทรศัพท์ หน้าเดียวกันทั้งสี่กรณีที่ล้มเหลว</p></div></a>
+        <a class="card" href="surfaces/04-reviewer-sign-in.html"><div class="panel">
+          <span class="route">/reviewer/sign-in</span><h3 class="t-sm" style="margin-top: var(--space-2)">เข้าสู่ระบบผู้พิจารณา</h3>
+          <p class="help">#45 · รหัสผ่านกับ TOTP อยู่บนฟอร์มเดียว ตรวจพร้อมกัน ข้อความผิดพลาดเดียว</p></div></a>
+        <a class="card" href="surfaces/05-reviewer-queue.html"><div class="panel">
+          <span class="route">/reviewer</span><h3 class="t-sm" style="margin-top: var(--space-2)">คิวคำขอ</h3>
+          <p class="help">§10.1 · แบ่งซ้าย–ขวา ไม่รีเฟรชเอง พร้อมแบนเนอร์ตัวจับเวลาหยุด รายการที่ต้องจัดการ และ toast เตือนหมดเวลา</p></div></a>
+        <a class="card" href="surfaces/06-reviewer-request.html"><div class="panel">
+          <span class="route">/reviewer/&lt;request&gt;</span><h3 class="t-sm" style="margin-top: var(--space-2)">หน้าจอพิจารณา</h3>
+          <p class="help">§10.2 · ปุ่มตัดสินอยู่ใต้ข้อมูลผู้ขอและสิ่งที่ขอ ไม่ติดหนึบ ไม่มีแถบลอย</p></div></a>
+        <a class="card" href="surfaces/07-download.html"><div class="panel">
+          <span class="route">/d/&lt;token&gt;</span><h3 class="t-sm" style="margin-top: var(--space-2)">เส้นทางรับไฟล์</h3>
+          <p class="help">NestJS ไม่ใช่ Angular · §9 · ไม่มีหน้าเว็บบนเส้นทางที่สำเร็จ และนั่นคือการออกแบบ</p></div></a>
+      </div>
+    </section>
+
+    <section>
+      <h2 style="margin-bottom: var(--space-4)">งานออกแบบที่ไม่ใช่หน้าจอ</h2>
+      <div class="sheet">
+        <a class="card" href="surfaces/08-reviewer-password-change.html"><div class="panel">
+          <span class="route">#44 · §17.5</span><h3 class="t-sm" style="margin-top: var(--space-2)">เปลี่ยนรหัสผ่าน + ประกาศการเก็บข้อมูล</h3>
+          <p class="help">รหัสผ่านปัจจุบันบวก TOTP ใหม่ กติกาแสดงก่อนพิมพ์ และเพดาน 20 ตัวอักษรบอกไว้ตรง ๆ</p></div></a>
+        <a class="card" href="surfaces/05-reviewer-queue.html#toast"><div class="panel">
+          <span class="route">#45 · §10.5</span><h3 class="t-sm" style="margin-top: var(--space-2)">Toast เตือนก่อนหมดเวลา 5 นาที</h3>
+          <p class="help">มุมล่างซ้าย ไม่ใช่ modal ไม่ใช่แบนเนอร์ ไม่หายเอง — อยู่บนหน้าคิว</p></div></a>
+        <a class="card" href="surfaces/05-reviewer-queue.html"><div class="panel">
+          <span class="route">#42 · #47 · §15.3</span><h3 class="t-sm" style="margin-top: var(--space-2)">แบนเนอร์ตัวจับเวลาหยุดทำงาน</h3>
+          <p class="help">สีเหลืองอำพัน ไม่ใช่สีแดง บอกว่ากระทบงานของผู้พิจารณาอย่างไร ไม่ใช่รหัสข้อผิดพลาด</p></div></a>
+        <a class="card" href="surfaces/05-reviewer-queue.html"><div class="panel">
+          <span class="route">#52 · #53 · §10.6</span><h3 class="t-sm" style="margin-top: var(--space-2)">รายการที่ต้องจัดการ · สั่งดึงใหม่ · ส่งอีเมลซ้ำ</h3>
+          <p class="help">ปิดได้ด้วยการเลือกผลจากชุดที่กำหนดเท่านั้น ไม่มีช่องพิมพ์ข้อความ</p></div></a>
+      </div>
+    </section>
+
+    <section>
+      <h2 style="margin-bottom: var(--space-4)">อีเมลสี่ฉบับ · #50 · §11</h2>
+      <p class="help" style="margin-bottom: var(--space-4)">เขียนด้วย table + inline style ล้วน เพื่อให้แสดงผลถูกต้องใน Outlook สำหรับเดสก์ท็อป ดูเหตุผลทั้งหมดใน <span class="mono">emails/_shared-notes.md</span></p>
+      <div class="sheet">
+        <a class="card" href="emails/01-queue-notification.html"><div class="panel">
+          <h3 class="t-sm">แจ้งผู้พิจารณาว่ามีคำขอใหม่</h3>
+          <p class="help">ฉบับที่พังเงียบที่สุดในระบบ — ล้มเหลวครั้งแรกก็ขึ้นแบนเนอร์ผู้ดูแลทันที</p></div></a>
+        <a class="card" href="emails/04-delivery.html"><div class="panel">
+          <h3 class="t-sm">ส่งลิงก์ดาวน์โหลด</h3>
+          <p class="help">ฉบับเดียวที่พา capability ไปด้วย token ปรากฏครั้งเดียวในทั้งฉบับ</p></div></a>
+        <a class="card" href="emails/02-rejection.html"><div class="panel">
+          <h3 class="t-sm">แจ้งไม่อนุมัติ</h3>
+          <p class="help">ไม่แจ้งเหตุผล บันทึกภายในไม่เคยออกจากระบบ</p></div></a>
+        <a class="card" href="emails/03-extraction-failure.html"><div class="panel">
+          <h3 class="t-sm">แจ้งดึงข้อมูลไม่สำเร็จ</h3>
+          <p class="help">บอกผู้ขอเป็นความล้มเหลวเดียว ไม่แยกสาเหตุ การแยกสาเหตุเป็นเรื่องของผู้ดูแล</p></div></a>
+      </div>
+    </section>
+
+    <section>
+      <h2 style="margin-bottom: var(--space-4)">โทนสี</h2>
+      <p class="help" style="margin-bottom: var(--space-4)">ทุกคู่สีข้อความผ่าน WCAG 2.2 ระดับ AA และส่วนใหญ่ผ่านระดับ AAA ตัวเลขคืออัตราส่วนความต่างบนพื้นขาว</p>
+      <div class="swatches">
+        <div class="sw"><div class="chipbox" style="background:#12181f"></div><div class="lbl"><strong>ink 900</strong><br />#12181F · 17.9:1</div></div>
+        <div class="sw"><div class="chipbox" style="background:#48535f"></div><div class="lbl"><strong>ink 600</strong><br />#48535F · 7.8:1</div></div>
+        <div class="sw"><div class="chipbox" style="background:#64707c"></div><div class="lbl"><strong>ink 500</strong><br />#64707C · 5.1:1</div></div>
+        <div class="sw"><div class="chipbox" style="background:#78828e"></div><div class="lbl"><strong>ink 400</strong><br />#78828E · 3.9:1 · ขอบช่องกรอก</div></div>
+        <div class="sw"><div class="chipbox" style="background:#0a5468"></div><div class="lbl"><strong>brand 700</strong><br />#0A5468 · 8.5:1</div></div>
+        <div class="sw"><div class="chipbox" style="background:#06333f"></div><div class="lbl"><strong>brand 900</strong><br />#06333F · บล็อกด่านอนุมัติ</div></div>
+        <div class="sw"><div class="chipbox" style="background:#14603c"></div><div class="lbl"><strong>good 700</strong><br />#14603C · 7.6:1 · อนุมัติ</div></div>
+        <div class="sw"><div class="chipbox" style="background:#9b1c22"></div><div class="lbl"><strong>bad 700</strong><br />#9B1C22 · 8.1:1 · ไม่อนุมัติ</div></div>
+        <div class="sw"><div class="chipbox" style="background:#7a4a00"></div><div class="lbl"><strong>warn 700</strong><br />#7A4A00 · 7.5:1 · ระบบหยุด</div></div>
+      </div>
+    </section>
+
+    <section>
+      <h2 style="margin-bottom: var(--space-4)">ตัวอักษร</h2>
+      <div class="panel stack" style="--flow: var(--space-5)">
+        <div>
+          <p class="t-2xs dim">IBM Plex Sans Thai · 400 · 17px / 1.8 — เนื้อความยาว</p>
+          <p class="prose t-md" style="margin-top: var(--space-2)">ข้อมูลรายเหตุการณ์ที่ตัดตัวระบุตัวตนออกแล้ว ส่งกลับเป็นไฟล์ CSV บีบอัดหนึ่งไฟล์ ทุกคำขอจะมีเจ้าหน้าที่ผู้พิจารณาซึ่งระบุชื่อได้อ่านก่อน จึงจะเริ่มดึงข้อมูล</p>
+        </div>
+        <div>
+          <p class="t-2xs dim">IBM Plex Sans Thai · 600 · 26px / 1.35 — หัวเรื่อง</p>
+          <h2 style="margin-top: var(--space-2)">ผู้ขอเป็นบุคคลตามที่แจ้งจริงหรือไม่</h2>
+        </div>
+        <div>
+          <p class="t-2xs dim">IBM Plex Mono — เลขที่คำขอ ชื่อคอลัมน์ และรหัส ซึ่งเป็นภาษาอังกฤษที่หลีกเลี่ยงไม่ได้ในหน้าจอภาษาไทย</p>
+          <p class="refnum" style="margin-top: var(--space-2)">REQ-2569-0144</p>
+          <div class="code-grid" style="margin-top: var(--space-3)"><span>epidem_chw_code</span><span class="derived">epidem_health_zone</span><span>onset_date</span><span class="derived">onset_age</span></div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</div>
+</body>
+</html>
