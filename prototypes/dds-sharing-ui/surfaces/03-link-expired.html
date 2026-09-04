@@ -1,0 +1,45 @@
+<!doctype html>
+<!-- SURFACE 3 · "/link-expired" · spec §9.4
+     ONE page, ONE sentence, plus the telephone number. Identical for all four
+     failure states: expired token, exhausted attempts, deleted object, and a
+     token that never existed.
+
+     NO reference number. NO prefill. NO resubmit link. NO "try again".
+     Anything more would tell someone walking the token space which guesses
+     landed.
+
+     ⚠️ SERVING NOTE, recorded on #51 and in ADR 0009:
+     §16.2 lists this as an Angular route; §9.1 requires the collection path to
+     survive the Angular bundle failing to load, and this is where /d/<token>
+     sends a Requester whose token is dead. The design does not resolve that —
+     it is a serving decision, not a visual one. What it does instead is make
+     the page renderable either way: no Angular component, no JavaScript, and
+     nothing but the one compiled stylesheet both runtimes already serve.
+
+     THIS IS THE PAGE THAT DECIDES THE STACK. A JS component library could not
+     render here without the bundle; DaisyUI's classes can, because they are
+     CSS. -->
+<html lang="th" data-theme="dds">
+<head>
+<meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex" />
+<title>ลิงก์นี้ใช้ไม่ได้แล้ว</title>
+<link rel="stylesheet" href="../assets/app.css" />
+</head>
+<body>
+<div class="shell max-w-[34rem] pt-16">
+  <div class="masthead">
+    <span class="mark">DDS</span>
+    <span class="name" data-i18n="app_name">ระบบขอข้อมูลเฝ้าระวัง DDS</span>
+  </div>
+
+  <div class="panel p-8">
+    <h1 class="prose-measure" data-i18n="expired_sentence">ลิงก์ดาวน์โหลดนี้ใช้ไม่ได้แล้ว</h1>
+    <p class="prose-measure text-md mt-4" data-i18n="expired_body">หากคุณยังต้องการไฟล์นี้ กรุณาโทรติดต่อเจ้าหน้าที่ตามหมายเลขด้านล่าง</p>
+    <div class="divider my-6"></div>
+    <p class="text-2xs" data-i18n="expired_phone_label">ติดต่อเจ้าหน้าที่</p>
+    <p class="text-xl font-semibold mt-1"><a class="link link-primary" href="tel:025903000" data-i18n="confirm_phone_number">02-590-3000</a></p>
+  </div>
+</div>
+</body>
+</html>

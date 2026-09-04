@@ -1310,6 +1310,13 @@ rows, and there is no facility parameter.
 > the release and the human check is this system's second control. It is the
 > **weak** form — it costs a scroll, not a click, and a Reviewer determined to
 > rubber-stamp still can. A hard gate was available and declined.
+>
+> **Consequence, added by the design (ADR 0009): the decision block is the last
+> element in the document and is neither sticky nor a fixed footer bar.** A
+> sticky action bar puts approve back on screen without the scroll, which returns
+> exactly the click this rule exists to cost — while still satisfying a reading
+> of "below" that only checks source order. Recorded because a sticky bar is the
+> obvious "improvement" someone will propose.
 
 ### 10.3 The Decision
 
@@ -2245,18 +2252,33 @@ contact fields, submit.
 > not collapsed.** A Requester who never opens it receives a CSV with no names in
 > it and files it as broken. *What you will and will not get is visible before any
 > field is filled in, without interaction.*
+>
+> **Consequence, added by the design (ADR 0009): the Requester page contains no
+> `<details>` element, anywhere.** A collapsible is how this requirement gets lost
+> during a tidy-up, and the loss is invisible in review because the content is
+> still on the page.
 
 **The confirmation page** carries the reference number, a restatement of the ask,
 the 24-business-hour service promise, and the telephone number. It must read as
 *you are done*, not as *something went wrong*.
 
-> ⚠️ **This prototype settled structure, ordering and copy only. The repo owner
-> supplies a wireframe during the dev cycle.** Visual design, spacing, typography
-> and component choice are **not** settled here. Carry the two ordering rules
-> (this one and §10.2's) as requirements, and treat the wireframe as the source of
-> visual layout — an implementer must not read the prototype's styling as
-> normative. Prototype:
-> [`prototype/requester-reviewer-ui`](https://github.com/rawinan-soma/dds-sharing/tree/prototype/requester-reviewer-ui).
+> ⚠️ **The #11 prototype settled structure, ordering and copy only.** Visual
+> design, spacing, typography and component choice were **not** settled there.
+> Carry the two ordering rules (this one and §10.2's) as requirements, and treat
+> the design as the source of visual layout — an implementer must not read the
+> #11 prototype's styling as normative.
+>
+> **The wireframe was supplied 2026-09-04** (#38) and is
+> [`prototypes/dds-sharing-ui/`](../prototypes/dds-sharing-ui/) — runnable HTML
+> and CSS rather than an image, so #43 and #47 lift markup rather than translate
+> a picture. Every text node names the `messages/th.json` key that feeds it.
+> What it settles — **Tailwind CSS with DaisyUI, one compiled stylesheet served
+> to both runtimes, Noto Sans Thai self-hosted, WCAG 2.2 AA** — is recorded in
+> [ADR 0009](adr/0009-the-visual-layer.md); the toolchain that installs it is
+> [#37](https://github.com/rawinan-soma/dds-sharing/issues/37). New copy the
+> design needed is **proposed and not landed**, in
+> `prototypes/dds-sharing-ui/messages/th.proposed.json`: §16.3 makes the copy
+> normative, so a design session does not get to change it.
 
 **A worked example for acceptance testing:** seed the Reviewer queue with a
 request that is genuinely hard to judge — an "independent researcher" on a
@@ -2651,6 +2673,7 @@ which they will never read.
 | Ingress boundary, ownership, kill switch, deployment requests | §17.4 | [#16](https://github.com/rawinan-soma/dds-sharing/issues/16) |
 | SPA shape, routes, `/reviewer`, Thai-only, Paraglide | §16.1–§16.3 | [#26](https://github.com/rawinan-soma/dds-sharing/issues/26), [ADR 0003](adr/0003-plain-spa-and-a-collection-path-that-bypasses-it.md) |
 | UI structure, ordering rules, copy as deliverable | §10.2, §16.4 | [#11](https://github.com/rawinan-soma/dds-sharing/issues/11) |
+| The visual layer: Tailwind CSS with DaisyUI, one compiled stylesheet, Noto Sans Thai, WCAG 2.2 AA | §10.2, §16.4 | [#38](https://github.com/rawinan-soma/dds-sharing/issues/38), [#37](https://github.com/rawinan-soma/dds-sharing/issues/37), [ADR 0009](adr/0009-the-visual-layer.md) |
 | PDPA position ruled out of scope; the five carried risks | §18.1–§18.4 | [#22](https://github.com/rawinan-soma/dds-sharing/issues/22) |
 | Fake upstream harness requirements | §17.3 | [#6](https://github.com/rawinan-soma/dds-sharing/issues/6) |
 | The Probe's bounded end — retries, `probe_failed`, the skipped disk pre-check | §5.4, §7.8, §10.2, §10.6, §12.3, §12.4, §13.6 | audit of this document against all 30 tickets, 2026-09-02 |

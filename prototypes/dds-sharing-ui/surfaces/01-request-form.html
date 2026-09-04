@@ -1,0 +1,178 @@
+<!doctype html>
+<!-- SURFACE 1 · "/" · Angular · spec §16.4
+     Order is a requirement, not styling: approval-gate notice → de-identification
+     block (open, above the form) → parameters → contact fields → submit.
+
+     Every text node carries data-i18n with the messages/th.json key that feeds it.
+     Keys marked NEW live in ../messages/th.proposed.json and do not exist on main.
+
+     Class discipline (ADR 0009 §6): DaisyUI names every control — btn, input,
+     select, radio, badge. Layout comes from Tailwind utilities and nothing else.
+     Colour and type never appear in a class attribute. -->
+<html lang="th" data-theme="dds">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ขอข้อมูลเฝ้าระวัง DDS แบบตัดตัวระบุตัวตน</title>
+<link rel="stylesheet" href="../assets/app.css" />
+</head>
+<body>
+<a class="skip-link" href="#params" data-i18n="a11y_skip_to_form">ข้ามไปยังแบบฟอร์ม</a>
+
+<div class="shell shell-narrow">
+
+  <div class="masthead">
+    <span class="mark">DDS</span>
+    <span class="name" data-i18n="app_name">ระบบขอข้อมูลเฝ้าระวัง DDS</span>
+    <span class="tag" data-i18n="app_tagline">ข้อมูล DDS รายเหตุการณ์ ที่ตัดตัวระบุตัวตนออกแล้ว</span>
+  </div>
+
+  <div class="flex flex-col gap-8">
+
+    <header>
+      <h1 data-i18n="req_page_title">ขอข้อมูลเฝ้าระวัง DDS แบบตัดตัวระบุตัวตน</h1>
+      <p class="prose-measure text-md mt-3" data-i18n="req_page_lede">ข้อมูลรายเหตุการณ์ที่ตัดตัวระบุตัวตนออกแล้ว ส่งกลับเป็นไฟล์ CSV บีบอัดหนึ่งไฟล์ ทุกคำขอจะมีเจ้าหน้าที่ผู้พิจารณาซึ่งระบุชื่อได้อ่านก่อน จึงจะเริ่มดึงข้อมูล</p>
+    </header>
+
+    <!-- ① THE APPROVAL GATE. Stated first, before anything else on the page.
+         The only filled dark ground in the entire service — DaisyUI's
+         `secondary` in this theme is that ground and nothing else uses it. -->
+    <section class="notice-gate" aria-labelledby="gate-h">
+      <h2 id="gate-h" data-i18n="req_gate_heading">มีเจ้าหน้าที่อ่านคำขอนี้ก่อนเสมอ</h2>
+      <p class="prose-measure text-md mt-3" data-i18n="req_gate_body">นี่ไม่ใช่ปุ่มดาวน์โหลด เมื่อคุณส่งคำขอ คำขอจะเข้าคิวรอเจ้าหน้าที่ผู้พิจารณาซึ่งระบุชื่อได้ ตรวจสอบว่าคุณเป็นใคร แล้วจึงตัดสิน คุณจะได้รับคำตอบทางอีเมลภายใน 24 ชั่วโมงทำการ</p>
+      <p class="rule prose-measure text-sm" data-i18n="req_gate_refusal">คำขออาจไม่ได้รับอนุมัติ และการไม่อนุมัติจะไม่แจ้งเหตุผล หากเกิดกรณีนี้และคุณเห็นว่าไม่ถูกต้อง กรุณาโทรตามหมายเลขในหน้ายืนยันคำขอ</p>
+    </section>
+
+    <!-- ② DE-IDENTIFICATION. Open, above the form, not collapsed — §16.4.
+         There is no <details> element anywhere on this page, by requirement. -->
+    <section class="panel flex flex-col gap-5" aria-labelledby="deid-h">
+      <h2 id="deid-h" data-i18n="req_deid_heading">สิ่งที่คุณจะได้รับ และไม่ได้รับ</h2>
+
+      <div class="grid gap-4 sm:grid-cols-2">
+        <div class="notice notice-good">
+          <h3 data-i18n="req_deid_will">คุณจะได้รับ</h3>
+          <p class="mt-2" data-i18n="req_deid_will_body">หนึ่งแถวต่อหนึ่งเหตุการณ์ที่รายงาน พร้อมรหัสวินิจฉัยโรค ข้อมูลประชากรแบบรหัส พื้นที่ถึงระดับอำเภอ รหัสสถานพยาบาลที่รายงาน และวันที่ทางคลินิก</p>
+        </div>
+        <div class="notice notice-bad">
+          <h3 data-i18n="req_deid_wont">คุณจะไม่ได้รับ</h3>
+          <p class="mt-2" data-i18n="req_deid_wont_body">ไม่มีชื่อ-นามสกุล ไม่มีเลขบัตรประชาชน ไม่มีเบอร์โทรศัพท์ ไม่มีเลขหนังสือเดินทาง ไม่มีที่อยู่ ไม่มีหมู่บ้าน ไม่มีตำบล ไม่มีพิกัด และไม่มีข้อความอิสระใด ๆ ทั้งสิ้น ข้อมูลเหล่านี้ถูกตัดออกก่อนเขียนไฟล์ ไม่ใช่ซ่อนไว้ในไฟล์</p>
+        </div>
+      </div>
+
+      <div>
+        <h3 class="mb-3 flex items-center gap-3">
+          <span data-i18n="req_deid_columns_heading">คอลัมน์ในไฟล์</span>
+          <span class="badge badge-info badge-soft" data-i18n="unit_columns">23 คอลัมน์</span>
+        </h3>
+        <div class="code-grid">
+          <span>epidem_report_guid</span><span>epidem_report_group_code</span><span>diagnosis_icd10</span><span>diagnosis_icd10_list</span><span>birth_date</span><span>gender</span><span>prefix</span><span>nationality</span><span>occupation</span><span>marital_status_id</span><span>chw_code</span><span>amp_code</span><span>epidem_chw_code</span><span class="derived">epidem_health_zone</span><span>epidem_amp_code</span><span>hospital_code</span><span>onset_date</span><span class="derived">onset_age</span><span>treated_date</span><span>diagnosis_date</span><span>death_date</span><span>report_datetime</span><span>update_datetime</span>
+        </div>
+        <p class="help" data-i18n="req_deid_derived_note">คอลัมน์ที่ทำเครื่องหมายไว้เป็นคอลัมน์ที่ระบบคำนวณให้ ไม่ได้มาจากระบบต้นทาง คำอธิบายทุกคอลัมน์เป็นไทย–อังกฤษ อยู่ในไฟล์พจนานุกรมข้อมูลที่แนบไปในไฟล์บีบอัดทุกครั้ง</p>
+      </div>
+
+      <div>
+        <h3 class="mb-3" data-i18n="req_deid_removed_heading">ตัดออกก่อนเขียนไฟล์</h3>
+        <div class="code-grid">
+          <span class="dropped">cid</span><span class="dropped">first_name</span><span class="dropped">last_name</span><span class="dropped">mobile_phone</span><span class="dropped">passport_no</span><span class="dropped">address</span><span class="dropped">moo</span><span class="dropped">road</span><span class="dropped">tmb_code</span><span class="dropped">location_gis_latitude</span><span class="dropped">location_gis_longitude</span><span class="dropped">lab_report_result</span><span class="dropped">cdeath</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ③ PARAMETERS. Exactly three. -->
+    <section class="panel" id="params" aria-labelledby="params-h" tabindex="-1">
+      <h2 id="params-h" class="mb-5" data-i18n="req_params_heading">สิ่งที่คุณต้องการขอ</h2>
+
+      <div class="field">
+        <label for="f-group" data-i18n="req_field_group">กลุ่มโรค</label>
+        <select id="f-group" class="select" aria-describedby="f-group-help">
+          <option>โรคจากการสัมผัสมลพิษทางอากาศ</option>
+          <option selected>โรคซิลิโคสิส</option>
+          <option>โรคจากแร่ใยหิน</option>
+          <option>โรคจากตะกั่วและสารประกอบของตะกั่ว</option>
+          <option>โรคจากสารกำจัดศัตรูพืช</option>
+          <option>การบาดเจ็บจากภาวะอับอากาศ</option>
+          <option>โรคจากรังสี</option>
+          <option>โรคจากการทำงาน</option>
+          <option>โรคที่เกี่ยวข้องกับการสัมผัสมลพิษในสิ่งแวดล้อม</option>
+          <option>โรคจากความร้อน</option>
+        </select>
+        <p class="help" id="f-group-help" data-i18n="req_field_group_help">หนึ่งคำขอต่อหนึ่งกลุ่มโรค</p>
+      </div>
+
+      <div class="field">
+        <span class="label-text" id="f-dates-label" data-i18n="req_field_dates">ช่วงวันที่</span>
+        <div class="grid gap-4 sm:grid-cols-2" role="group" aria-labelledby="f-dates-label">
+          <div>
+            <label class="block mb-2 text-xs" for="f-from" data-i18n="req_field_date_from">ตั้งแต่</label>
+            <input type="date" id="f-from" class="input w-full" value="2025-01-01" aria-describedby="f-dates-help" />
+          </div>
+          <div>
+            <label class="block mb-2 text-xs" for="f-to" data-i18n="req_field_date_to">ถึง</label>
+            <!-- max is from + 365: §16.4 greys the picker out beyond it rather
+                 than accepting the range and refusing it after submit. -->
+            <input type="date" id="f-to" class="input w-full" value="2025-12-31" max="2026-01-01" aria-describedby="f-dates-help" />
+          </div>
+        </div>
+        <p class="help" id="f-dates-help" data-i18n="req_field_dates_help">นับรวมทั้งวันเริ่มและวันสิ้นสุด กว้างได้ไม่เกิน 365 วัน ข้อจำกัดนี้มาจากระบบต้นทางของกรมควบคุมโรค ไม่ใช่ของระบบนี้</p>
+      </div>
+
+      <div class="field">
+        <span class="label-text" id="f-area-label" data-i18n="req_field_area">พื้นที่</span>
+        <div class="radio-set" role="radiogroup" aria-labelledby="f-area-label" aria-describedby="f-area-help">
+          <label><input type="radio" name="area" class="radio radio-primary" checked /><span data-i18n="req_area_national">ทั้งประเทศ</span></label>
+          <label><input type="radio" name="area" class="radio radio-primary" /><span data-i18n="req_area_province">รายจังหวัด</span></label>
+          <label><input type="radio" name="area" class="radio radio-primary" /><span data-i18n="req_area_region">รายเขตสุขภาพ</span></label>
+        </div>
+        <p class="help" id="f-area-help" data-i18n="req_field_area_help">ไม่บังคับ ระบบกรองตามที่อยู่ที่บันทึกขณะสอบสวนโรค ซึ่งตอบคำถามว่า “เคสที่ฉันสอบสวน” ไม่ใช่ “เคสที่รักษาใกล้ฉัน”</p>
+        <p class="help" data-i18n="req_field_region_vocab">“เขตสุขภาพ” ในที่นี้คือเขตสุขภาพของกระทรวงสาธารณสุข 13 เขต ไม่ใช่เขตของสำนักงานป้องกันควบคุมโรค (สคร.) และไม่ใช่เขตสุขภาพเพื่อประชาชน</p>
+      </div>
+    </section>
+
+    <!-- ④ CONTACT. Five free-text fields. §12.9's retention sentence sits here,
+         beside the email-typo warning, above the submit and not in a footer. -->
+    <section class="panel" aria-labelledby="contact-h">
+      <h2 id="contact-h" data-i18n="req_contact_heading">คุณเป็นใคร</h2>
+      <p class="prose-measure text-sm mt-2 mb-5" data-i18n="req_contact_lede">เจ้าหน้าที่ผู้พิจารณาตัดสินจากห้าช่องนี้เท่านั้น ไม่มีการตรวจสอบอัตโนมัติ และไม่มีการเทียบกับทะเบียนบุคลากรใด ๆ</p>
+
+      <div class="grid gap-x-4 sm:grid-cols-2">
+        <div class="field"><label for="f-name" data-i18n="req_field_name">ชื่อ</label><input type="text" id="f-name" class="input" /></div>
+        <div class="field"><label for="f-surname" data-i18n="req_field_surname">นามสกุล</label><input type="text" id="f-surname" class="input" /></div>
+      </div>
+
+      <div class="field">
+        <label for="f-workplace" data-i18n="req_field_workplace">หน่วยงาน</label>
+        <input type="text" id="f-workplace" class="input" placeholder="เช่น สคร.7 ขอนแก่น" aria-describedby="f-workplace-help" />
+        <p class="help" id="f-workplace-help" data-i18n="req_field_workplace_help">หน่วยงานที่คุณขอในนาม กรอกเป็นข้อความอิสระ</p>
+      </div>
+
+      <div class="grid gap-x-4 sm:grid-cols-2">
+        <div class="field"><label for="f-tel" data-i18n="req_field_tel">โทรศัพท์</label><input type="tel" id="f-tel" class="input" /></div>
+        <div class="field">
+          <label for="f-email" data-i18n="req_field_email">อีเมล</label>
+          <input type="email" id="f-email" class="input" aria-describedby="f-email-help" />
+        </div>
+      </div>
+
+      <!-- The mistyped-email warning is load-bearing copy: it is the only place
+           a Requester is told a typo will not be caught. Given the weight of a
+           notice, not the weight of help text. -->
+      <div class="notice notice-warn" id="f-email-help">
+        <h3 data-i18n="req_field_email_warn_heading">ตรวจอีเมลให้ถูกต้องก่อนส่ง</h3>
+        <p class="mt-2" data-i18n="req_field_email_help">ลิงก์ดาวน์โหลดจะส่งไปที่อีเมลนี้ และเป็นช่องทางเดียวที่คุณจะได้รับ กรุณาตรวจให้ถูกต้อง ระบบไม่ส่งอีเมลยืนยันตอนส่งคำขอ จึงไม่มีอะไรมาดักการพิมพ์ผิด</p>
+      </div>
+
+      <!-- §12.9 — the retention sentence. What is kept, that it is indefinite,
+           why, and that redaction can be asked for by telephone. -->
+      <p class="prose-measure text-sm mt-5" data-i18n="req_retention_notice">ข้อมูลติดต่อที่คุณกรอกและบันทึกของคำขอนี้จะถูกเก็บไว้โดยไม่มีกำหนดลบ เพื่อการตรวจสอบและการสืบย้อนว่าใครเป็นผู้ได้รับข้อมูลชุดใด หากต้องการให้ลบข้อมูลติดต่อของคุณหลังคำขอสิ้นสุดแล้ว กรุณาโทรแจ้งตามหมายเลขในหน้ายืนยันคำขอ</p>
+    </section>
+
+    <!-- ⑤ SUBMIT. -->
+    <div class="panel flex flex-wrap items-center justify-between gap-4">
+      <p class="text-sm max-w-[32ch]" data-i18n="req_submit_hint">การส่งคำขอยังไม่เริ่มดึงข้อมูล เจ้าหน้าที่ผู้พิจารณาเป็นผู้เริ่ม</p>
+      <button class="btn btn-primary" data-i18n="req_submit">ส่งคำขอให้พิจารณา</button>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

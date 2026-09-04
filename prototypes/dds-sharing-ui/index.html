@@ -1,0 +1,133 @@
+<!doctype html>
+<!-- Contact sheet — every surface in the design, on one page.
+     No build step to view: assets/app.css is committed compiled. -->
+<html lang="th" data-theme="dds">
+<head>
+<meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>DDS Sharing — การออกแบบส่วนติดต่อผู้ใช้</title>
+<link rel="stylesheet" href="assets/app.css" />
+</head>
+<body>
+<div class="shell">
+  <div class="masthead">
+    <span class="mark">DDS</span>
+    <span class="name">DDS Sharing — การออกแบบส่วนติดต่อผู้ใช้</span>
+    <span class="tag">Tailwind CSS + DaisyUI · Noto Sans Thai · ประกอบ issue #38 และ ADR 0009</span>
+  </div>
+
+  <div class="flex flex-col gap-8">
+
+    <section>
+      <h2 class="mb-4">เจ็ดหน้าจอตามข้อกำหนด §16.2</h2>
+      <div class="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(20rem,1fr))]">
+        <a class="panel hover:border-primary block" href="surfaces/01-request-form.html">
+          <span class="font-mono text-xs text-primary">/</span>
+          <h3 class="mt-2">แบบฟอร์มขอข้อมูล</h3>
+          <p class="help">Angular · §16.4 · หน้าเดียวเลื่อนยาว ลำดับตายตัว บล็อกการตัดตัวระบุตัวตนเปิดค้างเหนือฟอร์ม</p></a>
+        <a class="panel hover:border-primary block" href="surfaces/02-submitted.html">
+          <span class="font-mono text-xs text-primary">/submitted</span>
+          <h3 class="mt-2">ยืนยันการส่งคำขอ</h3>
+          <p class="help">Angular · §16.4 · เก็บสถานะไว้ฝั่งเบราว์เซอร์เท่านั้น ไม่มีอะไรอยู่ใน address bar</p></a>
+        <a class="panel hover:border-primary block" href="surfaces/03-link-expired.html">
+          <span class="font-mono text-xs text-primary">/link-expired</span>
+          <h3 class="mt-2">ลิงก์ใช้ไม่ได้แล้ว</h3>
+          <p class="help">§9.4 · หนึ่งประโยคกับหมายเลขโทรศัพท์ หน้าเดียวกันทั้งสี่กรณีที่ล้มเหลว · หน้าที่ตัดสินเรื่องสแตก</p></a>
+        <a class="panel hover:border-primary block" href="surfaces/04-reviewer-sign-in.html">
+          <span class="font-mono text-xs text-primary">/reviewer/sign-in</span>
+          <h3 class="mt-2">เข้าสู่ระบบผู้พิจารณา</h3>
+          <p class="help">#45 · รหัสผ่านกับ TOTP อยู่บนฟอร์มเดียว ตรวจพร้อมกัน ข้อความผิดพลาดเดียว</p></a>
+        <a class="panel hover:border-primary block" href="surfaces/05-reviewer-queue.html">
+          <span class="font-mono text-xs text-primary">/reviewer</span>
+          <h3 class="mt-2">คิวคำขอ</h3>
+          <p class="help">§10.1 · แบ่งซ้าย–ขวา ไม่รีเฟรชเอง พร้อมแบนเนอร์ตัวจับเวลาหยุด รายการที่ต้องจัดการ และ toast เตือนหมดเวลา</p></a>
+        <a class="panel hover:border-primary block" href="surfaces/06-reviewer-request.html">
+          <span class="font-mono text-xs text-primary">/reviewer/&lt;request&gt;</span>
+          <h3 class="mt-2">หน้าจอพิจารณา</h3>
+          <p class="help">§10.2 · ปุ่มตัดสินอยู่ใต้ข้อมูลผู้ขอและสิ่งที่ขอ ไม่ติดหนึบ ไม่มีแถบลอย</p></a>
+        <a class="panel hover:border-primary block" href="surfaces/07-download.html">
+          <span class="font-mono text-xs text-primary">/d/&lt;token&gt;</span>
+          <h3 class="mt-2">เส้นทางรับไฟล์</h3>
+          <p class="help">NestJS ไม่ใช่ Angular · §9 · ไม่มีหน้าเว็บบนเส้นทางที่สำเร็จ และนั่นคือการออกแบบ</p></a>
+      </div>
+    </section>
+
+    <section>
+      <h2 class="mb-4">งานออกแบบที่ไม่ใช่หน้าจอ</h2>
+      <div class="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(20rem,1fr))]">
+        <a class="panel hover:border-primary block" href="surfaces/08-reviewer-password-change.html">
+          <span class="font-mono text-xs text-primary">#44 · §17.5</span>
+          <h3 class="mt-2">เปลี่ยนรหัสผ่าน + ประกาศการเก็บข้อมูล</h3>
+          <p class="help">รหัสผ่านปัจจุบันบวก TOTP ใหม่ กติกาแสดงก่อนพิมพ์ และเพดาน 20 ตัวอักษรบอกไว้ตรง ๆ</p></a>
+        <a class="panel hover:border-primary block" href="surfaces/05-reviewer-queue.html#toast">
+          <span class="font-mono text-xs text-primary">#45 · §10.5</span>
+          <h3 class="mt-2">Toast เตือนก่อนหมดเวลา 5 นาที</h3>
+          <p class="help">มุมล่างซ้าย ไม่ใช่ modal ไม่ใช่แบนเนอร์ ไม่หายเอง — อยู่บนหน้าคิว</p></a>
+        <a class="panel hover:border-primary block" href="surfaces/05-reviewer-queue.html">
+          <span class="font-mono text-xs text-primary">#42 · #47 · §15.3</span>
+          <h3 class="mt-2">แบนเนอร์ตัวจับเวลาหยุดทำงาน</h3>
+          <p class="help">สีเหลืองอำพัน ไม่ใช่สีแดง บอกว่ากระทบงานของผู้พิจารณาอย่างไร ไม่ใช่รหัสข้อผิดพลาด</p></a>
+        <a class="panel hover:border-primary block" href="surfaces/05-reviewer-queue.html">
+          <span class="font-mono text-xs text-primary">#52 · #53 · §10.6</span>
+          <h3 class="mt-2">รายการที่ต้องจัดการ · สั่งดึงใหม่ · ส่งอีเมลซ้ำ</h3>
+          <p class="help">ปิดได้ด้วยการเลือกผลจากชุดที่กำหนดเท่านั้น ไม่มีช่องพิมพ์ข้อความ</p></a>
+      </div>
+    </section>
+
+    <section>
+      <h2 class="mb-4">อีเมลสี่ฉบับ · #50 · §11</h2>
+      <p class="help mb-4">เขียนด้วย table + inline style ล้วน ไม่มี Tailwind และไม่มี DaisyUI — Outlook ใช้เอนจินของ Word ซึ่งไม่รองรับทั้งสไตล์ชีตภายนอกและ class selector ดูเหตุผลทั้งหมดใน <span class="font-mono">emails/_shared-notes.md</span></p>
+      <div class="grid gap-4 [grid-template-columns:repeat(auto-fill,minmax(20rem,1fr))]">
+        <a class="panel hover:border-primary block" href="emails/01-queue-notification.html">
+          <h3>แจ้งผู้พิจารณาว่ามีคำขอใหม่</h3>
+          <p class="help">ฉบับที่พังเงียบที่สุดในระบบ — ล้มเหลวครั้งแรกก็ขึ้นแบนเนอร์ผู้ดูแลทันที</p></a>
+        <a class="panel hover:border-primary block" href="emails/04-delivery.html">
+          <h3>ส่งลิงก์ดาวน์โหลด</h3>
+          <p class="help">ฉบับเดียวที่พา capability ไปด้วย token ปรากฏครั้งเดียวในทั้งฉบับ</p></a>
+        <a class="panel hover:border-primary block" href="emails/02-rejection.html">
+          <h3>แจ้งไม่อนุมัติ</h3>
+          <p class="help">ไม่แจ้งเหตุผล บันทึกภายในไม่เคยออกจากระบบ</p></a>
+        <a class="panel hover:border-primary block" href="emails/03-extraction-failure.html">
+          <h3>แจ้งดึงข้อมูลไม่สำเร็จ</h3>
+          <p class="help">บอกผู้ขอเป็นความล้มเหลวเดียว ไม่แยกสาเหตุ การแยกสาเหตุเป็นเรื่องของผู้ดูแล</p></a>
+      </div>
+    </section>
+
+    <section>
+      <h2 class="mb-4">ธีม DaisyUI ชื่อ <span class="font-mono">dds</span> · ทุกคู่สีวัดแล้ว</h2>
+      <p class="help mb-4">ธีมนี้ถูก “นิยาม” ไม่ใช่ “สืบทอด” ทุกคู่สีข้อความผ่าน WCAG 2.2 ระดับ AA และส่วนใหญ่ผ่านระดับ AAA ตัวเลขคืออัตราส่วนความต่างบนพื้นที่ใช้จริง ไม่ใช่บนพื้นขาวอย่างเดียว</p>
+      <div class="grid gap-3 [grid-template-columns:repeat(auto-fill,minmax(9rem,1fr))]">
+        <div class="panel panel-flush"><div class="h-12 bg-base-content"></div><div class="p-2 text-2xs"><strong>base-content</strong><br />#12181F · 17.85:1</div></div>
+        <div class="panel panel-flush"><div class="h-12 bg-primary"></div><div class="p-2 text-2xs"><strong>primary</strong><br />#0A5468 · 8.46:1</div></div>
+        <div class="panel panel-flush"><div class="h-12 bg-secondary"></div><div class="p-2 text-2xs"><strong>secondary</strong><br />#06333F · ด่านอนุมัติ · 13.52:1</div></div>
+        <div class="panel panel-flush"><div class="h-12 bg-accent"></div><div class="p-2 text-2xs"><strong>accent</strong><br />#0D6A83 · 6.16:1</div></div>
+        <div class="panel panel-flush"><div class="h-12 bg-success"></div><div class="p-2 text-2xs"><strong>success</strong><br />#14603C · อนุมัติ · 7.59:1</div></div>
+        <div class="panel panel-flush"><div class="h-12 bg-error"></div><div class="p-2 text-2xs"><strong>error</strong><br />#9B1C22 · ไม่อนุมัติ · 8.13:1</div></div>
+        <div class="panel panel-flush"><div class="h-12 bg-warning"></div><div class="p-2 text-2xs"><strong>warning</strong><br />#7A4A00 · ระบบหยุด · 7.48:1</div></div>
+        <div class="panel panel-flush"><div class="h-12 bg-muted"></div><div class="p-2 text-2xs"><strong>ข้อความรอง</strong><br />#5E6975 · 4.97:1 บนพื้นผู้พิจารณา</div></div>
+        <div class="panel panel-flush"><div class="h-12 bg-line"></div><div class="p-2 text-2xs"><strong>ขอบช่องกรอก</strong><br />#78828E · 3.34:1 ต่ำสุด</div></div>
+      </div>
+    </section>
+
+    <section>
+      <h2 class="mb-4">ตัวอักษร · Noto Sans Thai แบบไม่มีหัว</h2>
+      <div class="panel flex flex-col gap-5">
+        <div>
+          <p class="text-2xs">Noto Sans Thai · 400 · 17px / 1.8 — เนื้อความยาว</p>
+          <p class="prose-measure text-md mt-2">ข้อมูลรายเหตุการณ์ที่ตัดตัวระบุตัวตนออกแล้ว ส่งกลับเป็นไฟล์ CSV บีบอัดหนึ่งไฟล์ ทุกคำขอจะมีเจ้าหน้าที่ผู้พิจารณาซึ่งระบุชื่อได้อ่านก่อน จึงจะเริ่มดึงข้อมูล</p>
+        </div>
+        <div>
+          <p class="text-2xs">Noto Sans Thai · 600 · 26px / 1.55 — หัวเรื่อง ตัวเลข 1.55 คือพื้นกล่องอักษรจริงของฟอนต์ 1.511 บวกช่องไฟ</p>
+          <h1 class="mt-2">ผู้ขอเป็นบุคคลตามที่แจ้งจริงหรือไม่ และหน่วยงานที่แจ้งมาสอดคล้องกับสิ่งที่ขอหรือไม่</h1>
+        </div>
+        <div>
+          <p class="text-2xs">Noto Sans Mono — เลขที่คำขอ ชื่อคอลัมน์ และรหัส ซึ่งเป็นภาษาอังกฤษที่หลีกเลี่ยงไม่ได้ในหน้าจอภาษาไทย ความสูงตัวพิมพ์ใหญ่ 714/1000 เท่ากับตัว UI พอดี</p>
+          <p class="refnum mt-2">REQ-2569-0144</p>
+          <div class="code-grid mt-3"><span>epidem_chw_code</span><span class="derived">epidem_health_zone</span><span>onset_date</span><span class="derived">onset_age</span></div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</div>
+</body>
+</html>

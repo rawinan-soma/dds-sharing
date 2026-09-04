@@ -131,3 +131,70 @@ _Avoid_: Manifest, receipt
 **Redaction**:
 The manual removal of one Requester's contact details, performed on the host by a named operator. It is a courtesy to someone who asks, never an automatic expiry, and it is itself recorded as a Request event. It reaches the contact details and nothing else — never a Decision, never a Snapshot, never a Reviewer — and it is unavailable while the Request is still in flight. Nothing else in the record is ever removed.
 _Avoid_: Erasure, purge, deletion
+
+### The screen
+
+Named because the two ordering rules — §16.4's and §10.2's — are requirements
+about *these regions*, and a rule about an unnamed thing is a rule that gets
+refactored away. Recorded by [ADR 0009](docs/adr/0009-the-visual-layer.md).
+
+**Approval-gate notice**:
+The first block on the Request form, stating that a named human reads the
+Request before any data is fetched — *"นี่ไม่ใช่ปุ่มดาวน์โหลด"*. The only filled
+dark ground in the service, because it is the one block that must not be skimmed
+past. It states the no-reason rejection **up front**, rather than sprung at
+rejection time.
+_Avoid_: Banner, hero, disclaimer, warning
+
+**De-identification block**:
+The region above the Request form listing what the Extract will and will not
+contain, including the Extract's columns by name. **Open, above the form, and
+never collapsible** — a Requester who never opened it would receive a CSV with no
+names in it and file it as broken. The requirement is that what you will and will
+not get is visible before any field is filled in, without interaction, which is
+why no `<details>` element appears on that page.
+_Avoid_: Privacy notice, accordion, expander, "what you get" section
+
+**Decision block**:
+The region of the review screen holding approve, reject and the mandatory
+internal note. It is the **last element in the document**, below the identity
+fields and the ask, and it is deliberately neither sticky nor a fixed footer bar
+— a sticky bar would put approve back on screen without the scroll, which is the
+whole of what the rule buys. The weak form: it costs a scroll, not a click.
+_Avoid_: Action bar, footer, toolbar, CTA
+
+**Scheduler banner**:
+The Thai banner across the top of the Reviewer queue, rendered from a heartbeat
+stale for more than five minutes (§15.3). Amber rather than red: automatic
+processing having stopped is not the service being down. It states what the stall
+means for the Reviewer's own work — approved Requests are not being extracted,
+and the 24-business-hour clock is still running — and never an error code.
+_Avoid_: Error banner, alert, outage notice, toast
+
+**Session warning**:
+The bottom-left toast raised five minutes before the sliding idle timeout fires
+(§10.5). **Not a modal** — a modal steals focus from a Reviewer mid-judgement and
+can be dismissed by a stray Enter aimed at approve. **Not a banner** — a banner
+at the top of a long review screen is off-screen exactly when it matters. It does
+not auto-dismiss, because the thing it warns about does not go away, and it says
+that an internal note in progress will not be kept.
+_Avoid_: Modal, dialog, session popup, idle warning
+
+**Theme**:
+The named set of colour and sizing values the whole service is painted from,
+defined rather than inherited from the component library, with every pair's
+contrast ratio measured on each ground it is actually painted on. There are two,
+and they differ by one surface colour: the Requester's and the Reviewer's. A
+colour that is not in the theme is a colour nobody measured, so no colour is
+written anywhere else.
+_Avoid_: Palette, skin, style, brand colours
+
+**Semantic component class**:
+The name a piece of markup carries instead of a list of appearance utilities —
+`btn btn-primary`, not forty tokens describing a button. It is the styling half
+of §16.3's rule that a copy change must read as a copy change: a sentence buried
+in a long class attribute cannot be reviewed as a sentence. Utilities are
+permitted for layout only. Because the class is only a name in a stylesheet, it
+is also what lets `/d/<token>`'s failure page look like the rest of the service
+without the Angular bundle.
+_Avoid_: Utility class, styled component, CSS-in-JS, design token

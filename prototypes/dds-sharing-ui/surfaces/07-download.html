@@ -1,0 +1,93 @@
+<!doctype html>
+<!-- SURFACE 7 · "/d/<token>" · NestJS, not Angular · spec §9, ADR 0003
+     ═══════════════════════════════════════════════════════════════════════
+     THIS ROUTE HAS NO PAGE ON THE SUCCESS PATH, AND THAT IS THE DESIGN.
+
+     §9.1: NestJS counts the Attempt, checks the token, then either streams the
+     archive (with range-request support) or redirects to /link-expired. An
+     interstitial "your download is starting" page would put collection behind
+     a page render, and §9.1's load-bearing consequence is that an Extract must
+     stay collectable even if a front-end asset fails to load. So the success
+     path is bytes, and there is nothing here to design.
+
+     What IS designed for this route is the failure page — surface 3 — and the
+     constraint that it must render with the Angular bundle absent.
+
+     THAT CONSTRAINT IS WHY THE STACK IS DAISYUI AND NOT A JS COMPONENT LIBRARY.
+     Angular Material and PrimeNG ship components that need the bundle; DaisyUI
+     ships class names in a stylesheet, and a NestJS-rendered page can carry the
+     same class names as an Angular template. One compiled stylesheet, both
+     runtimes, no second look and no second implementation.
+
+     This file exists so the seventh surface is not silently missing from the
+     set, and so the two headers below are written down where a reviewer finds
+     them.
+     ═══════════════════════════════════════════════════════════════════════ -->
+<html lang="th" data-theme="dds">
+<head>
+<meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>/d/&lt;token&gt; — บันทึกการออกแบบ</title>
+<link rel="stylesheet" href="../assets/app.css" />
+</head>
+<body>
+<div class="shell shell-narrow">
+  <div class="masthead">
+    <span class="mark">DDS</span>
+    <span class="name">/d/&lt;token&gt;</span>
+    <span class="tag">NestJS · spec §9 · ADR 0003</span>
+  </div>
+
+  <div class="flex flex-col gap-5">
+
+    <div class="notice notice-info">
+      <h3>เส้นทางนี้ไม่มีหน้าเว็บ และนั่นคือการออกแบบ</h3>
+      <p class="prose-measure text-md mt-3">
+        เมื่อผู้ขอกดลิงก์ในอีเมล NestJS จะนับครั้งที่เปิดลิงก์ ตรวจ token แล้ว
+        <strong>ส่งไฟล์เป็นสตรีมทันที</strong> หรือ <strong>redirect ไปยัง /link-expired</strong>
+        ไม่มีหน้า “กำลังเริ่มดาวน์โหลด” คั่นกลาง เพราะหน้าคั่นจะทำให้การรับไฟล์ขึ้นกับการเรนเดอร์หน้าเว็บ
+        ซึ่งเป็นสิ่งเดียวที่ §9.1 ห้ามไว้
+      </p>
+    </div>
+
+    <div class="panel">
+      <h2 class="text-base mb-4">สองสิ่งที่ผู้ใช้สัมผัสได้จริงบนเส้นทางนี้</h2>
+
+      <h3>ชื่อไฟล์ที่ปรากฏในโฟลเดอร์ดาวน์โหลด</h3>
+      <p class="help">
+        นี่คือ “ส่วนติดต่อผู้ใช้” ทั้งหมดของเส้นทางนี้ — สิ่งเดียวที่ผู้ขอเห็นและเก็บไว้
+        รูปแบบมาจาก §8.3 อ้างอิงเวลาที่ส่งคำขอตามเขตเวลา Asia/Bangkok
+      </p>
+      <div class="code-grid mt-3"><span>dds-envocc-sharing-20690828-075012.zip</span></div>
+      <p class="help">การสั่งดึงข้อมูลใหม่แต่ละครั้งต่อท้ายด้วย <span class="font-mono">-r2</span>, <span class="font-mono">-r3</span> ไฟล์สองไฟล์ของคำขอเดียวกันจึงไม่ชนกัน</p>
+
+      <div class="divider my-5"></div>
+
+      <h3>หัวข้อ HTTP ที่การออกแบบนี้ต้องการ</h3>
+      <p class="help">
+        §16.2 กำหนดให้รองรับ range request เพราะสายของ สคร. หลุดกลางคันได้
+        และการหลุดที่ 80% ต้องดาวน์โหลดต่อ ไม่ใช่เริ่มใหม่
+      </p>
+      <div class="code-grid mt-3">
+        <span>Accept-Ranges: bytes</span>
+        <span>Content-Disposition: attachment; filename*=UTF-8''…</span>
+        <span>Content-Type: application/zip</span>
+        <span>Cache-Control: no-store</span>
+      </div>
+    </div>
+
+    <div class="notice notice-warn">
+      <h3>ข้อสังเกตที่ต้องให้เจ้าของ repo ตัดสิน · บันทึกไว้ที่ #51</h3>
+      <p class="prose-measure text-sm mt-2">
+        §16.2 ระบุว่า <span class="font-mono">/link-expired</span> เป็นเส้นทางของ Angular แต่ §9.1
+        กำหนดว่าเส้นทางการรับไฟล์ต้องทำงานได้แม้ bundle ของ Angular โหลดไม่ขึ้น
+        ทั้งสองข้อขัดกันตรงหน้าที่ redirect ไปหา การออกแบบนี้ไม่ตัดสินให้
+        แต่ทำให้หน้า <span class="font-mono">/link-expired</span> ไม่ใช้คอมโพเนนต์ Angular เลย
+        ใช้เพียงสไตล์ชีตที่คอมไพล์แล้วซึ่งทั้งสองฝั่งเสิร์ฟอยู่แล้ว เสิร์ฟทางไหนก็หน้าตาเหมือนกัน
+      </p>
+      <p class="mt-4"><a class="btn btn-sm btn-outline btn-primary" href="03-link-expired.html">ดูหน้า /link-expired →</a></p>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

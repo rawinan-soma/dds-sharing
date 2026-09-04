@@ -1,0 +1,52 @@
+<!doctype html>
+<!-- SURFACE 4 · "/reviewer/sign-in" · Angular · issue #45, spec §17.5
+     Password and TOTP on ONE form, checked together. A two-step form tells an
+     attacker when the password is right.
+     One generic failure message. No self-service reset, ever.
+     data-theme="dds-reviewer": the tinted ground says which side of the
+     approval gate this is, by one theme attribute rather than a second palette. -->
+<html lang="th" data-theme="dds-reviewer">
+<head>
+<meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex" />
+<title>เข้าสู่ระบบสำหรับเจ้าหน้าที่ผู้พิจารณา</title>
+<link rel="stylesheet" href="../assets/app.css" />
+</head>
+<body>
+<div class="shell max-w-[26rem] pt-12">
+  <div class="masthead justify-center">
+    <span class="mark">DDS</span>
+    <span class="name" data-i18n="app_name">ระบบขอข้อมูลเฝ้าระวัง DDS</span>
+  </div>
+
+  <div class="panel">
+    <h1 class="text-lg mb-5" data-i18n="rev_login_heading">เข้าสู่ระบบสำหรับเจ้าหน้าที่ผู้พิจารณา</h1>
+
+    <!-- One generic message. The audit record keeps which factor failed; this
+         screen never does. role="alert" so it is announced. -->
+    <div class="alert alert-error alert-soft mb-5" role="alert">
+      <span class="font-semibold" data-i18n="rev_login_failed">ข้อมูลเข้าสู่ระบบไม่ถูกต้อง</span>
+    </div>
+
+    <div class="field">
+      <label for="l-user" data-i18n="rev_login_user">ชื่อผู้ใช้</label>
+      <input type="text" id="l-user" class="input" autocomplete="username" value="reviewer.a" />
+    </div>
+    <div class="field">
+      <label for="l-pass" data-i18n="rev_login_pass">รหัสผ่าน</label>
+      <input type="password" id="l-pass" class="input" autocomplete="current-password" value="············" />
+    </div>
+    <div class="field">
+      <label for="l-totp" data-i18n="rev_login_totp">รหัสจากแอปยืนยันตัวตน</label>
+      <!-- input-otp is the ONE place tracking is allowed: digits, not Thai. -->
+      <input type="text" id="l-totp" class="input input-otp font-mono max-w-[9rem]"
+             inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="000000" />
+    </div>
+
+    <button class="btn btn-primary btn-block" data-i18n="rev_login_submit">เข้าสู่ระบบ</button>
+
+    <p class="help" data-i18n="rev_login_no_reset">ลืมรหัสผ่านหรือเปลี่ยนเครื่อง? ระบบไม่มีการรีเซ็ตด้วยตนเอง กรุณาติดต่อผู้ดูแลเครื่องแม่ข่าย</p>
+  </div>
+</div>
+</body>
+</html>

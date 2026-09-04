@@ -1,0 +1,15 @@
+{
+  "name": "dds-sharing-ui-prototype",
+  "private": true,
+  "type": "module",
+  "description": "Hi-fi visual design for dds-sharing. Tailwind CSS + DaisyUI. See ../../docs/adr/0009-the-visual-layer.md",
+  "scripts": {
+    "build": "tailwindcss -i ./src/app.css -o ./assets/app.css --minify",
+    "dev": "tailwindcss -i ./src/app.css -o ./assets/app.css --watch"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4.1.0",
+    "daisyui": "^5.0.0",
+    "tailwindcss": "^4.1.0"
+  }
+}

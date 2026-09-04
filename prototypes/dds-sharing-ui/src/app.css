@@ -1,0 +1,720 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   DDS Sharing — the visual layer.  Tailwind CSS v4 + DaisyUI v5.
+   Settled by ../../docs/adr/0009-the-visual-layer.md.  Build: pnpm build.
+
+   ONE compiled stylesheet is served to BOTH runtimes.  /d/<token> and
+   /link-expired are rendered by NestJS, not Angular (ADR 0003, §9.1), and
+   DaisyUI ships CSS classes rather than JS components, so the same class names
+   work on both sides of that boundary.  There is no second palette and no
+   second implementation of a button.
+
+   Four things below are load-bearing and are NOT taste:
+     1. the DaisyUI theme is DEFINED, never inherited — every pair is measured;
+     2. Tailwind preflight's line-height: 1.5 CLIPS Thai and is overridden;
+     3. every --text-*--line-height Tailwind ships is below the Thai floor and
+        every one is replaced;
+     4. DaisyUI's own .btn / .input / .alert / .badge metrics are 14px type in
+        a 40px box at line-height 1.43.  Each is overridden, unlayered, at the
+        bottom of this file, where a reviewer can see the whole list at once.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+@import "tailwindcss";
+
+@source "../index.html";
+@source "../surfaces/*.html";
+
+/* Inherit no built-in theme.  DaisyUI's `light` is oklch(45% 0.24 277) primary
+   on oklch(100%) — a violet nobody measured for this service. */
+@plugin "daisyui" {
+  themes: false;
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   THE THEME · every colour below was computed against every ground it is
+   actually painted on, not against white only.  The table is in ADR 0009 §5.
+   ─────────────────────────────────────────────────────────────────────────── */
+@plugin "daisyui/theme" {
+  name: "dds";
+  default: true;
+  prefersdark: false;
+  color-scheme: light;
+
+  /* Surfaces.  base-200 is the page, base-100 the panel: a record sits ON
+     something, it is not the ground itself. */
+  --color-base-100: #ffffff;
+  --color-base-200: #f2f4f6;
+  --color-base-300: #eaeef1;
+  --color-base-content: #12181f;          /* 17.85:1 on white, 16.19:1 on page */
+
+  /* Institutional teal-blue.  One hue for every action, deep enough to carry
+     white text at 8.46:1 so link colour and button fill are the same decision. */
+  --color-primary: #0a5468;
+  --color-primary-content: #ffffff;       /* 8.46:1 */
+
+  /* The approval-gate ground.  The only filled dark block in the service. */
+  --color-secondary: #06333f;
+  --color-secondary-content: #ffffff;     /* 13.52:1 */
+
+  --color-accent: #0d6a83;
+  --color-accent-content: #ffffff;        /* 6.16:1 */
+
+  --color-neutral: #2b333d;
+  --color-neutral-content: #ffffff;       /* 12.78:1 */
+
+  /* State hues.  Each is a decision this service actually makes — approved,
+     rejected, stopped — never decoration. */
+  --color-info: #0a5468;
+  --color-info-content: #ffffff;          /* 8.46:1 */
+  --color-success: #14603c;
+  --color-success-content: #ffffff;       /* 7.59:1 */
+  --color-warning: #7a4a00;
+  --color-warning-content: #ffffff;       /* 7.48:1 */
+  --color-error: #9b1c22;
+  --color-error-content: #ffffff;         /* 8.13:1 */
+
+  /* 44px controls.  DaisyUI computes .btn and .input height as
+     --size-field × 10, so 0.275rem is how 44px is stated in DaisyUI's own
+     vocabulary.  Its default 0.25rem gives 40px, under the target. */
+  --size-field: 0.275rem;
+  /* .badge and .radio are --size-selector × 6.  DaisyUI's 0.25rem gives a 24px
+     box, which is 2.8px shorter than 14px Thai needs — the tone mark is what
+     gets cut.  0.3125rem gives 30px. */
+  --size-selector: 0.3125rem;
+
+  --radius-selector: 4px;
+  --radius-field: 4px;
+  --radius-box: 8px;
+
+  --border: 1px;
+  /* A record does not float.  --depth drives DaisyUI's inset highlights, its
+     button drop shadow AND a 0.5px text-shadow on every .btn — which on 14px
+     Thai smears the tone mark it is meant to sharpen. */
+  --depth: 0;
+  --noise: 0;
+}
+
+/* The Reviewer ground is a half-step cooler than the Requester's.  One theme
+   attribute, not a second palette — but which side of the approval gate you
+   are on should not need reading to establish, because a Reviewer's name goes
+   permanently onto whatever they press here. */
+@plugin "daisyui/theme" {
+  name: "dds-reviewer";
+  default: false;
+  prefersdark: false;
+  color-scheme: light;
+  --color-base-100: #ffffff;
+  --color-base-200: #eef2f5;
+  --color-base-300: #e4eaee;
+  --color-base-content: #12181f;          /* 15.86:1 on the tinted ground */
+  --color-primary: #0a5468;
+  --color-primary-content: #ffffff;
+  --color-secondary: #06333f;
+  --color-secondary-content: #ffffff;
+  --color-accent: #0d6a83;
+  --color-accent-content: #ffffff;
+  --color-neutral: #2b333d;
+  --color-neutral-content: #ffffff;
+  --color-info: #0a5468;
+  --color-info-content: #ffffff;
+  --color-success: #14603c;
+  --color-success-content: #ffffff;
+  --color-warning: #7a4a00;
+  --color-warning-content: #ffffff;
+  --color-error: #9b1c22;
+  --color-error-content: #ffffff;
+  --size-field: 0.275rem;
+  --size-selector: 0.3125rem;
+  --radius-selector: 4px;
+  --radius-field: 4px;
+  --radius-box: 8px;
+  --border: 1px;
+  --depth: 0;
+  --noise: 0;
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   THE SCALES
+   ─────────────────────────────────────────────────────────────────────────── */
+@theme {
+  /* Noto Sans Thai, LOOPLESS.  The family called "Noto Sans Thai" is the
+     loopless cut; "Noto Sans Thai Looped" is the other one and is ruled out —
+     looped Thai reads in Thailand as primary-school material and this screen
+     carries a ministry's undertaking about personal data.
+
+     Noto Sans stays named in the stack, but the file is not shipped twice:
+     Noto Sans Thai's own latin subset IS Noto Sans's Latin.  Measured — 211 of
+     212 common glyphs carry identical advance widths, same 1000 upm, same 714
+     cap height, x-height raised 556 vs 536 so the Latin sits with the Thai. */
+  --font-sans: "Noto Sans Thai", "Noto Sans", "Sarabun", system-ui,
+               -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "Noto Sans Mono", ui-monospace, "SF Mono", Menlo, Consolas,
+               monospace;
+  --default-font-family: var(--font-sans);
+  --default-mono-font-family: var(--font-mono);
+
+  /* Type · 1.125 ratio, base 16px, deliberately flat.  A steep ramp is a
+     landing-page device; the largest thing on any screen here is a reference
+     number someone reads down a telephone.
+
+     THE LINE-HEIGHTS ARE THE POINT.  Noto Sans Thai's own glyph box is
+     ascent 1061 + descent 450 = 1.511em.  Every line-height Tailwind ships is
+     under it:  text-xs 1.333 · text-sm 1.429 · text-base 1.5 · text-lg 1.556 ·
+     text-xl 1.4 · text-2xl 1.333.  Below 1.511 the lines overlap the moment a
+     Thai heading wraps — and Thai has no word spaces, so it wraps mid-phrase.
+     Nothing here is below 1.55. */
+  --text-2xs: 0.8125rem;                  /* 13px — the floor.  Metadata only. */
+  --text-2xs--line-height: 1.55;
+  --text-xs: 0.875rem;                    /* 14px — help text, chips, meta */
+  --text-xs--line-height: 1.6;
+  --text-sm: 0.9375rem;                   /* 15px — labels, buttons */
+  --text-sm--line-height: 1.65;
+  --text-base: 1rem;                      /* 16px — body */
+  --text-base--line-height: 1.75;
+  --text-md: 1.0625rem;                   /* 17px — long Thai prose */
+  --text-md--line-height: 1.8;
+  --text-lg: 1.1875rem;                   /* 19px — h3 */
+  --text-lg--line-height: 1.6;
+  --text-xl: 1.375rem;                    /* 22px — h2 */
+  --text-xl--line-height: 1.55;
+  --text-2xl: 1.625rem;                   /* 26px — h1, reference number */
+  --text-2xl--line-height: 1.55;
+  --text-3xl: 2rem;                       /* reserved; unused today */
+  --text-3xl--line-height: 1.55;
+
+  /* Tailwind's leading-tight is 1.25 and leading-snug 1.375 — both under the
+     1.511 floor.  Reassigned rather than left as traps. */
+  --leading-tight: 1.55;
+  --leading-snug: 1.55;
+  --leading-normal: 1.75;
+  --leading-relaxed: 1.8;
+
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  /* No 300.  Thin weights disappear in Thai at body size. */
+
+  /* Spacing.  Tailwind's base is already 4px, which is the scale ADR 0009 set,
+     so p-1…p-16 ARE the tokens.  Nothing to override. */
+
+  /* Measure.  Thai has no word spaces, so re-finding your place on a long line
+     is harder than in Latin; prose is capped tighter than the usual 75ch. */
+  --container-prose: 62ch;
+  --container-form: 44rem;
+  --container-page: 72rem;
+
+  /* Two shadows, both near-invisible. */
+  --shadow-raised: 0 1px 2px rgb(18 24 31 / 0.06);
+  --shadow-overlay: 0 8px 24px rgb(18 24 31 / 0.16);
+
+  --ease-ui: cubic-bezier(0.2, 0, 0.2, 1);
+
+  /* The three neutrals DaisyUI's theme has no slot for.  Registered here rather
+     than written as literals inside a component, so `text-muted`, `border-line`
+     and `border-hairline` exist as names and no hex appears below this line.
+
+     --color-muted was #64707c until it was measured on the ground it is
+     actually painted on: 4.49:1 on the tinted Reviewer surface, which fails
+     4.5:1 by a hundredth.  #5e6975 clears every surface — 5.59 on white, 5.07
+     on the page, 4.97 on the Reviewer ground, 4.80 on base-300. */
+  --color-muted: var(--color-muted);
+  /* Control borders.  3:1 non-text on ALL FOUR grounds, which is what fixes
+     this value rather than a lighter grey: 3.90 white · 3.54 page · 3.47
+     Reviewer · 3.34 base-300. */
+  --color-line: #78828e;
+  /* Decorative rules only.  1.30:1 — never a control border, never text. */
+  --color-hairline: var(--color-hairline);
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   SELF-HOSTED FONTS · §15.3 rejects an outbound internet dependency on a
+   ministry host, and a font CDN is exactly that, on the critical path of first
+   paint, on the connection §16.2 already assumes is bad enough to need range
+   requests.  No Google Fonts link, anywhere, ever.
+
+   Variable files: one per subset covers 400–700.  103 KB for the whole trio.
+   ─────────────────────────────────────────────────────────────────────────── */
+@font-face {
+  font-family: "Noto Sans Thai";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("./fonts/NotoSansThai-thai.woff2") format("woff2");
+  unicode-range: U+02D7, U+0303, U+0331, U+0E01-0E5B, U+200C-200D, U+25CC;
+}
+@font-face {
+  font-family: "Noto Sans Thai";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("./fonts/NotoSansThai-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Noto Sans Thai";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("./fonts/NotoSansThai-latin-ext.woff2") format("woff2");
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF,
+    U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020,
+    U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: "Noto Sans Mono";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("./fonts/NotoSansMono-latin.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA,
+    U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193,
+    U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   BASE · what Tailwind preflight got wrong for Thai, put back
+   ─────────────────────────────────────────────────────────────────────────── */
+@layer base {
+  /* Preflight sets `html { line-height: 1.5 }`.  Noto Sans Thai's glyph box is
+     1.511em, so preflight's default line box is 0.011em SHORTER than the font
+     it is asked to hold.  This one line is the whole tone-mark problem. */
+  html {
+    line-height: 1.75;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    font-size: var(--text-base);
+    line-height: 1.75;
+    background-color: var(--color-base-200);
+    color: var(--color-base-content);
+    -webkit-font-smoothing: antialiased;
+
+    /* Each of the four below is a Thai rule, not a preference:
+       · letter-spacing 0 — Thai renders as clusters and has no word spaces, so
+         tracking reads as word breaks in a script that has none;
+       · never justify — with no spaces to stretch, justification stretches the
+         glyphs and the line turns to mush;
+       · hyphens none / word-break normal — Thai line breaking is dictionary
+         based; hyphenation and CJK-style breaking both cut inside a cluster. */
+    letter-spacing: 0;
+    text-align: start;
+    hyphens: none;
+    word-break: normal;
+    overflow-wrap: break-word;
+  }
+
+  /* Preflight resets headings to inherit.  Restored here, with the Thai
+     line-heights, so a heading is a heading in plain markup and no template
+     has to carry a type utility. */
+  h1, h2, h3, h4 {
+    font-weight: 600;
+    letter-spacing: 0;
+    text-wrap: balance;
+  }
+  h1 { font-size: var(--text-2xl); line-height: 1.55; }
+  h2 { font-size: var(--text-xl);  line-height: 1.55; }
+  h3 { font-size: var(--text-lg);  line-height: 1.6; }
+  h4 { font-size: var(--text-base); line-height: 1.75; font-weight: 600; }
+
+  a  { text-underline-offset: 0.2em; text-decoration-thickness: 1px; }
+  ul, ol { padding-inline-start: --spacing(5); }
+
+  /* One focus treatment everywhere.  WCAG 2.2 SC 2.4.13 wants a 2px indicator
+     at 3:1 against BOTH the component and what is behind it; the white inner
+     ring is what buys the second half on a dark button fill. */
+  :focus-visible {
+    outline: 2px solid var(--color-primary);   /* 8.46 / 7.68 / 7.52 on the three grounds */
+    outline-offset: 2px;
+    border-radius: var(--radius-field);
+  }
+  .btn-primary:focus-visible,
+  .btn-success:focus-visible,
+  .btn-error:focus-visible {
+    outline-color: var(--color-base-content);  /* 17.85:1 against the white ring */
+    box-shadow: 0 0 0 2px var(--color-base-100);  /* 8.46:1 against the primary fill */
+  }
+  /* Left here as the thing a later change would have to delete on purpose. */
+  :focus:not(:focus-visible) { outline: none; }
+
+  ::selection { background: var(--color-info-tint); color: var(--color-base-content); }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   COMPONENTS · this service's own vocabulary, and only this service's.
+   Everything DaisyUI already names — btn, input, select, textarea, radio,
+   badge, card, alert, divider, table, menu, toast, join, kbd, link — is used
+   as DaisyUI names it.  What follows are the eleven things DaisyUI has no word
+   for, each named after a term that is already in CONTEXT.md.
+
+   THE GOVERNANCE RULE THIS EXISTS TO KEEP (§16.3):  utilities are for LAYOUT
+   ONLY — grid, flex, gap, spacing, width.  Colour, type and component
+   appearance come from a class name.  A template diff that changes a sentence
+   therefore shows one changed string, not a changed string buried in a
+   forty-token class attribute.
+   ─────────────────────────────────────────────────────────────────────────── */
+@layer components {
+
+  /* The page frame. */
+  .shell {
+    max-width: var(--container-page);
+    margin-inline: auto;
+    padding: --spacing(6) --spacing(5) --spacing(16);
+  }
+  .shell-narrow { max-width: var(--container-form); }
+
+  .masthead {
+    display: flex;
+    align-items: center;
+    gap: --spacing(3);
+    flex-wrap: wrap;
+    padding-block-end: --spacing(4);
+    margin-block-end: --spacing(6);
+    border-block-end: 1px solid var(--color-hairline);
+  }
+  .masthead .mark {
+    font-family: var(--font-mono);
+    font-weight: 700;
+    font-size: var(--text-xs);
+    letter-spacing: 0.06em;              /* Latin mark only — never Thai */
+    color: var(--color-primary-content);
+    background: var(--color-primary);
+    border-radius: var(--radius-selector);
+    padding: --spacing(1) --spacing(2);
+  }
+  .masthead .name { font-weight: 600; }
+  .masthead .tag  { font-size: var(--text-2xs); color: var(--color-muted); }
+  .masthead .right { margin-inline-start: auto; }
+
+  /* Panel — a bordered white record.  DaisyUI's .card has no border and a
+     shadow ramp; a record does not float, so this is ours. */
+  .panel {
+    background: var(--color-base-100);
+    border: 1px solid var(--color-hairline);
+    border-radius: var(--radius-box);
+    padding: --spacing(6);
+  }
+  .panel-tight { padding: --spacing(4); }
+  .panel-flush { padding: 0; overflow: hidden; }
+  .panel-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: --spacing(4);
+    padding: --spacing(4) --spacing(5);
+    border-block-end: 1px solid var(--color-hairline);
+  }
+
+  /* THE APPROVAL-GATE NOTICE.  The only filled dark ground in the service,
+     because it is the one block that must not be skimmed past.  It says
+     "นี่ไม่ใช่ปุ่มดาวน์โหลด". */
+  .notice-gate {
+    background: var(--color-secondary);
+    color: var(--color-secondary-content);
+    border-radius: var(--radius-box);
+    padding: --spacing(6);
+  }
+  .notice-gate h2 { color: inherit; }
+  .notice-gate .rule {
+    margin-block-start: --spacing(4);
+    padding-block-start: --spacing(4);
+    border-block-start: 1px solid rgb(255 255 255 / 0.22);
+    color: var(--color-gate-rule);       /* 10.72:1 on the gate ground */
+  }
+
+  /* Notice — a block-level statement with a heading and prose.  DaisyUI's
+     .alert is a one-line grid and cannot hold either. */
+  .notice {
+    border: 1px solid;
+    border-inline-start-width: 4px;
+    border-radius: var(--radius-box);
+    padding: --spacing(4) --spacing(5);
+  }
+  .notice-good { background: var(--color-success-tint); border-color: var(--color-success); }
+  .notice-good, .notice-good h3 { color: var(--color-success); }
+  .notice-bad  { background: var(--color-error-tint); border-color: var(--color-error); }
+  .notice-bad, .notice-bad h3   { color: var(--color-error); }
+  .notice-warn { background: var(--color-warning-tint); border-color: var(--color-warning); }
+  .notice-warn, .notice-warn h3 { color: var(--color-warning); }
+  .notice-info { background: var(--color-info-tint); border-color: var(--color-info); }
+  .notice-info, .notice-info h3 { color: var(--color-info); }
+  .notice p { color: var(--color-base-content); }
+
+  /* Help text under a field.  15px, never below the 13px floor. */
+  .help {
+    display: block;
+    margin-block-start: --spacing(2);
+    font-size: var(--text-sm);
+    line-height: 1.65;
+    color: var(--color-muted);                       /* 5.59 / 5.07 / 4.97 on the three grounds */
+    max-width: var(--container-prose);
+  }
+
+  /* Field — label, control, help, error.  Wraps DaisyUI's .input/.select so
+     the label spacing is stated once. */
+  .field { margin-block-end: --spacing(5); }
+  .field > label,
+  .field > .label-text {
+    display: block;
+    margin-block-end: --spacing(2);
+    font-weight: 600;
+    font-size: var(--text-sm);
+  }
+  .field .input,
+  .field .select,
+  .field .textarea { width: 100%; }
+  .field-error {
+    display: flex;
+    gap: --spacing(2);
+    margin-block-start: --spacing(2);
+    font-size: var(--text-sm);
+    color: var(--color-error);            /* 8.13:1 */
+    font-weight: 500;
+  }
+
+  /* Radio set.  Each label is its own 44px target — DaisyUI sizes the dot,
+     not the hit area. */
+  .radio-set { display: flex; flex-wrap: wrap; gap: --spacing(2) --spacing(5); }
+  .radio-set > label {
+    display: inline-flex;
+    align-items: center;
+    gap: --spacing(2);
+    min-height: 2.75rem;                  /* 44px */
+    cursor: pointer;
+  }
+
+  /* Key–value list.  The review screen is a document, not a table. */
+  .kv {
+    display: grid;
+    grid-template-columns: minmax(7rem, 12rem) 1fr;
+    row-gap: --spacing(3);
+    column-gap: --spacing(5);
+  }
+  .kv > dt { color: var(--color-muted); font-size: var(--text-sm); }
+  .kv > dd { margin: 0; }
+  .kv .sub {
+    display: block;
+    font-size: var(--text-2xs);
+    color: var(--color-muted);
+    line-height: 1.55;
+  }
+  @media (width < 34rem) {
+    .kv { grid-template-columns: 1fr; row-gap: --spacing(1); }
+    .kv > dd { margin-block-end: --spacing(3); }
+  }
+
+  /* Reference number.  The largest single element on the confirmation page,
+     because it is the only thing there a Requester has to keep — and it is
+     read aloud down a telephone, so it is monospace. */
+  .refnum {
+    font-family: var(--font-mono);
+    font-size: var(--text-2xl);
+    font-weight: 500;
+    letter-spacing: 0.02em;               /* Latin/digits only */
+    color: var(--color-base-content);
+  }
+
+  /* The Extract's column names.  English on a Thai screen, unavoidably —
+     §16.3 says English is in the file and never on the screen, and this is the
+     one place that is not quite true. */
+  .code-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+    gap: --spacing(1) --spacing(3);
+    font-family: var(--font-mono);
+    font-size: var(--text-xs);
+    line-height: 1.7;
+  }
+  .code-grid .derived { color: var(--color-accent); }        /* 6.16:1 */
+  .code-grid .derived::after { content: " ✳"; }              /* never colour alone */
+  .code-grid .dropped { color: var(--color-muted); text-decoration: line-through; }
+
+  /* Queue item.  A row in the Reviewer's list. */
+  .queue-list { list-style: none; margin: 0; padding: 0; }
+  .queue-list > li + li { border-block-start: 1px solid var(--color-hairline); }
+  .queue-item {
+    display: block;
+    width: 100%;
+    text-align: start;
+    padding: --spacing(4) --spacing(5);
+    background: none;
+    border: 0;
+    border-inline-start: 3px solid transparent;
+    cursor: pointer;
+    font: inherit;
+    color: inherit;
+  }
+  .queue-item:hover { background: var(--color-base-200); }
+  .queue-item[aria-current="true"] {
+    background: var(--color-info-tint);
+    border-inline-start-color: var(--color-primary);
+  }
+  .queue-item .who   { font-weight: 600; }
+  .queue-item .where { font-size: var(--text-sm); color: var(--color-muted); }
+  .queue-item .meta  {
+    display: flex; align-items: center; gap: --spacing(3);
+    margin-block-start: --spacing(2); flex-wrap: wrap;
+  }
+  .queue-item .ref { font-family: var(--font-mono); font-size: var(--text-2xs); color: var(--color-muted); }
+  .alert-item { border-inline-start-color: var(--color-error); }
+
+  /* THE DECISION BLOCK.  §10.2 — it is the last element in the document, below
+     the identity fields and the ask.  It is deliberately NOT sticky and NOT a
+     fixed footer: a sticky bar would put approve back on screen without the
+     scroll, which is precisely the click the rule exists to cost.
+     `position` is written here, as `static`, so that changing it is a visible
+     edit to a file this ADR names rather than a utility somebody adds. */
+  .decision {
+    position: static;
+    background: var(--color-base-100);
+    border: 1px solid var(--color-hairline);
+    border-block-start: 3px solid var(--color-primary);
+    border-radius: var(--radius-box);
+    padding: --spacing(6);
+  }
+  .decision .actions {
+    display: flex; flex-wrap: wrap; gap: --spacing(3);
+    margin-block-start: --spacing(5);
+  }
+
+  /* The scheduler banner (§15.3).  Amber, not red: automatic processing having
+     stopped is not the service being down. */
+  .banner {
+    background: var(--color-warning-tint);
+    border-block-end: 1px solid var(--color-warning);
+    color: var(--color-warning);          /* 6.85:1 on this ground */
+  }
+  .banner-inner {
+    max-width: var(--container-page);
+    margin-inline: auto;
+    display: flex; gap: --spacing(3); align-items: flex-start;
+    padding: --spacing(3) --spacing(5);
+  }
+  .banner p { color: var(--color-base-content); }
+
+  /* The split queue.  Collapses to one column below 1024px — the design target
+     is a 1366×768 ministry laptop, not a phone. */
+  .split { display: grid; grid-template-columns: minmax(0, 22rem) minmax(0, 1fr); gap: --spacing(5); }
+  @media (width < 64rem) { .split { grid-template-columns: 1fr; } }
+
+  .icon { width: 1.25rem; height: 1.25rem; flex: none; fill: none;
+          stroke: currentColor; stroke-width: 1.75; stroke-linecap: round;
+          stroke-linejoin: round; }
+
+  /* Skip link — the Requester page is long BY REQUIREMENT (§16.4), so a
+     keyboard user must be able to reach the form past the notice blocks. */
+  .skip-link {
+    position: absolute; inset-inline-start: --spacing(4); top: -4rem; z-index: 100;
+    padding: --spacing(2) --spacing(4);
+    background: var(--color-base-100); color: var(--color-primary);
+    border: 2px solid var(--color-primary); border-radius: var(--radius-field);
+  }
+  .skip-link:focus { top: --spacing(4); }
+
+  .prose-measure { max-width: var(--container-prose); line-height: 1.8; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   DAISYUI METRIC OVERRIDES · Thai, and the 44px target.
+
+   UNLAYERED ON PURPOSE.  DaisyUI emits its components inside
+   `@layer utilities { @layer daisyui.l1.l2.l3 { … } }`, which outranks
+   anything written in @layer components.  Unlayered declarations outrank every
+   layer, so this block is the only place these can be stated — and keeping it
+   as one block means a reviewer can see the entire list of what DaisyUI ships
+   that Thai cannot use, in one screen, instead of hunting it per component.
+
+   Everything here is a metric.  Not one line changes a colour: the colours are
+   the theme's, and the theme is measured.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* .btn ships font-size .875rem (14px) and, at any --depth above 0, a
+   `text-shadow: 0 .5px` that smears the tone mark it sits under.  --depth is 0
+   in both themes; the size is fixed here.  Height comes from --size-field. */
+.btn {
+  font-size: var(--text-base);
+  line-height: 1.55;
+  letter-spacing: 0;
+  text-shadow: none;
+  padding-inline: --spacing(5);
+}
+.btn-sm {
+  font-size: var(--text-sm);
+  --size: 2.25rem;                        /* 36px — still over the 24px AA floor */
+  padding-inline: --spacing(3);
+}
+
+/* .input / .select / .textarea clamp their font-size UP from a
+   --font-size-min of .875rem (14px).  Thai body is 16px; a form control that
+   renders its value two steps smaller than the label above it is where the
+   13px floor gets crossed without anyone deciding to. */
+.input, .select, .file-input {
+  --font-size-min: var(--text-base);
+  font-size: var(--text-base);
+  letter-spacing: 0;
+}
+.textarea {
+  font-size: var(--text-base);
+  line-height: 1.75;                      /* .textarea inherits the 1.5 preflight otherwise */
+  letter-spacing: 0;
+  min-height: 7rem;
+  padding: --spacing(3);
+}
+.select { line-height: 1.55; }
+
+/* .alert hard-codes `font-size:.875rem; line-height:1.25rem` — a ratio of
+   1.4286, which is 0.082em under Noto Sans Thai's own 1.511em glyph box.  This
+   is the single clearest instance of the whole problem: DaisyUI states a Latin
+   line box in absolute px, so no font-size override alone can fix it. */
+.alert {
+  font-size: var(--text-base);
+  line-height: 1.75;
+  align-items: start;
+  padding-block: --spacing(4);
+}
+
+/* .badge is --size-selector × 6 tall with .875rem type.  The theme raises the
+   box to 30px; this fixes the type and lets a long Thai state name wrap rather
+   than overflow a fixed-height pill. */
+.badge {
+  font-size: var(--text-xs);
+  line-height: 1.55;
+  height: auto;
+  min-height: calc(var(--size-selector) * 6);
+  padding-block: --spacing(1);
+  letter-spacing: 0;
+  white-space: normal;
+}
+
+/* .tab, .menu and .link all inherit preflight's 1.5. */
+.tab, .menu li > *, .link { line-height: 1.75; letter-spacing: 0; }
+
+/* .footer-title is the one place DaisyUI ships `text-transform: uppercase`.
+   Uppercase is meaningless in Thai and silently shouts at the Latin column
+   names beside it. */
+.footer-title { text-transform: none; letter-spacing: 0; }
+
+/* .otp sets letter-spacing.  The TOTP field is digits only, so tracking is
+   correct there and nowhere else — scoped rather than globally allowed. */
+.input-otp { letter-spacing: 0.35em; }
+
+/* Nothing in this service is ever justified: with no spaces to stretch,
+   justification stretches the glyphs.  Stated as a rule rather than trusted to
+   nobody typing `text-justify`. */
+.text-justify { text-align: start !important; }
+
+/* Every control is 44px, not the 24px WCAG 2.2 AA floor.  The two buttons that
+   matter are irreversible and one of them puts a named person onto a data
+   release, so the whole set is sized for the worst one. */
+.btn, .input, .select, .file-input { min-height: 2.75rem; }
