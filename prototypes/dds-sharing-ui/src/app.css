@@ -217,13 +217,22 @@
      actually painted on: 4.49:1 on the tinted Reviewer surface, which fails
      4.5:1 by a hundredth.  #5e6975 clears every surface — 5.59 on white, 5.07
      on the page, 4.97 on the Reviewer ground, 4.80 on base-300. */
-  --color-muted: var(--color-muted);
+  --color-muted: #5e6975;
   /* Control borders.  3:1 non-text on ALL FOUR grounds, which is what fixes
      this value rather than a lighter grey: 3.90 white · 3.54 page · 3.47
      Reviewer · 3.34 base-300. */
   --color-line: #78828e;
   /* Decorative rules only.  1.30:1 — never a control border, never text. */
-  --color-hairline: var(--color-hairline);
+  --color-hairline: #dde2e7;
+
+  /* State tints.  Each holds its own state colour as text, measured on itself,
+     because a state chip that only passes on white is a chip nobody checked. */
+  --color-success-tint: #e9f4ee;   /* success text on it: 6.73:1 */
+  --color-error-tint:   #fbeceb;   /* error   text on it: 7.08:1 */
+  --color-warning-tint: #fdf4e3;   /* warning text on it: 6.85:1 */
+  --color-info-tint:    #e7f1f4;   /* info    text on it: 7.37:1 */
+  /* The one colour that exists only inside the approval-gate block. */
+  --color-gate-rule:    #dbe7ec;   /* 10.72:1 on the gate ground */
 }
 
 /* ───────────────────────────────────────────────────────────────────────────

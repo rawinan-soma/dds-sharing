@@ -278,10 +278,19 @@ one block is also the point: a reviewer sees the entire list of what DaisyUI
 ships that Thai cannot use, in one screen, instead of hunting it per component.
 
 **`prototypes/dds-sharing-ui/scripts/check-metrics.py` asserts every claim in
-this section against the compiled stylesheet.** It is 28 assertions plus the
-line-height floor plus a rule that no colour may be declared outside the theme.
-A Tailwind or DaisyUI upgrade that quietly reintroduces a Latin metric fails it
-rather than shipping clipped tone marks. It found one bug while being written.
+this section against the compiled stylesheet.** It is 28 assertions, plus the
+line-height floor, plus two rules about colour: that none may be declared
+outside the theme, and that **every `--color-*` a rule references is actually
+declared and does not define itself**. A Tailwind or DaisyUI upgrade that
+quietly reintroduces a Latin metric fails it rather than shipping clipped tone
+marks.
+
+It has already caught two bugs in this design, and the second is the reason the
+second colour rule exists: a rename rewrote five `--color-*-tint` declarations
+into references to themselves, so four notice blocks lost their backgrounds
+**with no error, no warning, and no missing selector** — the background was
+simply not painted. That is the same failure mode as the tone marks, in a
+different medium, and it is why this file asserts rather than describes.
 
 ### 5. Colour: the theme is defined, and every pair was computed on the ground it lands on.
 

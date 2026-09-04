@@ -91,8 +91,31 @@ if stray:
 else:
     print("  ok    src/app.css declares no hex below @theme")
 
-if failures or low or stray:
+# Every custom property this stylesheet references must actually be defined in
+# it, and none may define itself. A `var(--x)` with no `--x` behind it renders
+# as nothing at all — no error, no warning, and on a background that is simply
+# the missing colour. This check exists because exactly that shipped once:
+# a blanket rename rewrote five --color-*-tint declarations into references to
+# themselves, and the notices lost their backgrounds silently.
+declared = set(re.findall(r"(--[\w-]+)\s*:", css))
+declared |= set(re.findall(r"@property\s+(--[\w-]+)", css))
+# Scoped to --color-*: those are this design's own, and a missing colour is the
+# failure that renders as "nothing was painted" rather than as an error.
+referenced = {v for v in re.findall(r"var\((--color-[\w-]+)", css)}
+undefined = sorted(referenced - declared)
+selfref = sorted(re.findall(r"(--[\w-]+)\s*:\s*var\(\1\)", css))
+print("\nevery --color-* var() resolves:")
+if undefined or selfref:
+    for v in undefined:
+        print(f"  UNDEF  {v} is referenced but never declared")
+    for v in selfref:
+        print(f"  SELF   {v} is defined as var({v})")
+else:
+    print(f"  ok    {len(referenced)} --color-* references, all declared, none self-referential")
+
+if failures or low or stray or undefined or selfref:
     print(f"\n{len(failures)} failed check(s), {len(low)} line-height(s) under the floor, "
-          f"{len(stray)} stray colour(s)")
+          f"{len(stray)} stray colour(s), "
+          f"{len(undefined) + len(selfref)} unresolved var()")
     sys.exit(1)
 print("\nall checks pass")
