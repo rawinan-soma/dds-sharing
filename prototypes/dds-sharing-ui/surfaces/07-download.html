@@ -19,14 +19,18 @@
      same class names as an Angular template. One compiled stylesheet, both
      runtimes, no second look and no second implementation.
 
-     This file exists so the seventh surface is not silently missing from the
-     set, and so the two headers below are written down where a reviewer finds
-     them.
+     ── LANGUAGE ──────────────────────────────────────────────────────────
+     THIS FILE IS ENGLISH ON PURPOSE, and it is the only file under surfaces/
+     that is. It carries no data-i18n and needs none, because none of it is
+     ever shown to a person: the route renders no page. It is a note to the
+     implementer of #51, kept beside the seven so the set is not silently six,
+     and it follows the repo's documentation convention (docs/srs.md §6.1) —
+     English prose, Thai domain terms and product strings kept inline.
      ═══════════════════════════════════════════════════════════════════════ -->
-<html lang="th" data-theme="dds">
+<html lang="en" data-theme="dds">
 <head>
 <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>/d/&lt;token&gt; — บันทึกการออกแบบ</title>
+<title>/d/&lt;token&gt; — design note</title>
 <link rel="stylesheet" href="../assets/app.css" />
 </head>
 <body>
@@ -34,38 +38,41 @@
   <div class="masthead">
     <span class="mark">DDS</span>
     <span class="name">/d/&lt;token&gt;</span>
-    <span class="tag">NestJS · spec §9 · ADR 0003</span>
+    <span class="tag">NestJS · spec §9 · ADR 0003 · design note, not a screen</span>
   </div>
 
   <div class="flex flex-col gap-5">
 
     <div class="notice notice-info">
-      <h3>เส้นทางนี้ไม่มีหน้าเว็บ และนั่นคือการออกแบบ</h3>
+      <h3>This route renders no page, and that is the design</h3>
       <p class="prose-measure text-md mt-3">
-        เมื่อผู้ขอกดลิงก์ในอีเมล NestJS จะนับครั้งที่เปิดลิงก์ ตรวจ token แล้ว
-        <strong>ส่งไฟล์เป็นสตรีมทันที</strong> หรือ <strong>redirect ไปยัง /link-expired</strong>
-        ไม่มีหน้า “กำลังเริ่มดาวน์โหลด” คั่นกลาง เพราะหน้าคั่นจะทำให้การรับไฟล์ขึ้นกับการเรนเดอร์หน้าเว็บ
-        ซึ่งเป็นสิ่งเดียวที่ §9.1 ห้ามไว้
+        When a Requester follows the link in the delivery email, NestJS counts
+        the Attempt, checks the token, and then either <strong>streams the archive
+        immediately</strong> or <strong>redirects to <span class="font-mono">/link-expired</span></strong>.
+        There is no "your download is starting" interstitial, because an
+        interstitial makes collection depend on a page rendering — which is the
+        one thing §9.1 forbids.
       </p>
     </div>
 
     <div class="panel">
-      <h2 class="text-base mb-4">สองสิ่งที่ผู้ใช้สัมผัสได้จริงบนเส้นทางนี้</h2>
+      <h2 class="text-base mb-4">The two things a user actually experiences here</h2>
 
-      <h3>ชื่อไฟล์ที่ปรากฏในโฟลเดอร์ดาวน์โหลด</h3>
+      <h3>The filename that lands in their downloads folder</h3>
       <p class="help">
-        นี่คือ “ส่วนติดต่อผู้ใช้” ทั้งหมดของเส้นทางนี้ — สิ่งเดียวที่ผู้ขอเห็นและเก็บไว้
-        รูปแบบมาจาก §8.3 อ้างอิงเวลาที่ส่งคำขอตามเขตเวลา Asia/Bangkok
+        This is the whole of the route's user interface — the only thing the
+        Requester sees and keeps. The format is §8.3's, stamped from the time the
+        Request was submitted, in Asia/Bangkok.
       </p>
       <div class="code-grid mt-3"><span>dds-envocc-sharing-20690828-075012.zip</span></div>
-      <p class="help">การสั่งดึงข้อมูลใหม่แต่ละครั้งต่อท้ายด้วย <span class="font-mono">-r2</span>, <span class="font-mono">-r3</span> ไฟล์สองไฟล์ของคำขอเดียวกันจึงไม่ชนกัน</p>
+      <p class="help">Each re-run appends <span class="font-mono">-r2</span>, <span class="font-mono">-r3</span>, so two files from one Request never collide.</p>
 
       <div class="divider my-5"></div>
 
-      <h3>หัวข้อ HTTP ที่การออกแบบนี้ต้องการ</h3>
+      <h3>The HTTP headers this design requires</h3>
       <p class="help">
-        §16.2 กำหนดให้รองรับ range request เพราะสายของ สคร. หลุดกลางคันได้
-        และการหลุดที่ 80% ต้องดาวน์โหลดต่อ ไม่ใช่เริ่มใหม่
+        §16.2 requires range-request support because a สคร. connection drops
+        mid-transfer, and a drop at 80% must resume rather than restart.
       </p>
       <div class="code-grid mt-3">
         <span>Accept-Ranges: bytes</span>
@@ -76,15 +83,20 @@
     </div>
 
     <div class="notice notice-warn">
-      <h3>ข้อสังเกตที่ต้องให้เจ้าของ repo ตัดสิน · บันทึกไว้ที่ #51</h3>
+      <h3>Open question for the repo owner · recorded on #51</h3>
       <p class="prose-measure text-sm mt-2">
-        §16.2 ระบุว่า <span class="font-mono">/link-expired</span> เป็นเส้นทางของ Angular แต่ §9.1
-        กำหนดว่าเส้นทางการรับไฟล์ต้องทำงานได้แม้ bundle ของ Angular โหลดไม่ขึ้น
-        ทั้งสองข้อขัดกันตรงหน้าที่ redirect ไปหา การออกแบบนี้ไม่ตัดสินให้
-        แต่ทำให้หน้า <span class="font-mono">/link-expired</span> ไม่ใช้คอมโพเนนต์ Angular เลย
-        ใช้เพียงสไตล์ชีตที่คอมไพล์แล้วซึ่งทั้งสองฝั่งเสิร์ฟอยู่แล้ว เสิร์ฟทางไหนก็หน้าตาเหมือนกัน
+        §16.2 lists <span class="font-mono">/link-expired</span> as an Angular
+        route, but §9.1 requires the collection path to work when the Angular
+        bundle fails to load — and <span class="font-mono">/link-expired</span> is
+        exactly where this route redirects. The two sections point opposite ways.
       </p>
-      <p class="mt-4"><a class="btn btn-sm btn-outline btn-primary" href="03-link-expired.html">ดูหน้า /link-expired →</a></p>
+      <p class="prose-measure text-sm mt-2">
+        This design does not resolve it, because it is a serving decision and not
+        a visual one. What it does instead is make the page renderable either
+        way: no Angular component, no JavaScript, and nothing but the one
+        compiled stylesheet both runtimes already serve.
+      </p>
+      <p class="mt-4"><a class="btn btn-sm btn-outline btn-primary" href="03-link-expired.html">Open /link-expired →</a></p>
     </div>
 
   </div>

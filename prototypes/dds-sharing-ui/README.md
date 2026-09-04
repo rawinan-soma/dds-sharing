@@ -66,11 +66,34 @@ from the `Host` header.
 
 ## How an implementer uses this
 
-**Every text node carries `data-i18n="key"`** naming the `messages/th.json` key
-that feeds it. That is the mapping from this markup to a Paraglide call — the
-attribute exists so nobody has to guess, and so no Thai sentence gets inlined
-into an Angular template (§16.3). 144 keys are used across the eight surfaces:
-76 from `main`, 68 proposed.
+**Every string that is copy carries `data-i18n="key"`** naming the
+`messages/th.json` key that feeds it, `<title>` included — a page title is shown
+to a person, in a tab and in a bookmark. That is the mapping from this markup to
+a Paraglide call: the attribute exists so nobody has to guess, and so no Thai
+sentence gets inlined into an Angular template (§16.3). **146 keys across the
+seven Thai surfaces: 76 from `main`, 70 proposed**, none missing and none unused.
+
+Three things are deliberately *not* keyed, and a review should confirm each is
+what it looks like:
+
+- **the ten Disease group names** — data, from `docs/disease-groups.md`, not copy;
+- **fake data** — names, workplaces, reference numbers, row counts, dates;
+- **`index.html` and `surfaces/07-download.html`**, which are documentation
+  rather than surfaces. See "Language" below.
+
+### Language
+
+The seven screens are **Thai**, because §16.3 makes the product Thai and only
+Thai. `index.html` and `surfaces/07-download.html` are **English**, because they
+are not screens: the first is a contact sheet for the repo owner and the
+implementing agents, and the second documents a route that renders no page at
+all. Both follow the repo's own documentation convention, stated in `docs/srs.md`
+§6.1 — English prose, Thai domain terms and quoted product strings kept inline —
+which every other document here follows.
+
+The distinction matters beyond tidiness: Thai prose in this prototype that is not
+behind a key is Thai prose **a design session wrote**, and §16.3 says a design
+session does not get to write the product's Thai.
 
 **Class discipline — this is the rule ADR 0009 §2 exists to keep:**
 

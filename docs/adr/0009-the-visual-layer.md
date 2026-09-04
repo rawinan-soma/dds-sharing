@@ -461,12 +461,21 @@ neither-sticky-nor-fixed decision block, and the four email templates.
   prototype opens by double-clicking `index.html` with no install step. The
   application does not consume the committed file; #37 compiles its own from
   `src/app.css`.
-- ⚠️ **68 new message keys are needed and they are proposals, not decisions.**
+- ⚠️ **70 new message keys are needed and they are proposals, not decisions.**
   `prototypes/dds-sharing-ui/messages/th.proposed.json`. §16.3 makes copy
   normative and appearance not, so this design **must not** land them into
   `messages/th.json` on its own authority. The repo owner accepts, rewrites or
-  rejects each. Unchanged from the first version: the stack reversal changed no
-  sentence.
+  rejects each. Sixty-eight are unchanged from the first version — the stack
+  reversal changed no sentence. **The two new ones are page titles**: a
+  `<title>` is copy, because it is what a person sees in a tab and keeps in a
+  bookmark, and neither version of this design had keyed it.
+- **The prototype is Thai where it is the product and English where it is
+  documentation.** The seven screens are Thai (§16.3). `index.html` and
+  `surfaces/07-download.html` are English: the first is a contact sheet, the
+  second documents a route that renders no page. Both follow the repo's
+  documentation convention (`docs/srs.md` §6.1). This is not tidiness —
+  unkeyed Thai prose in a prototype is Thai prose *a design session wrote*, and
+  §16.3 says a design session does not get to write the product's Thai.
 - ⚠️ **Three groups of keys already on `main` contradict the settled spec** and
   are used nowhere in this design. Listed in the prototype README.
   `rev_drain_label` and `rev_drain_note` are a projected runtime estimate, which
