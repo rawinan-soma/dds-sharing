@@ -185,7 +185,7 @@ Named so nobody adds them back without reopening the decision (§1.2,
 |---|---|
 | R1 | [`docs/spec.md`](spec.md) v1.1, 2026-09-02 — the authoritative specification, 19 sections |
 | R2 | [`CONTEXT.md`](../CONTEXT.md) — the canonical glossary |
-| R3 | [`docs/adr/0001`](adr/0001-email-delivery-is-unobservable.md)–[`0008`](adr/0008-the-pipeline-is-sized-for-one-page.md) — the eight ratified decisions |
+| R3 | [`docs/adr/0001`](adr/0001-email-delivery-is-unobservable.md)–[`0009`](adr/0009-the-extract-writer-is-ours-not-a-librarys.md) — the nine ratified decisions |
 | R4 | [`docs/disease-groups.md`](disease-groups.md) — the authoritative Disease group classification |
 | R5 | [`docs/research/003-disease-group-codes.md`](research/003-disease-group-codes.md) — the Report code seed and its provenance |
 | R6 | [`docs/provinces.csv`](provinces.csv) (77 rows), [`docs/districts.csv`](districts.csv) (929), [`docs/sub_districts.csv`](sub_districts.csv) (7,451) — geography reference data |
@@ -300,6 +300,33 @@ form; the **Reviewer** at account seeding and once at first login — deliberate
 | **Mail** | `mailrelay.uc-workd.com` over STARTTLS on the submission port, sending as `envocc@ddc.mail.go.th`. **Mailpit covers development** |
 | **Timezone** | Storage UTC; rendering and the business-hours clock ICT (Asia/Bangkok) |
 
+#### 2.4.1 Implementation stack
+
+Decided 2026-09-04 with the repo owner. §2.4 fixes the architecture; this table
+fixes the **libraries**, because several of them are load-bearing on a
+requirement rather than a matter of taste — a `package.json` is not where a
+reader looks for the reason.
+
+| Layer | Choice | Why it is recorded here |
+|---|---|---|
+| **Runtime** | **Node 26**, **pnpm** | Pin the **exact patch** in the Dockerfile, never `26-alpine`: NFR-30 test 1 asserts one checksum across runs, and a reproducibility claim must not rest on a floating base image. ⚠️ Node 26 is Current today and reaches LTS in October 2026 — before the November handover ([OQ-04](#64-open-questions)), but not yet |
+| **ORM / migrations** | **Drizzle** | Already assumed by `spec.md` §13.3, where the event-type enum is *"a Drizzle enum plus a discriminated union in TypeScript"*. Promoted here from that single passing mention because migrations are load-bearing: the province seed migration's startup assert is a **boot failure, not a warning** (NFR-32), and adding an event type is a migration *and* a spec change |
+| **Extract writer** | **None — written in this repository** | [ADR 0009](adr/0009-the-extract-writer-is-ours-not-a-librarys.md). FR-17's eight rules *are* the fingerprint's definition; a library expresses them as defaults a minor release may change. **Conditional on NFR-30 tests 1 and 2 existing** — without them the trade is worse than the library |
+| **Extract archive** | **`yazl`** | Two entries, small, explicit per-entry mtime. The archive is transport and is deliberately **not** fingerprinted ([ADR 0005](adr/0005-the-fingerprint-covers-the-extract-not-the-archive.md)), so a compressor's defaults have nothing to break. Zip is genuinely intricate where this CSV, under the allowlist, is not |
+| **SPA** | **Angular 22** | One build, no SSR, no prerendering ([ADR 0003](adr/0003-plain-spa-and-a-collection-path-that-bypasses-it.md)). Fixed here so the repo has one answer to *which runner does the SPA use* — though **no NFR-30 test lives in the SPA**, so that choice carries no requirement either way |
+| **UI** | **Tailwind + DaisyUI** | Settles [OQ-02](#64-open-questions)'s *component choice*. The two ordering rules (NFR-33, §3.1) and the open de-identification block are **requirements, not styling**, and are not DaisyUI's to restyle |
+| **Typeface** | **Noto Sans Thai**, self-hosted | **Self-hosted, not loaded from a font CDN** — an internet-facing `moph.go.th` service should not make a third-party request on every page load, and a CDN reachable from the Requester's network is not a dependency this service needs. Subset it and set `font-display: swap`. ⚠️ Thai stacks vowels above and tone marks above those, so **DaisyUI's default line-heights will clip** — raising them is a correctness fix, not a taste one |
+| **Validation** | **`class-validator`, `class-transformer`** | FR-04, server-side. Depends on `emitDecoratorMetadata` — see the next row, where that becomes a trap |
+| **Tests** | **Vitest** + **`supertest`**, with **`unplugin-swc`** | Run in the local container. ⚠️ Vitest's esbuild transform **does not emit decorator metadata**, so without `unplugin-swc` every `class-validator` rule silently disappears **in tests only** — a green suite over unvalidated input. If that friction is unwanted, NestJS scaffolds Jest + `@swc/jest`, which handles decorators unaided |
+| **Browser E2E** | **None** | Five of NFR-30's six required tests are pure backend logic, and test 6 is an HTTP `GET /d/<token>` carrying a `Range` header against the real edge — a request, not a browser session. Playwright and Cypress were considered and are not needed |
+| **TOTP** | **`otpauth`** + **`qrcode`** | FR-07, FR-29. Zero-dependency, RFC 6238/4226. **Defaults only — SHA-1, 6 digits, 30 s**: Google Authenticator *ignores* `algorithm` and `digits` in the enrolment URI, so a SHA-256 secret verifies on the server and fails on the phone with nothing on either side saying why. Accept **±1 step** and record the consumed step against replay — which is where NFR-23's NTP requirement stops being hygiene. `qrcode` renders the `otpauth://` URI as a terminal QR, because enrolment is a CLI ceremony over SSH and the alternative is typing a base32 secret by hand |
+| **Mail** | **`nodemailer`** | STARTTLS on the submission port; Mailpit in dev by configuration alone. ⚠️ A resolved `sendMail()` means **the relay accepted the message** and nothing more — [ADR 0001](adr/0001-email-delivery-is-unobservable.md) makes delivery unobservable, so it must never become a `delivery_confirmed` event |
+
+**Nothing in this table is open.** What the wireframe
+([OQ-02](#64-open-questions)) still owes is visual design and spacing — not the
+framework, the component library or the typeface.
+
+
 ### 2.5 Design and implementation constraints
 
 **Imposed by upstream — absorbed, not chosen** (§5, §1.1 premise 7):
@@ -342,6 +369,8 @@ form; the **Reviewer** at account seeding and once at first login — deliberate
   the binding constraint on password strength.
 - **No account lockout, throttling only** — a lockout an anonymous stranger can
   trigger against a named account *is* the denial of service.
+- **The Extract writer takes no CSV dependency** ([ADR 0009](adr/0009-the-extract-writer-is-ours-not-a-librarys.md)) — conditional on
+  NFR-30 tests 1 and 2 existing, and on nothing else.
 - **The copy is normative; the appearance is not** (the exact inverse of the
   ruling on styling).
 - **No budget.** Internal staff time on existing DDC infrastructure.
@@ -528,9 +557,10 @@ treats the path as a secret worth protecting.
 
 > ⚠️ **Visual design is not settled here.** The prototype
 > ([`prototype/requester-reviewer-ui`](https://github.com/rawinan-soma/dds-sharing/tree/prototype/requester-reviewer-ui))
-> settled **structure, ordering and copy only**. Spacing, typography and component
-> choice come from a wireframe the repo owner supplies during the dev cycle
-> ([OQ-02](#64-open-questions)). Carry the two ordering rules above as
+> settled **structure, ordering and copy only**. **Component choice and typeface
+> are now settled — Tailwind + DaisyUI on Noto Sans Thai (§2.4.1).** Visual
+> design and spacing still come from a wireframe the repo owner supplies during
+> the dev cycle ([OQ-02](#64-open-questions)). Carry the two ordering rules above as
 > requirements; do not read the prototype's styling as normative.
 
 **Copy.** All human-visible text is Thai, held in `messages/th.json` (122 strings)
@@ -2966,6 +2996,11 @@ once lost.* A required test asserts the Probe and the extraction job derive
    before production. *The gate is about the path existing, not the payload
    surviving.*
 
+> **No browser test framework is required.** Tests 1–5 are pure backend logic and
+> test 6 is an HTTP `GET` with a `Range` header, so the runner is **Vitest +
+> `supertest`** and neither Playwright nor Cypress is a dependency of this
+> requirement (§2.4.1).
+
 Plus a **documented operator task, not a test**: an **annual (or
 on-DDC-announcement) re-probe** of the upstream Report code domain — `page_size=20`,
 full-year span, one call per candidate code, `meta.total_items` only, **writing no
@@ -3250,13 +3285,14 @@ judgement about the audience, and someone will make it again.*
 ### 6.4 Open questions
 
 Genuinely undecided in the repository as of 2026-09-04, after the repo owner
-answered sixteen of the previous twenty. **None of these blocks building**; each has a decided rule waiting for its value. Listed here rather than
-guessed at.
+answered sixteen of the previous twenty and then settled the implementation
+stack (§2.4.1). **None of these blocks building**; each has a decided rule
+waiting for its value. Listed here rather than guessed at.
 
 | ID | Question | Owner | Consequence of the answer | Source |
 |---|---|---|---|---|
 | **OQ-01** | `SMTP_PORT`, `SMTP_PASS` and `FRONTEND_URL` | Mail relay owner (unnamed) | Configuration only. `STARTTLS=true` with `SECURE=false` means the submission port is expected — **confirm the number rather than defaulting it silently** | §11.2, §17.2 |
-| **OQ-02** | The **wireframe** | Repo owner | Visual design, spacing, typography and component choice. The two ordering rules (NFR-33) are settled and are not the wireframe's to change | §16.4, §17.2 |
+| **OQ-02** | The **wireframe** | Repo owner | **Narrowed 2026-09-04, not closed.** *Component choice* and *typeface* are settled — **Tailwind + DaisyUI on Noto Sans Thai** (§2.4.1). What remains is visual design and spacing. The two ordering rules (NFR-33) are settled and are not the wireframe's to change | §16.4, §17.2, §2.4.1 |
 | **OQ-03** | **A written artefact of the PDPO consultation for this repository** — a dated memo, the officer's name, the section relied on | Repo owner / PDPO | **Narrowed 2026-09-04, not closed.** The consultation happened and the basis is legal obligation (§18.1, R1). What is missing is anything a later reader or auditor could be shown | §18.1, NFR-18, R1 |
 | **OQ-04** | **Unnamed people the project depends on**: the sponsor (Director, EnvOcc), the **upstream DDS API owner** who holds the token and the data agreement, the **mail relay owner**, the **second named Reviewer**, a **second technical contact** (R13), and **operational ownership after November 2026** (R14) | Project manager | Each is a `TBD` in the charter. The second Reviewer is not merely an account — **the minimum is two *reachable people***, and it is the only TOTP recovery mechanism | `project-charter.md` Resources, Risks |
 | **OQ-05** | The **baseline** for the charter's benefit rows — requests handled manually per year, and staff-hours each | Project manager | Without them, monetised cost-saving and productivity figures would be invented, and the charter does not invent them | `project-charter.md` A11 |
@@ -3319,3 +3355,4 @@ And, at deployment (§17.4):
 |---|---|---|
 | 1.0 | 2026-09-03 | First issue. Derived from `spec.md` v1.1 (2026-09-02), `CONTEXT.md`, ADRs 0001–0008, `docs/disease-groups.md`, `docs/research/003-disease-group-codes.md`, `docs/project-charter.md`, and closed issues #2–#34. 31 functional requirements, 33 non-functional requirements, 19 open questions, 16 accepted risks, six diagrams. |
 | 1.1 | 2026-09-04 | **Six gaps closed and sixteen open questions answered by the repo owner.** *Added:* the Reviewer's identity test and the mandatory call on uncertainty, **not recorded** (FR-09, `spec.md` §10.3, `CONTEXT.md` *Decision*); a ban on case data in application logs with a 72-hour lifetime and a sentinel test (NFR-34, `spec.md` §14.5, §17.1). *Upstream settled:* `chw_code`/`epidem_chw_code` and `group_code` are **bare JSON integers**, normalised by a plain cast — **no padding**, because the geography domain starts at `10`; `group_code` does **not** populate `epidem_report_group_id`; `diagnosis_icd10_list`'s delimiter is a **comma**; the `birth_date` null rate is **estimated below 1%**; `T67.0XXA` is an upstream typo; the Disease group seed **stays embedded**. *Legal:* R1 **reduced from highest to medium** — the PDPO was consulted, basis is **legal obligation** under พ.ร.บ. 2562 (§18.1, NFR-18, X16 withdrawn); a **written artefact** of it remains open (OQ-03). *Mail:* the three test sends were **closed without being made** on the repo owner's ruling that the relay is in official organisational use; §11.1's junk-filing argument withdrawn. ⚠️ Confirmed the same day that **no user reads mail at `moph.go.th`** — there is **no internal leg**, so all mail crosses to public providers and the closing argument covers none of it. Both recorded, neither reconciled. The unobservability premise and ADR 0001 are **unchanged**. Carried as **R18** and §18.13. *Corrected:* **R5 narrowed to `hospital_code` alone** — its headline example, province `01`, does not exist, re-verified against all 77 provinces, 929 districts and 7,451 subdistricts; the second Excel risk in this register found to rest on an unmeasured premise. *Declined as out of scope:* X17 backup and restore (carried as R17), X18 accessibility target, X19 rollback procedure, X20 in-app amendment of the classification, X21 43-แฟ้ม alignment; the source deck **stays out of this public repository**, provenance carried as a SHA-256 in R10. **31 functional requirements, 34 non-functional requirements, 7 open questions, 18 accepted risks.** |
+| 1.2 | 2026-09-04 | **The implementation stack, decided.** §2.4 fixed the architecture but named no libraries, and only one of the gaps was tracked as an open question — so eight decisions that carry requirements were sitting in nobody's court. *New:* **§2.4.1 Implementation stack** and **[ADR 0009](adr/0009-the-extract-writer-is-ours-not-a-librarys.md)**. *Decided:* **Node 26 + pnpm** (pin the exact patch — NFR-30 test 1 is a reproducibility claim); **Drizzle**, promoted from a single passing mention in `spec.md` §13.3 into the stack, because NFR-32's province-seed assert is a boot failure; **no CSV library** — FR-17's eight rules are the fingerprint's definition and ADR 0005's *"one `pnpm up` from breaking silently"* applies harder to the Extract than to the archive it was written about, **conditional on NFR-30 tests 1–2 existing**; **`yazl`** for the archive, the asymmetry justified by the archive not being fingerprinted; **Tailwind + DaisyUI**; **`class-validator` / `class-transformer`**; **Vitest + `supertest` + `unplugin-swc`** — the plugin is not optional, since Vitest's esbuild transform drops decorator metadata and every validator would vanish *in tests only*; **`otpauth` + `qrcode`**, defaults only, because Google Authenticator ignores `algorithm` and `digits` and a SHA-256 secret fails on the phone alone; **`nodemailer`**, with a resolved `sendMail()` barred from ever becoming a `delivery_confirmed` event (ADR 0001). *Ruled out as a dependency:* **Playwright and Cypress** — five of NFR-30's six tests are backend logic and the sixth is an HTTP `GET` with a `Range` header. *Frontend:* **Angular 22**, and **Noto Sans Thai self-hosted** rather than fetched from a font CDN — an internet-facing `moph.go.th` page should not make a third-party request per load; note that Thai stacks vowel and tone marks two levels above the baseline, so DaisyUI's default line-heights clip and raising them is a correctness fix. *Narrowed:* **OQ-02** keeps the wireframe — visual design and spacing only, component choice and typeface having been settled the same day. **31 functional requirements, 34 non-functional requirements, 7 open questions, 18 accepted risks, nine ADRs.** |
