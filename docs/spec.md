@@ -1,6 +1,6 @@
 # DDS Sharing — Specification
 
-**Status:** complete for implementation. Version 1.2, 2026-09-04.
+**Status:** complete for implementation. Version 1.3, 2026-09-04.
 One open item, flagged at the end of §19 and tracked as
 [#33](https://github.com/rawinan-soma/dds-sharing/issues/33): the worst-case row
 volume rests on a Report code no Disease group can reach.
@@ -1918,8 +1918,9 @@ rule.**
 
 A rule nobody hears is a compliance artefact, not a policy.
 
-- **Requester — at submit.** One Thai sentence in `messages/th.json`, beside the
-  email-typo warning, above the form and not in a footer. It carries four things:
+- **Requester — at submit.** One Thai sentence — `requester_retention_notice` in
+  the copy catalogue (§16.3) — beside the email-typo warning, above the form and
+  not in a footer. It carries four things:
   **what** is kept (contact details and the record of the Request), that it is
   kept **indefinitely**, **why** (audit and traceability of data releases), and
   that **redaction can be requested by phone**. Naming the reason is what makes it
@@ -2302,48 +2303,91 @@ and the download link in the Delivery email is an absolute URL — deriving it f
 ### 16.3 Language and copy
 
 **Thai is the only language shown to a person.** No language prefix in any
-address, and no separate answer for the Reviewer surface. English survives as the
-message-key layer and in the Extract's column headers, with the Thai/English Data
-dictionary in every archive. **English is in the file, never on the screen.**
+address, and no separate answer for the Reviewer surface. English survives in the
+Extract's column headers, with the Thai/English Data dictionary in every archive,
+and — since [ADR 0010](adr/0010-copy-is-authored-in-english-and-translated-before-production.md)
+— in a source catalogue that is maintained but **never served**. **English is in
+the file, never on the screen.**
 
-The reason is not audience convenience. Several Thai sentences are **the only
-record of a decision this design made in prose** — the no-reason rejection, the
-`epidem_chw_code` framing as *"เคสที่ฉันสอบสวน"*, the mistyped-email warning, the
-retention sentence. A second served language means writing every promise twice,
-and two versions drift into two different promises. That is this design's
-silently-wrong-artifact hazard, relocated into the UI.
+**The copy is authored in English and translated to Thai before production.**
+[ADR 0010](adr/0010-copy-is-authored-in-english-and-translated-before-production.md)
+carries the reasoning, and the reversal it makes of this section's former ruling
+that `messages/en.json` was deliberately not maintained. In short: the message
+catalogue **cannot carry a description field** — the inlang SDK data model has no
+metadata column, and a sibling `_note` key would compile into a shipped message
+function — so a second locale file is the only way the toolchain will hold an
+English statement of what each sentence is *for*. That statement is what the
+translator works from.
 
-**Paraglide message-format, configured single-locale** (`baseLocale: "th"`,
-`locales: ["th"]`), with `messages/th.json` (122 strings) and
-`project.inlang/settings.json` at the repo root. **`messages/en.json` is
-deliberately not maintained.**
+**Paraglide message-format**, with `project.inlang/settings.json` at the repo root:
+
+| | Development | Production |
+|---|---|---|
+| `baseLocale` | `"en"` | `"th"` |
+| `locales` | `["en", "th"]` | `["th"]` |
+| `strategy` | `["cookie", "baseLocale"]` | `["cookie", "baseLocale"]` |
+
+`messages/en.json` is **checked in and permanently maintained**: a copy change
+touches both catalogues in the same commit. During development an incomplete
+`th.json` degrades to readable English; **after the flip it degrades to the raw
+message key**, which is why §17.1 carries a gate and why the keys are descriptive.
+**The `url` strategy is never added** — its default patterns leave the base locale
+unprefixed and prefix every other, so `baseLocale` would decide which language owns
+`/`, reintroducing the prefix this section forbids as a side effect of a change
+nobody would review as a copy decision.
+
+**One catalogue covers both surfaces** — the Angular screens and the four NestJS
+emails (Delivery, Reviewer queue notification, rejection, extraction failure). The
+rejection email is the sharpest case for this: §10.3 gives it **no reason**, so its
+wording is a decision, and outside the catalogue it changes as a template edit
+nobody reviews as one. The former figure of *122 strings* predates the emails being
+in scope and is **not** a count to check against; §17.1's gate compares the two
+catalogues to each other.
 
 Its job is **governance of the copy, not translation**: a change to a sentence
-must appear as a change to that file, so a reviewer can see that a decision moved.
+must appear as a change to these files, so a reviewer can see that a decision moved.
 Sentences inside Angular templates make a copy change look like a template change,
 and nobody reviews that as a decision change. `@angular/localize` was rejected
 because it extracts strings *out of* templates, leaving the template as the source;
 a hand-rolled typed module was rejected because the artifact stops being a
-*document* Thai-speaking domain people can read and check.
+*document* domain people can read and check.
 
-> ⚠️ **Accepted cost: an implementer who does not read Thai cannot read the
-> catalogue directly.** Mitigated by descriptive English keys, not eliminated.
+**Paraglide has no Angular support.** Its framework adapters are React, Solid,
+Svelte and Vue, and no getting-started guide covers Angular, so the bundler plugins
+are out of reach. The compiler runs as a pnpm `prebuild` and `prestart` step —
+`paraglide-js compile --project ./project.inlang --outdir ./src/paraglide
+--emit-ts-declarations` — with `--watch` as a second dev process. `src/paraglide`
+is generated and gitignored, and **is deleted at the flip**: a stale outdir
+surviving a `baseLocale` change renders Thai screens in English, which reads as an
+incomplete translation rather than as a build fault.
+
+> ⚠️ **Accepted cost: the Thai copy is unreviewable by domain readers until the
+> staging deploy**, with the screens already built around the strings. This is the
+> exact inverse of the cost this section formerly accepted. Mitigated by reviewing
+> on the running UI rather than in JSON, and by **naming** the reviewers — the repo
+> owner and colleagues — rather than hoping for them. §18.14.
 
 > **The copy is normative; the appearance is not.** This is the exact inverse of
 > §16.4's ruling on styling. A rule ("the rejection gives no reason") lets an
 > implementer write a new sentence, and **the sentence *is* the decision.** Copy
-> changes only by reopening the decision that put it there.
+> changes only by reopening the decision that put it there. **The Thai in
+> `messages/th.json` is what ships**; the English beside it records what the
+> sentence is *for* and is not itself a promise to anyone.
 
-Load-bearing strings, each carrying a decision that exists nowhere else:
+Load-bearing strings, each carrying a decision that exists nowhere else. **This
+table names keys and the decisions they carry; the catalogues hold the prose.**
+The Thai is authored at translation time and is deliberately not quoted here — a
+third copy in this document would drift against two it cannot be checked against
+(ADR 0010).
 
-| String | Carries |
+| Key | Carries |
 |---|---|
-| *"นี่ไม่ใช่ปุ่มดาวน์โหลด"* | the approval gate, stated first, before anything else on the page |
-| *"การไม่อนุมัติจะไม่แจ้งเหตุผล"* | the no-reason rejection, said **up front** rather than sprung at rejection time |
-| the 365-day cap notice | attributed to **upstream**, not to us |
-| *"เคสที่ฉันสอบสวน"* | the `epidem_chw_code` vs `chw_code` trap, made visible at the point of choosing |
-| the email-field warning | the only place a Requester is told a typo will not be caught |
-| the retention sentence | §12.9 |
+| `requester_gate_notice` | the approval gate, stated first, before anything else on the page |
+| `requester_no_reason_notice` | the no-reason rejection, said **up front** rather than sprung at rejection time |
+| `requester_span_cap_notice` | the 365-day cap, attributed to **upstream**, not to us |
+| `requester_epidem_area_label` | the `epidem_chw_code` vs `chw_code` trap, made visible at the point of choosing — the address that answers *"cases I investigated"* |
+| `requester_email_warning` | the only place a Requester is told a typo will not be caught |
+| `requester_retention_notice` | §12.9 |
 
 ### 16.4 The Requester page
 
@@ -2430,6 +2474,16 @@ judge.**
   it on the harness's **500 mid-loop, truncated page and auth-expiry** paths —
   those are exactly where an error handler reaches for the response body.
   **Without this test, §14.5's ban is a comment.**
+- **The copy catalogues agree, and the Thai is Thai.** Assert that the key set of
+  `messages/th.json` is identical to the key set of `messages/en.json`, and that
+  **every value in `th.json` contains at least one character in U+0E00–U+0E7F**,
+  against a short checked-in exemption list (the telephone number, `DDS`, email
+  addresses). **Without this test, §16.3's maintenance rule is a comment** — and
+  after the flip it is the *only* thing binding the two files, because `en.json`
+  leaves `locales` and the compiler stops reading it. Paraglide has no strict mode,
+  emits no warning for a missing message, and inlang's lint rules were removed in
+  CLI v3, so a key missing from `th.json` reaches a Requester's screen as the raw
+  key ([ADR 0010](adr/0010-copy-is-authored-in-english-and-translated-before-production.md)). **It must be green before the flip commit**, not after.
 - **Large-download smoke test through the real ministry edge** — see §17.4.
 
 ### 17.2 Dev-cycle asks
@@ -2842,7 +2896,10 @@ is ever made and lands wrong, this section is deleted rather than worked around.
 - **The 72-hour clock can elapse unnoticed** because job completion is an event the
   Requester never sees (§9.3).
 - **Bounce detection is lost** because there is no receipt email (§11.3).
-- **An implementer who does not read Thai cannot read the copy catalogue** (§16.3).
+- **The Thai copy is unreviewable by domain readers until the staging deploy**,
+  with the screens already built around the strings (§16.3, [ADR 0010](adr/0010-copy-is-authored-in-english-and-translated-before-production.md)). This
+  replaced the inverse cost — an implementer unable to read a Thai-only catalogue —
+  which no longer applies.
 - **The Requester loses the reference number if they close the confirmation tab**,
   until the Decision email arrives (§12.5).
 - **`cid` is not a stable person key**, so repeat-patient detection and
@@ -2880,7 +2937,7 @@ is ever made and lands wrong, this section is deleted rather than worked around.
 | `/health`, two watchers, Re-run, Bull Board, disk thresholds | §10.7, §14 | [#27](https://github.com/rawinan-soma/dds-sharing/issues/27) |
 | Retention of personal data | §12.7–§12.9 | [#28](https://github.com/rawinan-soma/dds-sharing/issues/28), [ADR 0004](adr/0004-personal-data-is-retained-indefinitely.md) |
 | Ingress boundary, ownership, kill switch, deployment requests | §17.4 | [#16](https://github.com/rawinan-soma/dds-sharing/issues/16) |
-| SPA shape, routes, `/reviewer`, Thai-only, Paraglide | §16.1–§16.3 | [#26](https://github.com/rawinan-soma/dds-sharing/issues/26), [ADR 0003](adr/0003-plain-spa-and-a-collection-path-that-bypasses-it.md) |
+| SPA shape, routes, `/reviewer`, Thai-only, Paraglide | §16.1–§16.3 | [#26](https://github.com/rawinan-soma/dds-sharing/issues/26), [ADR 0003](adr/0003-plain-spa-and-a-collection-path-that-bypasses-it.md), [ADR 0010](adr/0010-copy-is-authored-in-english-and-translated-before-production.md) |
 | UI structure, ordering rules, copy as deliverable | §10.2, §16.4 | [#11](https://github.com/rawinan-soma/dds-sharing/issues/11) |
 | PDPA position ruled out of scope; the five carried risks | §18.1–§18.4 | [#22](https://github.com/rawinan-soma/dds-sharing/issues/22) |
 | Fake upstream harness requirements | §17.3 | [#6](https://github.com/rawinan-soma/dds-sharing/issues/6) |

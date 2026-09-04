@@ -185,12 +185,12 @@ Named so nobody adds them back without reopening the decision (§1.2,
 |---|---|
 | R1 | [`docs/spec.md`](spec.md) **v1.2, 2026-09-04** — the authoritative specification, 19 sections |
 | R2 | [`CONTEXT.md`](../CONTEXT.md) — the canonical glossary |
-| R3 | [`docs/adr/0001`](adr/0001-email-delivery-is-unobservable.md)–[`0009`](adr/0009-the-extract-writer-is-ours-not-a-librarys.md) — the nine ratified decisions |
+| R3 | [`docs/adr/0001`](adr/0001-email-delivery-is-unobservable.md)–[`0010`](adr/0010-copy-is-authored-in-english-and-translated-before-production.md) — the ten ratified decisions |
 | R4 | [`docs/disease-groups.md`](disease-groups.md) — the authoritative Disease group classification |
 | R5 | [`docs/research/003-disease-group-codes.md`](research/003-disease-group-codes.md) — the Report code seed and its provenance |
 | R6 | [`docs/provinces.csv`](provinces.csv) (77 rows), [`docs/districts.csv`](districts.csv) (929), [`docs/sub_districts.csv`](sub_districts.csv) (7,451) — geography reference data |
 | R7 | [`docs/project-charter.md`](project-charter.md) — sponsor-facing charter, **re-anchored against `spec.md` v1.2 on 2026-09-04** (OQ-06 closed) |
-| R8 | [`messages/th.json`](../messages/th.json) + [`project.inlang/settings.json`](../project.inlang/settings.json) — the normative Thai copy catalogue |
+| R8 | [`messages/th.json`](../messages/th.json) — the normative Thai copy catalogue, what ships — plus [`messages/en.json`](../messages/en.json), the maintained English source it is translated from, and [`project.inlang/settings.json`](../project.inlang/settings.json) ([ADR 0010](adr/0010-copy-is-authored-in-english-and-translated-before-production.md)) |
 | R9 | Closed issues [#2](https://github.com/rawinan-soma/dds-sharing/issues/2)–[#34](https://github.com/rawinan-soma/dds-sharing/issues/34) on [Map #1](https://github.com/rawinan-soma/dds-sharing/issues/1) — the decisions and their rationale |
 | R10 | `docs/DDS_Envocc_080169.pdf` — the primary DDC EnvOcc deck cited by R5. ⚠️ **Deliberately not checked in** (public repository; `.gitignore` excludes `docs/*.pdf` as source material not for public distribution). Identify the correct copy by **SHA-256 `d92701c6a0ca7d59db682c18e5049584e924c1c6a1b4244e5a3b4aa189e75a0b`, 22,491,508 bytes** — that hash is the provenance link the repo can carry without republishing the deck |
 | R11 | MoPH facility register — <https://hcode.moph.go.th/> — the public route by which a reader resolves `hospital_code` (§6.7) |
@@ -563,20 +563,25 @@ treats the path as a secret worth protecting.
 > the dev cycle ([OQ-02](#64-open-questions)). Carry the two ordering rules above as
 > requirements; do not read the prototype's styling as normative.
 
-**Copy.** All human-visible text is Thai, held in `messages/th.json` (122 strings)
-through Paraglide configured single-locale (`baseLocale: "th"`, `locales: ["th"]`).
-`messages/en.json` is deliberately not maintained. **The copy is normative** — a
+**Copy.** All human-visible text shown to a person is Thai, held in
+`messages/th.json` through Paraglide. **The copy is authored in English in
+`messages/en.json` and translated to Thai before production** ([ADR 0010](adr/0010-copy-is-authored-in-english-and-translated-before-production.md)):
+development runs `baseLocale: "en"`, `locales: ["en", "th"]`, production runs
+`baseLocale: "th"`, `locales: ["th"]`, and `strategy: ["cookie", "baseLocale"]`
+throughout — the `url` strategy is never added. Both catalogues are checked in and
+maintained; a copy change touches both in one commit. One catalogue covers the
+Angular screens **and** the four NestJS emails. **The copy is normative** — a
 change to a sentence is a change to a decision (§16.3). Six strings are
-load-bearing:
+load-bearing; the table names **keys**, and the catalogues hold the prose:
 
-| String | Carries |
+| Key | Carries |
 |---|---|
-| *"นี่ไม่ใช่ปุ่มดาวน์โหลด"* | the approval gate, stated first, before anything else on the page |
-| *"การไม่อนุมัติจะไม่แจ้งเหตุผล"* | the no-reason rejection, said **up front** rather than sprung at rejection time |
-| the 365-day cap notice | the cap attributed to **upstream**, not to us |
-| *"เคสที่ฉันสอบสวน"* | the `epidem_chw_code` vs `chw_code` trap, made visible at the point of choosing |
-| the email-field warning | the only place a Requester is told a typo will not be caught |
-| the retention sentence | what is kept, that it is indefinite, why, and that Redaction can be requested by phone |
+| `requester_gate_notice` | the approval gate, stated first, before anything else on the page |
+| `requester_no_reason_notice` | the no-reason rejection, said **up front** rather than sprung at rejection time |
+| `requester_span_cap_notice` | the 365-day cap attributed to **upstream**, not to us |
+| `requester_epidem_area_label` | the `epidem_chw_code` vs `chw_code` trap, made visible at the point of choosing |
+| `requester_email_warning` | the only place a Requester is told a typo will not be caught |
+| `requester_retention_notice` | what is kept, that it is indefinite, why, and that Redaction can be requested by phone |
 
 **CLI interfaces** (§17.3) — all on the Docker host, all requiring shell access,
 which is the deliberate bar for privileged operations: Reviewer seeding /
@@ -2724,8 +2729,9 @@ consent that cannot be withdrawn is not consent.
 **Requirement.** **A rule nobody hears is a compliance artefact, not a policy.**
 Both populations are told on a surface they actually see:
 
-- **Requester — at submit.** One Thai sentence in `messages/th.json`, beside the
-  email-typo warning, **above the form and not in a footer**, carrying four
+- **Requester — at submit.** One Thai sentence — `requester_retention_notice`
+  (§16.3) — beside the email-typo warning, **above the form and not in a footer**,
+  carrying four
   things: **what** is kept, that it is kept **indefinitely**, **why** (audit and
   traceability of data releases), and that **Redaction can be requested by
   phone**. Naming the reason is what makes it read as a policy rather than a leak.
@@ -2906,23 +2912,36 @@ to one.
 the Reviewer surface.** English survives as the **message-key layer** and in the
 **Extract's column headers**, with the Thai/English Data dictionary in every
 archive. ***English is in the file, never on the screen.***
-**Paraglide message-format, configured single-locale** (`baseLocale: "th"`,
-`locales: ["th"]`), with `messages/th.json` and `project.inlang/settings.json` at
-the repo root. **`messages/en.json` is deliberately not maintained.**
+**Paraglide message-format.** Development: `baseLocale: "en"`,
+`locales: ["en", "th"]`. Production: `baseLocale: "th"`, `locales: ["th"]`.
+`strategy: ["cookie", "baseLocale"]` throughout — **the `url` strategy is never
+added**, because its default patterns would make `baseLocale` decide which
+language owns `/`. **`messages/en.json` is checked in and permanently maintained**
+as the English source the Thai is translated from ([ADR 0010](adr/0010-copy-is-authored-in-english-and-translated-before-production.md)); only Thai is
+ever served.
 
 **Measure.** The catalogue's job is **governance of the copy, not translation**: a
 change to a sentence must appear as a change to that file, so a reviewer can see
 that a decision moved. Sentences inside Angular templates make a copy change look
 like a template change, **and nobody reviews that as a decision change**. A wrong
-key fails the build rather than rendering an empty element on a live page.
+key in code fails the build, because the compiler emits TypeScript declarations.
+**A key missing from `th.json` does not** — it renders the raw key on a live page,
+silently, with no compiler diagnostic and no strict mode to turn on. §17.1's
+catalogue-parity test is the only thing that catches it ([ADR 0010](adr/0010-copy-is-authored-in-english-and-translated-before-production.md)).
 
 > **The reason is not audience convenience.** Several Thai sentences are **the only
 > record of a decision this design made in prose**. A second served language means
 > writing every promise twice, and two versions drift into two different promises —
 > this design's silently-wrong-artifact hazard, relocated into the UI.
+> **[ADR 0010](adr/0010-copy-is-authored-in-english-and-translated-before-production.md) narrowed this, and only this:** the argument is about *served*
+> languages. With `locales: ["th"]` in production and no `url` strategy, English
+> has no route to a screen, so a drift between the two catalogues is a
+> documentation defect rather than a broken promise to a Requester.
 
-> ⚠️ **Accepted cost: an implementer who does not read Thai cannot read the
-> catalogue directly.** Mitigated by descriptive English keys, not eliminated.
+> ⚠️ **Accepted cost: the Thai copy is unreviewable by domain readers until the
+> staging deploy**, with the screens already built around the strings — the exact
+> inverse of the cost formerly accepted here. Mitigated by reviewing on the running
+> UI rather than in JSON, and by naming the reviewers, not eliminated.
 
 > **The copy is normative; the appearance is not.** This is the exact inverse of
 > the ruling on styling. A rule ("the rejection gives no reason") lets an
@@ -3296,7 +3315,7 @@ waiting for its value. Listed here rather than guessed at.
 | **OQ-03** | **A written artefact of the PDPO consultation for this repository** — a dated memo, the officer's name, the section relied on | Repo owner / PDPO | **Narrowed 2026-09-04, not closed.** The consultation happened and the basis is legal obligation (§18.1, R1). What is missing is anything a later reader or auditor could be shown | §18.1, NFR-18, R1 |
 | **OQ-04** | **Unnamed people the project depends on**: the sponsor (Director, EnvOcc), the **upstream DDS API owner** who holds the token and the data agreement, the **mail relay owner**, the **second named Reviewer**, a **second technical contact** (R13), and **operational ownership after November 2026** (R14) | Project manager | Each is a `TBD` in the charter. The second Reviewer is not merely an account — **the minimum is two *reachable people***, and it is the only TOTP recovery mechanism | `project-charter.md` Resources, Risks |
 | **OQ-05** | The **baseline** for the charter's benefit rows — requests handled manually per year, and staff-hours each | Project manager | Without them, monetised cost-saving and productivity figures would be invented, and the charter does not invent them | `project-charter.md` A11 |
-| **OQ-07** | **The Thai copy catalogue must be written fresh, and must not bring back the decisions it used to assert.** `messages/th.json` was removed with the rest of the code by `a76b2d1`, so there is nothing to correct — but the strings it carried are a list of **rejected decisions** an implementer will otherwise re-derive: `rev_drain_label` / `rev_drain_note` (the drain projection was removed by [ADR 0008](adr/0008-the-pipeline-is-sized-for-one-page.md)), `rev_approve_locked` / `rev_expand_identity` (approve-gated-on-expanding-identity was rejected), `rev_rows_probe_note` (*"เป็นตัวเลขจริง ไม่ใช่ประมาณการ"* — the count may read *pending* or *failed*), `req_step_of` / `req_next` / `req_back` (the stepped wizard was rejected), and six `group_*` keys naming communicable diseases rather than the ten **Disease groups** | Repo owner | **The copy is normative**, so this is a specification of what the new catalogue may not say, not a cleanup. Recover the old file from `git show 6eddf37:messages/th.json` if the Thai wording is worth reusing — but not its decisions | R8 vs §5.4, §10.1, §13.3, §16.3, §16.4 |
+| **OQ-07** | **The Thai copy catalogue must be written fresh, and must not bring back the decisions it used to assert.** `messages/th.json` was removed with the rest of the code by `a76b2d1`, so there is nothing to correct — but the strings it carried are a list of **rejected decisions** an implementer will otherwise re-derive: `rev_drain_label` / `rev_drain_note` (the drain projection was removed by [ADR 0008](adr/0008-the-pipeline-is-sized-for-one-page.md)), `rev_approve_locked` / `rev_expand_identity` (approve-gated-on-expanding-identity was rejected), `rev_rows_probe_note` (*"เป็นตัวเลขจริง ไม่ใช่ประมาณการ"* — the count may read *pending* or *failed*), `req_step_of` / `req_next` / `req_back` (the stepped wizard was rejected), and six `group_*` keys naming communicable diseases rather than the ten **Disease groups** | Repo owner | **The copy is normative**, so this is a specification of what the new catalogue may not say, not a cleanup. Recover the old file from `git show 6eddf37:messages/th.json` if the Thai wording is worth reusing — but not its decisions. **Amended by [ADR 0010](adr/0010-copy-is-authored-in-english-and-translated-before-production.md):** the new catalogue is authored in **English** first and translated before production, so this open question governs `messages/en.json` as much as `messages/th.json`, and the recovered Thai is a translation source, never a decision source | R8 vs §5.4, §10.1, §13.3, §16.3, §16.4 |
 
 ### 6.5 Dev-cycle asks, restated as a checklist
 
@@ -3356,3 +3375,4 @@ And, at deployment (§17.4):
 | 1.1 | 2026-09-04 | **Six gaps closed and sixteen open questions answered by the repo owner.** *Added:* the Reviewer's identity test and the mandatory call on uncertainty, **not recorded** (FR-09, `spec.md` §10.3, `CONTEXT.md` *Decision*); a ban on case data in application logs with a 72-hour lifetime and a sentinel test (NFR-34, `spec.md` §14.5, §17.1). *Upstream settled:* `chw_code`/`epidem_chw_code` and `group_code` are **bare JSON integers**, normalised by a plain cast — **no padding**, because the geography domain starts at `10`; `group_code` does **not** populate `epidem_report_group_id`; `diagnosis_icd10_list`'s delimiter is a **comma**; the `birth_date` null rate is **estimated below 1%**; `T67.0XXA` is an upstream typo; the Disease group seed **stays embedded**. *Legal:* R1 **reduced from highest to medium** — the PDPO was consulted, basis is **legal obligation** under พ.ร.บ. 2562 (§18.1, NFR-18, X16 withdrawn); a **written artefact** of it remains open (OQ-03). *Mail:* the three test sends were **closed without being made** on the repo owner's ruling that the relay is in official organisational use; §11.1's junk-filing argument withdrawn. ⚠️ Confirmed the same day that **no user reads mail at `moph.go.th`** — there is **no internal leg**, so all mail crosses to public providers and the closing argument covers none of it. Both recorded, neither reconciled. The unobservability premise and ADR 0001 are **unchanged**. Carried as **R18** and §18.13. *Corrected:* **R5 narrowed to `hospital_code` alone** — its headline example, province `01`, does not exist, re-verified against all 77 provinces, 929 districts and 7,451 subdistricts; the second Excel risk in this register found to rest on an unmeasured premise. *Declined as out of scope:* X17 backup and restore (carried as R17), X18 accessibility target, X19 rollback procedure, X20 in-app amendment of the classification, X21 43-แฟ้ม alignment; the source deck **stays out of this public repository**, provenance carried as a SHA-256 in R10. **31 functional requirements, 34 non-functional requirements, 7 open questions, 18 accepted risks.** |
 | 1.2 | 2026-09-04 | **The implementation stack, decided.** §2.4 fixed the architecture but named no libraries, and only one of the gaps was tracked as an open question — so eight decisions that carry requirements were sitting in nobody's court. *New:* **§2.4.1 Implementation stack** and **[ADR 0009](adr/0009-the-extract-writer-is-ours-not-a-librarys.md)**. *Decided:* **Node 26 + pnpm** (pin the exact patch — NFR-30 test 1 is a reproducibility claim); **Drizzle**, promoted from a single passing mention in `spec.md` §13.3 into the stack, because NFR-32's province-seed assert is a boot failure; **no CSV library** — FR-17's eight rules are the fingerprint's definition and ADR 0005's *"one `pnpm up` from breaking silently"* applies harder to the Extract than to the archive it was written about, **conditional on NFR-30 tests 1–2 existing**; **`yazl`** for the archive, the asymmetry justified by the archive not being fingerprinted; **Tailwind + DaisyUI**; **`class-validator` / `class-transformer`**; **Vitest + `supertest` + `unplugin-swc`** — the plugin is not optional, since Vitest's esbuild transform drops decorator metadata and every validator would vanish *in tests only*; **`otpauth` + `qrcode`**, defaults only, because Google Authenticator ignores `algorithm` and `digits` and a SHA-256 secret fails on the phone alone; **`nodemailer`**, with a resolved `sendMail()` barred from ever becoming a `delivery_confirmed` event (ADR 0001). *Ruled out as a dependency:* **Playwright and Cypress** — five of NFR-30's six tests are backend logic and the sixth is an HTTP `GET` with a `Range` header. *Frontend:* **Angular 22**, and **Noto Sans Thai self-hosted** rather than fetched from a font CDN — an internet-facing `moph.go.th` page should not make a third-party request per load; note that Thai stacks vowel and tone marks two levels above the baseline, so DaisyUI's default line-heights clip and raising them is a correctness fix. *Narrowed:* **OQ-02** keeps the wireframe — visual design and spacing only, component choice and typeface having been settled the same day. **31 functional requirements, 34 non-functional requirements, 7 open questions, 18 accepted risks, nine ADRs.** |
 | 1.3 | 2026-09-04 | **OQ-06 closed: the charter re-anchored against `spec.md` v1.2.** `docs/project-charter.md` was written against v1.0 and still told a sponsor that the Extract had **22 columns**, that the worst case was a full-year group `02` extract of **1,141,658 rows in 10–25 minutes**, that the archive was **~20–30 MB**, and that date-chunking was *"mandatory for correctness"*. Every one of those was superseded by [#30](https://github.com/rawinan-soma/dds-sharing/issues/30), [#33](https://github.com/rawinan-soma/dds-sharing/issues/33) and [#34](https://github.com/rawinan-soma/dds-sharing/issues/34). *Corrected throughout:* **23 columns** (21 passthrough + 2 derived); the worst case a Requester can express is **1,952 rows in ~3.5 s**, the widest group by calls **~35 s**, the whole domain **3,861 rows a year**; the archive is **tens of KB**; monthly chunking is gone and the **Span builder** holds the one expression of a date range ([ADR 0008](adr/0008-the-pipeline-is-sized-for-one-page.md)); **25 Report codes**, not 24 — `501` was missing; ADRs **0001–0009** and 33 tickets (#2–#34). *Risk register:* **R1 reduced to medium** — the PDPO was consulted, the gap is now the **written artefact**, not the position; **R11 reduced to low** — no province `01` exists and the Excel row-truncation claim is retired. *Assumptions:* **A1** revised, **A2** flagged as *not* what the PDPO was asked about, **A6** reworded per Report code, **A10** resized. ⚠️ **Every correction makes the engineering problem smaller**, so the charter now says what the real difficulty is — **correctness across up to ten calls per ask** — rather than dropping the withdrawn volume claim in silence. *Also fixed:* R1 of §1.5 pointed at `spec.md` v1.1; the spec has been at **v1.2** since 2026-09-04. **31 functional requirements, 34 non-functional requirements, 6 open questions, 18 accepted risks, nine ADRs.** |
+| 1.4 | 2026-09-04 | **The copy is authored in English and translated before production** ([ADR 0010](adr/0010-copy-is-authored-in-english-and-translated-before-production.md)), reversing §16.3's ruling that `messages/en.json` was deliberately not maintained. *Why the reversal:* the message catalogue **cannot carry a description field** — the inlang SDK data model is three tables with no metadata column, and a sibling `_note` key would compile into a shipped message function — so *"mitigated by descriptive English keys"* was not a mitigation that could be strengthened, it was the ceiling; and the copy is authored by an agent, whose Thai reads badly while its English does not. *The narrowing the reversal rests on:* §16.3's *"two versions drift into two different promises"* is an argument about **served** languages, and with `locales: ["th"]` in production and no `url` strategy English has no route to a screen, so a drift is a documentation defect rather than a broken promise. *Decided:* development `baseLocale: "en"`, `locales: ["en", "th"]`; production `baseLocale: "th"`, `locales: ["th"]`; `strategy: ["cookie", "baseLocale"]` throughout and **the `url` strategy never added**; both catalogues checked in and maintained, changed in one commit; **one catalogue for the Angular screens and the four NestJS emails** — the rejection email's wording is a decision (§10.3) and outside the catalogue it changes as a template edit nobody reviews as one; descriptive keys scoped by surface; the Thai reviewed by the repo owner and named colleagues **on a staging deploy**, not in JSON. *New required test (§17.1):* key-set parity between the two catalogues plus a **U+0E00–U+0E7F assertion** on every `th.json` value — Paraglide has no strict mode, emits no warning for a missing message, and inlang's lint rules were removed in CLI v3, so after the flip a missing key renders **the raw key** on a Requester's screen; and because `en.json` leaves `locales` at the flip, that test is the only thing binding the two files. *Also recorded:* **Paraglide has no Angular support** — the `paraglide-js compile` CLI prebuild step is the only route with primary sources behind it — and `src/paraglide` is deleted at the flip, a stale outdir rendering Thai screens in English. *Cost inverted (§18.14):* no longer the implementer who cannot read a Thai-only catalogue, but the domain reader who cannot check the Thai until staging. *Load-bearing string tables in §16.3 and §3 now name **keys**, not Thai prose* — a third copy in these documents would drift against two it cannot be checked against. **31 functional requirements, 34 non-functional requirements, 6 open questions, 18 accepted risks, ten ADRs.** |
