@@ -6,3 +6,15 @@ docs/*.png
 
 # Local secrets
 .env
+
+# Node — pnpm only, guard against a stray other-manager lockfile
+node_modules/
+package-lock.json
+yarn.lock
+
+# Build output
+dist/
+.angular/
+web/src/paraglide/
+*.tsbuildinfo
+
