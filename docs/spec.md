@@ -1310,6 +1310,13 @@ rows, and there is no facility parameter.
 > the release and the human check is this system's second control. It is the
 > **weak** form — it costs a scroll, not a click, and a Reviewer determined to
 > rubber-stamp still can. A hard gate was available and declined.
+>
+> **Consequence, added by the design (ADR 0009): the decision block is the last
+> element in the document and is neither sticky nor a fixed footer bar.** A
+> sticky action bar puts approve back on screen without the scroll, which returns
+> exactly the click this rule exists to cost — while still satisfying a reading
+> of "below" that only checks source order. Recorded because a sticky bar is the
+> obvious "improvement" someone will propose.
 
 ### 10.3 The Decision
 
@@ -2245,6 +2252,11 @@ contact fields, submit.
 > not collapsed.** A Requester who never opens it receives a CSV with no names in
 > it and files it as broken. *What you will and will not get is visible before any
 > field is filled in, without interaction.*
+>
+> **Consequence, added by the design (ADR 0009): the Requester page contains no
+> `<details>` element, anywhere.** A collapsible is how this requirement gets lost
+> during a tidy-up, and the loss is invisible in review because the content is
+> still on the page.
 
 **The confirmation page** carries the reference number, a restatement of the ask,
 the 24-business-hour service promise, and the telephone number. It must read as

@@ -128,12 +128,74 @@ This is the decision that mattered most, and it is not cosmetic.
 | Prose measure **62ch**, not the usual 75 | With no word spaces, re-finding your place on a long Thai line is harder. |
 | Emails: `mso-line-height-rule: exactly` with the height in px | Without it Word computes its own leading and clips Thai tone marks. Invisible to anyone testing in Gmail. |
 
-### 4. Colour: one institutional accent, and semantic colour reserved for the four states this service actually has.
+### 4. The three scales, stated here rather than only in the stylesheet.
 
-Deep teal-blue `#0A5468` for every action. `#14603C` approve, `#9B1C22` reject,
-`#7A4A00` scheduler-stopped. Nothing else is coloured.
+`prototypes/dds-sharing-ui/assets/tokens.css` is the implementation; this is the
+decision. A scale living only in a CSS file is a scale the next agent re-invents.
 
-Two moves worth naming:
+**Spacing — 4 px base, and only these steps exist.** Density 6/10: a government
+form is a document, not a dashboard, but it is also not a marketing page.
+
+| Token | Value | Token | Value |
+|---|---|---|---|
+| `--space-1` | 4 px | `--space-6` | 24 px |
+| `--space-2` | 8 px | `--space-8` | 32 px |
+| `--space-3` | 12 px | `--space-10` | 40 px |
+| `--space-4` | 16 px | `--space-12` | 48 px |
+| `--space-5` | 20 px | `--space-16` | 64 px |
+
+Component-level: `--control-height` **44 px** (every input and every button),
+`--control-height-sm` 36 px, `--panel-padding` 24 px, `--field-gap` 20 px.
+Radii 4 / 8 / 12 px. Two shadows only, both near-invisible — **a record does not
+float**, so there is deliberately no elevation ramp.
+
+**Type — 1.125 ratio, base 16 px, deliberately flat.** A steep ramp is a
+landing-page device; here the largest thing on any screen is a reference number
+someone reads down a telephone.
+
+| Token | Size | Used for |
+|---|---|---|
+| `--fs-3xs` | 13 px | **the floor.** Metadata only — never a sentence |
+| `--fs-2xs` | 14 px | help text, chips, table meta |
+| `--fs-xs` | 15 px | labels, buttons |
+| `--fs-sm` | 16 px | **body** |
+| `--fs-md` | 17 px | long Thai prose |
+| `--fs-lg` | 19 px | h3 |
+| `--fs-xl` | 22 px | h2 |
+| `--fs-2xl` | 26 px | h1, reference number |
+| `--fs-3xl` | 32 px | unused today; reserved |
+
+Line-heights are a separate axis because Thai needs them to be: `--lh-tight`
+1.35 (headings ≥ 1.25 rem only), `--lh-snug` 1.55, `--lh-body` 1.75,
+`--lh-prose` 1.8. Weights 400 / 500 / 600 / 700 — no 300, which disappears in
+Thai at body size. Measure `--measure-prose` **62ch**, not the usual 75: with no
+word spaces, re-finding your place on a long Thai line is harder.
+
+**Colour — one institutional accent, and semantic colour reserved for the states
+this service actually has.** Deep teal-blue `#0A5468` for every action.
+`#14603C` approve, `#9B1C22` reject, `#7A4A00` scheduler-stopped. Nothing else
+is coloured.
+
+| Semantic token | Value | Contrast on white |
+|---|---|---|
+| `--text-primary` | `#12181F` | 17.9:1 |
+| `--text-secondary` | `#48535F` | 7.8:1 |
+| `--text-tertiary` | `#64707C` | 5.1:1 |
+| `--line-control` | `#78828E` | 3.9:1 — and 3.5:1 on the tinted Reviewer ground |
+| `--line-hairline` | `#DDE2E7` | decorative only; never a control border |
+| `--action-fill` | `#0A5468` | 8.5:1 · white on it, 8.5:1 |
+| `--state-good-text` | `#14603C` | 7.6:1 |
+| `--state-bad-text` | `#9B1C22` | 8.1:1 |
+| `--state-warn-text` | `#7A4A00` | 7.5:1 |
+| `--surface-page` | `#F2F4F6` | — |
+| `--surface-panel` | `#FFFFFF` | — |
+
+**Three layers, and markup names only the middle one.** Primitive (`--c-ink-900`
+— what it is) → semantic (`--text-primary` — what it means) → component
+(`--control-height` — where it applies). Renaming a primitive must not touch a
+template.
+
+**Two colour moves worth naming:**
 
 - **The approval-gate notice is the only filled dark ground in the system**
   (`#06333F`). It is the one block that must not be skimmed past, and it says

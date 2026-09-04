@@ -507,6 +507,9 @@ fields, submit.
 > not collapsed.** *What you will and will not get is visible before any field is
 > filled in, without interaction.* A Requester who never opens it receives a CSV
 > with no names in it and files it as broken.
+>
+> **Consequence (ADR 0009): the Requester page contains no `<details>` element,
+> anywhere.** A collapsible is how this requirement gets lost during a tidy-up.
 
 **The Reviewer surface** (§10) is a **split queue** — list left, detail right —
 that **does not auto-refresh** (a polling screen resets the idle timer for ever,
@@ -516,17 +519,28 @@ and an idle timeout that never fires is not a timeout, §10.5).
 > and the ask.** Approve must not be reachable without passing what is being
 > judged. This is the **weak** form — it costs a scroll, not a click; a hard gate
 > was available and declined.
+>
+> **Consequence (ADR 0009): the decision block is the last element in the
+> document and is neither sticky nor a fixed footer bar.** A sticky action bar
+> returns the click this rule exists to cost while still satisfying a reading of
+> "below" that only checks source order.
 
 `/reviewer` is **not linked from the public app, `noindex`, and no security is
 claimed for the URL.** Reviewers arrive by bookmark. Say so, so nobody later
 treats the path as a secret worth protecting.
 
-> ⚠️ **Visual design is not settled here.** The prototype
-> ([`prototype/requester-reviewer-ui`](https://github.com/rawinan-soma/dds-sharing/tree/prototype/requester-reviewer-ui))
-> settled **structure, ordering and copy only**. Spacing, typography and component
-> choice come from a wireframe the repo owner supplies during the dev cycle
-> ([OQ-05](#64-open-questions)). Carry the two ordering rules above as
-> requirements; do not read the prototype's styling as normative.
+> ✅ **Visual design is settled, 2026-09-04.** The #11 prototype settled
+> **structure, ordering and copy only**, and its styling never was normative. The
+> visual layer is
+> [`prototypes/dds-sharing-ui/`](../prototypes/dds-sharing-ui/) — runnable HTML
+> and CSS covering all seven routes, the reviewer password-change form, the
+> session toast, the scheduler banner, the Alert items, and the four Thai emails.
+> The decisions behind it — **no component library, one shared CSS token
+> stylesheet, IBM Plex Sans Thai self-hosted, the spacing / type / colour scales,
+> and a WCAG 2.2 AA contrast target** — are recorded in
+> [ADR 0009](adr/0009-the-visual-layer.md), which is where they are reopened.
+> Carry the two ordering rules above as requirements; the design tightens both
+> (see the consequences noted with each) but does not change them.
 
 **Copy.** All human-visible text is Thai, held in `messages/th.json` (122 strings)
 through Paraglide configured single-locale (`baseLocale: "th"`, `locales: ["th"]`).
@@ -2992,6 +3006,52 @@ against a request that is hard to judge.***
 
 ---
 
+#### NFR-34 — Accessibility and Thai legibility
+
+**Requirement. WCAG 2.2 level AA**, plus four Thai-specific rules that are not
+in WCAG and are not cosmetic.
+
+1. **Contrast.** Text ≥ 4.5:1; UI components and control borders ≥ 3:1 — the
+   latter **on both surfaces**, the Requester's white and the tinted Reviewer
+   ground, which is what fixes `--line-control` at `#78828E` rather than a
+   lighter grey.
+2. **Focus.** One visible indicator everywhere: 2 px outline, 2 px offset, with
+   a white inner ring on filled buttons so it clears 3:1 against the fill *and*
+   the page. Never removed.
+3. **Target size.** Every control is **44 px**, not the 24 px AA floor. The two
+   buttons that matter are irreversible and one puts a named person on a data
+   release, so the whole set is sized for the worst one.
+4. **Colour never carries meaning alone.** Every state chip names its state in
+   words.
+5. **Errors** are inline, linked by `aria-describedby`, announced with
+   `role="alert"`, and summarised in a focusable block at the top of the form.
+   An error summary never replaces the inline error.
+6. **Thai legibility.** Body line-height **1.75** and running prose **1.8**,
+   because Thai stacks four levels and Latin's 1.5 clips tone marks against the
+   line above · **`letter-spacing: 0` everywhere**, because Thai renders as
+   clusters and has no word spaces, so tracking reads as word breaks · **never
+   `text-align: justify`**, which stretches glyphs when there are no spaces to
+   stretch · **13 px hard floor**, metadata only, because tone marks disappear
+   first.
+7. **`prefers-reduced-motion`** honoured. Motion is near-absent by design.
+
+**Measure.** Every text pair in the token set was computed, not eyeballed; the
+figures are in [ADR 0009](adr/0009-the-visual-layer.md) §4. The Thai rules are
+verifiable by inspection of the shared stylesheet, which is one artefact and not
+per-component.
+
+> ⚠️ **The email templates are the exception and need their own check.**
+> Outlook's Word rendering engine computes its own leading and **clips Thai tone
+> marks** unless `mso-line-height-rule: exactly` is set with the height in px.
+> This is invisible to anyone testing in Gmail, so it must be verified in a real
+> Outlook client — alongside [#38](https://github.com/rawinan-soma/dds-sharing/issues/38)'s
+> three test sends, not instead of them.
+
+**Source:** [ADR 0009](adr/0009-the-visual-layer.md) · [#38](https://github.com/rawinan-soma/dds-sharing/issues/38). **No accessibility or contrast
+target existed in any document before 2026-09-04.**
+
+---
+
 ## 6. Others
 
 ### 6.1 Glossary
@@ -3034,6 +3094,12 @@ of this SRS can tell whether a term is a domain term or ordinary prose.
 | **Snapshot** | What a Reviewer had on screen, carried by their Decision. **Never the contact details.** | — |
 | **Extract fingerprint** | Row count, column count, both sizes, and a SHA-256 of the Extract's bytes. **Attests content, not provenance.** | Manifest, receipt |
 | **Redaction** | Manual removal of one Requester's contact details by a named operator. A courtesy, never an expiry, never a retention rule. | Erasure, purge, deletion |
+| **Approval-gate notice** | The first block on the Request form, stating that a named human reads it — *"นี่ไม่ใช่ปุ่มดาวน์โหลด"*. The only filled dark ground in the service. | Banner, hero, disclaimer |
+| **De-identification block** | The region above the form listing what the Extract will and will not contain. **Open, above the form, never collapsible.** | Privacy notice, accordion |
+| **Decision block** | Approve, reject and the internal note. **Last element in the document; never sticky.** | Action bar, footer, toolbar |
+| **Scheduler banner** | The Thai banner on the queue from a heartbeat stale > 5 min. Amber, not red; states what the stall means for the Reviewer's work. | Error banner, outage notice |
+| **Session warning** | The bottom-left toast at T-5 minutes. **Not a modal, not a banner**, and it does not auto-dismiss. | Modal, dialog, idle warning |
+| **Design token** | One named value in the shared stylesheet, in three layers. Markup names only the semantic layer. | Variable, theme value, constant |
 
 **Abbreviations.** DDC — กรมควบคุมโรค, Department of Disease Control. EnvOcc —
 กองโรคจากการประกอบอาชีพและสิ่งแวดล้อม. สคร. — DDC's regional disease-control offices.
@@ -3117,6 +3183,7 @@ time-based one-time password. ICT — Indochina Time (Asia/Bangkok, UTC+7).
 | NFR-31 | Configuration and secrets | §10.5, §11.2, §13.2, §16.2 | #16, #17 | — |
 | NFR-32 | Deployability and reversibility | §6.4, §16.1, §17.4 | #16, #26 | 0003 |
 | NFR-33 | Two ordering rules | §10.2, §16.4 | #11, #33 | — |
+| NFR-34 | Accessibility and Thai legibility | §3.1, §10.2, §16.3, §16.4 | #38 | 0009 |
 
 #### 6.2.3 Coverage the other way — every closed issue lands somewhere
 
@@ -3212,7 +3279,7 @@ guessed at.
 | **OQ-02** | Does the relay actually deliver, and **where does the mail land**? Three test sends: a Reviewer `moph.go.th` mailbox, an external non-ministry address, and the bounce destination | Mail relay owner | Each confirms *where it landed*, not that it was accepted. The bounce test is the **least** important — we have decided not to read that mailbox. Also: **confirm the relay hostname verbatim**; `uc-workd` is close enough to a typo to warrant one deliberate check | §11.2, §17.2 |
 | **OQ-03** | `diagnosis_icd10_list`'s **delimiter** | Dev cycle | If a comma, every such value quotes; if `\|` or `;`, nothing in the file ever quotes. Pinned by a required test (NFR-30) | §8.2 r5, §17.1, §17.2 |
 | **OQ-04** | The **`birth_date` null rate** | Dev cycle | If material, the answer is **re-admitting upstream `age_y` to the allowlist as an allowlist change** — **never a quiet fallback inside the derivation** | §6.1 r6, §17.2, [ADR 0002](adr/0002-derived-extract-columns-anchored-to-the-case.md) |
-| **OQ-05** | The **wireframe** | Repo owner | Visual design, spacing, typography and component choice. The two ordering rules (NFR-33) are settled and are not the wireframe's to change | §16.4, §17.2 |
+| ~~**OQ-05**~~ | ~~The **wireframe**~~ — **ANSWERED 2026-09-04** | Repo owner | Delivered as [`prototypes/dds-sharing-ui/`](../prototypes/dds-sharing-ui/); visual design, spacing, typography, component choice and the contrast target recorded in [ADR 0009](adr/0009-the-visual-layer.md). The two ordering rules (NFR-33) were not changed | §16.4, §17.2, [#38](https://github.com/rawinan-soma/dds-sharing/issues/38) |
 | **OQ-06** | Does upstream's `diagnosis_icd10` hold **`T67.0XXA`** verbatim? It carries an ICD-10-**CM** 7th-character extension the rest of the list does not use | Dev cycle | Affects nothing structural; a data-quality note for `heat` | R5, [#30](https://github.com/rawinan-soma/dds-sharing/issues/30) |
 | **OQ-07** | Upstream's JSON **type** for `chw_code` / `epidem_chw_code` — `"10"` or `10` | Dev cycle | Absorbed by normalising to string before comparing (FR-15); confirmation only | §4.6 |
 | **OQ-08** | Is `group_code` sent as a bare integer or zero-padded/string? | กองระบาดวิทยา / dev cycle | The seed shows `201`; confirm against a real payload | R5 open question 1 |
@@ -3240,7 +3307,7 @@ rule already waiting for it** — none is a design question (§17.2).
 - [ ] Supply **`SMTP_PORT`, `SMTP_PASS`, `FRONTEND_URL`** (OQ-01) and run the
       **three test sends** (OQ-02), each confirming *where the mail landed*.
 - [ ] Confirm the **relay hostname verbatim** (OQ-02).
-- [ ] Supply the **wireframe** (OQ-05).
+- [x] Supply the **wireframe** (OQ-05) — `prototypes/dds-sharing-ui/`, ADR 0009, [#38](https://github.com/rawinan-soma/dds-sharing/issues/38).
 
 And, at deployment (§17.4):
 
