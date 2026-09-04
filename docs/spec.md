@@ -1,6 +1,6 @@
 # DDS Sharing — Specification
 
-**Status:** complete for implementation. Version 1.1, 2026-09-02.
+**Status:** complete for implementation. Version 1.2, 2026-09-04.
 One open item, flagged at the end of §19 and tracked as
 [#33](https://github.com/rawinan-soma/dds-sharing/issues/33): the worst-case row
 volume rests on a Report code no Disease group can reach.
@@ -270,9 +270,24 @@ data. Verified properties an implementer may rely on:
   `amp_code[:2] == chw_code`, `tmb_code[:4] == amp_code`. Verified with zero
   orphans and zero prefix violations across all districts and subdistricts.
 - Therefore **a province filter is a prefix test, not a join.**
-- `chw_code` and `epidem_chw_code` draw on the same code domain. Upstream's JSON
-  *type* for these is unconfirmed (`"10"` vs `10`); **normalise to string before
-  comparing**.
+- `chw_code` and `epidem_chw_code` draw on the same code domain. **Upstream sends
+  them as JSON numbers (`10`, not `"10"`)** — confirmed 2026-09-04 — so
+  **normalise to string before comparing**. A plain cast is sufficient and no
+  padding is needed, **because of the bullet above**: the domain starts at `10`,
+  so no geography code can lose a leading zero in transit. Verified against the
+  reference data — zero codes beginning `0` across all 77 provinces, 929
+  districts and 7,451 subdistricts.
+- **`group_code` is likewise a bare integer** (`201`, not `"201"`) — confirmed
+  2026-09-04. It is sent, never parsed back from a response: the extraction job
+  knows which Report code it asked for.
+
+> **`group_code` does not populate `epidem_report_group_id`** — confirmed with
+> กองระบาดวิทยา, 2026-09-04, closing an inference drawn from p.18 of the source
+> deck. **Nothing in this design depended on it**, and that is not luck: the
+> pipeline makes **one call per Report code** (§7.2), so the job already knows
+> which code a row belongs to from the request it made. **Do not read the Report
+> code back out of a response field.** `epidem_report_group_id` is upstream's own
+> grouping, it means something else, and it is not in the allowlist.
 
 ### 4.7 Contact fields
 
@@ -299,8 +314,11 @@ a control. It survives the approval gate unchanged: the gate replaces it as a
 
 **A Report code is upstream's unit; a Disease group is the Requester's.** There
 are **25 Report codes today** — `201`–`224` plus `501` (Heat Stroke, โรคลมแดด) —
-seeded from `docs/research/003-disease-group-codes.md`; there is no upstream
-lookup endpoint. **The set is neither 24-valued nor contiguous**, and code must
+seeded from `docs/research/003-disease-group-codes.md`. **Confirmed 2026-09-04:
+the seed stays embedded.** Where a list is supplied it covers **EnvOcc diseases
+only**, which is this service's scope anyway (§5.3) — so a supplied list changes
+how the seed is *maintained*, never how it is *read at runtime*. **Do not fetch
+the classification at boot or per Request.** **The set is neither 24-valued nor contiguous**, and code must
 never assume it is: `501` sits far outside the EnvOcc block and arrived after the
 first 24 were written down. A **Disease group** is a named family of one or more
 of them, classified by DDC's own officers. See ADR 0006.
@@ -1313,6 +1331,34 @@ rows, and there is no facility parameter.
 
 ### 10.3 The Decision
 
+**What the Reviewer judges.** Two of the five contact fields carry the judgement:
+the **name** and the **Workplace**. The Reviewer asks one question of them —
+*does this person exist today, and do they work at the Workplace they named?*
+That question is the whole test. Size is never a second one
+([ADR 0007](adr/0007-the-reviewers-gate-is-identity-not-size.md)).
+
+**Uncertainty is not a rejection. It is a telephone call.** Where the Reviewer
+cannot answer that question from what is on screen, they **contact the Requester**
+on the supplied number **before** deciding either way. Rejecting the uncertain
+case is not the safe default: it silently converts *"I could not tell"* into
+*"this person is not who they say"*, and the Requester is never told which.
+
+> **The call is not recorded** (decided 2026-09-04). No event enters §12.4's
+> catalogue and no field appears on the Reviewer's screen. **The cost, stated
+> rather than discovered:** in exactly the cases where the gate worked hardest,
+> the record shows a Decision and a **Snapshot** with no trace of what resolved
+> the doubt — a reader years later cannot tell a telephoned Decision from a
+> glanced-at one. Accepted because the alternative is a field a Reviewer fills in
+> under time pressure, whose accuracy nothing checks, and which would read as
+> evidence.
+
+> **Stated so nobody mistakes the call's strength: telephoning confirms that the
+> contact details reach a person who answers to the name. It cannot confirm the
+> Workplace, because the only source being asked is the person making the
+> claim.** The call raises the cost of a false identity; it does not close it.
+> This is the same **weak form** as the button placement in §10.2 — and it is the
+> human half of the control §18.4 accepts in place of a credential.
+
 **Approve or reject. Nothing else.** A Reviewer cannot modify a Request: an
 editable Request breaks the audit chain, because what was approved would no longer
 be what was asked and the record could not say which the human actually judged.
@@ -1487,11 +1533,35 @@ changed.)*
 State it in those words. It is a premise, not a footnote.
 [ADR 0001](adr/0001-email-delivery-is-unobservable.md).
 
-Why: the relay sends from `ddc.mail.go.th` to Reviewer recipients on
-`moph.go.th` — **a cross-domain hop even for the "internal" case**; the relay
-itself sits on a **non-government domain**, exactly the SPF/DKIM/DMARC shape that
-fails silently as junk; and **bounces return to `envocc@ddc.mail.go.th`, a mailbox
-this application does not own**.
+Why: **every recipient is outside the ministry's mail domains.** Confirmed
+2026-09-04 — **no user of this service, Reviewers included, reads mail at
+`moph.go.th`**; they are on public providers. So the earlier framing of an
+*"internal"* Reviewer hop and an *"external"* Requester hop was wrong: **there is
+no internal leg. Every message this service sends crosses to a public mail
+provider** and is filtered by that provider's rules, not by any arrangement inside
+DDC. Bounces, meanwhile, **return to `envocc@ddc.mail.go.th`, a mailbox this
+application does not own**.
+
+> **Junk filing was withdrawn as the leading example, 2026-09-04.** This section
+> used to argue that the relay's **non-government domain**
+> (`mailrelay.uc-workd.com` under an `@ddc.mail.go.th` sender identity, §11.2) was
+> *"exactly the SPF/DKIM/DMARC shape that fails silently as junk"*. **The repo
+> owner rules otherwise: the relay is in official organisational use and its mail
+> is not filed as spam.** That ruling is recorded as given.
+>
+> ⚠️ **Read it against the paragraph above, which was confirmed the same day.**
+> The relay's standing inside DDC is a fact about the **sender**; with every
+> recipient on a public provider, **none of the traffic is judged by anyone who
+> knows that.** The ruling and the all-external recipient list were given
+> together and pull in opposite directions; both are recorded, neither is
+> reconciled, and nothing was tested — see §18.13.
+>
+> **The premise above is unaffected either way.** Unobservability is not a claim
+> about spam: even a relay that never junks anything cannot tell this application
+> that a message reached a human. Every mechanism built on the premise — the
+> Collection lapse Alert, `expired_uncollected`, the operator banner — stands
+> unchanged, and **§11.1 is not weakened by the ruling; it is now carried by the
+> recipient list instead.**
 
 **An application-owned bounce mailbox was offered and declined.** It is a new
 moving part and a new deployment dependency, and it still misses the dominant
@@ -1768,6 +1838,9 @@ exact format — Buddhist-era year, what the counter resets on, whether it must 
 unguessable — is free to change, because a key that is not finished being designed
 should not be load-bearing in a record that can never be migrated by deletion. It
 is quoted over the telephone, so it does not need to be unguessable.
+**Settled 2026-09-04: this section is the answer.** The shape above is the format,
+and its freedom to change is the decision — not a gap waiting on one. What the
+counter resets on is an implementer's choice, constrained only by the shape.
 
 **It first appears on the confirmation page**, and there is no receipt email, so a
 Requester who closes that tab loses it until the Decision email arrives. Nothing
@@ -2045,6 +2118,43 @@ lives in `job_failed` and is operator-facing only.
 - **It is a debugging tool carrying no watcher obligation.** The watching duty sits
   entirely on `/health` and the Reviewer queue.
 
+### 14.5 Application logs
+
+**Application logs are kept for 72 hours, then deleted — the same clock as the
+Extract.** They are operator-facing, they live on the Docker host, and they are
+**not** part of the audit record: nothing in §12 may be reconstructed from them,
+so deleting them takes nothing §12.7 promises to keep.
+
+**No case data ever reaches a log line.** That ban is the control; the 72-hour
+lifetime is the backstop behind it. Concretely:
+
+- The pipeline stages of §7 log **counts, Report codes, page numbers and elapsed
+  time** — never a row, and never a field of a row. A projection error logs the
+  **row index**, never the row.
+- The upstream client logs **status, Report code, page number and
+  `meta.total_items`** — **never a response body.** An error carrying a body is
+  logged with the body **removed, not truncated**: a truncated body is still case
+  data, and it reads as though somebody had thought about it.
+- A **BullMQ job payload carries the Request id and nothing fetched**, so a failed
+  job sitting in Redis holds no rows.
+
+> **Why the ban and the clock both.** The ban is the control, because a log line
+> has none of the three things that make the 72-hour rule trustworthy elsewhere:
+> the allowlist decides what may exist (§6), the destruction rule ends it (§9.3),
+> and the **Extract fingerprint** records what left (§8.3). A log has no
+> allowlist, no fingerprint and no audit event. **The matching clock is defence in
+> depth** — if some unhandled path ever breaks the ban, the breach expires on the
+> same schedule as the data it copied instead of outliving it. Aligning the two
+> numbers is not what makes this safe, and nobody should later read the matching
+> numbers as the reason.
+
+> ⚠️ **The accepted cost, recorded so it is not rediscovered: a fault that fires
+> on a Friday has no logs by Monday.** `/health` reddens only after **two
+> consecutive** extraction failures (§14.1), and this is a one-operator service
+> (SRS §6.3 R13). Diagnosis therefore depends on the operator looking inside three
+> days, or on the audit record alone — which holds the **fact** of the failure
+> (`job_failed`, §12.4) but never its cause.
+
 ---
 
 ## 15. Scheduled work
@@ -2278,10 +2388,13 @@ judge.**
   the whole reason the fingerprint moved off the zip is that a non-reproducible
   hash went unread for weeks.
 - **`diagnosis_icd10_list` quoting.** It is the only plausibly quotable column
-  left, and its delimiter is not on record. If it is a comma, every such value
-  quotes; if it is `|` or `;`, nothing in the file ever quotes. **A delimiter
-  surprise splits a field into two and shifts every later column on that row — a
-  corruption §7.5 counts rows, not columns, and so would not catch.**
+  left, and **its delimiter is a comma** — confirmed 2026-09-04. **So every
+  multi-code value in that column quotes**, and the CSV writer's quoting rule
+  (§8.2 r5) is exercised on real data rather than theoretically. Pin it with a
+  fixture: a row whose `diagnosis_icd10_list` holds two codes must round-trip
+  through the writer as one quoted field. **A delimiter surprise splits a field
+  into two and shifts every later column on that row — a corruption §7.5 counts
+  rows, not columns, and so would not catch.**
 - **The span builder is the only date arithmetic.** Assert that the Probe and the
   extraction job, given the same Request, produce byte-identical `start_date` and
   `end_date` — and that an inclusive `to` of 31 Dec yields an exclusive
@@ -2311,17 +2424,23 @@ judge.**
   **writing no response data to disk**. An unknown code returns `200` with
   `data: []` (§5.2), so absence and emptiness are indistinguishable — which is why
   this needs a human comparing against a DDC announcement, not a green build.
+- **No case data in a log.** Run a job against the fake upstream harness (§17.3)
+  with a **sentinel string planted in every fetched field**, capture everything
+  the process writes to its log, and assert the sentinel never appears. Exercise
+  it on the harness's **500 mid-loop, truncated page and auth-expiry** paths —
+  those are exactly where an error handler reaches for the response body.
+  **Without this test, §14.5's ban is a comment.**
 - **Large-download smoke test through the real ministry edge** — see §17.4.
 
 ### 17.2 Dev-cycle asks
 
 | Ask | Why |
 |---|---|
-| Measure the **`birth_date` null rate** | Rule 6 leaves `onset_age` blank where `birth_date` is null. If the rate is material, the answer is **re-admitting upstream `age_y` to the allowlist as an allowlist change** — never a quiet fallback inside the derivation |
-| Confirm `diagnosis_icd10_list`'s **delimiter** | see §17.1 |
+| ~~Measure the **`birth_date` null rate**~~ | **CLOSED 2026-09-04: estimated below 1% by the repo owner, which is not material.** The blank stands and `age_y` is **not** re-admitted to the allowlist. ⚠️ The figure is an **estimate, not a measurement** — if a real extract shows a material rate, the answer is still re-admitting `age_y` **as an allowlist change**, never a quiet fallback inside the derivation |
+| ~~Confirm `diagnosis_icd10_list`'s **delimiter**~~ | **CLOSED 2026-09-04: it is a comma.** Every multi-code value quotes; see §17.1 |
 | `SMTP_PORT`, `SMTP_PASS`, `FRONTEND_URL` | §11.2 |
-| **Three test sends**, each confirming *where the mail landed* rather than that it was accepted: a Reviewer `moph.go.th` mailbox, an external non-ministry address, and the bounce destination | §11.1. The bounce test is the least important of the three — we have decided not to read that mailbox |
-| Confirm the relay hostname **verbatim** | `uc-workd` is close enough to a typo to warrant one deliberate check |
+| ~~**Three test sends**~~ | **CLOSED 2026-09-04 without being made.** The repo owner rules that the relay is in official organisational use and its mail is not filed as spam. Recorded as an accepted risk — §18.13 |
+| ~~Confirm the relay hostname **verbatim**~~ | **Folded into the config supply above.** `uc-workd` is still close enough to a typo to be worth reading twice when `.env` is written — but nothing now tests it, §18.13 |
 | The **wireframe** | §16.4 |
 
 ### 17.3 Build artefacts this spec requires
@@ -2468,26 +2587,36 @@ Every item here was put explicitly, weighed, and adopted. **None is an oversight
 A specification that hides its trade-offs cannot be reviewed by whoever owns the
 DDC data agreement, and this section exists so it can be.
 
-### 18.1 There is no PDPA lawful basis on record for the Extract, by decision
+### 18.1 The lawful basis is legal obligation; the PDPO was consulted — REVISED 2026-09-04
 
-**No PDPO consultation was sought and no §26 basis is recorded.** The repo owner's
-position is that with `tmb_code` and `epidem_tmb_code` dropped, the **Extract is
-non-personal data**, so no ruling is required. That position was ruled in
-deliberately; it is not a gap nobody noticed.
+**The repo owner has consulted the DDC PDPO, and the position is that the release
+rests on legal obligation** — the department's own duty to run occupational and
+environmental disease surveillance under
+**พ.ร.บ.ควบคุมโรคจากการประกอบอาชีพและโรคสิ่งแวดล้อม พ.ศ. 2562**. This **supersedes
+the previous entry**, which said no basis existed and none had been sought.
 
-**The approval gate is an accountability record, not a lawful basis.** It supplies
-a named human accountable per release, which is real and which the design
-previously lacked. It supplies nothing else on this question.
+**Two things it does not do, stated so the difference is not lost:**
 
-**No DDC sign-off exists on releasing case-level DDS data to the open internet.**
-Separate from the PDPA question and also not sought. §17.4 fixes part of it by
-requiring the VM request to state what the service publishes, so the person
-granting it carries part of the decision knowingly.
+- **It does not put a written ruling in this repository.** The consultation
+  happened; **no artefact of it is checked in** — no dated memo, no named PDPO
+  officer, no cited section. A basis nobody can produce on request is
+  indistinguishable, to a later reader or an auditor, from one that was never
+  obtained. **The gap is now the record, not the position.**
+- **It does not make the approval gate a lawful basis.** The gate remains an
+  **accountability record**. That distinction was the sharpest thing the old §18.1
+  said, and it survives the revision intact — *precisely because the gate feels
+  like it closes the compliance hole, and that feeling is how the paperwork never
+  gets chased.*
 
-**The repo owner owns the DDC data agreement and owns this risk.**
+**What is unchanged:** the de-identification argument the position rests on —
+`tmb_code` and `epidem_tmb_code` are dropped, so the repo owner's reading is that
+the Extract is non-personal data. **The risks that reading carries are §18.2 and
+§18.3, and neither is softened by the consultation.** §18.2 in particular says the
+finest *named* geography is not the finest *effective* geography, which is an
+argument about whether the de-identification claim holds at all.
 
-**Reversal path:** the kill switch (§17.4), and then a fresh effort against a
-redrawn scope.
+**Reversal path is unchanged:** the kill switch (§17.4), then a fresh effort
+against a redrawn scope.
 
 ### 18.2 The Extract's finest *named* geography is not its finest *effective* geography
 
@@ -2541,13 +2670,30 @@ account / Provider ID RBAC — **no anonymous access**. The Requester surface he
 has no login. As specified, this service is a weaker door onto records derived
 from the same source, with a human gate in front of it rather than a credential.
 
-### 18.5 Excel silently corrupts the leading-zero geography codes
+### 18.5 Excel silently corrupts a leading-zero `hospital_code` — NARROWED 2026-09-04
 
-`chw_code`, `amp_code`, `epidem_chw_code`, `epidem_amp_code` and `hospital_code`
-are zero-padded numeric strings. **Excel-on-double-click parses `01` as the number
-`1`, while Bangkok's `10` is unaffected — so the file looks correct while only the
-leading-zero provinces are quietly corrupted.** Quoting does not prevent it;
+⚠️ **This risk was stated far too widely, and its headline example does not
+exist.** It named `chw_code`, `amp_code`, `epidem_chw_code` and `epidem_amp_code`
+as *"zero-padded numeric strings"* and offered `01` → `1` as the corruption.
+**There is no province `01`.** The domain runs **10–96** and the hierarchy is
+prefix-nested at 2 / 4 / 6 digits, so no geography code in this Extract can begin
+with a zero — §4.6 said so all along, and this section contradicted it.
+Re-verified 2026-09-04 against the reference data: **zero codes beginning `0`
+across 77 provinces, 929 districts and 7,451 subdistricts.**
+
+**What survives is `hospital_code` alone.** It is a facility code, it is not
+prefix-nested, and **this repository deliberately holds no facility list** (§6.7,
+X14) — so whether any in-scope `hospital_code` begins with a zero is **not
+verifiable from this repo**, and is not asserted here either way. If one does,
+Excel-on-double-click parses it as a number and quoting does not prevent it;
 Excel's type inference ignores quotes.
+
+> **Why the correction is recorded rather than applied silently.** This is the
+> **second** Excel risk in this register found to rest on an unmeasured premise —
+> §18.6 was the first. Both were accepted because the mechanism sounded right, and
+> in both cases nobody checked the data that was already in the repository. **The
+> reasoning that accepts these is the thing to distrust, not the individual
+> claim.**
 
 Two repairs were considered and rejected: **`="01"` formula-escaping** corrupts the
 file for pandas in order to fix it for Excel, and puts a formula-injection vector
@@ -2604,7 +2750,92 @@ Reviewer's approvals failed and how fast they responded).
 **They are told, at seeding and first login** (§12.9) — not in this document,
 which they will never read.
 
-### 18.11 Smaller accepted costs, recorded so they are not rediscovered
+### 18.11 The record exists on one disk, and there is no copy of it
+
+**Backup, restore and disaster recovery were put explicitly and declined**
+(2026-09-04). The audit record is permanent and append-only (§12.7) and is **the
+thing this project was built to create** — the charter's first problem is that
+today *"there is no record of who released what to whom"*. It lives in one
+PostgreSQL, on one Docker host (§17.4).
+
+**A disk failure destroys every Decision, Snapshot and Extract fingerprint the
+service has ever made.** No **Reviewer**'s accountability survives it, and nothing
+reconstructs it: the **Extracts** were deleted at 72 hours by design, and upstream
+holds no copy of what was released from here.
+
+> **What makes this exposure unusual is its shape.** Everything else in this
+> design that could be lost was made disposable on purpose — the **Extract
+> archive** at 72 hours (§9.3), Redis by AOF replay (§7.7). **The record is the
+> one thing that was made permanent, and it is the one thing with no second
+> copy.** Accepted, and recorded here rather than left as an assumption that a VM
+> snapshot exists somewhere.
+
+**Reversal path:** a scheduled `pg_dump` and one tested restore. Neither is in
+scope. See SRS §1.3.2 X17 and §6.3 R17.
+
+### 18.12 There is no stated accessibility target, and no way back out of a bad release
+
+Two further declines of the same date, recorded so they are not mistaken for
+oversights:
+
+- **No accessibility conformance target** (TWCAG / WCAG) is claimed for either
+  surface. This is **not** deferred to the wireframe (§16.4) — it is declined, so
+  nobody reopens it as a styling detail. The audience is government officers on
+  ordinary connections, and some of them will not be able to use this service.
+- **No redeploy, rollback or dependency-patching procedure.** §17.4 gates the
+  **first** deploy thoroughly and says nothing about the second. A bad release is
+  backed out by whatever the operator improvises, and the service is
+  internet-facing with no patching cadence on record. §17.4's `N=1` worker plus
+  the §7.7 reconcile means an in-flight job survives a restart — that is a
+  property inherited from durability work, not a deployment design.
+
+### 18.13 Delivery is believed rather than demonstrated
+
+
+**The three test sends were not made.** §17.2 asked for one message to a Reviewer
+mailbox, one to an external Gmail address and one to the bounce destination, each
+confirming *where it landed*. **On 2026-09-04 the repo owner closed the question
+on organisational knowledge instead: the relay is in official use and its mail is
+not filed as spam.**
+
+⚠️ **The same day it was also confirmed that no user of this service reads mail
+at `moph.go.th`.** That removes the one leg where organisational standing would
+have carried weight: **100% of this service's mail now crosses to public
+providers**, which apply their own filtering and have never seen this sender. The
+closing argument and the recipient list were given together; **the argument covers
+none of the remaining traffic.** Recorded, not reconciled — the decision to close
+stands as the repo owner's.
+
+**What is therefore not on record:**
+
+- Whether `ddc.mail.go.th`'s **SPF record authorises `mailrelay.uc-workd.com`**,
+  and whether **DKIM signs for the sender domain**. One `dig` would have answered
+  both. Gmail evaluates these independently of any arrangement inside DDC.
+- Whether a **Reviewer's own mailbox** accepts the queue notification. Since no
+  Reviewer is on `moph.go.th`, this is a public-provider delivery like any other,
+  with the failure at §18.8.
+- Whether the **relay hostname is correct verbatim** — `uc-workd` was flagged as
+  close enough to a typo to warrant one deliberate check. That check now rides on
+  the config being supplied correctly (§11.2) with nothing behind it.
+- That **any message from this service has ever arrived anywhere.** The first
+  real Delivery will be the first test.
+
+> **The cost is bounded and already has machinery behind it.** A Delivery that is
+> junked, or never sent because the hostname is wrong, produces a **Download
+> token** that expires unused in 72 hours — invisible to the system by premise
+> (§11.1), surfacing only as a **Collection lapse** Alert after 24 business
+> hours (§10.6). **The failure is recoverable and someone is told; it is simply
+> told late, and told about a Requester who already waited.**
+
+> **The sharper instance is the Reviewer queue notification**, not the Delivery:
+> if that message is junked, the approval gate has no trigger and a Request
+> expires at 24 business hours through nobody's fault (§18.8). **That path has no
+> Requester to notice it.**
+
+**Reversal is one email.** Nothing here is designed around the belief; if a send
+is ever made and lands wrong, this section is deleted rather than worked around.
+
+### 18.14 Smaller accepted costs, recorded so they are not rediscovered
 
 - **`/health` is unauthenticated and leaks service state** (§14.1).
 - **No checksum covers the upload to MinIO** (§8.4).
@@ -2638,7 +2869,7 @@ which they will never read.
 | Rate limiting, `N=1`, the Probe, disk formula, Non-goals | §13 | [#5](https://github.com/rawinan-soma/dds-sharing/issues/5) |
 | Probe granularity; the Reviewer's gate is identity, not size; no Probe stalled Alert | §5.4, §10.2, §10.6, §12.3, §13.3 | [#31](https://github.com/rawinan-soma/dds-sharing/issues/31), [ADR 0007](adr/0007-the-reviewers-gate-is-identity-not-size.md) |
 | Extraction pipeline, retry, completeness, stall | §7 | [#8](https://github.com/rawinan-soma/dds-sharing/issues/8), superseded in part by [ADR 0008](adr/0008-the-pipeline-is-sized-for-one-page.md) |
-| CSV writer's eight rules, Data dictionary, Excel leading zeros | §8.2, §18.5 | [#25](https://github.com/rawinan-soma/dds-sharing/issues/25) |
+| CSV writer's eight rules, Data dictionary, Excel leading zeros (narrowed to `hospital_code` 2026-09-04) | §8.2, §18.5 | [#25](https://github.com/rawinan-soma/dds-sharing/issues/25) |
 | The fingerprint, archive naming, verification command | §8.3, §8.4 | [#29](https://github.com/rawinan-soma/dds-sharing/issues/29), [ADR 0005](adr/0005-the-fingerprint-covers-the-extract-not-the-archive.md) |
 | Delivery, the token, the 72 h clock, deletion, the expiry page | §9 | [#9](https://github.com/rawinan-soma/dds-sharing/issues/9) |
 | Audit record shape, tables, roles, catalogue | §12 | [#10](https://github.com/rawinan-soma/dds-sharing/issues/10) |
@@ -2654,8 +2885,11 @@ which they will never read.
 | PDPA position ruled out of scope; the five carried risks | §18.1–§18.4 | [#22](https://github.com/rawinan-soma/dds-sharing/issues/22) |
 | Fake upstream harness requirements | §17.3 | [#6](https://github.com/rawinan-soma/dds-sharing/issues/6) |
 | The Probe's bounded end — retries, `probe_failed`, the skipped disk pre-check | §5.4, §7.8, §10.2, §10.6, §12.3, §12.4, §13.6 | audit of this document against all 30 tickets, 2026-09-02 |
-| Scope is the 25 EnvOcc codes; the whole sizing model re-anchored on measured volumes | §4.9, §5.3, §7.2, §7.9, §8.1, §13.3, §13.5, §16.5, §17.1, §17.4, §18.5, §18.6 | [#33](https://github.com/rawinan-soma/dds-sharing/issues/33) |
+| Scope is the 25 EnvOcc codes; the whole sizing model re-anchored on measured volumes | §4.9, §5.3, §7.2, §7.9, §8.1, §13.3, §13.5, §16.4, §17.1, §17.4, §18.5, §18.6 | [#33](https://github.com/rawinan-soma/dds-sharing/issues/33) |
 | §7 sized for one page: no chunking, no disk projection, no drain estimate; the shared span builder | §5.3, §5.4, §7.2, §7.5, §7.6, §7.8, §7.9, §8.1, §10.2, §12.3, §12.4, §13.3, §13.6, §14.3, §17.1 | [#34](https://github.com/rawinan-soma/dds-sharing/issues/34), [ADR 0008](adr/0008-the-pipeline-is-sized-for-one-page.md) |
+| The Reviewer's identity test, and the telephone call on uncertainty | §10.3, SRS FR-09, `CONTEXT.md` *Decision* | repo owner, 2026-09-04 |
+| Application logs: no case data, ever; 72-hour lifetime as the backstop | §14.5, §17.1, SRS NFR-34 | repo owner, 2026-09-04 |
+| No database backup; no accessibility target; no rollback procedure; no in-app amendment of the classification | §18.11, §18.12, SRS X17–X20, R17 | repo owner, 2026-09-04 |
 
 > ✅ **The worst-case row volume is now settled, and it is small.** All 25 in-scope
 > Report codes were probed over a full year on 2026-09-02

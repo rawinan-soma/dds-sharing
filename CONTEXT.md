@@ -21,7 +21,7 @@ A Requester's parameterized ask — one Disease group, one inclusive date range 
 _Avoid_: Query, job, application
 
 **Decision**:
-A Reviewer's approve-or-reject act on a Request, carrying the Reviewer's identity, a timestamp, and (on reject) an internal note never shown to the Requester. **The judgement is about who is asking** — identity, Workplace, legitimacy — **never about how much they ask for**: a large Request is slow, not illegitimate, and a long extraction completes rather than being refused. Size therefore never blocks or grounds a Decision, which is why nothing about a Decision waits on the Probe.
+A Reviewer's approve-or-reject act on a Request, carrying the Reviewer's identity, a timestamp, and (on reject) an internal note never shown to the Requester. **The judgement is about who is asking** — identity, Workplace, legitimacy — and it is **one test**: *does this person exist today, and do they work at the Workplace they named?* Where the Reviewer cannot answer that from the screen, they telephone the Requester before deciding either way — **uncertainty is a call, never a rejection**. It is **never about how much they ask for**: a large Request is slow, not illegitimate, and a long extraction completes rather than being refused. Size therefore never blocks or grounds a Decision, which is why nothing about a Decision waits on the Probe.
 _Avoid_: Approval, review, verdict
 
 **Workplace**:

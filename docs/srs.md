@@ -163,7 +163,12 @@ Named so nobody adds them back without reopening the decision (§1.2,
 | X13 | **Multi-language UI** | Thai is the only language shown to a person. §16.3, [#26](https://github.com/rawinan-soma/dds-sharing/issues/26) |
 | X14 | **A facility (hospital) reference list in this repository** | `hospital_code` ships raw; MoPH publishes the register openly. §6.7, [#23](https://github.com/rawinan-soma/dds-sharing/issues/23) |
 | X15 | **Date-chunking, adaptive page sizing, a drain projection, or a submit-time size gate** | Removed by [ADR 0008](adr/0008-the-pipeline-is-sized-for-one-page.md). Do not reintroduce without new measurements. §7.2, §13.3 |
-| X16 | **A PDPO consultation and a recorded PDPA §26 lawful basis for the Extract** | Ruled out of scope by the repo owner, by decision and not by oversight. §18.1, [#22](https://github.com/rawinan-soma/dds-sharing/issues/22) — carried as a risk, see [§6.3](#63-accepted-risks) |
+| X16 | ~~**A PDPO consultation and a recorded PDPA lawful basis for the Extract**~~ **— WITHDRAWN 2026-09-04.** The consultation happened and the basis is **legal obligation** (§18.1). What remains out of scope is **producing a written artefact of it for this repository**: no memo, officer or section is checked in. See [§6.3 R1](#63-accepted-risks) |
+| X17 | **Backup, restore and disaster recovery for the database** | Declined by the repo owner, 2026-09-04, after the gap was put explicitly. The audit record therefore survives exactly as long as one disk does — carried as a risk, see [§6.3 R17](#63-accepted-risks) |
+| X18 | **A stated accessibility conformance target** (TWCAG / WCAG) for the Requester and Reviewer surfaces | Declined by the repo owner, 2026-09-04. Not deferred to the wireframe ([OQ-02](#64-open-questions)) — declined outright, so nobody reopens it as a design detail |
+| X19 | **A redeploy, rollback and dependency-patching procedure** | Declined by the repo owner, 2026-09-04. §17.4 covers the *first* deploy only; there is no written way to back out a bad release |
+| X20 | **In-application amendment of the Disease group classification** | Declined by the repo owner, 2026-09-04: *a change to the ten groups is a revision of this application, not an operation on it.* The classification stays a checked-in file (R4), the partition test stays the guard (§17.1), and the **Data dictionary** is rebuilt by the same revision |
+| X21 | **43-แฟ้ม alignment of the `รหัสรายงานโรค` series** | Declined by the repo owner, 2026-09-04: *this is not 43-แฟ้ม.* The suspicion was already recorded as unconfirmed with positive reason to doubt — the source deck never mentions it. Do not map these codes onto the 43-แฟ้ม standard |
 
 ### 1.4 Intended audience and reading order
 
@@ -184,10 +189,10 @@ Named so nobody adds them back without reopening the decision (§1.2,
 | R4 | [`docs/disease-groups.md`](disease-groups.md) — the authoritative Disease group classification |
 | R5 | [`docs/research/003-disease-group-codes.md`](research/003-disease-group-codes.md) — the Report code seed and its provenance |
 | R6 | [`docs/provinces.csv`](provinces.csv) (77 rows), [`docs/districts.csv`](districts.csv) (929), [`docs/sub_districts.csv`](sub_districts.csv) (7,451) — geography reference data |
-| R7 | [`docs/project-charter.md`](project-charter.md) — sponsor-facing charter (⚠️ written against `spec.md` v1.0; see [OQ-16](#64-open-questions)) |
+| R7 | [`docs/project-charter.md`](project-charter.md) — sponsor-facing charter (⚠️ written against `spec.md` v1.0; see [OQ-06](#64-open-questions)) |
 | R8 | [`messages/th.json`](../messages/th.json) + [`project.inlang/settings.json`](../project.inlang/settings.json) — the normative Thai copy catalogue |
 | R9 | Closed issues [#2](https://github.com/rawinan-soma/dds-sharing/issues/2)–[#34](https://github.com/rawinan-soma/dds-sharing/issues/34) on [Map #1](https://github.com/rawinan-soma/dds-sharing/issues/1) — the decisions and their rationale |
-| R10 | `docs/DDS_Envocc_080169.pdf` — the primary DDC EnvOcc deck cited by R5. ⚠️ **Cited but not checked into this repository** ([OQ-17](#64-open-questions)) |
+| R10 | `docs/DDS_Envocc_080169.pdf` — the primary DDC EnvOcc deck cited by R5. ⚠️ **Deliberately not checked in** (public repository; `.gitignore` excludes `docs/*.pdf` as source material not for public distribution). Identify the correct copy by **SHA-256 `d92701c6a0ca7d59db682c18e5049584e924c1c6a1b4244e5a3b4aa189e75a0b`, 22,491,508 bytes** — that hash is the provenance link the repo can carry without republishing the deck |
 | R11 | MoPH facility register — <https://hcode.moph.go.th/> — the public route by which a reader resolves `hospital_code` (§6.7) |
 
 ---
@@ -525,7 +530,7 @@ treats the path as a secret worth protecting.
 > ([`prototype/requester-reviewer-ui`](https://github.com/rawinan-soma/dds-sharing/tree/prototype/requester-reviewer-ui))
 > settled **structure, ordering and copy only**. Spacing, typography and component
 > choice come from a wireframe the repo owner supplies during the dev cycle
-> ([OQ-05](#64-open-questions)). Carry the two ordering rules above as
+> ([OQ-02](#64-open-questions)). Carry the two ordering rules above as
 > requirements; do not read the prototype's styling as normative.
 
 **Copy.** All human-visible text is Thai, held in `messages/th.json` (122 strings)
@@ -1064,6 +1069,10 @@ fields, the ask in human terms, and the count or its absence.
 - **The Probe has not finished** → the count reads **"pending"**.
 - **The Probe was abandoned** → the count reads **"failed"**.
 - In **both** cases the Decision proceeds unimpeded.
+- **The Reviewer is uncertain of the name or the Workplace** → they telephone the
+  Requester before deciding. The Request stays `pending` and its business-hours
+  clock keeps running (FR-24), so a call that cannot be completed inside the
+  window ends in expiry rather than in a Decision.
 
 **Workflow:**
 1. Show the **five contact fields**: name, surname, tel, email, workplace.
@@ -1078,6 +1087,29 @@ fields, the ask in human terms, and the count or its absence.
 4. Show submit time, time remaining on the business-hours clock, and queue
    position.
 5. Place the decision buttons **below** all of the above.
+6. The Reviewer applies **one test** to the **name** and the **Workplace**: *does
+   this person exist today, and do they work at the Workplace they named?* That
+   question is the whole ground of the Decision. Size is never a second one.
+7. **If the Reviewer cannot answer that question from the screen, they telephone
+   the Requester on the supplied number before deciding either way.** Uncertainty
+   is a call, not a rejection — rejecting the uncertain case silently converts
+   *"I could not tell"* into *"this person is not who they say"*, and the
+   no-reason rejection email (FR-11) means the Requester is never told which.
+
+> **The call is not recorded** (decided 2026-09-04). §12.4's event catalogue
+> gains nothing and the Reviewer's screen gains no field. **The cost:** in exactly
+> the cases where the gate worked hardest, the record shows a **Decision** and a
+> **Snapshot** with no trace of what resolved the doubt, and a reader years later
+> cannot tell a telephoned Decision from a glanced-at one. Accepted, because the
+> alternative is a free-text field filled in under time pressure that nothing
+> checks and that would read as evidence.
+
+> ⚠️ **What the call is worth, stated plainly:** it confirms that the contact
+> details reach a person who answers to the name. **It cannot confirm the
+> Workplace** — the only source being asked is the person making the claim. The
+> call raises the cost of a false identity; it does not close it. This is the
+> **weak form**, like the button placement, and it is the human half of the
+> control [R4](#63-accepted-risks) accepts in place of a credential.
 
 > **The system presents and records. It does not judge, score, or match.** A
 > Reviewer reads five contact fields, one of which (`workplace`) is free text
@@ -1085,9 +1117,10 @@ fields, the ask in human terms, and the count or its absence.
 > declined**; the Reviewer never sees case rows, and there is no facility
 > parameter.
 
-**Source:** §3.3, §10.2, §5.4 ·
+**Source:** §3.3, §10.2, §10.3, §5.4 ·
 [#11](https://github.com/rawinan-soma/dds-sharing/issues/11),
-[#31](https://github.com/rawinan-soma/dds-sharing/issues/31)
+[#31](https://github.com/rawinan-soma/dds-sharing/issues/31) · the identity test
+and the call: repo owner, 2026-09-04
 
 ### 4.10 FR-10 — Approve a Request
 
@@ -1435,9 +1468,10 @@ rows *written*.
 
 **Alternate conditions:**
 - **National Request** → no predicate is applied; every row continues.
-- **Upstream ships the code as a number rather than a string** → **normalise to
-  string before comparing**. The JSON type is unconfirmed
-  ([OQ-07](#64-open-questions)).
+- **Upstream ships the code as a number** (`10`, not `"10"`) — confirmed
+  2026-09-04 → **normalise to string before comparing, by left-padding to two
+  digits**. A bare cast is not enough: province `01` arrives as `1`, so every
+  leading-zero province silently fails to match while `50` and `81` succeed.
 
 **Workflow:**
 1. If the province list is empty, pass every row through.
@@ -1540,9 +1574,11 @@ discloses nothing: it is what the Requester asked for.
   the observed response keys.**
 - **`birth_date` is null** → `onset_age` is **empty**, even though upstream ships
   a populated `age_y`. Falling back to it is precisely what rule 6 forbids. The
-  blank is accepted; if the null rate proves material, the answer is to
-  **re-admit upstream `age_y` to the allowlist as an allowlist change**, never a
-  quiet fallback inside the derivation ([OQ-04](#64-open-questions)).
+  blank is accepted. **The null rate was estimated below 1% by the repo owner on
+  2026-09-04 — not material — so `age_y` stays out of the allowlist.** ⚠️ That is
+  an estimate, not a measurement: if a real extract shows a material rate, the
+  answer is still to **re-admit `age_y` as an allowlist change**, never a quiet
+  fallback inside the derivation.
 - **`onset_date` before `birth_date`, a future `birth_date`, an age over 120** →
   an **empty cell**, never a sentinel (`-1`/`UNKNOWN` is read as data by an R
   loader), never a dropped row (it breaks the completeness assert), never a clamp
@@ -1638,8 +1674,9 @@ no column semantics**:
   header-only Extract shares one fingerprint; that is expected.
 - **A `diagnosis_icd10_list` delimiter surprise** → would split a field and shift
   every later column on that row — a corruption the completeness assert counts
-  rows, not columns, and so would **not** catch. Pinned by a required test
-  ([OQ-03](#64-open-questions)).
+  rows, not columns, and so would **not** catch. **The delimiter is a comma**
+  (confirmed 2026-09-04), so every multi-code value quotes; pinned by a required
+  test (§17.1).
 
 **Alternate conditions:**
 - **A Re-run** → the archive takes a `-r2`, `-r3` suffix. ⚠️ A Re-run makes no new
@@ -2674,15 +2711,23 @@ CLI output and the first-login screen are testable.
 
 #### NFR-18 — The PDPA position, stated rather than implied
 
-**Requirement.** The system's documentation must state, in the open, that **no
-PDPA §26 lawful basis and no DDC sign-off are on record for the Extract, by
-decision and not by oversight**, and that **the approval gate is an accountability
-record, not a lawful basis.**
+**Requirement.** The system's documentation must state, in the open, what the
+lawful basis is and what evidence of it exists. **Revised 2026-09-04:** the basis
+is **legal obligation** — DDC's surveillance duty under
+**พ.ร.บ.ควบคุมโรคจากการประกอบอาชีพและโรคสิ่งแวดล้อม พ.ศ. 2562** — and the repo
+owner has **consulted the DDC PDPO**. The documentation must equally state that
+**no artefact of that consultation is checked into this repository**, and that
+**the approval gate is an accountability record, not a lawful basis.**
 
-**Measure.** §18.1 says so explicitly *"precisely because the gate feels like it
-closes the compliance hole, and that feeling is how the sign-off never gets
-chased."* **Reversal path: the kill switch, then a fresh effort against a redrawn
-scope.** See [§6.3 R1–R3](#63-accepted-risks).
+**Measure.** §18.1 says all three things explicitly, including the uncomfortable
+one. **Reversal path: the kill switch (NFR-32), then a fresh effort against a
+redrawn scope.** See [§6.3 R1–R3](#63-accepted-risks).
+
+> **The distinction this requirement exists to protect:** a consultation that
+> happened and a consultation that can be produced are different facts, and only
+> the second survives the person who remembers it. §18.2 and §18.3 are
+> **untouched** by the consultation — they question whether the
+> de-identification claim the basis rests on actually holds.
 
 **Source:** §3.2, §18.1–§18.3, §17.4 · [#2](https://github.com/rawinan-soma/dds-sharing/issues/2), [#21](https://github.com/rawinan-soma/dds-sharing/issues/21), [#22](https://github.com/rawinan-soma/dds-sharing/issues/22), [#23](https://github.com/rawinan-soma/dds-sharing/issues/23)
 
@@ -3123,7 +3168,7 @@ time-based one-time password. ICT — Indochina Time (Asia/Bangkok, UTC+7).
 | Issue | Subject | Lands in |
 |---|---|---|
 | [#2](https://github.com/rawinan-soma/dds-sharing/issues/2) | Lock the de-identification field list | FR-16, NFR-14, NFR-18 |
-| [#3](https://github.com/rawinan-soma/dds-sharing/issues/3) | Research: valid `group_code` values | §1.3.1, FR-05, OQ-08 to OQ-11 |
+| [#3](https://github.com/rawinan-soma/dds-sharing/issues/3) | Research: valid `group_code` values | §1.3.1, FR-05 — all four upstream questions closed 2026-09-04 |
 | [#4](https://github.com/rawinan-soma/dds-sharing/issues/4) | Verify the live API | §2.5 C1–C11, FR-04, FR-14, NFR-01 |
 | [#5](https://github.com/rawinan-soma/dds-sharing/issues/5) | Rate-limit and abuse policy | FR-03, FR-06, FR-19, NFR-01, NFR-05, NFR-10, NFR-12 |
 | [#6](https://github.com/rawinan-soma/dds-sharing/issues/6) | Fake upstream service | §3.3 (harness), §1.3.2 X7 |
@@ -3137,12 +3182,12 @@ time-based one-time password. ICT — Indochina Time (Asia/Bangkok, UTC+7).
 | [#14](https://github.com/rawinan-soma/dds-sharing/issues/14) | Reconcile the allowlist against 63 fields | FR-16, §2.5 C9 |
 | [#15](https://github.com/rawinan-soma/dds-sharing/issues/15) | Region → province table | FR-05, FR-15, NFR-28 |
 | [#16](https://github.com/rawinan-soma/dds-sharing/issues/16) | Public ingress boundary and its owner | §3.4, NFR-11, NFR-31, NFR-32 |
-| [#17](https://github.com/rawinan-soma/dds-sharing/issues/17) | Production mail relay and sender identity | §3.3, FR-18, NFR-31, OQ-01/OQ-02 |
+| [#17](https://github.com/rawinan-soma/dds-sharing/issues/17) | Production mail relay and sender identity | §3.3, FR-18, NFR-31, OQ-01 · delivery closed 2026-09-04, §18.13 |
 | [#18](https://github.com/rawinan-soma/dds-sharing/issues/18) | Reviewer account and session policy | FR-07, FR-29, NFR-07 to NFR-09, NFR-22, NFR-23 |
 | [#19](https://github.com/rawinan-soma/dds-sharing/issues/19) | What counts as a failed delivery | FR-18, FR-25, FR-27, NFR-10 |
 | [#20](https://github.com/rawinan-soma/dds-sharing/issues/20) | Scheduled work and missed triggers | FR-12, FR-22, FR-24, NFR-21 |
 | [#21](https://github.com/rawinan-soma/dds-sharing/issues/21) | Granularity after the PDPO tambon ruling | FR-16, NFR-18, §6.3 R2 |
-| [#22](https://github.com/rawinan-soma/dds-sharing/issues/22) | The PDPO's ruling and the lawful basis | §1.3.2 X16, NFR-18, §6.3 R1, OQ-13 |
+| [#22](https://github.com/rawinan-soma/dds-sharing/issues/22) | The PDPO's ruling and the lawful basis | §1.3.2 X16, NFR-18, §6.3 R1, OQ-03 |
 | [#23](https://github.com/rawinan-soma/dds-sharing/issues/23) | `hospital_code` after the tambon ruling | FR-16, §6.3 R2 |
 | [#24](https://github.com/rawinan-soma/dds-sharing/issues/24) | Where derivation lives; rule 6 | FR-16, FR-13 step 2, NFR-26 |
 | [#25](https://github.com/rawinan-soma/dds-sharing/issues/25) | CSV writer encoding and normalisation | FR-17, NFR-27, NFR-28, §6.3 R5 |
@@ -3166,24 +3211,26 @@ statements are in `spec.md` §18 and in `project-charter.md`.
 
 | # | Risk | Exposure | Response / where it is carried |
 |---|---|---|---|
-| **R1** | **There is no PDPA §26 lawful basis and no DDC sign-off on record for the Extract, by decision.** The repo owner's position is that with `tmb_code` and `epidem_tmb_code` dropped, the Extract is non-personal data, so no ruling is required. **The approval gate is an accountability record, not a lawful basis.** | Highest. **Owned by the repo owner, who owns the DDC data agreement.** | Stated in the open (NFR-18). Reversal path: the kill switch (NFR-32), then a fresh effort against a redrawn scope. §18.1 |
+| **R1** | **The lawful basis is legal obligation, consulted with the PDPO — but no artefact of that consultation is in the repository.** Revised 2026-09-04: the release rests on DDC's own surveillance duty under พ.ร.บ.ควบคุมโรคจากการประกอบอาชีพและโรคสิ่งแวดล้อม พ.ศ. 2562. **The approval gate is still an accountability record, not a lawful basis.** | **Reduced from highest to medium.** Owned by the repo owner | ⚠️ **The residue is documentary, not legal:** no dated memo, no named PDPO officer, no cited section is checked in, so the basis cannot be produced on request. §18.1, NFR-18 |
 | **R2** | **The finest *named* geography is not the finest *effective* geography.** `hospital_code` is retained; **a รพ.สต. serves exactly one subdistrict**, and the MoPH register that makes this readable is published openly. ***The column a privacy officer named was removed; the precision she objected to substantially remains, for a minority of rows, by a public route she may not have been shown.*** | High, accepted | No small-cell suppression, by rule 5 — it would break the completeness invariant. **The narrowness cuts both ways**: few rows, high exposure each, not *no risk*. §18.2, §6.7 |
 | **R3** | **Full `birth_date` is retained beside a derived `onset_age` that already replaces it.** `{amp_code, gender, birth_date, onset_date}` is a live quasi-identifier. DOB coarsening has been **offered and declined four times**. **The realistic adversary is the employer**, who holds the auxiliary data and whose motive is compensation liability under พ.ร.บ. 2562. | High, accepted | Three mitigations remain available and unused, each a single configuration point: coarsening `birth_date` to `onset_age` alone, coarsening geography to province, and a two-tier open/gated split. §18.3 |
 | **R4** | **Upstream is authenticated; this service is not.** Every documented path into the upstream DDC system is MoPH account / Provider ID RBAC. This service is a **weaker door onto records derived from the same source**, with a human gate in front of it rather than a credential. | High, accepted | The gate, the allowlist, and the kill switch. §18.4 |
-| **R5** | **Excel silently corrupts the leading-zero geography codes.** Excel-on-double-click parses `01` as `1` while Bangkok's `10` is unaffected — **so the file looks correct while only the leading-zero provinces are quietly corrupted.** Quoting does not prevent it. | Medium, accepted | `="01"` escaping and shipping `.xlsx` were both rejected. Documented in the Data dictionary. ⚠️ **Note the interaction: the BOM exists to get these users into Excel, and Excel is where the corruption happens.** §18.5 |
+| **R5** | **Excel silently corrupts a leading-zero `hospital_code`.** ⚠️ **Narrowed 2026-09-04 — the risk was stated far too widely and its headline example does not exist.** It named the four geography columns and offered `01` → `1`; **there is no province `01`.** The domain runs **10–96**, prefix-nested at 2/4/6 digits, re-verified against 77 provinces, 929 districts and 7,451 subdistricts: **zero codes begin with `0`.** §4.6 always said so. | **Reduced to low.** Only `hospital_code` can carry the risk, and it is **not verifiable from this repo** — X14 keeps no facility list | `="01"` escaping and `.xlsx` were both rejected and stay rejected. **This is the second Excel risk found to rest on an unmeasured premise (§18.6 was the first) — distrust the reasoning, not just the claim.** §18.5 |
 | **R6** | **Email delivery is unobservable.** The sharpest instance: a failed **Reviewer queue notification** means the approval gate has no trigger and a Request expires at 24 business hours **through nobody's fault**. | Medium, by design | Operator banner on the **first** queue-notification failure; Collection lapse Alert at 24 business hours; `expired_uncollected` as a distinct terminal state. §18.8, [ADR 0001](adr/0001-email-delivery-is-unobservable.md) |
 | **R7** | **The audit record is permanent personal data, including about people who never used the service** — `token_lookup` rows matching no Request are IP addresses of anonymous strangers. | Medium, accepted | Kept deliberately: a token-guessing sweep is only visible in hindsight. Redaction is a bounded courtesy, not a retention rule. §18.9, NFR-16 |
 | **R8** | **The record measures named staff, permanently** — expiry timings, the login and failed-login stream, `collection_lapse_cleared` (a permanent record that a named Reviewer did *not* chase a lapse), `extraction_alert_cleared`. | Medium, accepted | **They are told, at seeding and first login** — not in a document they will never read. §18.10, NFR-17 |
 | **R9** | **The record cannot say which Request produced an Extract.** A content hash narrows to a *set*. | Low, accepted | **No identifying mark is added.** The verification command prints the asymmetry. §18.7, FR-30 |
-| **R10** | **Upstream token revocation.** The failure mode to fear is not a throttle but **DDC noticing our traffic and revoking the token**, which no retry recovers from. | High, operational | `N = 1`; one call per Report code; the traffic report (FR-31). Needs a **named upstream owner** ([OQ-14](#64-open-questions)). §5.5, §13.6 |
+| **R10** | **Upstream token revocation.** The failure mode to fear is not a throttle but **DDC noticing our traffic and revoking the token**, which no retry recovers from. | High, operational | `N = 1`; one call per Report code; the traffic report (FR-31). Needs a **named upstream owner** ([OQ-05](#64-open-questions)). §5.5, §13.6 |
 | **R11** | **Internal reachability is a larger question than internet reachability.** A directly reachable MinIO bucket would bypass the Download token and the download audit entirely. | Medium | **Host-level firewalling required, not just edge routing**, confirmed by testing from outside. §17.4, NFR-11 |
 | **R12** | **NTP drift locks out every Reviewer simultaneously**, and the only fix is shell access to the machine that is broken. | Medium, severe if it fires | NTP is a hard deployment requirement. A near-miss TOTP code is recorded distinctly so the cause is diagnosable. §17.4, NFR-23 |
-| **R13** | **Single-developer project.** One person builds, deploys and operates this; there is no second person who knows the system. | High, **not in `spec.md` §18** | ⚠️ **No response on record.** `project-charter.md` R4 suggests naming a second technical contact before the Control phase ([OQ-14](#64-open-questions)) |
-| **R14** | **This project adds a system to maintain**, with no budget line for its operation after November 2026. | Medium | ⚠️ Operational ownership after handover is **not on record**. `project-charter.md` R14, [OQ-14](#64-open-questions) |
+| **R13** | **Single-developer project.** One person builds, deploys and operates this; there is no second person who knows the system. | High, **not in `spec.md` §18** | ⚠️ **No response on record.** `project-charter.md` R4 suggests naming a second technical contact before the Control phase ([OQ-05](#64-open-questions)) |
+| **R14** | **This project adds a system to maintain**, with no budget line for its operation after November 2026. | Medium | ⚠️ Operational ownership after handover is **not on record**. `project-charter.md` R14, [OQ-05](#64-open-questions) |
 | **R15** | **A Report code that outgrows the ~50-page cliff kills its group's Requests until a human splits it.** Adaptive tiling would have absorbed this and was rejected as machinery built for a 256× event, tested by nobody. | Low, accepted | The failure is **loud, rare and actionable**: a `504` the retry cannot clear, then a failed job and an Alert. [ADR 0008](adr/0008-the-pipeline-is-sized-for-one-page.md) |
 | **R16** | **A Report code that exists upstream and is in no Disease group is unreachable data, and nothing in the system will notice.** The partition test compares the classification against the *seed*, never the seed against upstream. | Low, accepted | The control is a **periodic human re-probe**, not a build. §4.9, §17.1, NFR-30 |
+| **R17** | **There is no copy of the database, by decision.** The audit record is permanent, append-only, and the main deliverable of this project — *"no record of who released what to whom"* is problem #1 in the charter. It exists on **one disk, on one Docker host**. A disk failure destroys every **Decision**, **Snapshot** and **Extract fingerprint** the service has ever made, and no **Reviewer**'s accountability survives it. | **High, accepted.** Owned by the repo owner | ⚠️ **No response on record.** Backup and restore were put explicitly and declined on 2026-09-04 (X17). The exposure is bounded only by the fact that an **Extract archive** is disposable by design and **Redis** is restartable — **the record is neither** |
+| **R18** | **Delivery is believed rather than demonstrated, and every recipient is external.** The three test sends were closed 2026-09-04 without being made, on the repo owner's knowledge that the relay is in official organisational use. ⚠️ **Confirmed the same day: no user of this service, Reviewers included, reads mail at `moph.go.th`** — so **100% of this service's mail crosses to public providers**, and the relay's standing inside DDC is judged by none of them. **Not on record:** whether `ddc.mail.go.th`'s SPF authorises `mailrelay.uc-workd.com`, whether DKIM signs for the sender domain, whether the hostname is free of a typo, or that any message from this service has ever arrived anywhere. | **Medium, accepted.** Owned by the repo owner | The machinery already covers the Requester-facing failure: a junked Delivery expires its **Download token** in 72 hours and surfaces as a **Collection lapse** Alert (R6). ⚠️ **The sharper path is the Reviewer queue notification** — junked, the approval gate has no trigger and a Request expires through nobody's fault, with no Requester to notice. **Reversal is one email.** §11.1, §18.13 |
 
-**Smaller accepted costs, recorded so they are not rediscovered** (§18.11):
+**Smaller accepted costs, recorded so they are not rediscovered** (§18.13):
 `/health` is unauthenticated and leaks service state · no checksum covers the
 upload to MinIO · the 72-hour clock can elapse unnoticed because job completion is
 an event the Requester never sees · bounce detection is lost because there is no
@@ -3202,45 +3249,38 @@ judgement about the audience, and someone will make it again.*
 
 ### 6.4 Open questions
 
-Genuinely undecided in the repository as of 2026-09-03. **None of these blocks
-building**; each has a decided rule waiting for its value. Listed here rather than
+Genuinely undecided in the repository as of 2026-09-04, after the repo owner
+answered sixteen of the previous twenty. **None of these blocks building**; each has a decided rule waiting for its value. Listed here rather than
 guessed at.
 
 | ID | Question | Owner | Consequence of the answer | Source |
 |---|---|---|---|---|
 | **OQ-01** | `SMTP_PORT`, `SMTP_PASS` and `FRONTEND_URL` | Mail relay owner (unnamed) | Configuration only. `STARTTLS=true` with `SECURE=false` means the submission port is expected — **confirm the number rather than defaulting it silently** | §11.2, §17.2 |
-| **OQ-02** | Does the relay actually deliver, and **where does the mail land**? Three test sends: a Reviewer `moph.go.th` mailbox, an external non-ministry address, and the bounce destination | Mail relay owner | Each confirms *where it landed*, not that it was accepted. The bounce test is the **least** important — we have decided not to read that mailbox. Also: **confirm the relay hostname verbatim**; `uc-workd` is close enough to a typo to warrant one deliberate check | §11.2, §17.2 |
-| **OQ-03** | `diagnosis_icd10_list`'s **delimiter** | Dev cycle | If a comma, every such value quotes; if `\|` or `;`, nothing in the file ever quotes. Pinned by a required test (NFR-30) | §8.2 r5, §17.1, §17.2 |
-| **OQ-04** | The **`birth_date` null rate** | Dev cycle | If material, the answer is **re-admitting upstream `age_y` to the allowlist as an allowlist change** — **never a quiet fallback inside the derivation** | §6.1 r6, §17.2, [ADR 0002](adr/0002-derived-extract-columns-anchored-to-the-case.md) |
-| **OQ-05** | The **wireframe** | Repo owner | Visual design, spacing, typography and component choice. The two ordering rules (NFR-33) are settled and are not the wireframe's to change | §16.4, §17.2 |
-| **OQ-06** | Does upstream's `diagnosis_icd10` hold **`T67.0XXA`** verbatim? It carries an ICD-10-**CM** 7th-character extension the rest of the list does not use | Dev cycle | Affects nothing structural; a data-quality note for `heat` | R5, [#30](https://github.com/rawinan-soma/dds-sharing/issues/30) |
-| **OQ-07** | Upstream's JSON **type** for `chw_code` / `epidem_chw_code` — `"10"` or `10` | Dev cycle | Absorbed by normalising to string before comparing (FR-15); confirmation only | §4.6 |
-| **OQ-08** | Is `group_code` sent as a bare integer or zero-padded/string? | กองระบาดวิทยา / dev cycle | The seed shows `201`; confirm against a real payload | R5 open question 1 |
-| **OQ-09** | Does `group_code` populate `epidem_report_group_id`? | กองระบาดวิทยา | **Inference, not stated in the source deck** | R5 open question 2 |
-| **OQ-10** | Is there a **disease-group lookup endpoint**, or are clients expected to embed the list? | กองระบาดวิทยา | The list is seeded either way; an endpoint would only change how the seed is maintained | R5 open question 3 |
-| **OQ-11** | **43-แฟ้ม alignment** of the `รหัสรายงานโรค` series | สนย./ศทส. docs | **Unconfirmed, with positive reason to doubt** — the deck never mentions 43-แฟ้ม | R5 open question 4 |
-| **OQ-12** | The **reference number's exact format** — Buddhist-era year, what the counter resets on, whether it must be unguessable | Repo owner | **Deliberately free to change**: a key that is not finished being designed should not be load-bearing in a record that can never be migrated by deletion. It is quoted over the telephone, so it does not need to be unguessable | §12.5 |
-| **OQ-13** | The **PDPA §26 lawful basis and DDC sign-off** for releasing case-level DDS data to the open internet | Repo owner / PDPO / DDC | **Ruled out of scope, not answered.** Carried as R1. If ever challenged, that is a **new** effort against a redrawn destination, not a resumption | §18.1, [#22](https://github.com/rawinan-soma/dds-sharing/issues/22) |
-| **OQ-14** | **Unnamed people the project depends on**: the sponsor (Director, EnvOcc), the **upstream DDS API owner** who holds the token and the data agreement, the **mail relay owner**, the **second named Reviewer**, a **second technical contact** (R13), and **operational ownership after November 2026** (R14) | Project manager | Each is a `TBD` in the charter. The second Reviewer is not merely an account — **the minimum is two *reachable people***, and it is the only TOTP recovery mechanism | `project-charter.md` Resources, Risks |
-| **OQ-15** | The **baseline** for the charter's benefit rows — requests handled manually per year, and staff-hours each | Project manager | Without them, monetised cost-saving and productivity figures would be invented, and the charter does not invent them | `project-charter.md` A11 |
-| **OQ-16** | **`docs/project-charter.md` is written against `spec.md` v1.0** and still states **22 columns**, a full-year group `02` extract as the worst case (1,141,658 rows, 10–25 minutes), a ~20–30 MB archive, date-chunking as *"mandatory for correctness"*, and *"ADRs 0001–0005"*. Every one of those was superseded by [#30](https://github.com/rawinan-soma/dds-sharing/issues/30), [#33](https://github.com/rawinan-soma/dds-sharing/issues/33) and [#34](https://github.com/rawinan-soma/dds-sharing/issues/34) | Project manager | **A sponsor-facing document that overstates the load and understates the column count.** Needs re-anchoring against v1.1 before it is signed | R7 vs R1 |
-| **OQ-17** | **`docs/DDS_Envocc_080169.pdf` is cited as the primary source for the Report code seed but is not checked into the repository** | Repo owner | The seed's provenance is not independently verifiable from the repo alone | R5, R10 |
-| **OQ-18** | **`messages/th.json` still carries prototype-era strings** that contradict decided requirements — `rev_drain_label` / `rev_drain_note` (the drain projection was **removed** by [ADR 0008](adr/0008-the-pipeline-is-sized-for-one-page.md)), `rev_approve_locked` / `rev_expand_identity` (the approve-gated-on-expanding-identity variant was **rejected**), `rev_rows_probe_note` (*"เป็นตัวเลขจริง ไม่ใช่ประมาณการ"* — the count may now read *pending* or *failed*), `req_step_of` / `req_next` / `req_back` (the stepped wizard was **rejected**), the six `group_*` keys naming communicable diseases rather than the ten Disease groups, and the `proto_*` / `var_*` prototype keys | Repo owner | **The copy is normative**, so these are not dead strings — they are decisions the catalogue still asserts and the spec no longer holds. Reconciling them is a copy review, not a cleanup | R8 vs §5.4, §10.1, §13.3, §16.3, §16.4 |
-| **OQ-19** | **`spec.md` §19 traces requirements to a §16.5** that does not exist — §16 ends at §16.4, which is where the acceptance fixture actually lives | Repo owner | A documentation cross-reference defect, not a design gap | R1 §19 vs §16 |
+| **OQ-02** | The **wireframe** | Repo owner | Visual design, spacing, typography and component choice. The two ordering rules (NFR-33) are settled and are not the wireframe's to change | §16.4, §17.2 |
+| **OQ-03** | **A written artefact of the PDPO consultation for this repository** — a dated memo, the officer's name, the section relied on | Repo owner / PDPO | **Narrowed 2026-09-04, not closed.** The consultation happened and the basis is legal obligation (§18.1, R1). What is missing is anything a later reader or auditor could be shown | §18.1, NFR-18, R1 |
+| **OQ-04** | **Unnamed people the project depends on**: the sponsor (Director, EnvOcc), the **upstream DDS API owner** who holds the token and the data agreement, the **mail relay owner**, the **second named Reviewer**, a **second technical contact** (R13), and **operational ownership after November 2026** (R14) | Project manager | Each is a `TBD` in the charter. The second Reviewer is not merely an account — **the minimum is two *reachable people***, and it is the only TOTP recovery mechanism | `project-charter.md` Resources, Risks |
+| **OQ-05** | The **baseline** for the charter's benefit rows — requests handled manually per year, and staff-hours each | Project manager | Without them, monetised cost-saving and productivity figures would be invented, and the charter does not invent them | `project-charter.md` A11 |
+| **OQ-06** | **`docs/project-charter.md` is written against `spec.md` v1.0** and still states **22 columns**, a full-year group `02` extract as the worst case (1,141,658 rows, 10–25 minutes), a ~20–30 MB archive, date-chunking as *"mandatory for correctness"*, and *"ADRs 0001–0005"*. Every one of those was superseded by [#30](https://github.com/rawinan-soma/dds-sharing/issues/30), [#33](https://github.com/rawinan-soma/dds-sharing/issues/33) and [#34](https://github.com/rawinan-soma/dds-sharing/issues/34) | Project manager | **A sponsor-facing document that overstates the load and understates the column count.** Needs re-anchoring against v1.1 before it is signed | R7 vs R1 |
+| **OQ-07** | **The Thai copy catalogue must be written fresh, and must not bring back the decisions it used to assert.** `messages/th.json` was removed with the rest of the code by `a76b2d1`, so there is nothing to correct — but the strings it carried are a list of **rejected decisions** an implementer will otherwise re-derive: `rev_drain_label` / `rev_drain_note` (the drain projection was removed by [ADR 0008](adr/0008-the-pipeline-is-sized-for-one-page.md)), `rev_approve_locked` / `rev_expand_identity` (approve-gated-on-expanding-identity was rejected), `rev_rows_probe_note` (*"เป็นตัวเลขจริง ไม่ใช่ประมาณการ"* — the count may read *pending* or *failed*), `req_step_of` / `req_next` / `req_back` (the stepped wizard was rejected), and six `group_*` keys naming communicable diseases rather than the ten **Disease groups** | Repo owner | **The copy is normative**, so this is a specification of what the new catalogue may not say, not a cleanup. Recover the old file from `git show 6eddf37:messages/th.json` if the Thai wording is worth reusing — but not its decisions | R8 vs §5.4, §10.1, §13.3, §16.3, §16.4 |
 
 ### 6.5 Dev-cycle asks, restated as a checklist
 
 Four items sit between this specification and a first build. Each has a **decided
 rule already waiting for it** — none is a design question (§17.2).
 
-- [ ] Measure the **`birth_date` null rate** (OQ-04) — the answer chooses between
-      accepting the blank and re-admitting `age_y` **as an allowlist change**.
-- [ ] Confirm **`diagnosis_icd10_list`'s delimiter** (OQ-03) and pin it with a
-      quoting test.
-- [ ] Supply **`SMTP_PORT`, `SMTP_PASS`, `FRONTEND_URL`** (OQ-01) and run the
-      **three test sends** (OQ-02), each confirming *where the mail landed*.
-- [ ] Confirm the **relay hostname verbatim** (OQ-02).
-- [ ] Supply the **wireframe** (OQ-05).
+- [x] ~~Measure the **`birth_date` null rate**~~ — **closed 2026-09-04**,
+      estimated below 1%: the blank stands and `age_y` stays out of the
+      allowlist. ⚠️ An estimate, not a measurement.
+- [x] ~~Confirm **`diagnosis_icd10_list`'s delimiter**~~ — **closed 2026-09-04:
+      it is a comma**, so every multi-code value quotes. Still pin it with the
+      §17.1 quoting test.
+- [ ] Supply **`SMTP_PORT`, `SMTP_PASS`, `FRONTEND_URL`** (OQ-01), reading
+      `mailrelay.uc-workd.com` twice as it is written.
+- [x] ~~Run the **three test sends**~~ and ~~confirm the **relay hostname
+      verbatim**~~ — **closed 2026-09-04 without being performed.** The relay is
+      in official organisational use and its mail is not filed as spam.
+      **Accepted as a risk instead: [R18](#63-accepted-risks), §18.13.**
+- [ ] Supply the **wireframe** (OQ-02).
 
 And, at deployment (§17.4):
 
@@ -3278,3 +3318,4 @@ And, at deployment (§17.4):
 | Version | Date | Change |
 |---|---|---|
 | 1.0 | 2026-09-03 | First issue. Derived from `spec.md` v1.1 (2026-09-02), `CONTEXT.md`, ADRs 0001–0008, `docs/disease-groups.md`, `docs/research/003-disease-group-codes.md`, `docs/project-charter.md`, and closed issues #2–#34. 31 functional requirements, 33 non-functional requirements, 19 open questions, 16 accepted risks, six diagrams. |
+| 1.1 | 2026-09-04 | **Six gaps closed and sixteen open questions answered by the repo owner.** *Added:* the Reviewer's identity test and the mandatory call on uncertainty, **not recorded** (FR-09, `spec.md` §10.3, `CONTEXT.md` *Decision*); a ban on case data in application logs with a 72-hour lifetime and a sentinel test (NFR-34, `spec.md` §14.5, §17.1). *Upstream settled:* `chw_code`/`epidem_chw_code` and `group_code` are **bare JSON integers**, normalised by a plain cast — **no padding**, because the geography domain starts at `10`; `group_code` does **not** populate `epidem_report_group_id`; `diagnosis_icd10_list`'s delimiter is a **comma**; the `birth_date` null rate is **estimated below 1%**; `T67.0XXA` is an upstream typo; the Disease group seed **stays embedded**. *Legal:* R1 **reduced from highest to medium** — the PDPO was consulted, basis is **legal obligation** under พ.ร.บ. 2562 (§18.1, NFR-18, X16 withdrawn); a **written artefact** of it remains open (OQ-03). *Mail:* the three test sends were **closed without being made** on the repo owner's ruling that the relay is in official organisational use; §11.1's junk-filing argument withdrawn. ⚠️ Confirmed the same day that **no user reads mail at `moph.go.th`** — there is **no internal leg**, so all mail crosses to public providers and the closing argument covers none of it. Both recorded, neither reconciled. The unobservability premise and ADR 0001 are **unchanged**. Carried as **R18** and §18.13. *Corrected:* **R5 narrowed to `hospital_code` alone** — its headline example, province `01`, does not exist, re-verified against all 77 provinces, 929 districts and 7,451 subdistricts; the second Excel risk in this register found to rest on an unmeasured premise. *Declined as out of scope:* X17 backup and restore (carried as R17), X18 accessibility target, X19 rollback procedure, X20 in-app amendment of the classification, X21 43-แฟ้ม alignment; the source deck **stays out of this public repository**, provenance carried as a SHA-256 in R10. **31 functional requirements, 34 non-functional requirements, 7 open questions, 18 accepted risks.** |

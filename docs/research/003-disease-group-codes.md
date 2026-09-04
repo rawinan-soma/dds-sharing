@@ -111,7 +111,7 @@ Companion ICD-10 codes listed on the same sheet, all under `501`:
 | T67.8 | Other effects of heat and light |
 | T67.9 | Effect of heat and light, unspecified |
 
-Note `T67.0XXA` carries an ICD-10-**CM** style 7th-character extension (`XXA`, initial encounter) that the rest of this list does not use. Whether the upstream `diagnosis_icd10` column holds it verbatim is unconfirmed — a dev-cycle check, not an assumption.
+Note `T67.0XXA` carries an ICD-10-**CM** style 7th-character extension (`XXA`, initial encounter) that the rest of this list does not use. **Settled 2026-09-04: the repo owner reads the `XXA` as a typo in the DDC sheet, not a real ICD-10-CM code in use.** The Report code `501` is what this service queries on, and `diagnosis_icd10` is a **passed-through allowlisted column** — so nothing in the pipeline branches on this value either way, and no code should special-case it. Recorded because a reader who meets `T67.0XXA` in an Extract will otherwise assume the service produced it.
 
 ### `รหัส ICD-10 ร่วม` (companion ICD-10 codes)
 
