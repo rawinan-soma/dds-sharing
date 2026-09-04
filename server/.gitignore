@@ -1,0 +1,16 @@
+# Compiled output
+/dist
+/node_modules
+*.tsbuildinfo
+
+# Angular build copied in for local combined runs (docker build does this fresh)
+/public
+
+# Local secrets
+.env
+
+# Coverage
+/coverage
+
+# System files
+.DS_Store
