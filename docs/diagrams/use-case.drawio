@@ -1,0 +1,125 @@
+<mxGraphModel dx="1200" dy="900" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1300" pageHeight="1200" math="0" shadow="0" adaptiveColors="auto">
+  <root>
+    <mxCell id="0"/>
+    <mxCell id="1" parent="0"/>
+    <mxCell id="bnd" value="DDS Sharing — the service" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;fontSize=16;fontStyle=1;fillColor=none;strokeColor=#333333;" vertex="1" parent="1">
+      <mxGeometry x="330" y="30" width="520" height="1100" as="geometry"/>
+    </mxCell>
+    <mxCell id="aReq" value="Requester&#10;(officer at DDC / สคร.&#10;unauthenticated, never verified)" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;" vertex="1" parent="1">
+      <mxGeometry x="80" y="180" width="60" height="110" as="geometry"/>
+    </mxCell>
+    <mxCell id="aSys" value="System&#10;(tick, worker, mailer)" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;" vertex="1" parent="1">
+      <mxGeometry x="80" y="700" width="60" height="110" as="geometry"/>
+    </mxCell>
+    <mxCell id="aRev" value="Reviewer&#10;(named, authenticated,&#10;accountable per release)" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;" vertex="1" parent="1">
+      <mxGeometry x="1060" y="180" width="60" height="110" as="geometry"/>
+    </mxCell>
+    <mxCell id="aOps" value="Operator / service owner&#10;(shell access to the host)" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;" vertex="1" parent="1">
+      <mxGeometry x="1060" y="700" width="60" height="110" as="geometry"/>
+    </mxCell>
+    <mxCell id="aUp" value="Upstream DDC DDS API&#10;(secondary)" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+      <mxGeometry x="80" y="1000" width="60" height="110" as="geometry"/>
+    </mxCell>
+    <mxCell id="aMail" value="SMTP relay&#10;(secondary, arrival unobservable)" style="shape=umlActor;verticalLabelPosition=bottom;verticalAlign=top;html=1;outlineConnect=0;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+      <mxGeometry x="1060" y="1000" width="60" height="110" as="geometry"/>
+    </mxCell>
+    <mxCell id="u1" value="FR-01 Submit a Request" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+      <mxGeometry x="360" y="60" width="220" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="u2" value="FR-02 Read the confirmation page" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+      <mxGeometry x="360" y="160" width="220" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="u3" value="FR-19 Collect the Extract&#10;(present a Download token)" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+      <mxGeometry x="360" y="260" width="220" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="u4" value="FR-20 See the expiry page" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+      <mxGeometry x="360" y="360" width="220" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="u5" value="FR-28 Ask for Redaction&#10;(by telephone)" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+      <mxGeometry x="360" y="460" width="220" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="u6" value="FR-03 Run the Probe&#10;(off the submit path)" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+      <mxGeometry x="360" y="560" width="220" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="u7" value="FR-13 Run the extraction job" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+      <mxGeometry x="360" y="660" width="220" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="u8" value="FR-18 Send an email&#10;(Delivery, rejection, failure, queue)" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+      <mxGeometry x="360" y="760" width="220" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="u9" value="FR-24 Expire a Request&#10;at 24 business hours" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+      <mxGeometry x="360" y="860" width="220" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="u10" value="FR-22 Delete the object&#10;at token expiry" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+      <mxGeometry x="360" y="960" width="220" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="u11" value="FR-25 Raise and route an Alert" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+      <mxGeometry x="360" y="1050" width="220" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="v1" value="FR-07 Sign in&#10;(password + TOTP, one form)" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+      <mxGeometry x="600" y="60" width="220" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="v2" value="FR-08 Read the Reviewer queue" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+      <mxGeometry x="600" y="160" width="220" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="v3" value="FR-09 Review one Request" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+      <mxGeometry x="600" y="260" width="220" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="v4" value="FR-10 Approve a Request" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+      <mxGeometry x="600" y="360" width="220" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="v5" value="FR-11 Reject a Request&#10;(mandatory internal note)" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+      <mxGeometry x="600" y="460" width="220" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="v6" value="FR-26 Re-run an extraction" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+      <mxGeometry x="600" y="560" width="220" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="v7" value="FR-27 Resend the Delivery&#10;(same or corrected address)" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+      <mxGeometry x="600" y="660" width="220" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="v8" value="FR-25 Clear an Alert&#10;(closed outcome set)" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+      <mxGeometry x="600" y="760" width="220" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="v9" value="FR-29 Seed / reset / deactivate&#10;a Reviewer (host CLI)" style="ellipse;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+      <mxGeometry x="600" y="860" width="220" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="v10" value="FR-30 Verify an Extract&#10;fingerprint (host CLI)" style="ellipse;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+      <mxGeometry x="600" y="960" width="220" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="v11" value="FR-31 Report upstream traffic&#10;· FR-23 watch /health" style="ellipse;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+      <mxGeometry x="600" y="1050" width="220" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="e1" style="endArrow=none;html=1;" edge="1" parent="1" source="aReq" target="u1"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="e2" style="endArrow=none;html=1;" edge="1" parent="1" source="aReq" target="u2"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="e3" style="endArrow=none;html=1;" edge="1" parent="1" source="aReq" target="u3"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="e4" style="endArrow=none;html=1;" edge="1" parent="1" source="aReq" target="u4"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="e5" style="endArrow=none;html=1;" edge="1" parent="1" source="aReq" target="u5"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="e6" style="endArrow=none;html=1;" edge="1" parent="1" source="aSys" target="u6"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="e7" style="endArrow=none;html=1;" edge="1" parent="1" source="aSys" target="u7"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="e8" style="endArrow=none;html=1;" edge="1" parent="1" source="aSys" target="u8"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="e9" style="endArrow=none;html=1;" edge="1" parent="1" source="aSys" target="u9"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="e10" style="endArrow=none;html=1;" edge="1" parent="1" source="aSys" target="u10"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="e11" style="endArrow=none;html=1;" edge="1" parent="1" source="aSys" target="u11"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="f1" style="endArrow=none;html=1;" edge="1" parent="1" source="aRev" target="v1"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="f2" style="endArrow=none;html=1;" edge="1" parent="1" source="aRev" target="v2"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="f3" style="endArrow=none;html=1;" edge="1" parent="1" source="aRev" target="v3"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="f4" style="endArrow=none;html=1;" edge="1" parent="1" source="aRev" target="v4"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="f5" style="endArrow=none;html=1;" edge="1" parent="1" source="aRev" target="v5"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="f6" style="endArrow=none;html=1;" edge="1" parent="1" source="aRev" target="v6"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="f7" style="endArrow=none;html=1;" edge="1" parent="1" source="aRev" target="v7"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="f8" style="endArrow=none;html=1;" edge="1" parent="1" source="aRev" target="v8"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="g1" style="endArrow=none;html=1;" edge="1" parent="1" source="aOps" target="v9"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="g2" style="endArrow=none;html=1;" edge="1" parent="1" source="aOps" target="v10"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="g3" style="endArrow=none;html=1;" edge="1" parent="1" source="aOps" target="v11"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="g4" value="FR-28 Redaction" style="endArrow=none;html=1;dashed=1;" edge="1" parent="1" source="aOps" target="u5"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="h1" style="endArrow=none;html=1;dashed=1;strokeColor=#6c8ebf;" edge="1" parent="1" source="aUp" target="u6"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="h2" style="endArrow=none;html=1;dashed=1;strokeColor=#6c8ebf;" edge="1" parent="1" source="aUp" target="u7"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="h3" style="endArrow=none;html=1;dashed=1;strokeColor=#6c8ebf;" edge="1" parent="1" source="aMail" target="u8"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="n1" value="&lt;b&gt;Gate:&lt;/b&gt; FR-10 and FR-11 are the only paths&#10;out of pending, and the judgement is about&#10;&lt;i&gt;who is asking&lt;/i&gt; — never about how much." style="shape=note;whiteSpace=wrap;html=1;size=14;fillColor=#fff2cc;strokeColor=#d6b656;align=left;verticalAlign=top;" vertex="1" parent="1">
+      <mxGeometry x="80" y="380" width="230" height="90" as="geometry"/>
+    </mxCell>
+    <mxCell id="n2" value="&lt;b&gt;A Reviewer never sees case rows&lt;/b&gt;&#10;and never sees a Download token.&#10;Bull Board is localhost-only for the&#10;same reason." style="shape=note;whiteSpace=wrap;html=1;size=14;fillColor=#fff2cc;strokeColor=#d6b656;align=left;verticalAlign=top;" vertex="1" parent="1">
+      <mxGeometry x="1000" y="380" width="230" height="90" as="geometry"/>
+    </mxCell>
+  </root>
+</mxGraphModel>
