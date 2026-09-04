@@ -105,6 +105,13 @@ pnpm add -D tailwindcss @tailwindcss/postcss daisyui
 pnpm add @angular/cdk
 ```
 
+The prototype under `prototypes/` installs `@tailwindcss/cli` instead of the
+PostCSS plugin, because it has no Angular build to hang one off. It is a
+**standalone package, deliberately outside whatever pnpm workspace #37
+creates** — a design artefact that must keep opening after the application's
+build changes shape. #37 compiles the application's stylesheet from the same
+`src/app.css`; it does not consume the prototype's committed `assets/app.css`.
+
 **pnpm, never npm** ([#37](https://github.com/rawinan-soma/dds-sharing/issues/37)).
 Do not install `@angular/material`: it depends on the CDK, but the CDK does not
 depend on it, and pulling Material in for a focus trap is how a second theme

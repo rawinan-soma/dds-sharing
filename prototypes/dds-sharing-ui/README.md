@@ -35,6 +35,13 @@ python3 scripts/check-metrics.py
 
 **pnpm, never npm** ([#37](https://github.com/rawinan-soma/dds-sharing/issues/37)).
 
+This is a **standalone package, deliberately outside whatever pnpm workspace #37
+creates**. A design artefact has to keep opening after the application's build
+changes shape, so it owns its own lockfile and installs `@tailwindcss/cli`
+rather than the PostCSS plugin — it has no Angular build to hang one off. #37
+compiles the application's stylesheet from this same `src/app.css`; it does not
+consume the `assets/app.css` committed here.
+
 `check-metrics.py` is the interesting one. It asserts 28 things ADR 0009 states
 in prose — that the theme is defined and not inherited, that every DaisyUI Latin
 metric is overridden, that no line-height sits under Noto Sans Thai's own
