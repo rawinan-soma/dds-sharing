@@ -103,6 +103,17 @@ Also worth a look: `rev_rows_probe_note` says the count comes from upstream *"�
 ส่งคำขอ"*, but §5.4 moved the Probe off the submit path. A proposed replacement
 is in `th.proposed.json` under the same idea.
 
+## No build step, and no `package.json`
+
+Deliberate. This directory has no dependency, no lockfile and no toolchain: the
+CSS is hand-written, the fonts are committed, and `index.html` opens by
+double-clicking it. That is the point — a prototype that needs installing is a
+prototype nobody opens.
+
+The design adds exactly one runtime dependency to the *application*, and it is
+not a styling one: `pnpm add @angular/cdk`, for `LiveAnnouncer` and `FocusTrap`.
+**pnpm, never npm** ([#37](https://github.com/rawinan-soma/dds-sharing/issues/37)).
+
 ## Regenerating the fonts
 
 `assets/fonts/` and `assets/fonts.css` were produced once from Google Fonts and

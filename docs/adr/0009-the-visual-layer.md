@@ -69,7 +69,17 @@ Three arguments follow behind it.
   problem.
 
 **Angular CDK is kept**, for `LiveAnnouncer`, `FocusTrap` and `cdkTrapFocus`.
-The CDK is behaviour, not appearance; it ships no styling and no brand.
+The CDK is behaviour, not appearance; it ships no styling and no brand — and it
+is **the only runtime dependency this decision adds**:
+
+```
+pnpm add @angular/cdk
+```
+
+**pnpm, never npm** ([#37](https://github.com/rawinan-soma/dds-sharing/issues/37)).
+Do not install `@angular/material`: it depends on the CDK, but the CDK does not
+depend on it, and pulling Material in for a focus trap is how the theme this ADR
+rejected arrives anyway.
 
 **Tailwind is rejected for a reason specific to §16.3.** Its whole governance
 argument is that a copy change must be visible *as a copy change*, which is why
