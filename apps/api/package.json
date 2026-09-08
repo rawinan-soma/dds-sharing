@@ -15,6 +15,7 @@
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
     "start:prod": "node dist/main",
+    "dev:fake-upstream": "tsx src/upstream/fake-harness/main.ts",
     "lint": "eslint --config ../../eslint.config.mjs src test",
     "test": "vitest run",
     "test:watch": "vitest",
