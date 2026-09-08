@@ -54,7 +54,7 @@ describe("UpstreamClient against the fake upstream harness", () => {
 
     expect(result.rows).toHaveLength(2);
     expect(result.totalItems).toBe(2);
-    expect(result.requestIds).toHaveLength(2);
+    expect(result.calls).toHaveLength(2);
   });
 
   it("recovers from a 500 mid-loop within the 3-attempt retry budget", async () => {

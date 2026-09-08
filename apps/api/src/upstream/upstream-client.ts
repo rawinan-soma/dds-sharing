@@ -16,6 +16,7 @@ import {
   NOOP_UPSTREAM_LOGGER,
   type FetchDiseaseGroupParams,
   type FetchDiseaseGroupResult,
+  type UpstreamCallRecord,
   type UpstreamEnvelope,
   type UpstreamErrorBody,
   type UpstreamLogger,
@@ -62,6 +63,19 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+/**
+ * §5.5's taxonomy names three 422 causes (page_size out of bounds, a
+ * malformed date, end_date < start_date) but upstream gives no field or code
+ * to tell them apart — only prose in `message`. The ticket's own taxonomy
+ * groups all three under one 422 outcome (unlike 400, which it splits in
+ * two), so they collapse to a single `UpstreamValidationError` here: any
+ * 422 means the client sent something upstream won't accept, and the fix is
+ * the same regardless of which field it was.
+ *
+ * 400 is genuinely two distinct outcomes (range vs. page-too-large), and
+ * `message` is the only signal available to distinguish them — a fragility
+ * inherited from upstream, not introduced here.
+ */
 function classifyErrorStatus(
   status: number,
   body: UpstreamErrorBody | undefined,
@@ -150,7 +164,7 @@ export class UpstreamClient {
     >,
   ): Promise<FetchDiseaseGroupResult> {
     const rows: UpstreamRow[] = [];
-    const requestIds: string[] = [];
+    const calls: UpstreamCallRecord[] = [];
     let page = 1;
     let totalItems: number | undefined;
 
@@ -159,7 +173,7 @@ export class UpstreamClient {
         params,
         page,
       );
-      if (requestId) requestIds.push(requestId);
+      calls.push({ requestId, processTimeMs });
 
       this.logger.logCall({
         status: 200,
@@ -174,24 +188,14 @@ export class UpstreamClient {
         envelope.meta.page !== page ||
         envelope.meta.page_size !== params.pageSize
       ) {
-        this.logger.logError({
-          status: 200,
-          groupCode: params.groupCode,
-          page,
-          errorKind: "meta_mismatch",
-        });
+        this.logError(params.groupCode, page, 200, "meta_mismatch");
         throw new UpstreamMetaMismatchError();
       }
 
       if (totalItems === undefined) {
         totalItems = envelope.meta.total_items;
       } else if (envelope.meta.total_items !== totalItems) {
-        this.logger.logError({
-          status: 200,
-          groupCode: params.groupCode,
-          page,
-          errorKind: "total_items_shifted",
-        });
+        this.logError(params.groupCode, page, 200, "total_items_shifted");
         throw new UpstreamTotalItemsShiftedError();
       }
 
@@ -201,7 +205,18 @@ export class UpstreamClient {
       page += 1;
     }
 
-    return { rows, totalItems: totalItems ?? 0, requestIds };
+    return { rows, totalItems: totalItems ?? 0, calls };
+  }
+
+  /** Never passes a response body through (§14.5) — only these structured fields. */
+  private logError(
+    groupCode: number,
+    page: number,
+    status: number,
+    errorKind: string,
+    extra?: { requestId?: string; processTimeMs?: number },
+  ): void {
+    this.logger.logError({ status, groupCode, page, errorKind, ...extra });
   }
 
   private async getPage(
@@ -232,20 +247,10 @@ export class UpstreamClient {
     } catch (error) {
       clearTimeout(timer);
       if (controller.signal.aborted) {
-        this.logger.logError({
-          status: 0,
-          groupCode: params.groupCode,
-          page,
-          errorKind: "client_timeout",
-        });
+        this.logError(params.groupCode, page, 0, "client_timeout");
         throw new UpstreamTimeoutError();
       }
-      this.logger.logError({
-        status: 0,
-        groupCode: params.groupCode,
-        page,
-        errorKind: "malformed_response",
-      });
+      this.logError(params.groupCode, page, 0, "malformed_response");
       throw new UpstreamMalformedResponseError(error);
     }
     clearTimeout(timer);
@@ -264,13 +269,9 @@ export class UpstreamClient {
         body = undefined;
       }
       const error = classifyErrorStatus(response.status, body);
-      this.logger.logError({
-        status: response.status,
-        groupCode: params.groupCode,
-        page,
+      this.logError(params.groupCode, page, response.status, error.kind, {
         requestId,
         processTimeMs,
-        errorKind: error.kind,
       });
       throw error;
     }
@@ -286,14 +287,13 @@ export class UpstreamClient {
         throw new Error("response body has no meta");
       }
     } catch (error) {
-      this.logger.logError({
-        status: response.status,
-        groupCode: params.groupCode,
+      this.logError(
+        params.groupCode,
         page,
-        requestId,
-        processTimeMs,
-        errorKind: "malformed_response",
-      });
+        response.status,
+        "malformed_response",
+        { requestId, processTimeMs },
+      );
       throw new UpstreamMalformedResponseError(error);
     }
 

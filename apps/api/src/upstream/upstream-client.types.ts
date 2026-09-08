@@ -42,12 +42,18 @@ export interface FetchDiseaseGroupParams {
   pageSize?: number;
 }
 
+/** One successful HTTP response's `x-request-id`/`x-process-time-ms` — for the audit record. */
+export interface UpstreamCallRecord {
+  requestId?: string;
+  processTimeMs?: number;
+}
+
 export interface FetchDiseaseGroupResult {
   rows: UpstreamRow[];
   /** From the first page's `meta.total_items` — used for the completeness assert (§7.5). */
   totalItems: number;
-  /** One `x-request-id` per HTTP response received while fetching this code — for the audit record. */
-  requestIds: string[];
+  /** One entry per successful HTTP response received while fetching this code, in page order. */
+  calls: UpstreamCallRecord[];
 }
 
 /**

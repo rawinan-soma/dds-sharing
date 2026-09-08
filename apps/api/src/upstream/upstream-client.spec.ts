@@ -194,7 +194,10 @@ describe("UpstreamClient.fetchDiseaseGroup", () => {
 
     const result = await client.fetchDiseaseGroup(baseParams);
 
-    expect(result.requestIds).toEqual(["req-1", "req-2"]);
+    expect(result.calls).toEqual([
+      { requestId: "req-1", processTimeMs: 3487 },
+      { requestId: "req-2", processTimeMs: 3499 },
+    ]);
   });
 
   it("throws a distinct, non-retried error for a mismatched meta echo", async () => {
