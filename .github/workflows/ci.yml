@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: dds_sharing
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/dds_sharing
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm run lint
+
+      - name: Build web (the api's static-serving and SPA-fallback tests need a real build)
+        run: pnpm --filter web build
+
+      - name: Build api (also type-checks it)
+        run: pnpm --filter api build
+
+      - name: Unit tests
+        run: pnpm -r test
+
+      - name: API e2e tests
+        run: pnpm --filter api run test:e2e
+
+      - name: Repo-level tests (copy catalogue, §17.1)
+        run: npx vitest run

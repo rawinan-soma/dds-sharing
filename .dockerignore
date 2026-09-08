@@ -1,0 +1,8 @@
+**/node_modules
+**/dist
+**/coverage
+**/src/paraglide
+**/.angular
+.git
+docs
+prototypes
