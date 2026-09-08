@@ -35,3 +35,8 @@ Thumbs.db
 # Source material — not for public distribution
 docs/*.pdf
 docs/*.png
+
+# Claude Code local state
+.claude/
+.angular/
+worktree/
