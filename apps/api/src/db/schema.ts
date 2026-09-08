@@ -1,6 +1,28 @@
 import { sql } from "drizzle-orm";
-import { bigserial, check, index, jsonb, pgEnum, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import {
+  bigserial,
+  check,
+  index,
+  integer,
+  jsonb,
+  pgEnum,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+  varchar,
+} from "drizzle-orm/pg-core";
 import { ACTOR_TYPES, REQUEST_EVENT_TYPES, REVIEWER_EVENT_TYPES } from "./events.js";
+
+// The 77-row province lookup (spec §6.4, ADR 0002). `docs/provinces.csv`
+// stays canonical — this table is generated from it and never edited by
+// hand. `province_id` is a code, not a quantity (§4.6: codes occupy 10-96,
+// uniformly two digits), so it stays a string.
+export const province = pgTable("province", {
+  provinceId: varchar("province_id", { length: 2 }).primaryKey(),
+  nameTh: text("name_th").notNull(),
+  healthRegion: integer("health_region").notNull(),
+});
 
 // The audit spine (spec §12). Two append-only streams, kept apart because they
 // belong to different things: request_event for what happened to a Request,

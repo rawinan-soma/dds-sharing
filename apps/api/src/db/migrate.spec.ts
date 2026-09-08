@@ -31,8 +31,8 @@ describe.skipIf(!connectionString)("event table role enforcement (§12.2)", () =
   });
 
   it.each([
-    ["dds_app", APP_ROLE],
-    ["dds_admin", ADMIN_ROLE],
+    ["app_role", APP_ROLE],
+    ["admin_role", ADMIN_ROLE],
   ])("%s can INSERT and SELECT on the event tables, but not UPDATE or DELETE", async (_name, role) => {
     const pool = new Pool({ connectionString: connectAs(connectionString!, role) });
     try {

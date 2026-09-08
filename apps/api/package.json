@@ -22,7 +22,8 @@
     "test:debug": "vitest --inspect-brk --no-file-parallelism",
     "test:e2e": "vitest run --config ./vitest.config.e2e.ts",
     "db:generate": "drizzle-kit generate",
-    "db:migrate": "tsx src/db/migrate.ts"
+    "db:migrate": "tsx src/db/migrate.ts",
+    "db:seed:generate": "tsx scripts/generate-province-seed.ts"
   },
   "dependencies": {
     "@nestjs/common": "^12.0.1",
