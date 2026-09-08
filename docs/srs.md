@@ -1933,7 +1933,8 @@ email and never shown on a page**.
 - **A same-address resend** → the same token; **the clock does not move.** The
   token is never extended by use, and a resend is not use.
 - **A Re-run** → a **new object, a new token and a fresh clock**, anchored on the
-  new completion (FR-26).
+  new completion (FR-26), **and the previous token revoked at `ready`** with a
+  `system` actor (ADR 0012).
 
 **Workflow:**
 1. Mint an unguessable value at job completion; store it with `expires_at` and an
@@ -2140,8 +2141,8 @@ writes an event carrying a **closed-set outcome, never free text**.
 | Alert | Raised by | Assigned to | Cleared by | Outcomes |
 |---|---|---|---|---|
 | **Send abandoned** | 5 failed send tries (FR-18) | the approving Reviewer | that Reviewer | as Collection lapse |
-| **Collection lapse** | 24 business hours after a Delivery with **zero Attempts** | **the approving Reviewer, by name** | that Reviewer, **or `system`** on a late collection | reached the Requester / could not reach the Requester / no action needed |
-| **Extraction failure** | a job reaching `failed` (FR-13) | the approving Reviewer | **any Reviewer** | `re_ran` / `contacted_requester` / `abandoned` |
+| **Collection lapse** | **24 wall-clock hours** after a Delivery with **zero Attempts**, raised at the next business-hours opening (ADR 0011) | **the approving Reviewer, by name** | that Reviewer, **or `system`** on a late collection; **any active Reviewer once the assigned one is deactivated** (ADR 0013) | reached the Requester / could not reach the Requester / no action needed |
+| **Extraction failure** | a job reaching `failed` (FR-13) | the approving Reviewer | **any Reviewer**; **`system`** on a completed re-run | `contacted_requester` / `abandoned` chosen by a Reviewer; **`re_ran` written only by `system`** when a deferred re-run completes (ADR 0014) |
 
 **Exception conditions:**
 - **The Requester collects late, before anyone telephones** → the system clears
@@ -2159,6 +2160,16 @@ writes an event carrying a **closed-set outcome, never free text**.
   fraction of the time, and an alert only one person can clear is an alert that
   waits for them. A **Collection lapse** stays assigned strictly by name, because
   the action is *phone the Requester you personally vouched for*.
+- **The assigned Reviewer is deactivated** → their open Alerts become clearable by
+  **any active Reviewer**, and the assignment is **never rewritten** (ADR 0013). A
+  Reviewer is never removed, only deactivated, so without this a by-name Alert
+  outlives the only person permitted to clear it. The widening is derived from
+  `deactivated_at`; **no event announces it and no event type is added.**
+- **A Reviewer presses Re-run** → the extraction-failure Alert is **deferred, not
+  cleared** (ADR 0014). It stays on the queue marked as re-running; a completed
+  re-run clears it as `system` with outcome `re_ran`, a failed one leaves it open
+  with a second attempt recorded and raises no second Alert. **One Alert per broken
+  promise, not one per job.**
 
 **Workflow:**
 1. Detect the condition — on the tick for lapses and send abandonment, at job
@@ -2201,11 +2212,15 @@ producing a second Decision.
   the chain reads ***approved once, extracted twice***.
 - A **fresh Extract, a fresh Download token and a fresh 72 h clock**, anchored on
   the **new** completion.
+- **The previous Download token is revoked — at `ready`, never at the press of the
+  button** (ADR 0012). One Request never has two collectable Extracts, and a failed
+  re-run leaves the original still collectable, so the button costs nothing.
 - The archive takes the next `-rN` filename suffix.
 
 **Exception conditions:**
-- **The re-run also fails** → another extraction-failure Alert; the Reviewer
-  decides again.
+- **The re-run also fails** → the **original** Alert stays open with a second
+  attempt recorded; **no second Alert is raised** (ADR 0014). The Reviewer decides
+  again.
 
 **Alternate conditions:**
 - **The Reviewer judges re-running pointless** → clear the Alert with
@@ -2333,7 +2348,9 @@ present or on a call.
   nothing.**
 - Deactivation: `deactivated_at` set — **never a row deletion** — live sessions
   invalidated immediately by a Postgres query, and a `deactivated` event naming
-  the operator who ran it.
+  the operator who ran it. **Their open Alerts become clearable by any active
+  Reviewer from that moment** (FR-25, ADR 0013); the assignment is not rewritten,
+  and nothing about the Request stream is touched.
 
 **Exception conditions:**
 - ⚠️ **Deactivating below two active Reviewers** → the CLI **refuses**, overridable
@@ -3376,3 +3393,4 @@ And, at deployment (§17.4):
 | 1.2 | 2026-09-04 | **The implementation stack, decided.** §2.4 fixed the architecture but named no libraries, and only one of the gaps was tracked as an open question — so eight decisions that carry requirements were sitting in nobody's court. *New:* **§2.4.1 Implementation stack** and **[ADR 0009](adr/0009-the-extract-writer-is-ours-not-a-librarys.md)**. *Decided:* **Node 26 + pnpm** (pin the exact patch — NFR-30 test 1 is a reproducibility claim); **Drizzle**, promoted from a single passing mention in `spec.md` §13.3 into the stack, because NFR-32's province-seed assert is a boot failure; **no CSV library** — FR-17's eight rules are the fingerprint's definition and ADR 0005's *"one `pnpm up` from breaking silently"* applies harder to the Extract than to the archive it was written about, **conditional on NFR-30 tests 1–2 existing**; **`yazl`** for the archive, the asymmetry justified by the archive not being fingerprinted; **Tailwind + DaisyUI**; **`class-validator` / `class-transformer`**; **Vitest + `supertest` + `unplugin-swc`** — the plugin is not optional, since Vitest's esbuild transform drops decorator metadata and every validator would vanish *in tests only*; **`otpauth` + `qrcode`**, defaults only, because Google Authenticator ignores `algorithm` and `digits` and a SHA-256 secret fails on the phone alone; **`nodemailer`**, with a resolved `sendMail()` barred from ever becoming a `delivery_confirmed` event (ADR 0001). *Ruled out as a dependency:* **Playwright and Cypress** — five of NFR-30's six tests are backend logic and the sixth is an HTTP `GET` with a `Range` header. *Frontend:* **Angular 22**, and **Noto Sans Thai self-hosted** rather than fetched from a font CDN — an internet-facing `moph.go.th` page should not make a third-party request per load; note that Thai stacks vowel and tone marks two levels above the baseline, so DaisyUI's default line-heights clip and raising them is a correctness fix. *Narrowed:* **OQ-02** keeps the wireframe — visual design and spacing only, component choice and typeface having been settled the same day. **31 functional requirements, 34 non-functional requirements, 7 open questions, 18 accepted risks, nine ADRs.** |
 | 1.3 | 2026-09-04 | **OQ-06 closed: the charter re-anchored against `spec.md` v1.2.** `docs/project-charter.md` was written against v1.0 and still told a sponsor that the Extract had **22 columns**, that the worst case was a full-year group `02` extract of **1,141,658 rows in 10–25 minutes**, that the archive was **~20–30 MB**, and that date-chunking was *"mandatory for correctness"*. Every one of those was superseded by [#30](https://github.com/rawinan-soma/dds-sharing/issues/30), [#33](https://github.com/rawinan-soma/dds-sharing/issues/33) and [#34](https://github.com/rawinan-soma/dds-sharing/issues/34). *Corrected throughout:* **23 columns** (21 passthrough + 2 derived); the worst case a Requester can express is **1,952 rows in ~3.5 s**, the widest group by calls **~35 s**, the whole domain **3,861 rows a year**; the archive is **tens of KB**; monthly chunking is gone and the **Span builder** holds the one expression of a date range ([ADR 0008](adr/0008-the-pipeline-is-sized-for-one-page.md)); **25 Report codes**, not 24 — `501` was missing; ADRs **0001–0009** and 33 tickets (#2–#34). *Risk register:* **R1 reduced to medium** — the PDPO was consulted, the gap is now the **written artefact**, not the position; **R11 reduced to low** — no province `01` exists and the Excel row-truncation claim is retired. *Assumptions:* **A1** revised, **A2** flagged as *not* what the PDPO was asked about, **A6** reworded per Report code, **A10** resized. ⚠️ **Every correction makes the engineering problem smaller**, so the charter now says what the real difficulty is — **correctness across up to ten calls per ask** — rather than dropping the withdrawn volume claim in silence. *Also fixed:* R1 of §1.5 pointed at `spec.md` v1.1; the spec has been at **v1.2** since 2026-09-04. **31 functional requirements, 34 non-functional requirements, 6 open questions, 18 accepted risks, nine ADRs.** |
 | 1.4 | 2026-09-04 | **The copy is authored in English and translated before production** ([ADR 0010](adr/0010-copy-is-authored-in-english-and-translated-before-production.md)), reversing §16.3's ruling that `messages/en.json` was deliberately not maintained. *Why the reversal:* the message catalogue **cannot carry a description field** — the inlang SDK data model is three tables with no metadata column, and a sibling `_note` key would compile into a shipped message function — so *"mitigated by descriptive English keys"* was not a mitigation that could be strengthened, it was the ceiling; and the copy is authored by an agent, whose Thai reads badly while its English does not. *The narrowing the reversal rests on:* §16.3's *"two versions drift into two different promises"* is an argument about **served** languages, and with `locales: ["th"]` in production and no `url` strategy English has no route to a screen, so a drift is a documentation defect rather than a broken promise. *Decided:* development `baseLocale: "en"`, `locales: ["en", "th"]`; production `baseLocale: "th"`, `locales: ["th"]`; `strategy: ["cookie", "baseLocale"]` throughout and **the `url` strategy never added**; both catalogues checked in and maintained, changed in one commit; **one catalogue for the Angular screens and the four NestJS emails** — the rejection email's wording is a decision (§10.3) and outside the catalogue it changes as a template edit nobody reviews as one; descriptive keys scoped by surface; the Thai reviewed by the repo owner and named colleagues **on a staging deploy**, not in JSON. *New required test (§17.1):* key-set parity between the two catalogues plus a **U+0E00–U+0E7F assertion** on every `th.json` value — Paraglide has no strict mode, emits no warning for a missing message, and inlang's lint rules were removed in CLI v3, so after the flip a missing key renders **the raw key** on a Requester's screen; and because `en.json` leaves `locales` at the flip, that test is the only thing binding the two files. *Also recorded:* **Paraglide has no Angular support** — the `paraglide-js compile` CLI prebuild step is the only route with primary sources behind it — and `src/paraglide` is deleted at the flip, a stale outdir rendering Thai screens in English. *Cost inverted (§18.14):* no longer the implementer who cannot read a Thai-only catalogue, but the domain reader who cannot check the Thai until staging. *Load-bearing string tables in §16.3 and §3 now name **keys**, not Thai prose* — a third copy in these documents would drift against two it cannot be checked against. **31 functional requirements, 34 non-functional requirements, 6 open questions, 18 accepted risks, ten ADRs.** |
+| 1.5 | 2026-09-08 | **Four defects in the Alert and clock model, found by driving the Request lifecycle by hand.** A throwaway prototype (`prototype/request-lifecycle`) pushed one Request through submit, Probe, Decision, extraction, Delivery and collection, and reached four states the prose did not cover. *New:* **[ADR 0011](adr/0011-the-collection-lapse-trip-wire-runs-on-wall-clock-time.md)**, **[ADR 0012](adr/0012-a-re-run-revokes-the-previous-download-token.md)**, **[ADR 0013](adr/0013-deactivating-a-reviewer-widens-their-alerts.md)** and **[ADR 0014](adr/0014-a-re-run-defers-its-alert-rather-than-clearing-it.md)**. *Corrected — the Collection lapse could never arrive in time:* the trip-wire ran on the business clock while the Download token it warns about runs on the wall clock, and **24 business hours are exactly 72 wall-clock hours** on a weekend-free week — so the Alert landed on the token's expiry at best (Monday 09:00 Delivery → both at Thursday 09:00) and **48 hours after the Extract was deleted** at worst (Friday 15:00 Delivery). Lowering the threshold does not help; the two clocks were incommensurable. **The silence is now measured in 24 wall-clock hours and the Alert raised at the next business-hours opening** — 48 hours to telephone on a Monday Delivery, 6.5 on a Friday one. *Corrected — two live Download tokens:* §10.7 fixed what a Re-run creates and was silent on what it retires, so a Re-run over a successful first run left two collectable Extracts. **The previous token is revoked at `ready`**, never at the press of the button, so a failed re-run destroys nothing. *Corrected — an unclearable must-clear item:* a Collection lapse is assigned by name and a Reviewer is never removed, only deactivated, so deactivating the approving Reviewer stranded their Alerts permanently. **Deactivation now widens clearing to any active Reviewer and never rewrites the assignment.** *Corrected — `re_ran` was never an outcome:* clearing an extraction-failure Alert with it recorded a button press whose result was unknown, so one broken promise read as one `re_ran` plus one open Alert. **Re-run now defers the Alert**; a completed re-run clears it as `system`, a failed one leaves it open. *Not a migration:* all four are payload and actor changes — `request_event` stays closed, and none of this blocks tickets being cut. **31 functional requirements, 34 non-functional requirements, 6 open questions, 18 accepted risks, fourteen ADRs.** |

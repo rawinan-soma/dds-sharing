@@ -72,7 +72,7 @@ A single `page_size=20` upstream call made per Report code over a Request's whol
 _Avoid_: Count query, pre-flight, dry run
 
 **Download token**:
-The unguessable, time-limited capability that lets a Requester collect one Extract. Carried in the delivery email, never shown on a page. Expires 72 hours after the extraction job completes and is never extended by use. Not single-use — time-limited and attempt-capped instead.
+The unguessable, time-limited capability that lets a Requester collect one Extract. Carried in the delivery email, never shown on a page. Expires 72 hours after the extraction job completes and is never extended by use. Not single-use — time-limited and attempt-capped instead. It can also be **revoked** before its time, and only ever because something superseded it: a Re-run whose new Extract is ready, or a resend to a corrected address.
 _Avoid_: Download link, magic link, signed URL
 
 **Attempt**:
@@ -88,19 +88,19 @@ The relay refusing or failing to accept a message the system tried to send. Obse
 _Avoid_: Bounce, delivery failure, email error
 
 **Collection lapse**:
-A delivered Extract that the Requester has not collected — no Attempt on its Download token — after 24 business hours. Inferred, never observed: the system cannot see whether the Delivery arrived, so silence is the only signal it has. A lapse is a suspicion that the email went missing, not proof of it.
+A delivered Extract that the Requester has not collected — no Attempt on its Download token — 24 hours after the Delivery. Inferred, never observed: the system cannot see whether the Delivery arrived, so silence is the only signal it has. A lapse is a suspicion that the email went missing, not proof of it. **The silence is measured in wall-clock hours and the Alert is raised in business hours**, and the two are deliberately different clocks: the Download token expires in wall-clock hours, so a clock that stops at the weekend cannot warn about one that does not — while the Alert itself is a call on a Reviewer's attention, and asking for that attention on a Saturday is asking nobody.
 _Avoid_: Failed delivery, undelivered, bounce, no-show
 
 **Extraction failure**:
-A job that has exhausted its retries without producing an Extract. Two things at once, told to two different people: a technical fault the operator fixes, and a promise broken to a named person only a Reviewer will contact. Distinct from a Send failure and a Collection lapse, which concern an Extract that was successfully made.
+A job that has exhausted its retries without producing an Extract. Two things at once, told to two different people: a technical fault the operator fixes, and a promise broken to a named person only a Reviewer will contact. **The Alert it raises belongs to the broken promise, not to the job** — a Re-run defers that Alert rather than clearing it, and only an Extract that actually arrives resolves it. Distinct from a Send failure and a Collection lapse, which concern an Extract that was successfully made.
 _Avoid_: Job error, crash, failed request
 
 **Alert**:
-A must-clear item on the Reviewer queue, raised when something needs a human and cleared only by naming an outcome from a closed set. Never free text — the count of each outcome is the only measure the service has of how often its silent failures actually happen.
+A must-clear item on the Reviewer queue, raised when something needs a human and cleared only by naming an outcome from a closed set. Never free text — the count of each outcome is the only measure the service has of how often its silent failures actually happen. **Who it is assigned to and who may clear it are two different things**: an Alert is assigned to one Reviewer by name where the act rests on that person's own judgement, and deactivating them widens the clearing to any active Reviewer rather than stranding the item. The assignment is never rewritten — the name of the Reviewer who vouched stays where it is.
 _Avoid_: Notification, warning, flag, task
 
 **Re-run**:
-A second extraction of an already-approved Request, started by a Reviewer pressing a button. Not a new Decision: the Requester, the parameters and the judgement are unchanged, so the record must read approved once, extracted twice. It makes a fresh Extract with a fresh Download token and a fresh clock, and never re-Probes.
+A second extraction of an already-approved Request, started by a Reviewer pressing a button. Not a new Decision: the Requester, the parameters and the judgement are unchanged, so the record must read approved once, extracted twice. It makes a fresh Extract with a fresh Download token and a fresh clock, and never re-Probes. **The previous Download token is revoked when the new Extract is ready** — one Request never has two collectable Extracts — and revoking at *ready* rather than at the press of the button is what makes a failed Re-run cost nothing: the original stays collectable until there is something better to replace it.
 _Avoid_: Retry, resubmit, reprocess
 
 **Area selection**:

@@ -1,6 +1,9 @@
 # DDS Sharing — Specification
 
-**Status:** complete for implementation. Version 1.3, 2026-09-04.
+**Status:** complete for implementation. Version 1.4, 2026-09-08 — §9.3, §10.6,
+§10.7, §11.4, §12.4 and §15.2 amended by ADRs 0011–0014, four defects in the Alert
+and clock model found by driving the lifecycle in a prototype
+(`prototype/request-lifecycle`).
 One open item, flagged at the end of §19 and tracked as
 [#33](https://github.com/rawinan-soma/dds-sharing/issues/33): the worst-case row
 volume rests on a Report code no Disease group can reach.
@@ -1219,7 +1222,10 @@ Requester observes would make retention hostage to their attention.
 > ⚠️ **Recorded knowingly: job completion is an event the Requester never sees**,
 > and it may follow their submit by days. The whole 72 h can elapse unnoticed if
 > the Delivery lands in junk. **The remedy is the collection-lapse Alert and a
-> telephone call inside the window — not a longer clock.**
+> telephone call inside the window — not a longer clock.** That remedy works only
+> because the lapse trip-wire runs on this same wall clock (§11.4). On the business
+> clock it ran on until 2026-09-08, the Alert arrived at or after this expiry, and
+> the promise in this sentence was empty.
 
 72 h covers a Friday-evening completion read on Monday.
 
@@ -1447,12 +1453,26 @@ Three kinds:
 | Alert | Raised by | Assigned to | Cleared by | Outcomes |
 |---|---|---|---|---|
 | **Send abandoned** | 5 failed send tries (§11.3) | approving Reviewer | that Reviewer | (as collection lapse) |
-| **Collection lapse** | 24 business hours, zero Attempts (§11.4) | **the approving Reviewer, by name** | that Reviewer, or `system` on late collection | reached the Requester / could not reach the Requester / no action needed |
-| **Extraction failure** | a job reaching `failed` (§14.3) | the approving Reviewer | **any Reviewer** | `re_ran` / `contacted_requester` / `abandoned` |
+| **Collection lapse** | 24 wall-clock hours, zero Attempts, raised in business hours (§11.4) | **the approving Reviewer, by name** | that Reviewer, or `system` on late collection | reached the Requester / could not reach the Requester / no action needed |
+| **Extraction failure** | a job reaching `failed` (§14.3) | the approving Reviewer | **any Reviewer** | `contacted_requester` / `abandoned`, or `re_ran` written by `system` (§10.7) |
 
 **Why collection lapse is assigned strictly by name:** the action is *phone the
 Requester you personally vouched for*, and that Reviewer already formed a
 judgement about this person and has the telephone number in front of them.
+
+**Assignment and clearing are two different things
+([ADR 0013](adr/0013-deactivating-a-reviewer-widens-their-alerts.md)).**
+**Deactivating a Reviewer widens their open Alerts to any active Reviewer, and
+never rewrites the assignment.** A Reviewer is never removed, only deactivated,
+so without this a by-name Alert outlives the only person permitted to clear it —
+a must-clear queue item nobody can clear, which is the one thing an Alert may
+never be. The name of the Reviewer who vouched stays where it is; only the
+eligible set grows, and `collection_lapse_cleared` carries **both** the assigned
+and the clearing Reviewer so the two populations stay separable. The widening is
+derived from `deactivated_at` at read time — **no event announces it, and no type
+is added to the closed catalogue.** Blocking deactivation until the Alerts are
+cleared was rejected: deactivation is frequently not voluntary, and that would
+keep an account live at the moment the organisation most wants it shut.
 
 > ⚠️ **There is deliberately no "Probe stalled" Alert, and adding one is a
 > regression.** One was specified while approve was blocked on the Probe's count;
@@ -1473,6 +1493,17 @@ two-person team the assigned Reviewer is on leave a material fraction of the tim
 and an alert only one person can clear is an alert that waits for them. **The
 clearing Reviewer is recorded separately from the assigned one.**
 
+**Pressing Re-run defers an extraction-failure Alert; it does not clear it**
+([ADR 0014](adr/0014-a-re-run-defers-its-alert-rather-than-clearing-it.md)). The
+Alert stays on the queue marked as re-running. A **completed** re-run clears it as
+actor **`system`**, outcome `re_ran`; a **failed** one leaves it open with a second
+attempt recorded, and raises no second Alert. **One Alert per broken promise, not
+one per job.** `re_ran` was never an outcome — it is an action whose outcome is
+not yet known — and a Reviewer who cleared with it before the second job settled
+put one `re_ran` and one open item on the record for a single unkept promise. This
+is the same rule as the late collection two paragraphs below: **the actor who
+resolves a thing is the one who actually resolved it.**
+
 **A late collection clears its lapse as actor `system`, never `reviewer`.** No one
 gets credit for a call they did not make, and the lapse count must stay honest.
 
@@ -1490,10 +1521,22 @@ A Re-run:
 
 - produces a **fresh Extract, fresh Download token, fresh 72 h clock** (a new
   object, so completion-anchored retention applies from the new completion);
+- **revokes the previous Download token — at *ready*, never at the press of the
+  button** ([ADR 0012](adr/0012-a-re-run-revokes-the-previous-download-token.md));
 - **does not re-Probe** — the row count is already on `probe_performed` (§12.4),
   and re-probing would spend upstream budget to re-learn a known number;
 - carries the **original Decision's id**;
-- takes the next `-rN` filename suffix (§8.3).
+- takes the next `-rN` filename suffix (§8.3);
+- **defers rather than clears its extraction-failure Alert** (§10.6).
+
+**One Request never has two collectable Extracts.** §10.7 previously fixed what a
+Re-run creates and was silent on what it retires, so a Re-run over a *successful*
+first run left two live tokens on two clocks — and the link the Requester was most
+likely to click was the one most likely to be dead. Revoking at **ready** rather
+than at **queued** is what makes the button free: a failed re-run leaves the
+original still collectable, so nothing is destroyed until something better exists.
+The revocation is written by the job, so `download_token_revoked` carries a
+`system` actor here and a `reviewer` actor in §10.8's corrected-address case.
 
 **It is a button, never automatic.** Chunk-atomic retry is already exhausted by
 the time a job is `failed`, so a self-retry mostly burns another ~25 minutes
@@ -1625,20 +1668,40 @@ is told a typo will not be caught.
 
 ### 11.4 Collection lapse
 
-**The Delivery was accepted by the relay, and 24 *business* hours later the
+**The Delivery was accepted by the relay, and 24 *wall-clock* hours later the
 Requester has made no Attempt on the Download token.** Never observable, only
 inferred. Silence is the only signal, and silence is ambiguous — junk folder, or
 annual leave.
 
-- **Business hours, not wall-clock.** An Extract approved Friday at 16:00 is not a
-  failure on Saturday afternoon, and a queue full of weekend noise is a queue
-  nobody reads. The clock already exists (§15.2), so reusing it costs nothing.
+**Two clocks, doing two different jobs** ([ADR 0011](adr/0011-the-collection-lapse-trip-wire-runs-on-wall-clock-time.md)):
+
+- **The trip-wire is wall-clock**, because the Download token it is warning about
+  is wall-clock (§9.3). **A clock that stops cannot warn you about one that does
+  not.**
+- **The Alert is raised in business hours** — a trip-wire firing outside them waits
+  for the next opening at 08:30 (§15.2). An Extract delivered Friday at 16:00 is
+  not a failure on Saturday afternoon, and a queue full of weekend noise is a queue
+  nobody reads.
+
+> ⚠️ **This was 24 *business* hours until 2026-09-08, and that was a defect, not a
+> tuning choice.** The business clock advances 8 hours a working day, so **24
+> business hours are exactly 72 wall-clock hours** on a week with no weekend in it
+> — the very life of the token. A Monday 09:00 Delivery raised its Alert at
+> Thursday 09:00, the same instant the token expired; a Friday 15:00 Delivery
+> raised it **48 hours after the Extract had been deleted**. Lowering the threshold
+> does not help: 8 business hours from Friday 15:00 still lands on Monday 15:00.
+> **Do not re-unify the two clocks.**
+
 - **Waiting for the 72 h token expiry was the alternative and it is useless** — it
-  fires as the window closes, leaving no time to telephone.
-- **The false-positive rate is accepted deliberately.** A Reviewer will sometimes
-  telephone a Requester who was merely slow. That costs one call. The alternative
-  costs a completed extraction, an upstream slot, and a Request that must be
-  resubmitted and re-reviewed.
+  fires as the window closes, leaving no time to telephone. The old business-hours
+  trip-wire was worse than that alternative, not better.
+- **What the Reviewer now gets**: 48 hours to telephone on a Monday Delivery, and
+  6.5 hours on a Friday-afternoon one. The second is thin, and it is the first
+  arrangement under which that case gets any window at all.
+- **The false-positive rate is accepted deliberately, and is now higher.** A
+  Reviewer will sometimes telephone a Requester who was merely slow. That costs one
+  call. The alternative costs a completed extraction, an upstream slot, and a
+  Request that must be resubmitted and re-reviewed.
 
 ### 11.5 `expired_uncollected` is a distinct terminal state
 
@@ -1782,7 +1845,7 @@ reading the ticket record alone would find `job_queued` and nothing else.
 | `job_completed` | `system` | the two-group payload below, plus the **Probe-vs-run drift**: the Probe's per-code totals against the run's. **Recorded, never asserted** (§5.4) — real drift between Probe and run is expected and legitimate |
 | `job_failed` | `system` | **cause**: `upstream_5xx` / `auth_expiry` / `completeness_mismatch` / `stall` / `internal`, plus the upstream `x-request-id`. **Operator-facing only** |
 | `extraction_alert_raised` | `system` | |
-| `extraction_alert_cleared` | `reviewer` | closed outcome `re_ran`/`contacted_requester`/`abandoned`; carries **both** the assigned and the clearing Reviewer |
+| `extraction_alert_cleared` | `system` \| `reviewer` | `reviewer` names `contacted_requester`/`abandoned`; **`system` writes `re_ran` when a deferred re-run completes** (§10.6). Carries **both** the assigned and the clearing Reviewer, and the count of re-run attempts |
 | `extraction_rerun_queued` | `reviewer` | carries the **original Decision's id** |
 
 *Delivery and collection*
@@ -1794,9 +1857,9 @@ reading the ticket record alone would find `job_queued` and nothing else.
 | `mail_send_abandoned` | `system` | fifth try failed |
 | `delivery_alert_raised` | `system` | send abandoned |
 | `download_attempted` | `anonymous` | mirrored from `token_lookup` |
-| `collection_lapse_raised` | `system` | 24 business hours, zero Attempts |
-| `collection_lapse_cleared` | `system` \| `reviewer` | `system` = collected late; `reviewer` carries the closed three-value outcome |
-| `download_token_revoked` | `reviewer` | corrected-address resend |
+| `collection_lapse_raised` | `system` | **24 wall-clock hours, zero Attempts**, raised at the next business-hours opening (§11.4). Carries the wall-clock hours elapsed, so a trip-wire that fired on time is distinguishable from one whose Alert waited for Monday |
+| `collection_lapse_cleared` | `system` \| `reviewer` | `system` = collected late; `reviewer` carries the closed three-value outcome, and **both** the assigned and the clearing Reviewer — they differ when the assigned Reviewer was deactivated (§10.6) |
+| `download_token_revoked` | `system` \| `reviewer` | `reviewer` = corrected-address resend (§10.8); **`system` = a Re-run whose new Extract is ready** (§10.7), naming the run that superseded it |
 | `download_token_reissued` | `reviewer` | corrected-address resend; names **both** addresses |
 | `expired_uncollected` | `system` | **terminal state** |
 | `object_deleted` | `system` | actor, object key, timestamp, outcome |
@@ -2190,8 +2253,19 @@ Sunday submit starts counting at 08:30 Monday.
 The holiday list is read at derivation time. Drift from editing it mid-flight is
 **accepted, not defended** — no startup guard.
 
-The same clock serves Request expiry (§10.4) and the collection-lapse trip-wire
-(§11.4).
+**The same clock serves two callers, and it answers a different question for
+each.** Request expiry (§10.4) asks it *how much attention time has elapsed* — the
+24-hour window is a promise about Reviewer availability, so business hours are the
+measurement itself. The collection lapse (§11.4) asks it only *is anyone there to
+be told?*, using it to schedule when an Alert may be raised; **the silence it
+reports is measured in wall-clock hours**, because the Download token it warns
+about expires in wall-clock hours.
+
+> ⚠️ **Do not re-unify these two uses.** Measuring the lapse in business hours is
+> the natural-looking simplification and it is a defect: 24 business hours are
+> exactly 72 wall-clock hours on a weekend-free week, so the Alert lands on the
+> token's expiry at best and two days past it at worst
+> ([ADR 0011](adr/0011-the-collection-lapse-trip-wire-runs-on-wall-clock-time.md)).
 
 ### 15.3 The tick
 
