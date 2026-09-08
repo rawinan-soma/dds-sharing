@@ -5,7 +5,13 @@ services:
       - "3000:3000"
     environment:
       PORT: 3000
+      # Superuser — migrations only (DDL, role/grant creation). Never used for
+      # the app's own queries; see APP_DATABASE_URL and §12.2.
       DATABASE_URL: postgres://postgres:postgres@postgres:5432/dds_sharing
+      # The restricted dds_app role (drizzle/migrations/0001_roles_and_grants.sql):
+      # INSERT/SELECT on the event tables, DELETE nowhere. What application
+      # code connects with at runtime.
+      APP_DATABASE_URL: postgres://dds_app:dds_app_dev_password@postgres:5432/dds_sharing
       REDIS_URL: redis://redis:6379
       MINIO_ENDPOINT: minio
       MINIO_PORT: 9000
