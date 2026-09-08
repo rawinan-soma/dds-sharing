@@ -5,7 +5,7 @@ Date: 2026-09-08
 ## Status
 
 Accepted. Amends §10.6, §10.7 and §12.4. Amends FR-25 and FR-26. Found by the
-Request-lifecycle prototype (`prototype/request-lifecycle`), where one broken
+Request-lifecycle prototype (`prototypes/request-lifecycle.prototype.html`), where one broken
 promise produced one `re_ran` outcome and one still-open Alert.
 
 ## Context

@@ -6,7 +6,7 @@ Date: 2026-09-08
 
 Accepted. Amends §10.7, §12.4 and the Download token's definition in
 `CONTEXT.md`. Amends FR-21 and FR-26. Found by the Request-lifecycle prototype
-(`prototype/request-lifecycle`), which reached a state with two live Download
+(`prototypes/request-lifecycle.prototype.html`), which reached a state with two live Download
 tokens for one Request and no rule saying whether that was intended.
 
 ## Context

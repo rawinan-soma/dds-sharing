@@ -5,7 +5,7 @@ Date: 2026-09-08
 ## Status
 
 Accepted. Rewrites §11.4; amends §10.6, §12.4 and §15.2. Amends FR-25. Found by
-the Request-lifecycle prototype (`prototype/request-lifecycle`), which drove the
+the Request-lifecycle prototype (`prototypes/request-lifecycle.prototype.html`), which drove the
 timeline by hand and showed the Alert arriving after the Extract it concerned had
 been deleted.
 

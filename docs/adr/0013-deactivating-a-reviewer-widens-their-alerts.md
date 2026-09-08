@@ -5,7 +5,7 @@ Date: 2026-09-08
 ## Status
 
 Accepted. Amends §10.6 and §12.4. Amends FR-25 and FR-29. Found by the
-Request-lifecycle prototype (`prototype/request-lifecycle`), which reached a
+Request-lifecycle prototype (`prototypes/request-lifecycle.prototype.html`), which reached a
 must-clear Alert that no living person could clear.
 
 ## Context
