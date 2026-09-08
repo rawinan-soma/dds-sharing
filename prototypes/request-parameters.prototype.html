@@ -1,0 +1,830 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PROTOTYPE — What a Request stores</title>
+<style>
+  :root {
+    --ink: #1b1f23;
+    --muted: #6a737d;
+    --line: #e1e4e8;
+    --bg: #fbfbfa;
+    --panel: #ffffff;
+    --accent: #0b6b5f;
+    --accent-soft: #e6f2f0;
+    --warn: #8a5a00;
+    --warn-soft: #fff5e0;
+    --bad: #9b2226;
+    --bad-soft: #fdeaea;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 40px 24px 80px; }
+  h1 { font-size: 26px; margin: 0 0 4px; letter-spacing: -0.01em; }
+  h2 { font-size: 15px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 0 0 12px; font-weight: 600; }
+  h3 { font-size: 16px; margin: 0 0 6px; }
+  p { margin: 0 0 12px; }
+  .stamp {
+    display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: 0.1em;
+    background: var(--warn-soft); color: var(--warn); border: 1px solid #f0dcae;
+    padding: 3px 8px; border-radius: 3px; margin-bottom: 14px;
+  }
+  .intro { max-width: 78ch; color: #33383d; }
+  .intro strong { color: var(--ink); }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 20px 22px; margin-bottom: 20px; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
+  @media (max-width: 900px) { .cols { grid-template-columns: 1fr; } }
+
+  table.state { width: 100%; border-collapse: collapse; }
+  table.state td { padding: 6px 0; border-bottom: 1px solid #f2f3f4; vertical-align: top; }
+  table.state td.k { color: var(--muted); width: 44%; padding-right: 12px; }
+  table.state td.v { font-weight: 600; }
+  table.state tr.changed td { background: var(--accent-soft); }
+  table.state td.v small { display: block; font-weight: 400; color: var(--muted); font-size: 12.5px; }
+  .empty { color: var(--muted); font-style: italic; font-weight: 400; }
+
+  .note { border-left: 3px solid var(--accent); background: var(--accent-soft); padding: 10px 14px; border-radius: 0 4px 4px 0; margin-bottom: 12px; }
+  .note.refused { border-left-color: var(--bad); background: var(--bad-soft); }
+  .flag { border-left: 3px solid var(--warn); background: var(--warn-soft); padding: 10px 14px; border-radius: 0 4px 4px 0; margin-bottom: 10px; font-size: 14px; }
+  .flag b { color: var(--warn); }
+  .flag.bad { border-left-color: var(--bad); background: var(--bad-soft); }
+  .flag.bad b { color: var(--bad); }
+
+  .group { margin-bottom: 16px; }
+  .group > span { display: block; font-size: 12px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); margin-bottom: 7px; }
+  button {
+    font: inherit; font-size: 13.5px; background: #fff; color: var(--ink);
+    border: 1px solid #d6dade; border-radius: 4px; padding: 7px 12px; margin: 0 6px 6px 0;
+    cursor: pointer; text-align: left;
+  }
+  button:hover { border-color: var(--accent); color: var(--accent); }
+  button:disabled { color: #b9bfc4; border-color: var(--line); cursor: not-allowed; }
+  button.step { display: block; width: 100%; margin-bottom: 6px; }
+  button.step.done { color: var(--muted); border-color: var(--line); background: #f6f8fa; }
+  button.step.next { border-color: var(--accent); border-width: 2px; font-weight: 600; }
+  button.tab { border-radius: 20px; }
+  button.tab.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.reset { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+  button.on { background: var(--warn-soft); border-color: #f0dcae; color: var(--warn); font-weight: 600; }
+
+  select, input[type=date] {
+    font: inherit; font-size: 13.5px; padding: 6px 8px; border: 1px solid #d6dade;
+    border-radius: 4px; background: #fff; color: var(--ink); margin: 0 6px 6px 0;
+  }
+  label.f { display: inline-block; font-size: 12px; color: var(--muted); margin-right: 14px; }
+  label.f span { display: block; margin-bottom: 3px; }
+
+  ol.trail { list-style: none; margin: 0; padding: 0; font-size: 13px; max-height: 320px; overflow-y: auto; }
+  ol.trail li { padding: 5px 0; border-bottom: 1px solid #f2f3f4; display: grid; grid-template-columns: 96px 1fr; gap: 10px; }
+  ol.trail .t { color: var(--muted); font-variant-numeric: tabular-nums; }
+  ol.trail code, code { font: 12.5px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; background: #f2f4f5; padding: 1px 5px; border-radius: 3px; }
+  ol.trail .detail { color: var(--muted); font-size: 12.5px; }
+
+  table.calls { width: 100%; border-collapse: collapse; font-size: 13px; }
+  table.calls th { text-align: left; font-weight: 600; color: var(--muted); font-size: 11.5px;
+    text-transform: uppercase; letter-spacing: 0.06em; padding: 0 8px 6px 0; border-bottom: 1px solid var(--line); }
+  table.calls td { padding: 5px 8px 5px 0; border-bottom: 1px solid #f2f3f4; font-variant-numeric: tabular-nums; }
+  table.calls tr.refused td { background: var(--bad-soft); color: var(--bad); }
+  table.calls td.zero { color: var(--warn); }
+
+  .archive { border: 1px solid var(--line); border-radius: 4px; padding: 10px 14px; margin-bottom: 10px; font-size: 13.5px; }
+  .archive b { display: block; }
+  .archive .dict { color: var(--muted); font-size: 12.5px; }
+  .archive.disagree { border-color: #f0dcae; background: var(--warn-soft); }
+
+  .scenario-desc { background: #f6f8fa; border-radius: 4px; padding: 14px 16px; margin-bottom: 14px; font-size: 14px; }
+  .scenario-desc p:last-child { margin-bottom: 0; }
+  .watch { color: var(--accent); font-weight: 600; }
+  footer { color: var(--muted); font-size: 13px; max-width: 78ch; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <span class="stamp">PROTOTYPE — THROWAWAY, NOT PRODUCTION CODE</span>
+  <h1>DDS Sharing — what a Request stores, and what a Re-run refetches</h1>
+
+  <div class="intro">
+    <p><strong>The question this demo exists to answer:</strong> a Request never stores the ask a
+    Requester made. It stores an <em>expansion</em> of it — the Report codes their Disease group meant
+    at the moment they pressed submit, and the provinces their health region meant. Both classifications
+    are amendable, and the dates the human typed are inclusive while upstream's are not. Driving submit,
+    an announcement, a Decision and a Re-run by hand — <strong>does the stored Request still say what it
+    meant, and does it still make a legal upstream call?</strong></p>
+    <p>Fill in the form and press the buttons in any order, or run one of the six guided walkthroughs
+    below. Nothing is saved; reload and it is gone. The sibling prototype
+    <code>request-lifecycle.prototype.html</code> drives everything that happens <em>after</em> the
+    extraction — Alerts, tokens and clocks. This one stops at the upstream call.</p>
+    <p style="color:var(--muted);font-size:13.5px">The classification starts as
+    <code>docs/disease-groups.md</code> of 2026-09-02 and the geography as
+    <code>docs/provinces.csv</code>. Both can be amended from the buttons, mid-flight, exactly as an
+    announcement would amend them.</p>
+  </div>
+
+  <div class="cols">
+    <div>
+      <div class="panel">
+        <h2>The stored Request</h2>
+        <div id="note"></div>
+        <div id="flags"></div>
+        <table class="state"><tbody id="state"></tbody></table>
+      </div>
+
+      <div class="panel">
+        <h2>The upstream calls it makes today</h2>
+        <div id="calls"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Extract archives produced</h2>
+        <div id="archives"></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="panel">
+        <h2>The Request form</h2>
+        <div id="form"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Free play</h2>
+        <div id="actions"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Guided walkthroughs</h2>
+        <div id="tabs" style="margin-bottom:14px"></div>
+        <div id="scenario"></div>
+      </div>
+
+      <div class="panel">
+        <h2>The record</h2>
+        <ol class="trail" id="trail"></ol>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <p>Throwaway. The page is a shell; the module marked <code>THE MODULE</code> in the source is the
+    part worth lifting — the Span builder, the two expansions, and the wire conversion, as pure
+    functions over a plain Request.</p>
+  </footer>
+</div>
+
+<script>
+/* ===========================================================================
+   THE MODULE — pure, liftable. No DOM, no handlers, no globals reaching in.
+   Everything below answers: what does a Request store, and what does a stored
+   Request ask upstream?
+   =========================================================================== */
+
+/* --- the seed classification: docs/disease-groups.md, 2026-09-02 --- */
+const SEED_CLASSIFICATION = [
+  { id: 'air-pollution',           name: 'โรคจากการสัมผัสมลพิษทางอากาศ',                    codes: [201] },
+  { id: 'silicosis',               name: 'โรคซิลิโคสิส',                                     codes: [202, 203] },
+  { id: 'asbestos',                name: 'โรคจากแร่ใยหิน',                                   codes: [204, 205, 206, 207] },
+  { id: 'lead',                    name: 'โรคจากตะกั่วและสารประกอบของตะกั่ว',                 codes: [208] },
+  { id: 'pesticides',              name: 'โรคจากสารกำจัดศัตรูพืช',                            codes: [209, 210, 211, 212, 213, 214, 215, 216, 217, 218] },
+  { id: 'confined-space',          name: 'การบาดเจ็บจากภาวะอับอากาศ',                        codes: [219] },
+  { id: 'radiation',               name: 'โรคจากรังสี',                                      codes: [222, 223, 224] },
+  { id: 'work-related',            name: 'โรคจากการทำงาน',                                   codes: [220] },
+  { id: 'environmental-pollution', name: 'โรคที่เกี่ยวข้องกับการสัมผัสมลพิษในสิ่งแวดล้อม',      codes: [221] },
+  { id: 'heat',                    name: 'โรคจากความร้อน',                                   codes: [501] },
+];
+
+/* --- the seed geography: docs/provinces.csv, health region 1 --- */
+const SEED_REGIONS = {
+  1: [
+    { code: 50, name: 'เชียงใหม่' }, { code: 51, name: 'ลำพูน' },
+    { code: 52, name: 'ลำปาง' },    { code: 54, name: 'แพร่' },
+    { code: 55, name: 'น่าน' },     { code: 56, name: 'พะเยา' },
+    { code: 57, name: 'เชียงราย' }, { code: 58, name: 'แม่ฮ่องสอน' },
+  ],
+};
+
+/* --- rows the codes hold, so an empty expansion is visible (docs/disease-groups.md) --- */
+const ROWS_PER_CODE_PER_YEAR = {
+  201: 1952, 202: 120, 203: 9, 204: 40, 205: 20, 206: 10, 207: 3, 208: 95,
+  209: 8, 210: 5, 211: 4, 212: 0, 213: 3, 214: 2, 215: 0, 216: 3, 217: 0, 218: 3,
+  219: 15, 220: 970, 221: 194, 222: 3, 223: 1, 224: 0, 501: 401,
+};
+
+const DAY = 86400000;
+const iso = ms => new Date(ms).toISOString().slice(0, 10);
+const parse = d => Date.parse(d + 'T00:00:00Z');
+const addDays = (d, n) => iso(parse(d) + n * DAY);
+const daysBetween = (a, b) => Math.round((parse(b) - parse(a)) / DAY);
+
+/* --- The Span builder (CONTEXT.md; spec §4.3, §5.4, §7.2) -------------------
+   The single function turning a Request into the half-open range the service
+   asks upstream for. The Probe and the extraction job both call this, which is
+   the whole point: one expression of the range, so the two can never disagree
+   about which days they covered. */
+function buildSpan(from, to) {
+  return { start: from, endExclusive: addDays(to, 1) };
+}
+
+/* --- The API client's wire conversion (spec §4.3) --------------------------
+   `end_date` is exclusive upstream. `alsoAddInClient` exists only so the demo
+   can show what happens when the +1 has two homes, which is how the spec's
+   §4.3 and §7.2 currently read together. */
+function toWire(span, alsoAddInClient) {
+  return {
+    start_date: span.start,
+    end_date: alsoAddInClient ? addDays(span.endExclusive, 1) : span.endExclusive,
+  };
+}
+
+/* --- our submit-time validation (spec §4.2) --- */
+function validateForm(form) {
+  const errors = [];
+  if (!form.groupId) errors.push('No Disease group chosen.');
+  if (!form.from || !form.to) errors.push('Both dates are required.');
+  else {
+    if (daysBetween(form.from, form.to) < 0) errors.push('`to` is before `from`.');
+    else if (daysBetween(form.from, form.to) > 365)
+      errors.push('Date range must not exceed 1 year (365 days) — the DDC API caps it.');
+  }
+  return errors;
+}
+
+/* --- upstream's own check, applied to the wire range (spec §6, §4.2) --- */
+function upstreamCheck(wire) {
+  const span = daysBetween(wire.start_date, wire.end_date);
+  if (span > 365) return { ok: false, status: 400, message: 'Date range must not exceed 1 year (365 days)' };
+  if (span < 0) return { ok: false, status: 422, message: 'end_date < start_date' };
+  return { ok: true };
+}
+
+/* --- the two expansions, performed at submit and stored (spec §4.4, §4.9) --- */
+function expandGroup(classification, groupId) {
+  const g = classification.find(x => x.id === groupId);
+  return { id: g.id, nameAtSubmit: g.name, codes: g.codes.slice() };
+}
+function expandArea(regions, area) {
+  if (area.kind === 'national') return { kind: 'national', labelAtSubmit: 'ทั้งประเทศ', provinces: [] };
+  if (area.kind === 'province') return { kind: 'province', labelAtSubmit: area.name, provinces: [{ code: area.code, name: area.name }] };
+  return { kind: 'region', labelAtSubmit: 'เขตสุขภาพที่ ' + area.region, provinces: regions[area.region].slice() };
+}
+
+/* --- submit: the ask becomes an expansion, and the expansion is what is kept --- */
+function storeRequest(world, form, at) {
+  const g = expandGroup(world.classification, form.groupId);
+  const a = expandArea(world.regions, form.area);
+  return {
+    id: 'req-001', submittedAt: at,
+    groupId: g.id, groupNameAtSubmit: g.nameAtSubmit, codes: g.codes,
+    from: form.from, to: form.to,
+    areaKind: a.kind, areaLabelAtSubmit: a.labelAtSubmit, provinces: a.provinces,
+    classVersionAtSubmit: world.classVersion,
+    regionVersionAtSubmit: world.regionVersion,
+  };
+}
+
+/* --- what a stored Request asks upstream, now or on any later Re-run.
+   Reads the stored expansion, never the classification as it stands today. --- */
+function planCalls(stored, alsoAddInClient) {
+  const span = buildSpan(stored.from, stored.to);
+  const wire = toWire(span, alsoAddInClient);
+  const check = upstreamCheck(wire);
+  // Days upstream actually covers is the half-open wire range, not the human's
+  // range — which is the whole reason a stray +1 is invisible from the record.
+  const days = daysBetween(wire.start_date, wire.end_date);
+  return stored.codes.map(code => ({
+    group_code: code,
+    start_date: wire.start_date,
+    end_date: wire.end_date,
+    page_size: 10000,
+    refused: !check.ok,
+    refusal: check.ok ? null : check.status + ' ' + check.message,
+    rows: check.ok ? Math.round((ROWS_PER_CODE_PER_YEAR[code] || 0) * days / 365) : 0,
+  }));
+}
+
+/* --- the Snapshot the Decision carries (spec §12.3) --- */
+function takeSnapshot(stored, reviewer, at) {
+  return {
+    reviewer, at,
+    groupName: stored.groupNameAtSubmit,
+    codes: stored.codes.slice(),
+    from: stored.from, to: stored.to,
+    area: stored.areaLabelAtSubmit,
+    provinces: stored.provinces.map(p => p.code),
+  };
+}
+
+/* --- the reducer over the whole world --- */
+function initialWorld(seed) {
+  const w = {
+    classification: SEED_CLASSIFICATION.map(g => ({ ...g, codes: g.codes.slice() })),
+    classVersion: 1,
+    regions: { 1: SEED_REGIONS[1].slice() },
+    regionVersion: 1,
+    form: { groupId: 'silicosis', from: '2026-01-01', to: '2026-01-31', area: { kind: 'national' } },
+    stored: null, snapshot: null, runs: [],
+    doubleAdd: false,
+    events: [], seq: 0, note: null, refused: null, changed: [],
+  };
+  return Object.assign(w, seed || {});
+}
+
+function record(s, what, actor, detail) {
+  s.events.push({ n: ++s.seq, what, actor, detail });
+}
+
+function reduce(prev, action) {
+  const s = JSON.parse(JSON.stringify(prev));
+  s.note = null; s.refused = null; s.changed = [];
+  const a = action;
+
+  switch (a.type) {
+
+    case 'SET_GROUP':
+      s.form.groupId = a.groupId;
+      s.note = 'Picker set to ' + s.classification.find(g => g.id === a.groupId).name + '.';
+      return s;
+
+    case 'SET_DATES':
+      s.form.from = a.from; s.form.to = a.to;
+      s.note = 'Dates set to ' + a.from + ' – ' + a.to + ' inclusive — ' +
+        (daysBetween(a.from, a.to) + 1) + ' days.';
+      return s;
+
+    case 'SET_AREA':
+      s.form.area = a.area;
+      s.note = 'Area set to ' + expandArea(s.regions, a.area).labelAtSubmit + '.';
+      return s;
+
+    case 'SUBMIT': {
+      if (s.stored) { s.refused = 'This Request is already submitted. A Requester cannot edit it; they submit another.'; return s; }
+      const errors = validateForm(s.form);
+      if (errors.length) { s.refused = 'Submit refused — ' + errors.join(' '); return s; }
+      s.stored = storeRequest(s, s.form, 'submit');
+      s.changed = ['codes', 'provinces', 'span'];
+      record(s, 'request_submitted', 'requester',
+        'group ' + s.stored.groupId + ' expanded to [' + s.stored.codes.join(', ') + ']; ' +
+        (s.stored.areaKind === 'region'
+          ? 'region expanded to ' + s.stored.provinces.length + ' provinces'
+          : s.stored.areaKind));
+      s.note = 'Submitted. The Disease group expanded to ' + s.stored.codes.length +
+        ' Report code' + (s.stored.codes.length === 1 ? '' : 's') +
+        ' and it is the expansion that was stored — the group name rides along as a label.';
+      return s;
+    }
+
+    case 'ADD_CODE': {
+      const g = s.classification.find(x => x.id === a.groupId);
+      if (g.codes.includes(a.code)) { s.refused = 'Code ' + a.code + ' is already in ' + g.name + '.'; return s; }
+      g.codes.push(a.code); g.codes.sort((x, y) => x - y);
+      s.classVersion++;
+      record(s, 'classification_amended', 'operator', 'code ' + a.code + ' announced into ' + g.id);
+      s.changed = ['classification'];
+      s.note = 'Announcement: Report code ' + a.code + ' now belongs to ' + g.name +
+        '. The picker offers it from now on. Nothing already stored moves.';
+      return s;
+    }
+
+    case 'MOVE_CODE': {
+      const from = s.classification.find(x => x.id === a.from);
+      const to = s.classification.find(x => x.id === a.to);
+      if (!from.codes.includes(a.code)) { s.refused = 'Code ' + a.code + ' is not in ' + from.name + '.'; return s; }
+      from.codes = from.codes.filter(c => c !== a.code);
+      to.codes.push(a.code); to.codes.sort((x, y) => x - y);
+      s.classVersion++;
+      record(s, 'classification_amended', 'operator', 'code ' + a.code + ' reclassified ' + a.from + ' → ' + a.to);
+      s.changed = ['classification'];
+      s.note = 'Reclassified: Report code ' + a.code + ' moved from ' + from.name + ' to ' + to.name +
+        '. The partition still holds — every code sits in exactly one group.';
+      return s;
+    }
+
+    case 'RENAME_GROUP': {
+      const g = s.classification.find(x => x.id === a.groupId);
+      const was = g.name; g.name = a.name;
+      s.classVersion++;
+      record(s, 'classification_amended', 'operator', 'group ' + a.groupId + ' renamed');
+      s.changed = ['classification'];
+      s.note = 'Renamed: “' + was + '” is now “' + a.name + '”. The id ' + a.groupId + ' did not move, which is the point of having one.';
+      return s;
+    }
+
+    case 'REDRAW_REGION': {
+      s.regions[1] = s.regions[1].filter(p => p.code !== 54);
+      s.regionVersion++;
+      record(s, 'geography_amended', 'operator', 'แพร่ (54) left health region 1');
+      s.changed = ['classification'];
+      s.note = 'Boundary redrawn: แพร่ (54) has left health region 1. Region 1 now means 7 provinces.';
+      return s;
+    }
+
+    case 'SNAPSHOT': {
+      if (!s.stored) { s.refused = 'Nothing to review — no Request has been submitted.'; return s; }
+      if (s.snapshot) { s.refused = 'A Decision has already been taken. A Re-run is not a new Decision.'; return s; }
+      s.snapshot = takeSnapshot(s.stored, a.reviewer, 'decision');
+      record(s, 'decision_recorded', a.reviewer, 'approved; Snapshot carries the group name over its codes');
+      s.changed = ['snapshot'];
+      s.note = a.reviewer + ' approved. The Snapshot copied the Disease group name over the Report codes it expanded to — so the Decision stays legible years later, whatever the classification does next.';
+      return s;
+    }
+
+    case 'RUN': {
+      if (!s.stored) { s.refused = 'No Request to extract.'; return s; }
+      if (!s.snapshot) { s.refused = 'Not approved yet. Nothing is fetched before a Decision.'; return s; }
+      const n = s.runs.length + 1;
+      const calls = planCalls(s.stored, s.doubleAdd);
+      const refused = calls.some(c => c.refused);
+      const rows = calls.reduce((t, c) => t + c.rows, 0);
+      s.runs.push({
+        n, calls, rows, refused,
+        dictClassVersion: s.classVersion,
+        dictGroups: s.classification.map(g => ({ id: g.id, name: g.name, codes: g.codes.slice() })),
+        name: 'dds-envocc-sharing-20260115-093000' + (n > 1 ? '-r' + n : '') + '.zip',
+      });
+      record(s, n === 1 ? 'job_completed' : 're_run_completed', 'system',
+        refused
+          ? 'every call refused by upstream — ' + calls[0].refusal
+          : calls.length + ' call' + (calls.length === 1 ? '' : 's') + ', ' + rows + ' rows');
+      s.changed = ['runs'];
+      s.note = refused
+        ? 'The job made ' + calls.length + ' call' + (calls.length === 1 ? '' : 's') + ' and upstream refused every one of them: ' + calls[0].refusal + '.'
+        : (n === 1 ? 'Extraction' : 'Re-run ' + n) + ' complete — ' + calls.length + ' upstream call' +
+          (calls.length === 1 ? '' : 's') + ' over the stored codes, ' + rows + ' rows. It read the stored expansion, never the classification as it stands today.';
+      return s;
+    }
+
+    case 'TOGGLE_DOUBLE_ADD':
+      s.doubleAdd = !s.doubleAdd;
+      s.note = s.doubleAdd
+        ? 'The API client now adds a day of its own, on top of the Span builder’s. Both spec §4.3 and §7.2 name a home for the +1; this is what it costs when both take the instruction.'
+        : 'The +1 lives in the Span builder alone again.';
+      return s;
+
+    default:
+      return s;
+  }
+}
+
+/* ===========================================================================
+   THE PAGE — throwaway shell. Nothing below is worth keeping.
+   =========================================================================== */
+
+const AREAS = {
+  national: { kind: 'national' },
+  region1:  { kind: 'region', region: 1 },
+  chiangmai:{ kind: 'province', code: 50, name: 'เชียงใหม่' },
+};
+
+const ACTIONS = [
+  ['The Requester', [
+    ['Submit the Request', { type: 'SUBMIT' }],
+  ]],
+  ['The Reviewer', [
+    ['Suda approves', { type: 'SNAPSHOT', reviewer: 'Suda' }],
+    ['Run the extraction / Re-run', { type: 'RUN' }],
+  ]],
+  ['An announcement lands', [
+    ['Code 225 joins โรคจากรังสี', { type: 'ADD_CODE', groupId: 'radiation', code: 225 }],
+    ['Code 209 moves to โรคจากการทำงาน', { type: 'MOVE_CODE', code: 209, from: 'pesticides', to: 'work-related' }],
+    ['Rename โรคซิลิโคสิส', { type: 'RENAME_GROUP', groupId: 'silicosis', name: 'โรคปอดฝุ่นหินทราย' }],
+    ['แพร่ leaves health region 1', { type: 'REDRAW_REGION' }],
+  ]],
+  ['Dates worth trying', [
+    ['1–31 Jan 2026 (an ordinary month)', { type: 'SET_DATES', from: '2026-01-01', to: '2026-01-31' }],
+    ['One single day', { type: 'SET_DATES', from: '2026-01-15', to: '2026-01-15' }],
+    ['A full year, from + 364', { type: 'SET_DATES', from: '2026-01-01', to: '2026-12-31' }],
+    ['The last day the picker allows, from + 365', { type: 'SET_DATES', from: '2026-01-01', to: '2027-01-01' }],
+    ['One day too far, from + 366', { type: 'SET_DATES', from: '2026-01-01', to: '2027-01-02' }],
+  ]],
+];
+
+const SCENARIOS = [
+  {
+    tab: 'The ordinary Request',
+    desc: '<p>โรคซิลิโคสิส, the whole of January, national. Nothing surprising happens — this is the shape everything else departs from.</p>' +
+      '<p><span class="watch">Watch:</span> the group becomes <code>[202, 203]</code> in the stored Request and the group <em>name</em> becomes a label. And watch the inclusive <b>31 January</b> the Requester typed leave as an exclusive <code>end_date</code> of <b>1 February</b> — one day added, in one place. Without it upstream silently returns 1–30 January.</p>',
+    steps: [
+      ['Pick โรคซิลิโคสิส', { type: 'SET_GROUP', groupId: 'silicosis' }],
+      ['Set 1–31 January 2026', { type: 'SET_DATES', from: '2026-01-01', to: '2026-01-31' }],
+      ['National', { type: 'SET_AREA', area: AREAS.national }],
+      ['Submit', { type: 'SUBMIT' }],
+      ['Suda approves', { type: 'SNAPSHOT', reviewer: 'Suda' }],
+      ['Run the extraction', { type: 'RUN' }],
+    ],
+  },
+  {
+    tab: 'The one bad day at the cap',
+    desc: '<p>The picker greys out any <code>to</code> beyond <code>from + 365 days</code> (§4.2), and upstream refuses a range wider than 365 days. Those two sentences sound like the same rule. They are not, because the picker measures the human’s inclusive range and upstream measures the wire’s half-open one, which is a day longer.</p>' +
+      '<p><span class="watch">Watch:</span> <code>2026-01-01 → 2027-01-01</code> is exactly what the picker permits. Submit passes every check we have. Then look at what the calls do.</p>',
+    steps: [
+      ['Pick โรคจากความร้อน (one code, so the failure is easy to read)', { type: 'SET_GROUP', groupId: 'heat' }],
+      ['Ask for one day too many, from + 366', { type: 'SET_DATES', from: '2026-01-01', to: '2027-01-02' }],
+      ['Submit — our own check refuses it, naming upstream', { type: 'SUBMIT' }],
+      ['Back off to from + 365, the last day the picker allows', { type: 'SET_DATES', from: '2026-01-01', to: '2027-01-01' }],
+      ['Submit — accepted, every check we have passed', { type: 'SUBMIT' }],
+      ['Suda approves', { type: 'SNAPSHOT', reviewer: 'Suda' }],
+      ['Run the extraction', { type: 'RUN' }],
+    ],
+  },
+  {
+    tab: 'The classification moves underneath',
+    desc: '<p>A Requester asks for โรคจากรังสี — three Report codes today. While the Request sits in the queue, an announcement adds a fourth. The Reviewer then approves, and later presses Re-run.</p>' +
+      '<p><span class="watch">Watch:</span> the Re-run fetches <b>three</b> codes while the picker now offers <b>four</b> — which is the rule working (§4.9: <em>a Re-run refetches the codes the first run fetched, not the codes the group means today</em>). Then look at the two archives at the left: the Data dictionary inside them publishes the classification, and <code>CONTEXT.md</code> promises that dictionary is <em>identical in every archive ever made</em>. Check whether it still is.</p>',
+    steps: [
+      ['Pick โรคจากรังสี', { type: 'SET_GROUP', groupId: 'radiation' }],
+      ['Set the whole of 2026', { type: 'SET_DATES', from: '2026-01-01', to: '2026-12-31' }],
+      ['Submit — expands to [222, 223, 224]', { type: 'SUBMIT' }],
+      ['Suda approves', { type: 'SNAPSHOT', reviewer: 'Suda' }],
+      ['Run the extraction', { type: 'RUN' }],
+      ['An announcement adds code 225 to the group', { type: 'ADD_CODE', groupId: 'radiation', code: 225 }],
+      ['Suda presses Re-run', { type: 'RUN' }],
+    ],
+  },
+  {
+    tab: 'A code changes groups',
+    desc: '<p>Harder than an addition. Code 209 sits in โรคจากสารกำจัดศัตรูพืช when the Request is submitted, and is reclassified into โรคจากการทำงาน before the Re-run. The partition still holds — 209 is in exactly one group throughout.</p>' +
+      '<p><span class="watch">Watch:</span> the Re-run still fetches 209, correctly, under a Snapshot that names โรคจากสารกำจัดศัตรูพืช. So the second archive holds rows for a code its own Data dictionary files under a <em>different</em> group. Ask whether a reader opening that archive can tell what happened.</p>',
+    steps: [
+      ['Pick โรคจากสารกำจัดศัตรูพืช', { type: 'SET_GROUP', groupId: 'pesticides' }],
+      ['Set the whole of 2026', { type: 'SET_DATES', from: '2026-01-01', to: '2026-12-31' }],
+      ['Submit — ten Report codes, ten upstream calls', { type: 'SUBMIT' }],
+      ['Suda approves', { type: 'SNAPSHOT', reviewer: 'Suda' }],
+      ['Run the extraction', { type: 'RUN' }],
+      ['Code 209 is reclassified into โรคจากการทำงาน', { type: 'MOVE_CODE', code: 209, from: 'pesticides', to: 'work-related' }],
+      ['Suda presses Re-run', { type: 'RUN' }],
+    ],
+  },
+  {
+    tab: 'The region is redrawn',
+    desc: '<p>The same treatment, applied to geography instead. A Requester picks health region 1 — eight provinces — and แพร่ later leaves it.</p>' +
+      '<p><span class="watch">Watch:</span> the stored Request names eight provinces and never the region, so the Re-run still filters on all eight. §4.4 says this is deliberate: <em>an old Request still means what it meant even if a region boundary is redrawn</em>. Decide whether you agree once you have watched it happen.</p>',
+    steps: [
+      ['Pick โรคจากการทำงาน', { type: 'SET_GROUP', groupId: 'work-related' }],
+      ['Set 1–31 January 2026', { type: 'SET_DATES', from: '2026-01-01', to: '2026-01-31' }],
+      ['Area: health region 1', { type: 'SET_AREA', area: AREAS.region1 }],
+      ['Submit — expands to eight provinces', { type: 'SUBMIT' }],
+      ['Suda approves', { type: 'SNAPSHOT', reviewer: 'Suda' }],
+      ['Run the extraction', { type: 'RUN' }],
+      ['แพร่ leaves health region 1', { type: 'REDRAW_REGION' }],
+      ['Suda presses Re-run', { type: 'RUN' }],
+    ],
+  },
+  {
+    tab: 'The +1 with two homes',
+    desc: '<p><code>CONTEXT.md</code> puts the inclusive-to-half-open conversion in the <b>Span builder</b>. Spec §4.3 puts it in the <b>API client</b>, <em>“and nowhere else”</em>. Spec §7.2’s warning names both. A reader implementing from the prose can reasonably put it in either — or, reading §7.2, in both.</p>' +
+      '<p><span class="watch">Watch:</span> what one extra addition does to an ordinary January. This is the same class of defect as the per-month chunk builder that once lost 3,196 rows, running the other way.</p>',
+    steps: [
+      ['Pick โรคจากความร้อน', { type: 'SET_GROUP', groupId: 'heat' }],
+      ['Set 1–31 January 2026', { type: 'SET_DATES', from: '2026-01-01', to: '2026-01-31' }],
+      ['Submit', { type: 'SUBMIT' }],
+      ['Suda approves', { type: 'SNAPSHOT', reviewer: 'Suda' }],
+      ['Run it — end_date is 1 February, correctly', { type: 'RUN' }],
+      ['Let the API client add a day of its own too', { type: 'TOGGLE_DOUBLE_ADD' }],
+      ['Suda presses Re-run', { type: 'RUN' }],
+    ],
+  },
+];
+
+let state = initialWorld();
+let scenario = null;
+let step = 0;
+
+function dispatch(action) {
+  state = reduce(state, action);
+  render();
+}
+
+function esc(s) { return String(s).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])); }
+
+function row(k, v, changed) {
+  return '<tr' + (changed ? ' class="changed"' : '') + '><td class="k">' + k + '</td><td class="v">' + v + '</td></tr>';
+}
+
+/* --- the flags: the things worth noticing, derived rather than announced --- */
+function flags() {
+  const out = [];
+  const s = state;
+
+  if (s.stored) {
+    const today = s.classification.find(g => g.id === s.stored.groupId);
+    const storedCodes = s.stored.codes.join(', ');
+    const todayCodes = today.codes.join(', ');
+    if (storedCodes !== todayCodes) {
+      out.push(['', '<b>The stored Request and the classification disagree, by design.</b> ' +
+        esc(today.name) + ' means <code>[' + todayCodes + ']</code> today; this Request holds <code>[' +
+        storedCodes + ']</code> and every Re-run will keep holding it. That is §4.9 working. The question ' +
+        'the archives below raise is whether the <em>Data dictionary</em> got the same memo.']);
+    }
+    if (today.name !== s.stored.groupNameAtSubmit) {
+      out.push(['', '<b>The group has been renamed since submit.</b> The record says “' +
+        esc(s.stored.groupNameAtSubmit) + '”, the picker says “' + esc(today.name) +
+        '”, and the id <code>' + s.stored.groupId + '</code> ties them together. Nothing in the Extract ' +
+        'archive carries the id — the Data dictionary and the Snapshot both carry names.']);
+    }
+    if (s.stored.areaKind === 'region') {
+      const now = s.regions[1].map(p => p.code).join(', ');
+      const then = s.stored.provinces.map(p => p.code).join(', ');
+      if (now !== then) {
+        out.push(['', '<b>The region has been redrawn since submit.</b> เขตสุขภาพที่ 1 means ' +
+          s.regions[1].length + ' provinces today; this Request filters on the ' + s.stored.provinces.length +
+          ' it meant at submit. The Extract still answers the question that was asked.']);
+      }
+    }
+
+    const wire = toWire(buildSpan(s.stored.from, s.stored.to), s.doubleAdd);
+    const check = upstreamCheck(wire);
+    if (!check.ok) {
+      out.push(['bad', '<b>Every upstream call this Request makes is refused — ' + check.status + '.</b> ' +
+        'The human’s range is ' + (daysBetween(s.stored.from, s.stored.to)) + ' days end to end, which our ' +
+        'own check (§4.2, <code>to − from ≤ 365</code>) allows. The wire range is ' +
+        daysBetween(wire.start_date, wire.end_date) + ' days, because <code>end_date</code> is exclusive, ' +
+        'and upstream measures <em>that</em>. §5.4 and §7.2 both assert “the whole span is always one legal ' +
+        'call”. At this width it is not.']);
+    }
+  }
+
+  if (s.doubleAdd) {
+    out.push(['bad', '<b>The +1 is being applied twice.</b> Every Extract now carries one day the ' +
+      'Requester did not ask for, and no gate in this system would catch it — the Extract is well-formed, ' +
+      'the row count is plausible, and the audit record shows the dates the human typed.']);
+  }
+
+  const dictVersions = new Set(s.runs.map(r => r.dictClassVersion));
+  if (dictVersions.size > 1) {
+    out.push(['', '<b>Two archives of one Request ship different Data dictionaries.</b> ' +
+      '<code>CONTEXT.md</code> defines the Data dictionary as <em>“the same file in every Extract — a ' +
+      'property of the service, never of the Request”</em>, and it publishes the classification, which is ' +
+      'amendable. Both cannot stay true. Either the dictionary is versioned and travels with the ' +
+      'expansion, or the promise of sameness needs qualifying.']);
+  }
+
+  return out.map(([cls, html]) => '<div class="flag ' + cls + '">' + html + '</div>').join('');
+}
+
+function render() {
+  const s = state;
+
+  /* --- the form --- */
+  document.getElementById('form').innerHTML =
+    '<label class="f"><span>Disease group</span><select onchange="dispatch({type:\'SET_GROUP\',groupId:this.value})">' +
+    s.classification.map(g => '<option value="' + g.id + '"' + (g.id === s.form.groupId ? ' selected' : '') + '>' +
+      esc(g.name) + ' (' + g.codes.length + ')</option>').join('') + '</select></label>' +
+    '<label class="f"><span>From (inclusive)</span><input type="date" value="' + s.form.from +
+      '" onchange="dispatch({type:\'SET_DATES\',from:this.value,to:\'' + s.form.to + '\'})"></label>' +
+    '<label class="f"><span>To (inclusive)</span><input type="date" value="' + s.form.to +
+      '" onchange="dispatch({type:\'SET_DATES\',from:\'' + s.form.from + '\',to:this.value})"></label>' +
+    '<label class="f"><span>Area</span><select onchange="dispatch({type:\'SET_AREA\',area:AREAS[this.value]})">' +
+      ['national', 'region1', 'chiangmai'].map(k => '<option value="' + k + '"' +
+        (JSON.stringify(AREAS[k]) === JSON.stringify(s.form.area) ? ' selected' : '') + '>' +
+        esc(expandArea(s.regions, AREAS[k]).labelAtSubmit) + '</option>').join('') + '</select></label>' +
+    '<div style="margin-top:8px;font-size:13px;color:var(--muted)">' +
+      'The picker would expand this to <code>[' + expandGroup(s.classification, s.form.groupId).codes.join(', ') +
+      ']</code> if submitted now — ' + (daysBetween(s.form.from, s.form.to) + 1) + ' days.' +
+    '</div>';
+
+  /* --- note / refusal --- */
+  document.getElementById('note').innerHTML =
+    s.refused ? '<div class="note refused">' + esc(s.refused) + '</div>' :
+    s.note ? '<div class="note">' + s.note + '</div>' : '';
+
+  document.getElementById('flags').innerHTML = flags();
+
+  /* --- the stored Request --- */
+  const st = s.stored;
+  let rows = '';
+  if (!st) {
+    rows = row('Stored Request', '<span class="empty">Nothing submitted yet.</span>');
+  } else {
+    const today = s.classification.find(g => g.id === st.groupId);
+    const span = buildSpan(st.from, st.to);
+    rows =
+      row('Disease group', esc(st.groupNameAtSubmit) +
+        '<small>id <code>' + st.groupId + '</code> — a label on the record, not what is fetched' +
+        (today.name !== st.groupNameAtSubmit ? '. Called “' + esc(today.name) + '” today' : '') + '</small>') +
+      row('Report codes stored', '<code>[' + st.codes.join(', ') + ']</code>' +
+        '<small>the expansion, and the authoritative thing — this is what a Re-run refetches</small>', s.changed.includes('codes')) +
+      row('Dates, as the human typed them', st.from + ' – ' + st.to +
+        '<small>inclusive, ' + (daysBetween(st.from, st.to) + 1) + ' days</small>') +
+      row('Span builder output', '<code>[' + span.start + ', ' + span.endExclusive + ')</code>' +
+        '<small>half-open; the Probe and the extraction job both call this one function</small>', s.changed.includes('span')) +
+      row('Area', esc(st.areaLabelAtSubmit) +
+        (st.areaKind === 'region' ? '<small>stored as provinces, never as a region</small>' : '')) +
+      row('Provinces stored', st.provinces.length
+        ? '<code>[' + st.provinces.map(p => p.code).join(', ') + ']</code>' +
+          '<small>' + st.provinces.map(p => esc(p.name)).join(', ') + '</small>'
+        : '<span class="empty">none — national</span>', s.changed.includes('provinces')) +
+      row('Snapshot', s.snapshot
+        ? esc(s.snapshot.groupName) + ' over <code>[' + s.snapshot.codes.join(', ') + ']</code>' +
+          '<small>taken by ' + s.snapshot.reviewer + ' at the Decision; never rewritten</small>'
+        : '<span class="empty">no Decision yet</span>', s.changed.includes('snapshot')) +
+      row('Classification version', 'v' + st.classVersionAtSubmit + ' at submit' +
+        (s.classVersion !== st.classVersionAtSubmit
+          ? '<small>the world is on v' + s.classVersion + ' now</small>' : ''));
+  }
+  document.getElementById('state').innerHTML = rows;
+
+  /* --- the calls --- */
+  const callsEl = document.getElementById('calls');
+  if (!st) {
+    callsEl.innerHTML = '<p class="empty" style="margin:0">Submit a Request to see the calls it would make.</p>';
+  } else {
+    const calls = planCalls(st, s.doubleAdd);
+    const total = calls.reduce((t, c) => t + c.rows, 0);
+    callsEl.innerHTML =
+      '<table class="calls"><thead><tr><th>group_code</th><th>start_date</th><th>end_date</th><th>page_size</th><th>rows</th></tr></thead><tbody>' +
+      calls.map(c => '<tr class="' + (c.refused ? 'refused' : '') + '"><td>' + c.group_code + '</td><td>' +
+        c.start_date + '</td><td>' + c.end_date + '</td><td>' + c.page_size + '</td><td' +
+        (!c.refused && c.rows === 0 ? ' class="zero"' : '') + '>' +
+        (c.refused ? c.refusal : c.rows) + '</td></tr>').join('') +
+      '</tbody></table>' +
+      '<div style="margin-top:10px;font-size:13px;color:var(--muted)">' +
+        calls.length + ' call' + (calls.length === 1 ? '' : 's') + ', one per stored Report code, each over the whole span. ' +
+        (calls.some(c => c.refused) ? '' : 'Total ' + total + ' rows. ') +
+        (!calls.some(c => c.refused) && total === 0
+          ? '<b style="color:var(--warn)">Nothing matched — this is the Request the Probe exists to catch before the Requester waits.</b>' : '') +
+      '</div>';
+  }
+
+  /* --- archives --- */
+  const arcEl = document.getElementById('archives');
+  arcEl.innerHTML = s.runs.length
+    ? s.runs.map(r => {
+        const g = r.dictGroups.find(x => x.id === st.groupId);
+        const disagree = g.codes.join(',') !== st.codes.join(',');
+        return '<div class="archive' + (disagree ? ' disagree' : '') + '">' +
+          '<b>' + r.name + '</b>' +
+          (r.refused
+            ? '<span style="color:var(--bad)">no Extract — upstream refused every call</span>'
+            : r.calls.length + ' code' + (r.calls.length === 1 ? '' : 's') + ' fetched <code>[' +
+              r.calls.map(c => c.group_code).join(', ') + ']</code>, ' + r.rows + ' rows, dates <code>' +
+              r.calls[0].start_date + ' → ' + r.calls[0].end_date + ')</code>') +
+          '<span class="dict">Data dictionary inside publishes classification v' + r.dictClassVersion +
+          ', where ' + esc(g.name) + ' = <code>[' + g.codes.join(', ') + ']</code>' +
+          (disagree ? ' — <b style="color:var(--warn)">which is not the code list in the Extract beside it</b>' : '') +
+          '</span></div>';
+      }).join('')
+    : '<p class="empty" style="margin:0">No extraction has run.</p>';
+
+  /* --- free play --- */
+  document.getElementById('actions').innerHTML = ACTIONS.map(([label, items]) =>
+    '<div class="group"><span>' + label + '</span>' +
+    items.map((it, i) => '<button onclick="dispatch(ACTIONS[' + ACTIONS.findIndex(g => g[0] === label) +
+      '][1][' + i + '][1])">' + esc(it[0]) + '</button>').join('') + '</div>').join('') +
+    '<div class="group"><span>The specification’s loose end</span>' +
+    '<button class="' + (s.doubleAdd ? 'on' : '') + '" onclick="dispatch({type:\'TOGGLE_DOUBLE_ADD\'})">' +
+    (s.doubleAdd ? 'The API client is adding a second day — turn it off' : 'Let the API client add a day too (§4.3 vs §7.2)') +
+    '</button></div>' +
+    '<div class="group"><button class="reset" onclick="hardReset()">Start over</button></div>';
+
+  /* --- tabs --- */
+  document.getElementById('tabs').innerHTML = SCENARIOS.map((sc, i) =>
+    '<button class="tab' + (scenario === i ? ' on' : '') + '" onclick="startScenario(' + i + ')">' +
+    esc(sc.tab) + '</button>').join('');
+
+  document.getElementById('scenario').innerHTML = scenario === null
+    ? '<p style="margin:0;color:var(--muted)">Pick a walkthrough. Each one resets to a clean world and then walks a case that is hard to hold in your head from the prose alone.</p>'
+    : '<div class="scenario-desc">' + SCENARIOS[scenario].desc + '</div>' +
+      SCENARIOS[scenario].steps.map((stp, i) =>
+        '<button class="step ' + (i < step ? 'done' : i === step ? 'next' : '') + '" ' +
+        (i === step ? '' : 'disabled ') + 'onclick="runStep()">' + (i + 1) + '. ' + esc(stp[0]) + '</button>').join('') +
+      (step >= SCENARIOS[scenario].steps.length
+        ? '<div class="note">Walkthrough finished. Keep poking with the free-play buttons, or start another.</div>' : '');
+
+  /* --- trail --- */
+  document.getElementById('trail').innerHTML = s.events.length
+    ? s.events.slice().reverse().map(e =>
+        '<li><span class="t">' + e.actor + '</span><span><code>' + e.what + '</code>' +
+        (e.detail ? '<div class="detail">' + esc(e.detail) + '</div>' : '') + '</span></li>').join('')
+    : '<li style="grid-template-columns:1fr"><span class="empty">Nothing has happened yet.</span></li>';
+}
+
+function startScenario(i) {
+  scenario = i; step = 0;
+  state = initialWorld();
+  state.note = 'Reset to a clean world for “' + SCENARIOS[i].tab + '”. Press the steps in order.';
+  render();
+}
+
+function runStep() {
+  const sc = SCENARIOS[scenario];
+  if (step >= sc.steps.length) return;
+  const action = sc.steps[step][1];
+  step++;
+  dispatch(action);
+}
+
+function hardReset() {
+  state = initialWorld(); scenario = null; step = 0;
+  render();
+}
+
+render();
+</script>
+</body>
+</html>
