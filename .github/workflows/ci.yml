@@ -23,6 +23,7 @@ jobs:
           --health-retries 10
     env:
       DATABASE_URL: postgres://postgres:postgres@localhost:5432/dds_sharing
+      APP_DATABASE_URL: postgres://app_role:app_role@localhost:5432/dds_sharing
     steps:
       - uses: actions/checkout@v4
 
