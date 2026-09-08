@@ -1,0 +1,757 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PROTOTYPE — The Request lifecycle</title>
+<style>
+  :root {
+    --ink: #1b1f23;
+    --muted: #6a737d;
+    --line: #e1e4e8;
+    --bg: #fbfbfa;
+    --panel: #ffffff;
+    --accent: #0b6b5f;
+    --accent-soft: #e6f2f0;
+    --warn: #8a5a00;
+    --warn-soft: #fff5e0;
+    --bad: #9b2226;
+    --bad-soft: #fdeaea;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 15px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 40px 24px 80px; }
+  h1 { font-size: 26px; margin: 0 0 4px; letter-spacing: -0.01em; }
+  h2 { font-size: 15px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin: 0 0 12px; font-weight: 600; }
+  h3 { font-size: 16px; margin: 0 0 6px; }
+  p { margin: 0 0 12px; }
+  .stamp {
+    display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: 0.1em;
+    background: var(--warn-soft); color: var(--warn); border: 1px solid #f0dcae;
+    padding: 3px 8px; border-radius: 3px; margin-bottom: 14px;
+  }
+  .intro { max-width: 78ch; color: #33383d; }
+  .intro strong { color: var(--ink); }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 20px 22px; margin-bottom: 20px; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; align-items: start; }
+  @media (max-width: 900px) { .cols { grid-template-columns: 1fr; } }
+
+  .clock { font-size: 20px; font-weight: 600; letter-spacing: -0.01em; }
+  .clock small { display: block; font-size: 12px; font-weight: 400; color: var(--muted); letter-spacing: 0; }
+
+  table.state { width: 100%; border-collapse: collapse; }
+  table.state td { padding: 6px 0; border-bottom: 1px solid #f2f3f4; vertical-align: top; }
+  table.state td.k { color: var(--muted); width: 46%; padding-right: 12px; }
+  table.state td.v { font-weight: 600; }
+  table.state tr.changed td { background: var(--accent-soft); }
+  .terminal { color: var(--accent); }
+
+  .note { border-left: 3px solid var(--accent); background: var(--accent-soft); padding: 10px 14px; border-radius: 0 4px 4px 0; margin-bottom: 12px; }
+  .note.refused { border-left-color: var(--bad); background: var(--bad-soft); }
+  .flag { border-left: 3px solid var(--warn); background: var(--warn-soft); padding: 10px 14px; border-radius: 0 4px 4px 0; margin-bottom: 10px; font-size: 14px; }
+  .flag b { color: var(--warn); }
+
+  .alert { border: 1px solid #f0dcae; background: var(--warn-soft); border-radius: 4px; padding: 10px 14px; margin-bottom: 10px; font-size: 14px; }
+  .alert.cleared { border-color: var(--line); background: #f6f8fa; color: var(--muted); }
+  .alert b { display: block; }
+
+  .group { margin-bottom: 16px; }
+  .group > span { display: block; font-size: 12px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); margin-bottom: 7px; }
+  button {
+    font: inherit; font-size: 13.5px; background: #fff; color: var(--ink);
+    border: 1px solid #d6dade; border-radius: 4px; padding: 7px 12px; margin: 0 6px 6px 0;
+    cursor: pointer; text-align: left;
+  }
+  button:hover { border-color: var(--accent); color: var(--accent); }
+  button.step { display: block; width: 100%; margin-bottom: 6px; }
+  button.step.done { color: var(--muted); border-color: var(--line); background: #f6f8fa; }
+  button.step.next { border-color: var(--accent); border-width: 2px; font-weight: 600; }
+  button.tab { border-radius: 20px; }
+  button.tab.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button.reset { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+
+  ol.trail { list-style: none; margin: 0; padding: 0; font-size: 13px; max-height: 340px; overflow-y: auto; }
+  ol.trail li { padding: 5px 0; border-bottom: 1px solid #f2f3f4; display: grid; grid-template-columns: 118px 1fr; gap: 10px; }
+  ol.trail .t { color: var(--muted); font-variant-numeric: tabular-nums; }
+  ol.trail code { font: 12.5px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; background: #f2f4f5; padding: 1px 5px; border-radius: 3px; }
+  ol.trail .actor { color: var(--muted); font-size: 12px; }
+  ol.trail .detail { color: var(--muted); font-size: 12.5px; }
+
+  .scenario-desc { background: #f6f8fa; border-radius: 4px; padding: 14px 16px; margin-bottom: 14px; font-size: 14px; }
+  .scenario-desc p:last-child { margin-bottom: 0; }
+  .watch { color: var(--accent); font-weight: 600; }
+  footer { color: var(--muted); font-size: 13px; max-width: 78ch; }
+  footer code { font: 12.5px ui-monospace, Menlo, monospace; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <span class="stamp">PROTOTYPE — THROWAWAY, NOT PRODUCTION CODE</span>
+  <h1>DDS Sharing — the Request lifecycle</h1>
+
+  <div class="intro">
+    <p><strong>The question this demo exists to answer:</strong> a Request passes through a human gate, a
+    background extraction, an email nobody can confirm arrived, and three clocks that run at different
+    speeds. Driving it by hand — <strong>can a Reviewer reach a state where the queue lies to them, or
+    where an Alert can never be cleared?</strong></p>
+    <p>Press the buttons in any order, or run one of the five guided walkthroughs below. Everything you
+    see is derived from the event trail at the bottom of the page, exactly as the specification says the
+    Request's state is a projection of its events. Nothing is saved; reload and it is gone.</p>
+    <p style="color:var(--muted);font-size:13.5px">Two Reviewers, <b>Suda</b> and <b>Pichai</b>, stand in
+    for the real ones. Times are ICT. The business-hours clock is Mon–Fri 08:30–16:30, so a Saturday
+    advances the wall clock and not the business one.</p>
+  </div>
+
+  <div class="cols">
+    <div>
+      <div class="panel">
+        <h2>Where things stand</h2>
+        <div class="clock" id="clock"></div>
+        <div id="note"></div>
+        <div id="flags"></div>
+        <table class="state"><tbody id="state"></tbody></table>
+      </div>
+
+      <div class="panel">
+        <h2>Alerts — must be cleared by a person</h2>
+        <div id="alerts"></div>
+      </div>
+    </div>
+
+    <div>
+      <div class="panel">
+        <h2>Free play — press anything, in any order</h2>
+        <div id="actions"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Guided walkthroughs</h2>
+        <div id="tabs" style="margin-bottom:14px"></div>
+        <div id="scenario"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>The event trail — append-only, never edited</h2>
+    <ol class="trail" id="trail"></ol>
+  </div>
+
+  <footer>
+    <p>Prototype for <code>docs/spec.md</code> §2, §10.4, §10.6–10.8, §11.3–11.5, §12.4 and §15.2.
+    Throwaway by construction: no tests, no persistence, no error handling beyond what makes it run.
+    The reducer in this file is pure and has no idea the page exists — that is the part worth keeping.</p>
+  </footer>
+</div>
+
+<script>
+/* ============================================================================
+   THE PURE MODULE — no DOM, no document, nothing reaching in from the page.
+   Everything below this line could be lifted into the real codebase as-is.
+   ========================================================================= */
+
+/* --- The business-hours clock (spec §15.2) ------------------------------- */
+/* Mon-Fri 08:30-16:30 ICT, minus Thai public holidays from a checked-in file.
+   The holiday list is empty here on purpose: this demo is not about holidays,
+   and a stale list can only ever make expiry more generous. */
+const BH_OPEN = 8 * 60 + 30;
+const BH_CLOSE = 16 * 60 + 30;
+const HOLIDAYS = new Set();
+const MIN = 60000, HOUR = 3600000, DAY = 86400000;
+
+/* Times are held as epoch ms and read with UTC accessors throughout, so the
+   demo tells the same story on a laptop in Bangkok and one in Geneva. */
+function dayStart(t) { return Math.floor(t / DAY) * DAY; }
+function dayKey(t) { return new Date(t).toISOString().slice(0, 10); }
+function isWorkingDay(t) {
+  const wd = new Date(t).getUTCDay();
+  return wd !== 0 && wd !== 6 && !HOLIDAYS.has(dayKey(t));
+}
+function businessHoursBetween(from, to) {
+  if (!from || to <= from) return 0;
+  let mins = 0;
+  for (let d = dayStart(from); d <= to; d += DAY) {
+    if (!isWorkingDay(d)) continue;
+    const s = Math.max(d + BH_OPEN * MIN, from);
+    const e = Math.min(d + BH_CLOSE * MIN, to);
+    if (e > s) mins += (e - s) / MIN;
+  }
+  return mins / 60;
+}
+
+/* --- Constants the specification fixes ---------------------------------- */
+const EXPIRY_BUSINESS_HOURS = 24;   // §10.4  pending -> expired
+const LAPSE_BUSINESS_HOURS = 24;    // §11.4  zero Attempts -> collection lapse
+const TOKEN_HOURS = 72;             // §9.3   anchored on job completion
+const ATTEMPT_CAP = 10;             // Attempt, capped over the token's life
+
+/* --- The reducer: (state, action) => state ------------------------------ */
+function initialState(now) {
+  return {
+    now,
+    ref: 'REQ-2569-0142',
+    submittedAt: null,
+    notifiedAt: null,            // queue notification accepted; the 24 bh start
+    status: 'draft',             // draft | pending | expired | rejected | approved
+    terminal: null,              // expired | rejected | collected | expired_uncollected
+    probe: { status: 'not started', count: null },
+    decision: null,              // {id, reviewer, at}
+    extraction: 'none',          // none | queued | running | ready | failed
+    run: 0,
+    completedAt: null,
+    delivery: null,              // {sentAt, address, abandoned}
+    token: null,                 // {n, issuedAt, expiresAt, attempts, revoked, address}
+    deadTokens: [],
+    lapsedRuns: [],              // runs whose lapse trip-wire has already fired
+    alerts: [],
+    reviewers: { Suda: true, Pichai: true },
+    events: [],
+    note: 'Nothing has happened yet. Submit the Request to start.',
+    refused: false,
+    flags: [],
+    seq: 0,
+    decisionSeq: 0,
+  };
+}
+
+function ev(s, type, actor, detail) {
+  s.events.push({ n: ++s.seq, at: s.now, type, actor, detail: detail || '' });
+}
+function flag(s, text) {
+  if (!s.flags.includes(text)) s.flags.push(text);
+}
+function openAlert(s, kind, assignedTo, clearableByAnyone) {
+  s.alerts.push({
+    id: s.alerts.length + 1, kind, assignedTo, clearableByAnyone,
+    raisedAt: s.now, clearedBy: null, clearedAs: null, outcome: null,
+  });
+}
+function refuse(s, why) { s.refused = true; s.note = why; return s; }
+
+function reduce(prev, action) {
+  const s = structuredClone(prev);
+  s.refused = false;
+  s.note = '';
+  const a = action;
+
+  switch (a.type) {
+
+    /* ---- The Requester ------------------------------------------------- */
+    case 'SUBMIT': {
+      if (s.status !== 'draft') return refuse(s, 'This Request has already been submitted. Duplicate suppression catches the refresh; here there is simply nothing to submit twice.');
+      s.status = 'pending';
+      s.submittedAt = s.now;
+      s.notifiedAt = s.now;
+      ev(s, 'submitted', 'requester', 'Occupational lung disease · 1 Jan – 30 Jun 2569 · national');
+      ev(s, 'mail_sent', 'system', 'kind: queue_notification — the Reviewers are told there is work');
+      s.note = 'The Request is on the queue with its row count still pending. The 24-business-hour expiry clock starts now.';
+      return s;
+    }
+
+    case 'ATTEMPT': {
+      if (!s.token) return refuse(s, 'There is no Download token yet — no Extract has been made, so there is nothing to collect.');
+      ev(s, 'download_attempted', 'anonymous', 'token ' + s.token.n + ', prefix only');
+      if (s.token.revoked) { s.note = 'The expiry page. This token was revoked when the address was corrected — the Requester sees one sentence and a telephone number, and no reason.'; return s; }
+      if (s.now >= s.token.expiresAt) { s.note = 'The expiry page. The 72 hours ran out. The page cannot say so, and cannot show the reference number.'; return s; }
+      if (s.token.attempts >= ATTEMPT_CAP) { s.note = 'The expiry page. Ten attempts is the cap over the token’s whole life.'; return s; }
+      s.token.attempts += 1;
+      const lapse = s.alerts.find(x => x.kind === 'Collection lapse' && !x.clearedBy);
+      if (lapse) {
+        lapse.clearedBy = 'system'; lapse.clearedAs = 'system'; lapse.outcome = 'collected late';
+        ev(s, 'collection_lapse_cleared', 'system', 'collected late — no Reviewer gets credit for a call they did not make');
+      }
+      if (!s.terminal) { s.terminal = 'collected'; s.note = 'Collected. This is the outcome the whole service exists to reach.'; }
+      else s.note = 'The attempt is recorded, but the Request already ended as ' + s.terminal + '.';
+      return s;
+    }
+
+    /* ---- The Probe (§5.4) ---------------------------------------------- */
+    case 'PROBE_DONE': {
+      if (s.status === 'draft') return refuse(s, 'The Probe runs after submit — there is no Request to probe.');
+      if (s.probe.status !== 'not started') return refuse(s, 'The Probe runs once. A Re-run never re-probes: the count is already on the record.');
+      s.probe = { status: 'counted', count: 1952 };
+      ev(s, 'probe_performed', 'system', '4 Report codes, 4 calls, 1,952 rows in total');
+      s.note = 'The count landed. Note that nothing was waiting for it — a Decision could have been made before this arrived, and the Snapshot would have recorded the count as pending.';
+      return s;
+    }
+    case 'PROBE_FAILED': {
+      if (s.status === 'draft') return refuse(s, 'Nothing to probe yet.');
+      if (s.probe.status !== 'not started') return refuse(s, 'The Probe has already finished.');
+      s.probe = { status: 'failed', count: null };
+      ev(s, 'probe_failed', 'system', 'code 214 exhausted 3 attempts — terminal for the Probe, gates nothing');
+      s.note = 'The Probe is abandoned. The count never lands, the Reviewer can still approve, and the extraction job still runs. Only the zero-row catch is lost — and deliberately, there is no Alert for this.';
+      return s;
+    }
+
+    /* ---- The Decision (§10.3, §10.4) ------------------------------------ */
+    case 'APPROVE':
+    case 'REJECT': {
+      const who = a.reviewer;
+      const verb = a.type === 'APPROVE' ? 'approve' : 'reject';
+      if (s.status === 'draft') return refuse(s, 'Nothing has been submitted yet.');
+      if (!s.reviewers[who]) return refuse(s, who + ' has been deactivated and can no longer sign in, let alone decide.');
+      if (s.status !== 'pending') return refuse(s, 'This Request is already ' + s.status + '. A Decision is made once.');
+
+      /* §10.4 — the handler re-derives the elapsed business hours before it
+         inserts, so "expired" never means "expired unless a tick was slow". */
+      const elapsed = businessHoursBetween(s.notifiedAt, s.now);
+      if (elapsed >= EXPIRY_BUSINESS_HOURS) {
+        s.status = 'expired'; s.terminal = 'expired';
+        ev(s, 'expired', 'system',
+          'business_hours_elapsed: ' + elapsed.toFixed(1) +
+          ', reviewer_accounts_active: ' + Object.values(s.reviewers).filter(Boolean).length +
+          ', decision_attempted_and_refused: true');
+        flag(s, 'A Reviewer read this Request and pressed ' + verb + ', and the answer was “too late”. That refusal is on the record for a reason: it is the signal that 24 business hours is too tight for the people actually staffing the queue.');
+        s.note = who + ' spent real attention on this Request and it expired while they were reading. The screen says so plainly; the refusal is written into the expired event.';
+        return s;
+      }
+
+      s.decision = { id: 'dec-' + (++s.decisionSeq), reviewer: who, at: s.now };
+      if (a.type === 'REJECT') {
+        s.status = 'rejected'; s.terminal = 'rejected';
+        ev(s, 'rejected', 'reviewer', who + ' — Snapshot + mandatory internal note, never shown to the Requester');
+        ev(s, 'mail_sent', 'system', 'kind: rejection — no reason given');
+        s.note = 'Rejected by ' + who + '. The Requester is told, and never told why.';
+        return s;
+      }
+      s.status = 'approved';
+      s.run = 1;
+      s.extraction = 'queued';
+      ev(s, 'approved', 'reviewer', who + ' — Snapshot carries the count as ' + (s.probe.status === 'counted' ? '1,952 rows' : s.probe.status));
+      ev(s, 'job_queued', 'system', '');
+      s.note = 'Approved by ' + who + ', and the extraction is queued. The judgement was about who is asking, never about how much they asked for.';
+      return s;
+    }
+
+    /* ---- The extraction job (§7, §12.4) --------------------------------- */
+    case 'JOB_START': {
+      if (s.extraction !== 'queued') return refuse(s, 'No job is queued.');
+      s.extraction = 'running';
+      ev(s, 'job_started', 'system', 'run ' + s.run);
+      s.note = 'The job is fetching, one call per Report code over the whole span.';
+      return s;
+    }
+    case 'JOB_COMPLETE': {
+      if (s.extraction !== 'running') return refuse(s, 'No job is running.');
+      s.extraction = 'ready';
+      s.completedAt = s.now;
+      if (s.token && !s.token.revoked && s.now < s.token.expiresAt) {
+        s.deadTokens.push({ ...s.token, fate: 'still live, never revoked' });
+        flag(s, 'Two Download tokens for one Request are now live at once. §10.7 says a Re-run gets a fresh token and a fresh clock, and says nothing about the old one — so the previous Extract stays collectable until its own 72 hours run out. Is that intended?');
+      } else if (s.token) {
+        s.deadTokens.push({ ...s.token, fate: 'expired or revoked before this run finished' });
+      }
+      s.token = { n: s.run, issuedAt: s.now, expiresAt: s.now + TOKEN_HOURS * HOUR, attempts: 0, revoked: false, address: 'the address on the Request' };
+      ev(s, 'job_completed', 'system', '1,952 rows, 23 columns, sha256 recorded; archive ' + archiveName(s));
+      s.note = 'The Extract exists. The 72-hour clock starts here — on an event the Requester never sees.';
+      return s;
+    }
+    case 'JOB_FAIL': {
+      if (s.extraction !== 'running') return refuse(s, 'No job is running.');
+      s.extraction = 'failed';
+      ev(s, 'job_failed', 'system', 'cause: upstream_5xx — operator-facing only');
+      ev(s, 'extraction_alert_raised', 'system', '');
+      openAlert(s, 'Extraction failure', s.decision.reviewer, true);
+      s.note = 'The job has exhausted its retries. Two things at once: a fault the operator fixes, and a promise broken to a named person only a Reviewer will telephone.';
+      return s;
+    }
+
+    /* ---- Re-run and resend (§10.7, §10.8) ------------------------------- */
+    case 'RERUN': {
+      if (!s.decision) return refuse(s, 'A Re-run needs an approved Request behind it.');
+      if (!s.reviewers[a.reviewer]) return refuse(s, a.reviewer + ' is deactivated.');
+      if (s.extraction !== 'failed' && s.extraction !== 'ready') return refuse(s, 'There is nothing to re-run — the job is ' + s.extraction + '.');
+      s.run += 1;
+      s.extraction = 'queued';
+      s.terminal = null;
+      ev(s, 'extraction_rerun_queued', 'reviewer', a.reviewer + ' — carries the original Decision ' + s.decision.id + ', and does not re-Probe');
+      s.note = 'Re-run queued by ' + a.reviewer + '. Not a new Decision: the record must read approved once, extracted ' + s.run + ' times.';
+      return s;
+    }
+    case 'RESEND_SAME': {
+      if (!s.token) return refuse(s, 'There is no Delivery to resend.');
+      ev(s, 'mail_sent', 'system', 'kind: delivery — resend to the same address');
+      s.note = 'Resent, free and audited. The 72-hour clock does not move: a resend is not use, and use would not extend it either.';
+      return s;
+    }
+    case 'RESEND_CORRECTED': {
+      if (!s.token) return refuse(s, 'There is no Delivery to resend.');
+      if (!s.reviewers[a.reviewer]) return refuse(s, a.reviewer + ' is deactivated.');
+      s.deadTokens.push({ ...s.token, fate: 'revoked — the first address may be a stranger’s mailbox' });
+      ev(s, 'download_token_revoked', 'reviewer', a.reviewer);
+      s.token = { n: s.token.n, issuedAt: s.now, expiresAt: s.now + TOKEN_HOURS * HOUR, attempts: 0, revoked: false, address: 'the corrected address' };
+      s.decision = { id: 'dec-' + (++s.decisionSeq), reviewer: a.reviewer, at: s.now };
+      s.terminal = null;
+      ev(s, 'download_token_reissued', 'reviewer', a.reviewer + ' — names both the old and the new address');
+      ev(s, 'approved', 'reviewer', a.reviewer + ' — a corrected address is a NEW Decision, not a clerical fix');
+      s.note = 'A fresh token, a fresh 72 hours, and the old one revoked. This is a new Decision because the recipient changed — the mirror of a Re-run, where nothing changed but the clock.';
+      return s;
+    }
+
+    /* ---- Email (§11.3) --------------------------------------------------- */
+    case 'MAIL_ACCEPTED': {
+      if (!s.token) return refuse(s, 'There is no Extract to deliver.');
+      s.delivery = { sentAt: s.now, address: s.token.address, abandoned: false };
+      ev(s, 'mail_sent', 'system', 'kind: delivery — the relay accepted it');
+      s.note = 'Accepted by the relay. That is all the system will ever know: whether it arrived is unobservable, so silence is the only signal from here.';
+      return s;
+    }
+    case 'MAIL_ABANDONED': {
+      if (!s.token) return refuse(s, 'There is no Delivery to fail.');
+      s.delivery = { sentAt: null, address: s.token.address, abandoned: true };
+      ev(s, 'mail_send_failed', 'system', 'tries 1–4 over roughly an hour');
+      ev(s, 'mail_send_abandoned', 'system', 'fifth try failed');
+      ev(s, 'delivery_alert_raised', 'system', '');
+      openAlert(s, 'Send abandoned', s.decision.reviewer, false);
+      s.note = 'Five failures over an hour and the send is abandoned. This is our fault, never the recipient’s.';
+      return s;
+    }
+
+    /* ---- Clearing Alerts (§10.6) ---------------------------------------- */
+    case 'CLEAR_ALERT': {
+      const alert = s.alerts.find(x => x.id === a.id && !x.clearedBy);
+      if (!alert) return refuse(s, 'That Alert is not open.');
+      if (!s.reviewers[a.reviewer]) {
+        flag(s, 'An Alert assigned to ' + a.reviewer + ' cannot be cleared, because ' + a.reviewer + ' is deactivated. A must-clear queue item that nobody can clear is a queue that never goes quiet — and the spec assigns a collection lapse strictly by name, on purpose.');
+        return refuse(s, a.reviewer + ' is deactivated and cannot clear anything. And this Alert is assigned to them by name.');
+      }
+      if (!alert.clearableByAnyone && alert.assignedTo !== a.reviewer) {
+        return refuse(s, 'This Alert is assigned to ' + alert.assignedTo + ' by name. The action is “telephone the Requester you personally vouched for” — ' + a.reviewer + ' never formed that judgement.');
+      }
+      alert.clearedBy = a.reviewer; alert.clearedAs = 'reviewer'; alert.outcome = a.outcome;
+      if (alert.kind === 'Extraction failure') {
+        ev(s, 'extraction_alert_cleared', 'reviewer', 'assigned ' + alert.assignedTo + ', cleared by ' + a.reviewer + ', outcome ' + a.outcome);
+        if (a.outcome === 're_ran') flag(s, 'This Alert was cleared as re_ran before anyone knew whether the re-run would succeed. If the second job also fails it raises a second Alert, and the outcome counts now read one re_ran and one more open item for a single broken promise. The count is the only measure the service has of how often this happens — is it still honest?');
+      } else {
+        ev(s, 'collection_lapse_cleared', 'reviewer', a.reviewer + ' — outcome ' + a.outcome);
+      }
+      s.note = 'Cleared by ' + a.reviewer + ' as “' + a.outcome + '”. The outcome comes from a closed set, never free text — the count is the only measure the service has.';
+      return s;
+    }
+
+    /* ---- Reviewers (CONTEXT.md) ----------------------------------------- */
+    case 'DEACTIVATE': {
+      if (!s.reviewers[a.reviewer]) return refuse(s, a.reviewer + ' is already deactivated.');
+      s.reviewers[a.reviewer] = false;
+      ev(s, 'deactivated', 'system', a.reviewer + ' — a reviewer_event: it belongs to a person, not to a Request');
+      const live = Object.values(s.reviewers).filter(Boolean).length;
+      if (live < 2) flag(s, 'Only ' + live + ' Reviewer is reachable now. Two reachable people is the real availability unit, and one Reviewer is the other’s only TOTP recovery path.');
+      s.note = a.reviewer + ' is deactivated — never removed, because their name stays on every Decision they made.';
+      return s;
+    }
+
+    /* ---- Time, and everything the 60-second tick derives from it -------- */
+
+    /* The clock moves while the scheduler is behind — nothing is derived.
+       This is the exact condition §10.4 defends against: without the
+       re-derivation in the Decision handler, "expired" would quietly mean
+       "expired unless a tick was slow". */
+    case 'TICK_SLOW': {
+      s.now = prev.now + a.ms;
+      s.note = 'The clock moved, but the 60-second tick is behind, so nothing has been derived from it yet. The queue still shows this Request as ' + s.status + '.';
+      return s;
+    }
+
+    case 'TICK': {
+      s.now = prev.now + a.ms;
+      const fired = [];
+
+      /* pending -> expired, at 24 business hours */
+      if (s.status === 'pending' && businessHoursBetween(s.notifiedAt, s.now) >= EXPIRY_BUSINESS_HOURS) {
+        s.status = 'expired'; s.terminal = 'expired';
+        ev(s, 'expired', 'system', 'business_hours_elapsed: ' + businessHoursBetween(s.notifiedAt, s.now).toFixed(1) + ', decision_attempted_and_refused: false');
+        fired.push('The Request expired — 24 business hours passed with nobody deciding.');
+      }
+
+      /* token -> expired_uncollected, at 72 wall-clock hours from completion */
+      if (s.token && !s.token.revoked && s.token.attempts === 0 && !s.terminal && s.now >= s.token.expiresAt) {
+        s.terminal = 'expired_uncollected';
+        ev(s, 'expired_uncollected', 'system', 'terminal — the only number that measures whether email is working');
+        ev(s, 'object_deleted', 'system', archiveName(s));
+        fired.push('The 72 hours ran out with no Attempt. The Extract is deleted and the Request ends as expired_uncollected — a wasted extraction and a wasted upstream slot.');
+      }
+
+      /* the collection-lapse trip-wire, at 24 business hours from the send */
+      if (s.delivery && s.delivery.sentAt && s.token && s.token.attempts === 0
+          && !s.lapsedRuns.includes(s.run)
+          && businessHoursBetween(s.delivery.sentAt, s.now) >= LAPSE_BUSINESS_HOURS) {
+        s.lapsedRuns.push(s.run);
+        ev(s, 'collection_lapse_raised', 'system', '24 business hours, zero Attempts');
+        openAlert(s, 'Collection lapse', s.decision.reviewer, false);
+        fired.push('A collection lapse. Inferred, never observed: junk folder, or annual leave — the system cannot tell.');
+        if (s.terminal === 'expired_uncollected') {
+          const late = Math.round((s.now - s.token.expiresAt) / HOUR);
+          flag(s, 'The collection-lapse Alert was raised ' + (late <= 0 ? 'at the very moment' : late + ' hours after') + ' the Download token expired and the Extract was deleted. The Reviewer is being asked to telephone about something that no longer exists. Note why this is not bad luck: 24 business hours IS 72 wall-clock hours on a clean Mon–Thu week, so the trip-wire lands exactly on the expiry at best, and later than it whenever a weekend or a holiday intervenes. §11.4 rejected waiting for the 72-hour expiry because it “fires as the window closes, leaving no time to telephone” — the business-hours trip-wire cannot do better unless it trips at fewer than 24 hours.');
+        }
+      }
+
+      s.note = fired.length ? fired.join(' ') : 'The clock moved. Business hours elapsed only inside Mon–Fri 08:30–16:30.';
+      return s;
+    }
+  }
+  return s;
+}
+
+function archiveName(s) {
+  const d = new Date(s.submittedAt || s.now);
+  const p = n => String(n).padStart(2, '0');
+  const stamp = d.getUTCFullYear() + p(d.getUTCMonth() + 1) + p(d.getUTCDate()) + '-' + p(d.getUTCHours()) + p(d.getUTCMinutes()) + '00';
+  return 'dds-envocc-sharing-' + stamp + (s.run > 1 ? '-r' + s.run : '') + '.zip';
+}
+
+/* ============================================================================
+   THE PAGE — throwaway. It calls into the module; nothing flows the other way.
+   ========================================================================= */
+
+const START = Date.UTC(2026, 8, 7, 9, 0);          // Monday 7 Sep 2026, 09:00 ICT
+const FRIDAY = Date.UTC(2026, 8, 11, 9, 0);        // Friday 11 Sep 2026, 09:00 ICT
+
+let state = initialState(START);
+let scenario = null, stepIndex = 0, lastRows = {};
+
+const FMT_DAY = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const FMT_MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+function fmt(t) {
+  if (!t) return '—';
+  const d = new Date(t), p = n => String(n).padStart(2, '0');
+  return FMT_DAY[d.getUTCDay()] + ' ' + d.getUTCDate() + ' ' + FMT_MON[d.getUTCMonth()] + ' ' + p(d.getUTCHours()) + ':' + p(d.getUTCMinutes());
+}
+
+function dispatch(action) { state = reduce(state, action); render(); }
+
+/* --- Free-play buttons, always available -------------------------------- */
+const ACTIONS = [
+  ['The Requester', [
+    ['Submit the Request', { type: 'SUBMIT' }],
+    ['Open the download link', { type: 'ATTEMPT' }],
+  ]],
+  ['The Reviewers', [
+    ['Suda approves', { type: 'APPROVE', reviewer: 'Suda' }],
+    ['Pichai approves', { type: 'APPROVE', reviewer: 'Pichai' }],
+    ['Suda rejects', { type: 'REJECT', reviewer: 'Suda' }],
+    ['Suda presses Re-run', { type: 'RERUN', reviewer: 'Suda' }],
+    ['Resend to the same address', { type: 'RESEND_SAME' }],
+    ['Suda resends to a corrected address', { type: 'RESEND_CORRECTED', reviewer: 'Suda' }],
+    ['Deactivate Suda', { type: 'DEACTIVATE', reviewer: 'Suda' }],
+  ]],
+  ['The system, on its own', [
+    ['The Probe finishes — 1,952 rows', { type: 'PROBE_DONE' }],
+    ['The Probe gives up', { type: 'PROBE_FAILED' }],
+    ['The extraction job starts', { type: 'JOB_START' }],
+    ['The extraction job completes', { type: 'JOB_COMPLETE' }],
+    ['The extraction job fails', { type: 'JOB_FAIL' }],
+    ['The relay accepts the Delivery', { type: 'MAIL_ACCEPTED' }],
+    ['The Delivery is abandoned after 5 tries', { type: 'MAIL_ABANDONED' }],
+  ]],
+  ['Time passes', [
+    ['An hour', { type: 'TICK', ms: HOUR }],
+    ['Six hours', { type: 'TICK', ms: 6 * HOUR }],
+    ['A day', { type: 'TICK', ms: DAY }],
+    ['A weekend', { type: 'TICK', ms: 2 * DAY }],
+    ['A day, but the 60-second tick is behind', { type: 'TICK_SLOW', ms: DAY }],
+  ]],
+];
+
+/* --- The five walkthroughs ---------------------------------------------- */
+const SCENARIOS = [
+  {
+    tab: 'The late Decision',
+    start: START,
+    desc: `<p>A Request sits on the queue over three working days while both Reviewers are
+      busy. The scheduler that marks Requests expired is running behind, so the queue still
+      shows this one as pending — and Suda opens it and decides.</p>
+      <p class="watch">Watch for: the Decision handler re-deriving the elapsed business hours
+      before it inserts, rather than trusting the queue in front of the Reviewer, and what the
+      expired event records about the attempt it refused.</p>`,
+    steps: [
+      ['The Requester submits', { type: 'SUBMIT' }],
+      ['The Probe finishes', { type: 'PROBE_DONE' }],
+      ['A day passes', { type: 'TICK', ms: DAY }],
+      ['Another day passes', { type: 'TICK', ms: DAY }],
+      ['A third day, with the tick running behind', { type: 'TICK_SLOW', ms: 30 * HOUR }],
+      ['Suda finally opens it and approves', { type: 'APPROVE', reviewer: 'Suda' }],
+    ],
+  },
+  {
+    tab: 'Friday evening',
+    start: FRIDAY,
+    desc: `<p>The timeline the specification designed the 72-hour clock around — a Friday
+      completion read on Monday. The Extract is delivered on Friday afternoon and the
+      Requester is away.</p>
+      <p class="watch">Watch for: which fires first, the 72-hour wall clock or the
+      24-business-hour lapse trip-wire — and whether the telephone call the Alert asks for
+      is still worth making when it arrives.</p>`,
+    steps: [
+      ['Friday 09:00 — the Requester submits', { type: 'SUBMIT' }],
+      ['The Probe finishes', { type: 'PROBE_DONE' }],
+      ['Suda approves', { type: 'APPROVE', reviewer: 'Suda' }],
+      ['The job starts', { type: 'JOB_START' }],
+      ['Six hours pass — it is Friday afternoon', { type: 'TICK', ms: 6 * HOUR }],
+      ['The job completes', { type: 'JOB_COMPLETE' }],
+      ['The relay accepts the Delivery', { type: 'MAIL_ACCEPTED' }],
+      ['The weekend passes', { type: 'TICK', ms: 2 * DAY }],
+      ['Monday passes', { type: 'TICK', ms: DAY }],
+      ['Tuesday passes', { type: 'TICK', ms: DAY }],
+      ['Wednesday passes', { type: 'TICK', ms: DAY }],
+    ],
+  },
+  {
+    tab: 'Two live tokens',
+    start: START,
+    desc: `<p>The Extract is delivered, the Requester does not collect it, and a Reviewer
+      presses Re-run to make a fresh one with a fresh clock.</p>
+      <p class="watch">Watch for: what happens to the first Download token. §10.7 fixes what
+      a Re-run creates and is silent on what it retires.</p>`,
+    steps: [
+      ['The Requester submits', { type: 'SUBMIT' }],
+      ['The Probe finishes', { type: 'PROBE_DONE' }],
+      ['Suda approves', { type: 'APPROVE', reviewer: 'Suda' }],
+      ['The job starts', { type: 'JOB_START' }],
+      ['The job completes', { type: 'JOB_COMPLETE' }],
+      ['The relay accepts the Delivery', { type: 'MAIL_ACCEPTED' }],
+      ['A day passes, nobody collects', { type: 'TICK', ms: DAY }],
+      ['Suda presses Re-run', { type: 'RERUN', reviewer: 'Suda' }],
+      ['The second job starts', { type: 'JOB_START' }],
+      ['The second job completes', { type: 'JOB_COMPLETE' }],
+    ],
+  },
+  {
+    tab: 'The unclearable Alert',
+    start: START,
+    desc: `<p>Suda approves a Request, vouches for the Requester personally, and then leaves
+      the organisation. A Reviewer is never removed — only deactivated — because their name
+      stays on every Decision they made. Days later the lapse trip-wire fires.</p>
+      <p class="watch">Watch for: who the Alert is assigned to, and whether anyone left in the
+      building can clear it.</p>`,
+    steps: [
+      ['The Requester submits', { type: 'SUBMIT' }],
+      ['The Probe finishes', { type: 'PROBE_DONE' }],
+      ['Suda approves', { type: 'APPROVE', reviewer: 'Suda' }],
+      ['The job starts', { type: 'JOB_START' }],
+      ['The job completes', { type: 'JOB_COMPLETE' }],
+      ['The relay accepts the Delivery', { type: 'MAIL_ACCEPTED' }],
+      ['Suda is deactivated', { type: 'DEACTIVATE', reviewer: 'Suda' }],
+      ['Three days pass', { type: 'TICK', ms: 3 * DAY }],
+      ['Pichai tries to clear the lapse', { type: 'CLEAR_ALERT', id: 1, reviewer: 'Pichai', outcome: 'could not reach the Requester' }],
+      ['Suda tries to clear it', { type: 'CLEAR_ALERT', id: 1, reviewer: 'Suda', outcome: 'reached the Requester' }],
+    ],
+  },
+  {
+    tab: 'The re-run that fails too',
+    start: START,
+    desc: `<p>An extraction fails, raising an Alert that any Reviewer may clear. Pichai clears
+      it as <code>re_ran</code> and presses the button. The second job fails as well.</p>
+      <p class="watch">Watch for: what the outcome counts say afterwards. They are the only
+      measure the service has of how often its silent failures happen.</p>`,
+    steps: [
+      ['The Requester submits', { type: 'SUBMIT' }],
+      ['The Probe finishes', { type: 'PROBE_DONE' }],
+      ['Suda approves', { type: 'APPROVE', reviewer: 'Suda' }],
+      ['The job starts', { type: 'JOB_START' }],
+      ['The job fails', { type: 'JOB_FAIL' }],
+      ['Pichai clears the Alert as re_ran', { type: 'CLEAR_ALERT', id: 1, reviewer: 'Pichai', outcome: 're_ran' }],
+      ['Pichai presses Re-run', { type: 'RERUN', reviewer: 'Pichai' }],
+      ['The second job starts', { type: 'JOB_START' }],
+      ['The second job fails too', { type: 'JOB_FAIL' }],
+    ],
+  },
+];
+
+/* --- Rendering ----------------------------------------------------------- */
+function stateRows() {
+  const s = state;
+  const rows = [
+    ['Reference number', s.ref],
+    ['Request', s.terminal ? s.terminal.replace(/_/g, ' ') + ' (terminal)' : s.status],
+    ['Business hours on the queue', s.notifiedAt ? businessHoursBetween(s.notifiedAt, s.now).toFixed(1) + ' of 24' : '—'],
+    ['Row count (from the Probe)', s.probe.status === 'counted' ? '1,952 rows' : s.probe.status],
+    ['Decision', s.decision ? s.decision.reviewer + ', ' + fmt(s.decision.at) + ' (' + s.decision.id + ')' : 'not yet made'],
+    ['Extraction', s.extraction + (s.run ? ' — run ' + s.run : '')],
+    ['Extract archive', s.completedAt ? archiveName(s) : '—'],
+    ['Delivery email', s.delivery ? (s.delivery.abandoned ? 'abandoned after 5 tries' : 'accepted by the relay ' + fmt(s.delivery.sentAt)) : 'not sent'],
+    ['Download token', s.token ? (s.token.revoked ? 'revoked' : 'live, to ' + s.token.address) : 'none issued'],
+    ['Token expires', s.token ? fmt(s.token.expiresAt) + (s.now >= s.token.expiresAt ? ' — passed' : '') : '—'],
+    ['Attempts on the token', s.token ? s.token.attempts + ' of 10' : '—'],
+    ['Earlier tokens', s.deadTokens.length ? s.deadTokens.map(t => 'run ' + t.n + ': ' + t.fate).join('; ') : 'none'],
+    ['Reviewers reachable', Object.entries(s.reviewers).map(([n, on]) => n + (on ? '' : ' (deactivated)')).join(', ')],
+  ];
+  return rows;
+}
+
+function render() {
+  const s = state;
+  document.getElementById('clock').innerHTML =
+    fmt(s.now) + ' <small>' + (isWorkingDay(s.now) ? 'a working day' : 'not a working day — the business clock is stopped') + '</small>';
+
+  document.getElementById('note').innerHTML = s.note
+    ? '<div class="note' + (s.refused ? ' refused' : '') + '">' + (s.refused ? '<b>Refused. </b>' : '') + s.note + '</div>' : '';
+
+  document.getElementById('flags').innerHTML = s.flags
+    .map(f => '<div class="flag"><b>Worth arguing about →</b> ' + f + '</div>').join('');
+
+  const tbody = document.getElementById('state');
+  tbody.innerHTML = stateRows().map(([k, v]) =>
+    '<tr class="' + (lastRows[k] !== undefined && lastRows[k] !== String(v) ? 'changed' : '') + '">' +
+    '<td class="k">' + k + '</td><td class="v' + (String(v).includes('terminal') ? ' terminal' : '') + '">' + v + '</td></tr>').join('');
+  stateRows().forEach(([k, v]) => { lastRows[k] = String(v); });
+
+  const open = s.alerts.filter(x => !x.clearedBy);
+  document.getElementById('alerts').innerHTML = s.alerts.length
+    ? s.alerts.map(x => '<div class="alert' + (x.clearedBy ? ' cleared' : '') + '">' +
+        '<b>' + x.kind + (x.clearedBy ? ' — cleared' : '') + '</b>' +
+        'Raised ' + fmt(x.raisedAt) + '. Assigned to <b style="display:inline">' + x.assignedTo + '</b>' +
+        (x.clearableByAnyone ? ', clearable by any Reviewer.' : ', and to nobody else.') +
+        (x.clearedBy ? ' Cleared by ' + x.clearedBy + ' as “' + x.outcome + '”.' : '') +
+        (x.clearedBy ? '' : '<div style="margin-top:8px">' +
+          ['Suda', 'Pichai'].map(r => '<button onclick="dispatch({type:\'CLEAR_ALERT\',id:' + x.id + ',reviewer:\'' + r + '\',outcome:\'' +
+            (x.kind === 'Extraction failure' ? 'contacted_requester' : 'reached the Requester') + '\'})">' + r + ' clears it</button>').join('') +
+          '</div>') +
+        '</div>').join('')
+    : '<p style="color:var(--muted);margin:0">Nothing to clear. An Alert is a must-clear queue item, never a passive list.</p>';
+
+  document.getElementById('actions').innerHTML = ACTIONS.map(([label, items]) =>
+    '<div class="group"><span>' + label + '</span>' +
+    items.map((it, i) => '<button onclick="dispatch(ACTIONS[' + ACTIONS.findIndex(g => g[0] === label) + '][1][' + i + '][1])">' + it[0] + '</button>').join('') +
+    '</div>').join('');
+
+  document.getElementById('tabs').innerHTML = SCENARIOS.map((sc, i) =>
+    '<button class="tab' + (scenario === i ? ' on' : '') + '" onclick="startScenario(' + i + ')">' + sc.tab + '</button>').join('');
+
+  document.getElementById('scenario').innerHTML = scenario === null
+    ? '<p style="color:var(--muted);margin:0">Pick a walkthrough. Each one resets to a known starting point, then hands you the buttons in order — press them one at a time and watch the panel on the left.</p>'
+    : '<div class="scenario-desc">' + SCENARIOS[scenario].desc + '</div>' +
+      SCENARIOS[scenario].steps.map((st, i) =>
+        '<button class="step ' + (i < stepIndex ? 'done' : i === stepIndex ? 'next' : '') + '" onclick="runStep(' + i + ')">' +
+        (i + 1) + '. ' + st[0] + '</button>').join('') +
+      '<button class="reset" onclick="startScenario(' + scenario + ')">Start this walkthrough again</button>';
+
+  document.getElementById('trail').innerHTML = s.events.length
+    ? s.events.slice().reverse().map(e =>
+        '<li><span class="t">' + fmt(e.at) + '</span><span><code>' + e.type + '</code> ' +
+        '<span class="actor">' + e.actor + '</span>' + (e.detail ? '<div class="detail">' + e.detail + '</div>' : '') + '</span></li>').join('')
+    : '<li style="grid-template-columns:1fr;color:var(--muted);border:0">Empty. Every row below appears here the moment it happens, and is never edited or removed.</li>';
+}
+
+function startScenario(i) {
+  scenario = i; stepIndex = 0; lastRows = {};
+  state = initialState(SCENARIOS[i].start);
+  state.note = 'Reset to the start of “' + SCENARIOS[i].tab + '”. Press the steps in order.';
+  render();
+}
+function runStep(i) {
+  const sc = SCENARIOS[scenario];
+  dispatch(sc.steps[i][1]);
+  stepIndex = Math.max(stepIndex, i + 1);
+  render();
+}
+
+render();
+</script>
+</body>
+</html>
