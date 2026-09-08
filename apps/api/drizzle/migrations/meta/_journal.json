@@ -22,6 +22,20 @@
       "when": 1788850764883,
       "tag": "0002_seed_province",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1788858643318,
+      "tag": "0003_lumpy_mentor",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1788858650656,
+      "tag": "0004_grant_app_role_events",
+      "breakpoints": true
     }
   ]
 }
