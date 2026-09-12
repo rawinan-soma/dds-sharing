@@ -4,8 +4,9 @@ import { ServeStaticModule } from "@nestjs/serve-static";
 import { fileURLToPath } from "node:url";
 import { HealthModule } from "./health/health.module.js";
 import { HEALTH_PATHS } from "./health/health-paths.js";
-import { ApiNotFoundController } from "./api-not-found.controller.js";
+import { ApiNotFoundModule } from "./api-not-found.module.js";
 import { ReferenceDataModule } from "./reference-data/reference-data.module.js";
+import { ReviewerModule } from "./auth/reviewer.module.js";
 
 const webDistPath = fileURLToPath(
   new URL("../../web/dist/web/browser", import.meta.url),
@@ -23,7 +24,9 @@ const staticExclude = new RegExp(
     }),
     HealthModule,
     ReferenceDataModule,
+    ReviewerModule,
+    // Must stay last — see api-not-found.module.ts for why.
+    ApiNotFoundModule,
   ],
-  controllers: [ApiNotFoundController],
 })
 export class AppModule {}

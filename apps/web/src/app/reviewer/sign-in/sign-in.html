@@ -1,0 +1,67 @@
+<main class="page">
+  @if (signedInAs(); as reviewer) {
+    <section class="card" aria-labelledby="signed-in-heading">
+      <h1 id="signed-in-heading">Signed in</h1>
+      <p>Welcome, {{ reviewer.displayName }}.</p>
+      <button type="button" class="secondary" (click)="signOut()">Sign out</button>
+    </section>
+  } @else {
+    <section class="card" aria-labelledby="sign-in-heading">
+      <h1 id="sign-in-heading">Sign in</h1>
+
+      <form [formGroup]="form" (ngSubmit)="submit()" novalidate>
+        <label>
+          <span>Username</span>
+          <input type="text" formControlName="username" autocomplete="username" />
+        </label>
+
+        <label>
+          <span>Password</span>
+          <input type="password" formControlName="password" autocomplete="current-password" />
+        </label>
+
+        <label>
+          <span>Authenticator code</span>
+          <input
+            type="text"
+            inputmode="numeric"
+            pattern="[0-9]*"
+            maxlength="6"
+            formControlName="totpCode"
+            autocomplete="one-time-code"
+          />
+        </label>
+
+        @if (errorKey(); as key) {
+          <p class="error" role="alert">
+            @switch (key) {
+              @case ('generic') {
+                Username, password or code is wrong.
+              }
+              @case ('throttled') {
+                Too many attempts. Wait a moment and try again.
+              }
+              @default {
+                Something went wrong. Try again.
+              }
+            }
+          </p>
+        }
+
+        <button type="submit" [disabled]="form.invalid || submitting()">
+          {{ submitting() ? 'Signing in…' : 'Sign in' }}
+        </button>
+      </form>
+
+      <ul class="notes">
+        <li>Accounts are created on the server host — there is no self-service sign-up.</li>
+        <li>
+          There is no self-service password reset. The other named Reviewer is the recovery path, which is why at
+          least two must always be reachable.
+        </li>
+        <li>Failed attempts are recorded with your IP address and browser, never with what you typed.</li>
+        <li>This page is not linked from the public site and is kept out of search results — for tidiness, not security.</li>
+      </ul>
+    </section>
+  }
+</main>

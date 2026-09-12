@@ -11,6 +11,10 @@ export default tseslint.config(
       "**/coverage/**",
       "**/.angular/**",
       "**/src/paraglide/**",
+      // Design reference bundle (docs/design_handoff_dds_sharing/README.md):
+      // a prototype, not production code — its runtime is explicitly "do
+      // not port", so it is not held to this repo's lint rules either.
+      "**/design_handoff_dds_sharing/**",
     ],
   },
   js.configs.recommended,
