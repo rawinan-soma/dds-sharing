@@ -4,8 +4,12 @@ Date: 2026-09-09
 
 ## Status
 
-Accepted. Amends §10 with the in-flight list, and amends #74. Found while
-triaging the post-Decision Reviewer surface: #74 gives a Reviewer a Re-run
+Accepted, and amended by
+[ADR 0017](0017-a-reviewer-never-corrects-a-requesters-email-address.md), which
+removed the corrected-address resend — one of the two cases cited below as
+needing the live contact fields. The decision below stands on the Collection
+lapse and the same-address resend alone. Amends §10 with the in-flight list,
+and amends #74. Found while triaging the post-Decision Reviewer surface: #74 gives a Reviewer a Re-run
 button and two kinds of resend, and nothing in §10 said where those buttons
 live or what is on the screen around them.
 

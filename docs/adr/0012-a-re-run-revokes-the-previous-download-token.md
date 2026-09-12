@@ -4,8 +4,12 @@ Date: 2026-09-08
 
 ## Status
 
-Accepted. Amends §10.7, §12.4 and the Download token's definition in
-`CONTEXT.md`. Amends FR-21 and FR-26. Found by the Request-lifecycle prototype
+Accepted, and amended by
+[ADR 0017](0017-a-reviewer-never-corrects-a-requesters-email-address.md), which
+removed the corrected-address resend this ADR treats as the neighbouring case:
+a Re-run is now the **only** writer of `download_token_revoked`, not its second.
+The decision below stands unchanged. Amends §10.7, §12.4 and the Download
+token's definition in `CONTEXT.md`. Amends FR-21 and FR-26. Found by the Request-lifecycle prototype
 (`prototypes/request-lifecycle.prototype.html`), which reached a state with two live Download
 tokens for one Request and no rule saying whether that was intended.
 

@@ -1569,8 +1569,9 @@ first run left two live tokens on two clocks — and the link the Requester was 
 likely to click was the one most likely to be dead. Revoking at **ready** rather
 than at **queued** is what makes the button free: a failed re-run leaves the
 original still collectable, so nothing is destroyed until something better exists.
-The revocation is written by the job, so `download_token_revoked` carries a
-`system` actor here and a `reviewer` actor in §10.8's corrected-address case.
+The revocation is written by the job, so `download_token_revoked` always
+carries a `system` actor: a Re-run's supersede is the only thing that revokes a
+Download token before its time.
 
 **It is a button, never automatic.** Chunk-atomic retry is already exhausted by
 the time a job is `failed`, so a self-retry mostly burns another ~25 minutes
@@ -1589,15 +1590,17 @@ exists to hold.
 
 - **Resend to the same address**: free, audited, and **never moves the 72 h
   clock**. The token is never extended by use, and a resend is not use.
-- **Resend to a corrected address is a NEW Decision, not a clerical fix.** It
-  releases the Extract to an address no Decision covered. It therefore **issues a
-  fresh Download token with a fresh 72 hours and revokes the old one**, and its
-  audit entry names **both** addresses. Revocation matters: the first address may
-  be a stranger's mailbox.
+- **Resend to a corrected address does not exist**, and must never be added. A
+  Requester who mistypes their own email address has ended their Request: they
+  submit again and are judged afresh. Correcting the address would release the
+  Extract to a recipient no Decision covered, which is a new Decision wearing the
+  costume of a clerical fix — and it is not a Reviewer's job to repair a
+  Requester's typing. Recorded as
+  [ADR 0017](adr/0017-a-reviewer-never-corrects-a-requesters-email-address.md).
 
-*(Note the mirror with §10.7: a Re-run is not a new Decision because nothing
-changed but the clock; a corrected-address resend is, because the recipient
-changed.)*
+*(The same-address resend is the whole of this capability. It changes nothing
+about the release — not the recipient, not the clock, not the token — which is
+exactly why it needs no Decision.)*
 
 ### 10.9 The in-flight list
 
@@ -1634,15 +1637,15 @@ was made and snapshotted already.
 the Snapshot — for as long as the Request is in flight
 ([ADR 0015](adr/0015-the-record-is-contact-free-the-screen-is-not.md)). The
 Snapshot's contact-free rule governs the record, not the screen; a Reviewer
-clearing a Collection lapse needs the telephone number, and a corrected-address
-resend has to show the address it is correcting from.
+clearing a Collection lapse needs the telephone number, and a Reviewer chasing an
+uncollected Extract has to see the address it was sent to.
 
 **Actions are gated by what is physically possible, not by policy:**
 
 | Extraction state | Row reads | Available |
 |---|---|---|
 | `queued`, `running` | *extracting* | nothing — read-only |
-| `ready` | time left on the Download token | Re-run, resend same address, resend corrected address |
+| `ready` | time left on the Download token | Re-run, resend same address |
 | `failed` | *extraction failed* | Re-run, and the Alert's clearing outcomes (§10.6) |
 
 There is no Delivery to resend before one has been sent, and a second job under
@@ -1966,8 +1969,7 @@ reading the ticket record alone would find `job_queued` and nothing else.
 | `download_attempted` | `anonymous` | mirrored from `token_lookup` |
 | `collection_lapse_raised` | `system` | **24 wall-clock hours, zero Attempts**, raised at the next business-hours opening (§11.4). Carries the wall-clock hours elapsed, so a trip-wire that fired on time is distinguishable from one whose Alert waited for Monday |
 | `collection_lapse_cleared` | `system` \| `reviewer` | `system` = collected late; `reviewer` carries the closed three-value outcome, and **both** the assigned and the clearing Reviewer — they differ when the assigned Reviewer was deactivated (§10.6) |
-| `download_token_revoked` | `system` \| `reviewer` | `reviewer` = corrected-address resend (§10.8); **`system` = a Re-run whose new Extract is ready** (§10.7), naming the run that superseded it |
-| `download_token_reissued` | `reviewer` | corrected-address resend; names **both** addresses |
+| `download_token_revoked` | `system` | **a Re-run whose new Extract is ready** (§10.7), naming the run that superseded it. This is the only cause — no Reviewer action revokes a token (§10.8, ADR 0017) |
 | `expired_uncollected` | `system` | **terminal state** |
 | `object_deleted` | `system` | actor, object key, timestamp, outcome |
 

@@ -76,7 +76,7 @@ A single `page_size=20` upstream call made per Report code over a Request's whol
 _Avoid_: Count query, pre-flight, dry run
 
 **Download token**:
-The unguessable, time-limited capability that lets a Requester collect one Extract. Carried in the delivery email, never shown on a page. Expires 72 hours after the extraction job completes and is never extended by use. Not single-use — time-limited and attempt-capped instead. It can also be **revoked** before its time, and only ever because something superseded it: a Re-run whose new Extract is ready, or a resend to a corrected address.
+The unguessable, time-limited capability that lets a Requester collect one Extract. Carried in the delivery email, never shown on a page. Expires 72 hours after the extraction job completes and is never extended by use. Not single-use — time-limited and attempt-capped instead. It can also be **revoked** before its time, and only ever because something superseded it — a Re-run whose new Extract is ready, which is the single cause. No Reviewer action revokes a token, and none redirects one: a Delivery goes to the address on the Request or it does not go.
 _Avoid_: Download link, magic link, signed URL
 
 **Attempt**:

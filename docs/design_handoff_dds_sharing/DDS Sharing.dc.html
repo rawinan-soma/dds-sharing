@@ -1,0 +1,1636 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="_ds/industry-0b6e875a-1fd1-4b9e-b37f-f9b32e3d8bf3/styles.css">
+<script src="_ds/industry-0b6e875a-1fd1-4b9e-b37f-f9b32e3d8bf3/_ds_bundle.js"></script>
+<style>
+body { margin: 0; background: var(--color-bg); color: var(--color-text); font-family: var(--font-body); }
+a { color: var(--color-accent-700); }
+a:hover { color: var(--color-accent-800); }
+select.input { appearance: none; background-image: none; }
+</style>
+</helmet>
+
+<div style="height:100vh;display:flex;flex-direction:{{ shellDir }};overflow:hidden;font-size:14px">
+<div style="flex:1 1 auto;min-width:0;min-height:0;display:flex;flex-direction:column;overflow:hidden">
+
+<sc-if value="{{ isPublic }}" hint-placeholder-val="{{ true }}">
+<header style="display:flex;align-items:center;gap:20px;padding:12px 28px;border-bottom:1px solid var(--color-divider);background:var(--color-neutral-100)">
+<div style="display:flex;flex-direction:column;line-height:1.15">
+<span style="font-family:var(--font-heading);font-weight:600;font-size:19px;letter-spacing:0.01em">DDS SHARING</span>
+<span style="font-size:11px;letter-spacing:0.06em;text-transform:uppercase;color:var(--color-neutral-700)">Department of Disease Control · Environmental &amp; Occupational Health</span>
+</div>
+<span style="margin-left:auto;font-size:12px;color:var(--color-neutral-700)">Case-level extract request · surveillance data</span>
+</header>
+</sc-if>
+
+<sc-if value="{{ isForm }}" hint-placeholder-val="{{ true }}">
+<main style="flex:1 1 auto;min-height:0;overflow-y:auto;width:100%;max-width:920px;margin:0 auto;padding:36px 24px 120px;display:flex;flex-direction:column;gap:26px">
+
+<div style="display:flex;flex-direction:column;gap:10px">
+<h1 style="font-size:31px;margin:0">Request a data extract</h1>
+<p style="margin:0;max-width:70ch;font-size:14px;color:var(--color-text)">Every request is read and approved by a named officer before any data is fetched. Approval takes up to 24 business hours, and the extract arrives by email — never on this page.</p>
+<p style="margin:0;max-width:70ch;font-size:14px;color:var(--color-neutral-700)">What you are asking for is de-identified, case-level surveillance records for one disease group, one date range and one optional area.</p>
+<p style="margin:0;max-width:70ch;font-size:13px;color:var(--color-neutral-700);border-left:2px solid var(--color-accent);padding-left:12px">If a request is not approved you will be told that it was not approved, but not why. Please supply a telephone number you answer — a reviewer who cannot place you will call before deciding.</p>
+</div>
+
+<section class="blueprint" style="padding:20px 22px;display:flex;flex-direction:column;gap:14px">
+<i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+<div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap">
+<span style="font-family:var(--font-heading);font-size:13px;letter-spacing:0.09em;text-transform:uppercase;color:var(--color-accent-700)">Before you start</span>
+<h2 style="font-size:19px;margin:0">What the extract contains</h2>
+<span style="font-size:12px;color:var(--color-neutral-700);margin-left:auto;font-variant-numeric:tabular-nums">the same 23 columns for every request</span>
+</div>
+<p style="margin:0;max-width:74ch;font-size:14px;color:var(--color-text)">Nothing in this extract names a person. A file with no names in it is the correct result, not a broken one. The columns are fixed, identical for every request, and never widened for an individual ask.</p>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px 26px">
+<div>
+<p style="margin:0 0 9px;font-family:var(--font-heading);font-size:13px;letter-spacing:0.09em;text-transform:uppercase;color:var(--color-accent-700)">You will get</p>
+<ul style="margin:0;padding-left:15px">
+<li style="margin:0 0 5px;font-size:13px;color:var(--color-neutral-700)">One row per case, one CSV file.</li>
+<li style="margin:0 0 5px;font-size:13px;color:var(--color-neutral-700)">Disease — the report code the row was fetched under, the ICD-10 diagnosis and the full diagnosis list.</li>
+<li style="margin:0 0 5px;font-size:13px;color:var(--color-neutral-700)">Person — birth date, age in completed years at onset, gender, prefix, nationality, occupation, marital status.</li>
+<li style="margin:0 0 5px;font-size:13px;color:var(--color-neutral-700)">Where — province and district of registration, province and district recorded at survey, and the health region of the survey province.</li>
+<li style="margin:0 0 5px;font-size:13px;color:var(--color-neutral-700)">Facility — the hospital code.</li>
+<li style="margin:0 0 5px;font-size:13px;color:var(--color-neutral-700)">When — onset, treatment, diagnosis, death, report and last update.</li>
+</ul>
+</div>
+<div>
+<p style="margin:0 0 9px;font-family:var(--font-heading);font-size:13px;letter-spacing:0.09em;text-transform:uppercase;color:var(--color-accent-700)">You will not get</p>
+<ul style="margin:0;padding-left:15px">
+<li style="margin:0 0 5px;font-size:13px;color:var(--color-neutral-700)">Names, surnames or national ID numbers.</li>
+<li style="margin:0 0 5px;font-size:13px;color:var(--color-neutral-700)">Addresses, house numbers, roads or villages.</li>
+<li style="margin:0 0 5px;font-size:13px;color:var(--color-neutral-700)">Sub-district (ตำบล) or anything finer — the district is the finest named geography.</li>
+<li style="margin:0 0 5px;font-size:13px;color:var(--color-neutral-700)">Map coordinates of any kind.</li>
+<li style="margin:0 0 5px;font-size:13px;color:var(--color-neutral-700)">Free text of any kind — every field is a code or a date.</li>
+<li style="margin:0 0 5px;font-size:13px;color:var(--color-neutral-700)">Telephone numbers or any other contact detail of a case.</li>
+</ul>
+</div>
+</div>
+<p style="margin:0;max-width:74ch;font-size:12px;color:var(--color-neutral-700)">A field reaches the extract only by being on that list. It is not negotiable per request, and a reviewer cannot widen it for you. Every archive carries a Thai/English data dictionary naming each column.</p>
+</section>
+
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px 26px">
+<div>
+<p style="margin:0 0 7px;font-family:var(--font-heading);font-size:13px;letter-spacing:0.09em;text-transform:uppercase;color:var(--color-accent-700)">The email address you give</p>
+<p style="margin:0;max-width:58ch;font-size:12.5px;color:var(--color-neutral-700)">The extract link goes to the email address below, and nowhere else. It is never checked — a typo sends the link to the wrong place, or nowhere, and nobody will tell you. Read it back before you submit.</p>
+</div>
+<div>
+<p style="margin:0 0 7px;font-family:var(--font-heading);font-size:13px;letter-spacing:0.09em;text-transform:uppercase;color:var(--color-accent-700)">What is kept, and for how long</p>
+<p style="margin:0;max-width:58ch;font-size:12.5px;color:var(--color-neutral-700)">Your contact details and the record of this request are kept indefinitely, so that every release of data stays traceable to the person who asked and the officer who approved it. Your contact details can be removed on request once the request is finished — telephone <span style="font-variant-numeric:tabular-nums">0 2590 4000</span> and quote your reference number.</p>
+</div>
+</div>
+
+<section class="blueprint" style="padding:20px 22px;display:flex;flex-direction:column;gap:14px">
+<i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+<div style="display:flex;align-items:baseline;gap:10px">
+<span style="font-family:var(--font-heading);font-size:12px;letter-spacing:0.1em;color:var(--color-accent-700)">01</span>
+<h2 style="font-size:19px;margin:0">Disease group</h2>
+<span style="font-size:12px;color:var(--color-neutral-700);margin-left:auto">exactly one, required</span>
+</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:8px 22px">
+<sc-for list="{{ groups }}" as="g" hint-placeholder-count="10">
+<label class="radio" style="padding:5px 0;align-items:flex-start">
+<input type="radio" name="dds-group" checked="{{ g.checked }}" onChange="{{ g.pick }}">
+<span class="dot" style="margin-top:3px"></span>
+<span style="font-size:14px">{{ g.name }}</span>
+</label>
+</sc-for>
+</div>
+<sc-if value="{{ errGroup }}" hint-placeholder-val="{{ false }}">
+<p style="margin:0;font-size:13px;color:var(--color-accent-900);background:var(--color-accent-100);border-left:2px solid var(--color-accent-900);padding:7px 11px">Choose a disease group.</p>
+</sc-if>
+</section>
+
+<section class="blueprint" style="padding:20px 22px;display:flex;flex-direction:column;gap:14px">
+<i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+<div style="display:flex;align-items:baseline;gap:10px">
+<span style="font-family:var(--font-heading);font-size:12px;letter-spacing:0.1em;color:var(--color-accent-700)">02</span>
+<h2 style="font-size:19px;margin:0">Date range</h2>
+<span style="font-size:12px;color:var(--color-neutral-700);margin-left:auto">inclusive, required, at most 365 days</span>
+</div>
+<div style="display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end">
+<div class="field" style="width:190px"><label>From (inclusive)</label>
+<input class="input" type="date" style="font-variant-numeric:tabular-nums" value="{{ f.from }}" onChange="{{ setFrom }}">
+</div>
+<div class="field" style="width:190px"><label>To (inclusive)</label>
+<input class="input" type="date" style="font-variant-numeric:tabular-nums" value="{{ f.to }}" onChange="{{ setTo }}">
+</div>
+<div style="font-size:13px;color:var(--color-neutral-700);padding-bottom:9px">{{ spanLabel }}</div>
+</div>
+<sc-if value="{{ errDates }}" hint-placeholder-val="{{ false }}">
+<p style="margin:0;font-size:13px;color:var(--color-accent-900);background:var(--color-accent-100);border-left:2px solid var(--color-accent-900);padding:7px 11px">{{ errDatesMsg }}</p>
+</sc-if>
+<p style="margin:0;font-size:12px;color:var(--color-neutral-700)">The 365-day cap is the DDC API's, and a wider range is refused rather than split into several. For a longer history, send more than one request.</p>
+</section>
+
+<section class="blueprint" style="padding:20px 22px;display:flex;flex-direction:column;gap:14px">
+<i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+<div style="display:flex;align-items:baseline;gap:10px">
+<span style="font-family:var(--font-heading);font-size:12px;letter-spacing:0.1em;color:var(--color-accent-700)">03</span>
+<h2 style="font-size:19px;margin:0">Area</h2>
+<span style="font-size:12px;color:var(--color-neutral-700);margin-left:auto">optional · one province or one health region</span>
+</div>
+<div class="seg">
+<label class="seg-opt"><input type="radio" name="dds-area" checked="{{ areaIsNational }}" onChange="{{ pickNational }}">Whole country</label>
+<label class="seg-opt"><input type="radio" name="dds-area" checked="{{ areaIsProvince }}" onChange="{{ pickProvinceMode }}">One province</label>
+<label class="seg-opt"><input type="radio" name="dds-area" checked="{{ areaIsRegion }}" onChange="{{ pickRegionMode }}">One health region</label>
+</div>
+<sc-if value="{{ areaIsProvince }}" hint-placeholder-val="{{ false }}">
+<div class="field" style="max-width:320px"><label>Province</label>
+<select class="input" value="{{ f.province }}" onChange="{{ setProvince }}">
+<sc-for list="{{ provinceOptions }}" as="p" hint-placeholder-count="6">
+<option value="{{ p.value }}">{{ p.label }}</option>
+</sc-for>
+</select>
+</div>
+</sc-if>
+<sc-if value="{{ areaIsRegion }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;flex-direction:column;gap:11px">
+<div class="field" style="max-width:320px"><label>Health region (เขตสุขภาพ)</label>
+<select class="input" value="{{ f.region }}" onChange="{{ setRegion }}">
+<sc-for list="{{ regionOptions }}" as="r" hint-placeholder-count="13">
+<option value="{{ r.value }}">{{ r.label }}</option>
+</sc-for>
+</select>
+</div>
+<div style="display:flex;flex-direction:column;gap:7px">
+<span style="font-size:12px;color:var(--color-neutral-700)">{{ regionExpandLabel }}</span>
+<div style="display:flex;flex-wrap:wrap;gap:5px">
+<sc-for list="{{ regionProvinces }}" as="p" hint-placeholder-count="8">
+<span class="tag tag-accent">{{ p.name }}</span>
+</sc-for>
+</div>
+</div>
+<p style="margin:0;font-size:12px;color:var(--color-neutral-700)">เขตสุขภาพ is the Ministry of Public Health's health-region geography. It is not the สคร. regional disease-control catchment, and the two do not line up.</p>
+</div>
+</sc-if>
+<p style="margin:0;font-size:12px;color:var(--color-neutral-700)">The area filters on the province that investigated the case — "cases I investigated", not cases among registered residents.</p>
+</section>
+
+<section class="blueprint" style="padding:20px 22px;display:flex;flex-direction:column;gap:14px">
+<i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+<div style="display:flex;align-items:baseline;gap:10px">
+<span style="font-family:var(--font-heading);font-size:12px;letter-spacing:0.1em;color:var(--color-accent-700)">04</span>
+<h2 style="font-size:19px;margin:0">Who is asking</h2>
+<span style="font-size:12px;color:var(--color-neutral-700);margin-left:auto">read by a person, not by the system</span>
+</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px 18px">
+<div class="field"><label>Name</label><input class="input" type="text" value="{{ f.name }}" onChange="{{ setName }}"></div>
+<div class="field"><label>Surname</label><input class="input" type="text" value="{{ f.surname }}" onChange="{{ setSurname }}"></div>
+<div class="field"><label>Telephone</label><input class="input" type="text" style="font-variant-numeric:tabular-nums" value="{{ f.tel }}" onChange="{{ setTel }}"></div>
+<div class="field"><label>Email</label><input class="input" type="text" value="{{ f.email }}" onChange="{{ setEmail }}"></div>
+</div>
+<div class="field"><label>Workplace</label><input class="input" type="text" value="{{ f.workplace }}" onChange="{{ setWorkplace }}">
+<p style="margin:6px 0 0;font-size:12px;color:var(--color-neutral-700)">Free text, and never checked against a list. It is what a reviewer weighs when deciding whether to release data to you.</p>
+</div>
+<sc-if value="{{ errContact }}" hint-placeholder-val="{{ false }}">
+<p style="margin:0;font-size:13px;color:var(--color-accent-900);background:var(--color-accent-100);border-left:2px solid var(--color-accent-900);padding:7px 11px">{{ errContactMsg }}</p>
+</sc-if>
+</section>
+
+<div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap">
+<button class="btn btn-primary" style="font-size:15px;padding:10px 22px" onClick="{{ goConfirm }}">Check the request</button>
+<span style="font-size:12.5px;color:var(--color-neutral-700)">Nothing is submitted yet. You will see exactly what you typed before it goes.</span>
+</div>
+</main>
+</sc-if>
+
+<sc-if value="{{ isConfirm }}" hint-placeholder-val="{{ false }}">
+<main style="flex:1 1 auto;min-height:0;overflow-y:auto;width:100%;max-width:780px;margin:0 auto;padding:36px 24px 120px;display:flex;flex-direction:column;gap:22px">
+<div>
+<h1 style="font-size:31px;margin:0 0 8px">Is this what you meant?</h1>
+<p style="margin:0;max-width:66ch;color:var(--color-neutral-700)">Once submitted, a request cannot be edited — not by you and not by a reviewer. If something here is wrong, go back and change it now.</p>
+</div>
+<section class="blueprint" style="padding:20px 22px">
+<i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+<table class="table" style="font-size:14px">
+<tbody>
+<sc-for list="{{ confirmRows }}" as="row" hint-placeholder-count="8">
+<tr><th style="width:200px;vertical-align:top;border-bottom:1px solid color-mix(in srgb, var(--color-text) 8%, transparent)">{{ row.k }}</th>
+<td style="font-variant-numeric:tabular-nums">{{ row.v }}<sc-if value="{{ row.note }}" hint-placeholder-val="{{ false }}"><span style="display:block;font-size:12px;color:var(--color-neutral-700);font-variant-numeric:normal">{{ row.note }}</span></sc-if></td></tr>
+</sc-for>
+</tbody>
+</table>
+</section>
+<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+<button class="btn btn-primary" style="font-size:15px;padding:10px 22px" onClick="{{ submitFinal }}">Submit the request</button>
+<button class="btn btn-secondary" onClick="{{ backToForm }}">Go back and change it</button>
+</div>
+</main>
+</sc-if>
+
+<sc-if value="{{ isSubmitted }}" hint-placeholder-val="{{ false }}">
+<main style="flex:1 1 auto;min-height:0;overflow-y:auto;width:100%;max-width:720px;margin:0 auto;padding:48px 24px 120px;display:flex;flex-direction:column;gap:22px">
+<div>
+<span class="tag tag-accent" style="margin-bottom:12px">Received</span>
+<h1 style="font-size:31px;margin:6px 0 10px">Your request is with a reviewer</h1>
+<p style="margin:0;max-width:64ch;color:var(--color-neutral-700)">A named officer will read it and decide within <strong>24 business hours</strong> (Mon–Fri, 08:30–16:30). Nothing appears on this page — if it is approved, the extract arrives as a link in an email to the address you gave.</p>
+</div>
+<section class="blueprint" style="padding:20px 22px;display:flex;flex-direction:column;gap:12px">
+<i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+<div style="display:flex;flex-wrap:wrap;gap:28px">
+<div><div style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-neutral-700)">Reference number</div>
+<div style="font-family:var(--font-heading);font-size:26px;font-variant-numeric:tabular-nums">{{ sub.ref }}</div></div>
+<div><div style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-neutral-700)">Decision due by</div>
+<div style="font-family:var(--font-heading);font-size:26px;font-variant-numeric:tabular-nums">{{ sub.dueLabel }}</div></div>
+</div>
+<p style="margin:0;font-size:13px;color:var(--color-neutral-700)">Quote the reference number if you telephone about this request. Keep the line you gave us free — a reviewer who cannot place you will call rather than refuse.</p>
+</section>
+<p style="margin:0;font-size:13px;color:var(--color-neutral-700);max-width:64ch">Emailed to {{ sub.email }}. The link in that email lives for 72 hours from the moment the extract is made, and is not extended by opening it.</p>
+</main>
+</sc-if>
+
+<sc-if value="{{ isDuplicate }}" hint-placeholder-val="{{ false }}">
+<main style="flex:1 1 auto;min-height:0;overflow-y:auto;width:100%;max-width:720px;margin:0 auto;padding:48px 24px 120px;display:flex;flex-direction:column;gap:20px">
+<div>
+<h1 style="font-size:31px;margin:0 0 10px">You already have a request in progress</h1>
+<p style="margin:0;max-width:64ch;color:var(--color-neutral-700)">{{ dup.line }} It has not finished yet, so this one was not sent — you have not lost anything and nothing needs doing.</p>
+</div>
+<section class="blueprint" style="padding:18px 22px;display:flex;flex-wrap:wrap;gap:28px">
+<i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+<div><div style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-neutral-700)">The request you already sent</div>
+<div style="font-family:var(--font-heading);font-size:24px;font-variant-numeric:tabular-nums">{{ dup.ref }}</div></div>
+<div><div style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-neutral-700)">Sent</div>
+<div style="font-family:var(--font-heading);font-size:24px;font-variant-numeric:tabular-nums">{{ dup.at }}</div></div>
+</section>
+<p style="margin:0;font-size:13px;color:var(--color-neutral-700);max-width:64ch">When it has been decided and, if approved, collected, you can send another. If you meant to ask something different, wait for this one and then ask again.</p>
+</main>
+</sc-if>
+
+<sc-if value="{{ isRejectionEmail }}" hint-placeholder-val="{{ false }}">
+<main style="flex:1 1 auto;min-height:0;overflow-y:auto;width:100%;max-width:820px;margin:0 auto;padding:32px 24px 120px;display:flex;flex-direction:column;gap:16px">
+<div style="display:flex;align-items:baseline;gap:12px;flex-wrap:wrap">
+<h1 style="font-size:24px;margin:0">The rejection email</h1>
+<span style="font-size:12px;color:var(--color-neutral-700)">says it was not approved, and says nothing else</span>
+</div>
+<section class="blueprint" style="background:var(--color-neutral-100)">
+<i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+<div style="padding:14px 20px;border-bottom:1px solid var(--color-divider);display:grid;grid-template-columns:74px 1fr;gap:4px 12px;font-size:13px">
+<span style="color:var(--color-neutral-700)">From</span><span>DDS Sharing · no-reply@ddc.moph.go.th</span>
+<span style="color:var(--color-neutral-700)">To</span><span style="font-variant-numeric:tabular-nums">{{ rj.to }}</span>
+<span style="color:var(--color-neutral-700)">Sent</span><span style="font-variant-numeric:tabular-nums">{{ rj.sent }}</span>
+<span style="color:var(--color-neutral-700)">Subject</span><span style="font-family:var(--font-heading);font-size:16px">{{ rj.subject }}</span>
+</div>
+<div style="padding:24px 20px;display:flex;flex-direction:column;gap:14px;font-size:14px;line-height:1.6;max-width:62ch">
+<p style="margin:0">เรียน {{ rj.name }},</p>
+<p style="margin:0">Request {{ rj.ref }} was not approved. No data will be sent.</p>
+<p style="margin:0">You are welcome to send another request. If you would like to discuss this one, telephone the Division of Environmental and Occupational Health on 0 2590 4000 during office hours and quote the reference number above.</p>
+<p style="margin:0">Division of Environmental and Occupational Health<br>Department of Disease Control</p>
+</div>
+</section>
+<p style="margin:0;font-size:12.5px;color:var(--color-neutral-700);max-width:66ch;border-left:2px solid var(--color-accent);padding-left:12px">No reason, and no reviewer's name. A reason invites argument and teaches people how to phrase the next attempt; the reviewer's note stays on the internal record. What the email does carry is a telephone number, so a person who was wrongly refused has somewhere to go.</p>
+</main>
+</sc-if>
+
+<sc-if value="{{ isEmail }}" hint-placeholder-val="{{ false }}">
+<main style="flex:1 1 auto;min-height:0;overflow-y:auto;width:100%;max-width:820px;margin:0 auto;padding:32px 24px 120px;display:flex;flex-direction:column;gap:16px">
+<div style="display:flex;align-items:baseline;gap:12px">
+<h1 style="font-size:24px;margin:0">The delivery email</h1>
+<span style="font-size:12px;color:var(--color-neutral-700)">the only channel · the link is never shown on a page</span>
+</div>
+<section class="blueprint" style="background:var(--color-neutral-100)">
+<i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+<div style="padding:14px 20px;border-bottom:1px solid var(--color-divider);display:grid;grid-template-columns:74px 1fr;gap:4px 12px;font-size:13px">
+<span style="color:var(--color-neutral-700)">From</span><span>DDS Sharing · no-reply@ddc.moph.go.th</span>
+<span style="color:var(--color-neutral-700)">To</span><span style="font-variant-numeric:tabular-nums">{{ em.to }}</span>
+<span style="color:var(--color-neutral-700)">Sent</span><span style="font-variant-numeric:tabular-nums">{{ em.sent }}</span>
+<span style="color:var(--color-neutral-700)">Subject</span><span style="font-family:var(--font-heading);font-size:16px">{{ em.subject }}</span>
+</div>
+<div style="padding:24px 20px;display:flex;flex-direction:column;gap:14px;font-size:14px;line-height:1.6;max-width:64ch">
+<p style="margin:0">เรียน {{ em.name }},</p>
+<p style="margin:0">The extract for request {{ em.ref }} has been made and is ready to collect.</p>
+<div style="display:grid;grid-template-columns:auto 1fr;gap:3px 14px;font-size:13px;padding:12px 0;border-top:1px solid var(--color-divider);border-bottom:1px solid var(--color-divider)">
+<span style="color:var(--color-neutral-700)">Disease group</span><span>{{ em.group }}</span>
+<span style="color:var(--color-neutral-700)">Dates</span><span style="font-variant-numeric:tabular-nums">{{ em.dates }}</span>
+<span style="color:var(--color-neutral-700)">Area</span><span>{{ em.area }}</span>
+<span style="color:var(--color-neutral-700)">File</span><span style="font-variant-numeric:tabular-nums">{{ em.archive }}</span>
+</div>
+<div><button class="btn btn-primary" style="padding:10px 20px;font-size:15px" onClick="{{ goDownload }}">Collect the extract</button></div>
+<p style="margin:0;font-size:13px;color:var(--color-neutral-700)">The link works until <strong>{{ em.expires }}</strong> — 72 hours from the moment the extract was made. Opening it does not extend it. After that the file is destroyed and you would need to ask again.</p>
+<p style="margin:0;font-size:13px;color:var(--color-neutral-700)">The archive holds one CSV of de-identified case records and the Thai/English data dictionary for its columns. Do not forward this email: the link is the only credential it carries.</p>
+</div>
+</section>
+</main>
+</sc-if>
+
+<sc-if value="{{ isDownload }}" hint-placeholder-val="{{ false }}">
+<main style="flex:1 1 auto;min-height:0;overflow-y:auto;width:100%;max-width:760px;margin:0 auto;padding:32px 24px 120px;display:flex;flex-direction:column;gap:16px">
+<div style="display:flex;align-items:center;gap:10px;padding:7px 12px;border:1px solid var(--color-divider);background:var(--color-neutral-200);font-size:12px;font-variant-numeric:tabular-nums;color:var(--color-neutral-700)">
+<span style="letter-spacing:0.08em;text-transform:uppercase;font-size:10px">https://</span>{{ dl.url }}
+<span style="margin-left:auto;font-size:11px">served by the API, not by the app — an extract stays collectable even if the front end fails to load</span>
+</div>
+<sc-if value="{{ dlLive }}" hint-placeholder-val="{{ true }}">
+<section class="blueprint" style="padding:26px 24px;display:flex;flex-direction:column;gap:16px">
+<i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+<div>
+<span class="tag tag-accent">Ready to collect</span>
+<h1 style="font-size:28px;margin:10px 0 6px">Your extract · {{ dl.ref }}</h1>
+<p style="margin:0;color:var(--color-neutral-700);font-size:14px">One zip: the CSV of case records and the data dictionary that explains its columns.</p>
+</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;padding:14px 0;border-top:1px solid var(--color-divider);border-bottom:1px solid var(--color-divider);font-variant-numeric:tabular-nums">
+<div><div style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-neutral-700)">File</div><div style="font-size:13px">{{ dl.archive }}</div></div>
+<div><div style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-neutral-700)">Size</div><div style="font-size:13px">{{ dl.size }}</div></div>
+<div><div style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-neutral-700)">Link expires in</div><div style="font-size:13px">{{ dl.hoursLeft }}</div></div>
+<div><div style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-neutral-700)">Attempts</div><div style="font-size:13px">{{ dl.attempts }}</div></div>
+</div>
+<div style="display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+<button class="btn btn-primary" style="padding:10px 20px;font-size:15px" onClick="{{ collect }}">Download the archive</button>
+<span style="font-size:12.5px;color:var(--color-neutral-700)">Every attempt is counted and audited, whether or not the transfer finishes.</span>
+</div>
+</section>
+</sc-if>
+<sc-if value="{{ dlExpired }}" hint-placeholder-val="{{ false }}">
+<section class="blueprint" style="padding:26px 24px;display:flex;flex-direction:column;gap:14px">
+<i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+<span class="tag tag-neutral">Link expired</span>
+<h1 style="font-size:28px;margin:4px 0 0">This link has expired</h1>
+<p style="margin:0;max-width:60ch;color:var(--color-neutral-700);font-size:14px">A collection link lives for 72 hours from the moment the extract is made, and opening it never extends that. The file itself has been destroyed, so there is nothing left to send you.</p>
+<p style="margin:0;max-width:60ch;font-size:13px;color:var(--color-neutral-700);border-left:2px solid var(--color-accent);padding-left:12px">Send the same request again and it will be approved and extracted afresh. If you believe the link expired unfairly — for instance the email reached you late — telephone the number on the request and quote {{ dl.ref }}.</p>
+</section>
+</sc-if>
+<sc-if value="{{ dlRevoked }}" hint-placeholder-val="{{ false }}">
+<section class="blueprint" style="padding:26px 24px;display:flex;flex-direction:column;gap:14px">
+<i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+<span class="tag tag-neutral">Link replaced</span>
+<h1 style="font-size:28px;margin:4px 0 0">This link has been replaced</h1>
+<p style="margin:0;max-width:60ch;color:var(--color-neutral-700);font-size:14px">The extract was made again, so this link was retired when the newer one became collectable. Use the most recent email for {{ dl.ref }} — it carries the live link.</p>
+</section>
+</sc-if>
+</main>
+</sc-if>
+
+<sc-if value="{{ isSignin }}" hint-placeholder-val="{{ false }}">
+<main style="flex:1 1 auto;min-height:0;overflow-y:auto;display:flex;align-items:center;justify-content:center;padding:60px 24px">
+<section class="blueprint" style="padding:26px 26px;width:100%;max-width:420px;display:flex;flex-direction:column;gap:16px">
+<i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+<div>
+<span style="font-size:11px;letter-spacing:0.1em;text-transform:uppercase;color:var(--color-accent-700)">DDS Sharing · /reviewer</span>
+<h1 style="font-size:26px;margin:8px 0 6px">Sign in</h1>
+<p style="margin:0;font-size:13px;color:var(--color-neutral-700)">Your name is recorded on every decision you take, and stays on it after you leave.</p>
+</div>
+<div style="display:flex;flex-direction:column;gap:11px">
+<div class="field"><label>Username</label><input class="input" type="text" style="font-variant-numeric:tabular-nums" value="{{ signinUser }}" onChange="{{ setSigninUser }}"></div>
+<div class="field"><label>Password</label><input class="input" type="password" value="{{ signinPw }}" onChange="{{ setSigninPw }}"></div>
+<div class="field"><label>Authenticator code</label><input class="input" type="text" placeholder="6 digits" style="font-variant-numeric:tabular-nums;letter-spacing:0.24em;max-width:150px" value="{{ signinCode }}" onChange="{{ setSigninCode }}">
+<p style="margin:6px 0 0;font-size:12px;color:var(--color-neutral-700)">From Google Authenticator, enrolled once by CLI. Submitted together with the password and checked together — never in two steps.</p>
+</div>
+</div>
+<sc-if value="{{ hasSigninError }}" hint-placeholder-val="{{ false }}">
+<p style="margin:0;font-size:13px;color:var(--color-accent-900);background:var(--color-accent-100);border-left:2px solid var(--color-accent-900);padding:8px 11px">{{ signinError }}</p>
+</sc-if>
+<button class="btn btn-primary btn-block" style="padding:10px" onClick="{{ signIn }}">Sign in</button>
+<sc-if value="{{ hasSigninAttempts }}" hint-placeholder-val="{{ false }}">
+<p style="margin:0;font-size:12px;color:var(--color-neutral-700)">{{ signinAttemptsLine }}</p>
+</sc-if>
+<p style="margin:0;font-size:12px;color:var(--color-neutral-700)">Accounts are seeded on the host, and there is no self-service reset for a lost phone or a forgotten password — the other reviewer is the recovery path. Two named reviewers must be reachable at all times.</p>
+<p style="margin:0;font-size:12px;color:var(--color-neutral-700)">This address is not linked from the public form and is kept out of search results. That is tidiness, not security — the session is what protects the queue.</p>
+</section>
+</main>
+</sc-if>
+
+<sc-if value="{{ isQueue }}" hint-placeholder-val="{{ false }}">
+<div style="flex:1;display:flex;flex-direction:column;min-height:0">
+<header style="display:flex;align-items:center;gap:18px;padding:10px 20px;border-bottom:1px solid var(--color-divider);background:var(--color-accent-900);color:var(--color-neutral-100)">
+<span style="font-family:var(--font-heading);font-weight:600;font-size:17px;letter-spacing:0.02em">DDS SHARING · REVIEWER</span>
+<span style="font-size:12px;opacity:0.75">{{ nowLabel }}</span>
+<span style="margin-left:auto;font-size:13px">Signed in as {{ reviewerName }}</span>
+<button class="btn" style="border-color:rgba(245,245,248,0.35);color:var(--color-neutral-100);font-size:13px;padding:5px 12px" onClick="{{ signOut }}">Sign out</button>
+</header>
+
+<div style="flex:1;display:grid;grid-template-columns:minmax(300px,378px) minmax(0,1fr);min-height:0">
+
+<aside style="border-right:1px solid var(--color-divider);display:flex;flex-direction:column;min-height:0;background:var(--color-neutral-100)">
+<div style="flex:0 1 auto;min-height:0;overflow-y:auto;padding:13px 16px;border-bottom:1px solid var(--color-divider);display:flex;flex-direction:column;gap:8px">
+<div style="display:flex;align-items:baseline;gap:9px">
+<h2 style="font-size:18px;margin:0">Queue</h2>
+<span style="font-size:12px;color:var(--color-neutral-700)">{{ pendingCount }}</span>
+</div>
+<div style="display:flex;align-items:center;gap:10px">
+<button class="btn btn-secondary" style="font-size:12.5px;padding:5px 11px" onClick="{{ refreshList }}">Refresh</button>
+<span style="font-size:11.5px;color:var(--color-neutral-700);font-variant-numeric:tabular-nums">{{ listAgeLabel }}</span>
+</div>
+<p style="margin:0;font-size:11px;color:var(--color-neutral-700)">One refresh, all three zones. Nothing here refreshes itself — a screen that polls would keep your session alive for ever. Mail is the notification channel.</p>
+<sc-if value="{{ hasFinished }}" hint-placeholder-val="{{ false }}">
+<p style="margin:0;font-size:11px;color:var(--color-neutral-700)">{{ finishedLine }} The record of each one is kept and is never deleted.</p>
+</sc-if>
+</div>
+
+<sc-if value="{{ hasAlerts }}" hint-placeholder-val="{{ true }}">
+<div style="flex:0 1 auto;min-height:64px;overflow-y:auto;padding:12px 16px;border-bottom:1px solid var(--color-divider);background:var(--color-accent-200);display:flex;flex-direction:column;gap:9px">
+<div style="display:flex;align-items:baseline;gap:9px">
+<span style="font-family:var(--font-heading);font-size:13px;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-accent-900)">Alerts</span>
+<span style="font-size:11.5px;color:var(--color-accent-900)">{{ alertsCount }}</span>
+</div>
+<sc-for list="{{ alertRows }}" as="a" hint-placeholder-count="2">
+<button style="all:unset;box-sizing:border-box;cursor:pointer;display:flex;flex-direction:column;gap:2px;padding:8px 10px;border:1px solid var(--color-accent-400);background:rgba(255,255,255,0.6)" onClick="{{ a.select }}" style-hover="background:#fff">
+<span style="display:flex;gap:8px;align-items:baseline"><span style="font-family:var(--font-heading);font-size:14px;color:var(--color-accent-900)">{{ a.kind }}</span><span style="font-size:11.5px;color:var(--color-neutral-700);font-variant-numeric:tabular-nums;margin-left:auto">{{ a.ref }}</span></span>
+<span style="font-size:11.5px;color:var(--color-neutral-700)">{{ a.who }} · assigned to {{ a.assigned }}</span>
+<span style="font-size:11px;color:var(--color-neutral-700)">raised {{ a.raised }}</span>
+<sc-if value="{{ a.rerunning }}" hint-placeholder-val="{{ false }}"><span style="font-size:11px;color:var(--color-accent-900)">re-running — deferred, not cleared</span></sc-if>
+</button>
+</sc-for>
+</div>
+</sc-if>
+
+<div style="flex:1 1 auto;overflow-y:auto;min-height:110px;border-bottom:1px solid var(--color-divider)">
+<sc-if value="{{ queueEmpty }}" hint-placeholder-val="{{ false }}">
+<div style="padding:36px 20px;display:flex;flex-direction:column;gap:9px;align-items:flex-start">
+<span style="font-family:var(--font-heading);font-size:19px">The queue is empty</span>
+<p style="margin:0;font-size:13px;color:var(--color-neutral-700)">{{ emptyQueueLine }}</p>
+<p style="margin:0;font-size:12px;color:var(--color-neutral-700)">{{ emptyQueueTail }}</p>
+</div>
+</sc-if>
+<sc-for list="{{ queueRows }}" as="q" hint-placeholder-count="9">
+<button style="all:unset;box-sizing:border-box;cursor:pointer;display:block;width:100%;padding:11px 16px;border-bottom:1px solid color-mix(in srgb, var(--color-text) 8%, transparent);background:{{ q.bg }}" onClick="{{ q.select }}" style-hover="background:color-mix(in srgb, var(--color-text) 5%, transparent)">
+<span style="display:flex;align-items:baseline;gap:8px">
+<span style="font-family:var(--font-heading);font-size:14px;font-variant-numeric:tabular-nums">{{ q.ref }}</span>
+<span class="tag" style="margin-left:auto;background:{{ q.wash }};color:{{ q.tone }};font-size:10.5px">{{ q.stateLabel }}</span>
+</span>
+<span style="display:block;font-size:13.5px;margin-top:2px">{{ q.who }}</span>
+<span style="display:block;font-size:12px;color:var(--color-neutral-700)">{{ q.workplace }}</span>
+<span style="display:flex;gap:8px;margin-top:4px;font-size:11.5px;color:var(--color-neutral-700);font-variant-numeric:tabular-nums">
+<span>{{ q.group }}</span><span style="margin-left:auto">{{ q.submitted }}</span>
+</span>
+<sc-if value="{{ q.remaining }}" hint-placeholder-val="{{ false }}">
+<span style="display:block;font-size:11.5px;color:var(--color-accent-900);font-variant-numeric:tabular-nums;margin-top:2px">{{ q.remaining }}</span>
+</sc-if>
+</button>
+</sc-for>
+</div>
+
+<div style="flex:1 1 auto;overflow-y:auto;min-height:96px">
+<div style="display:flex;align-items:baseline;gap:9px;padding:11px 16px 7px;position:sticky;top:0;background:var(--color-neutral-100)">
+<span style="font-family:var(--font-heading);font-size:13px;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-accent-700)">In flight</span>
+<span style="font-size:11.5px;color:var(--color-neutral-700)">{{ inFlightCount }}</span>
+</div>
+<sc-if value="{{ inFlightEmpty }}" hint-placeholder-val="{{ false }}">
+<p style="margin:0;padding:2px 16px 16px;font-size:12px;color:var(--color-neutral-700)">{{ inFlightEmptyLine }}</p>
+</sc-if>
+<sc-if value="{{ hasSuppressed }}" hint-placeholder-val="{{ false }}">
+<p style="margin:0;padding:2px 16px 9px;font-size:11px;color:var(--color-neutral-700)">{{ suppressedLine }}</p>
+</sc-if>
+<sc-for list="{{ inFlightRows }}" as="v" hint-placeholder-count="3">
+<button style="all:unset;box-sizing:border-box;cursor:pointer;display:block;width:100%;padding:11px 16px;border-top:1px solid color-mix(in srgb, var(--color-text) 8%, transparent);background:{{ v.bg }}" onClick="{{ v.select }}" style-hover="background:color-mix(in srgb, var(--color-text) 5%, transparent)">
+<span style="display:flex;align-items:baseline;gap:8px">
+<span style="font-family:var(--font-heading);font-size:14px;font-variant-numeric:tabular-nums">{{ v.ref }}</span>
+<span class="tag" style="margin-left:auto;background:{{ v.wash }};color:{{ v.tone }};font-size:10.5px">{{ v.stateLabel }}</span>
+</span>
+<span style="display:block;font-size:13.5px;margin-top:2px">{{ v.who }}</span>
+<span style="display:block;font-size:12px;color:var(--color-neutral-700)">{{ v.workplace }}</span>
+<span style="display:flex;gap:8px;margin-top:4px;font-size:11.5px;color:var(--color-neutral-700);font-variant-numeric:tabular-nums">
+<span>{{ v.group }}</span><span style="margin-left:auto">{{ v.submitted }}</span>
+</span>
+<sc-if value="{{ v.extracting }}" hint-placeholder-val="{{ false }}">
+<span style="display:block;font-size:11.5px;color:var(--color-neutral-700);margin-top:2px;font-style:italic">extracting — nothing to do until it finishes</span>
+</sc-if>
+<sc-if value="{{ v.tokenLeft }}" hint-placeholder-val="{{ false }}">
+<span style="display:block;font-size:11.5px;color:var(--color-accent-700);font-variant-numeric:tabular-nums;margin-top:2px">{{ v.tokenLeft }}</span>
+</sc-if>
+</button>
+</sc-for>
+</div>
+</aside>
+
+<section style="overflow-y:auto;min-height:0;padding:22px 26px 140px;display:flex;flex-direction:column;gap:20px">
+
+<sc-if value="{{ showNoSelection }}" hint-placeholder-val="{{ false }}">
+<div style="max-width:52ch;display:flex;flex-direction:column;gap:10px;padding-top:40px">
+<h1 style="font-size:26px;margin:0">Nothing to review</h1>
+<p style="margin:0;font-size:14px;color:var(--color-neutral-700)">Choose a request from the queue to read it. There are none at the moment.</p>
+</div>
+</sc-if>
+
+<sc-if value="{{ hasSelection }}" hint-placeholder-val="{{ true }}">
+<div style="display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap">
+<div>
+<div style="display:flex;align-items:baseline;gap:10px">
+<h1 style="font-size:27px;margin:0;font-variant-numeric:tabular-nums">{{ d.ref }}</h1>
+<span class="tag" style="background:{{ d.wash }};color:{{ d.tone }}">{{ d.stateLabel }}</span>
+</div>
+<div style="font-size:12.5px;color:var(--color-neutral-700);margin-top:3px">{{ d.aheadLabel }}</div>
+</div>
+<sc-if value="{{ hasToast }}" hint-placeholder-val="{{ false }}">
+<div style="margin-left:auto;max-width:380px;display:flex;gap:10px;align-items:flex-start;padding:9px 12px;border:1px solid var(--color-accent);background:var(--color-accent-100);font-size:12.5px">
+<span>{{ toast }}</span>
+<button class="btn btn-ghost" style="color:var(--color-accent-700);font-size:12px;padding:0 4px" onClick="{{ dismissToast }}">Dismiss</button>
+</div>
+</sc-if>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:0;max-width:900px">
+<div class="blueprint" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr))">
+<i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+<div style="padding:18px 20px;border-right:1px solid var(--color-divider)">
+<h2 style="font-size:13px;letter-spacing:0.09em;text-transform:uppercase;color:var(--color-accent-700);margin:0 0 12px">Who is asking</h2>
+<div style="font-size:19px;font-family:var(--font-heading)">{{ d.fullName }}</div>
+<div style="font-size:15px;margin-bottom:10px">{{ d.workplace }}</div>
+<div style="display:grid;grid-template-columns:auto 1fr;gap:5px 14px;font-size:13px;font-variant-numeric:tabular-nums">
+<span style="color:var(--color-neutral-700)">Tel</span><span>{{ d.tel }}</span>
+<span style="color:var(--color-neutral-700)">Email</span><span>{{ d.email }}</span>
+<span style="color:var(--color-neutral-700)">Origin</span><span>{{ d.ip }}</span>
+</div>
+</div>
+<div style="padding:18px 20px">
+<h2 style="font-size:13px;letter-spacing:0.09em;text-transform:uppercase;color:var(--color-accent-700);margin:0 0 12px">What they asked for</h2>
+<div style="font-size:19px;font-family:var(--font-heading)">{{ d.groupName }}</div>
+<button class="btn btn-ghost" style="color:var(--color-accent-700);font-size:11.5px;padding:0;margin:2px 0 8px" onClick="{{ toggleCodes }}">{{ d.codesCount }}</button>
+<sc-if value="{{ dCodesOpen }}" hint-placeholder-val="{{ false }}"><div style="font-size:12.5px;color:var(--color-neutral-700);font-variant-numeric:tabular-nums;margin-bottom:8px">{{ d.codesLabel }}</div></sc-if>
+<div style="display:grid;grid-template-columns:auto 1fr;gap:5px 14px;font-size:13px">
+<span style="color:var(--color-neutral-700)">Dates</span><span style="font-variant-numeric:tabular-nums">{{ d.dateLabel }} · {{ d.spanLabel }}</span>
+<span style="color:var(--color-neutral-700)">Area</span><span>{{ d.areaLabel }}</span>
+</div>
+</div>
+</div>
+<div class="blueprint" style="margin-top:14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));align-items:stretch">
+<i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+<div style="padding:14px 18px;border-right:1px solid var(--color-divider)">
+<div style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-neutral-700)">Probe row count</div>
+<div style="font-family:var(--font-heading);font-size:30px;line-height:1.15;font-variant-numeric:tabular-nums">{{ d.probeLabel }}</div>
+<div style="font-size:11.5px;color:var(--color-neutral-700)">{{ d.probeNote }}</div>
+</div>
+<div style="padding:14px 18px;border-right:1px solid var(--color-divider)">
+<div style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-neutral-700)">Time remaining</div>
+<div style="font-family:var(--font-heading);font-size:18px;line-height:1.25;font-variant-numeric:tabular-nums">{{ d.remainingLabel }}</div>
+<div style="font-size:11.5px;color:var(--color-neutral-700);font-variant-numeric:tabular-nums">due {{ d.dueLabel }}</div>
+</div>
+<div style="padding:14px 18px">
+<div style="font-size:11px;letter-spacing:0.08em;text-transform:uppercase;color:var(--color-neutral-700)">Submitted</div>
+<div style="font-family:var(--font-heading);font-size:18px;line-height:1.25;font-variant-numeric:tabular-nums">{{ d.submittedAgo }}</div>
+<div style="font-size:11.5px;color:var(--color-neutral-700);font-variant-numeric:tabular-nums">{{ d.submittedLabel }} · {{ d.aheadLabel }}</div>
+</div>
+</div>
+<p style="margin:12px 0 0;font-size:12.5px;color:var(--color-neutral-700);max-width:62ch">The judgement is identity, and identity only: does this person exist today, and do they work at the workplace they named? Where the screen cannot answer that, telephone them before deciding either way.</p>
+</div>
+
+<div style="max-width:860px;border-top:1px solid var(--color-divider);padding-top:18px;display:flex;flex-direction:column;gap:14px">
+<sc-if value="{{ dPending }}" hint-placeholder-val="{{ true }}">
+<div style="display:flex;flex-direction:column;gap:12px">
+<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+<button class="btn btn-primary" style="font-size:15px;padding:11px 24px" onClick="{{ openApprove }}">Approve and release</button>
+<button class="btn btn-secondary" style="font-size:14px;padding:10px 18px" onClick="{{ openReject }}">Reject</button>
+<span style="font-size:12.5px;color:var(--color-neutral-700);max-width:44ch">Approving is irreversible. A request that is too broad is a reject the requester can narrow and resend, never an edit.</span>
+</div>
+<sc-if value="{{ approveOpen }}" hint-placeholder-val="{{ false }}">
+<div class="blueprint" style="padding:16px 18px;background:var(--color-accent-100);display:flex;flex-direction:column;gap:11px;max-width:600px">
+<i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+<h3 style="font-size:18px;margin:0">Release this extract?</h3>
+<p style="margin:0;font-size:13.5px">{{ approveLine }}</p>
+<div style="display:flex;gap:10px">
+<button class="btn btn-primary" style="padding:9px 18px" onClick="{{ confirmApprove }}">Yes — release it in my name</button>
+<button class="btn btn-secondary" onClick="{{ cancelApprove }}">Not yet</button>
+</div>
+</div>
+</sc-if>
+<sc-if value="{{ rejectOpen }}" hint-placeholder-val="{{ false }}">
+<div class="blueprint" style="padding:16px 18px;display:flex;flex-direction:column;gap:10px;max-width:600px">
+<i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+<h3 style="font-size:18px;margin:0">Internal note</h3>
+<p style="margin:0;font-size:12.5px;color:var(--color-neutral-700)">Required, kept on the record, and never shown or sent to the requester — their email will say only that the request was not approved. Not saved as you type: a shared desk is the wrong place for this to linger.</p>
+<textarea class="input" placeholder="What you checked, who you called, and what you concluded." value="{{ rejectNote }}" onChange="{{ setRejectNote }}"></textarea>
+<div style="display:flex;gap:10px;align-items:center">
+<button class="btn btn-primary" disabled="{{ rejectInvalid }}" onClick="{{ submitReject }}">Reject the request</button>
+<button class="btn btn-secondary" onClick="{{ cancelReject }}">Cancel</button>
+<span style="font-size:12px;color:var(--color-neutral-700)">{{ rejectHint }}</span>
+</div>
+</div>
+</sc-if>
+</div>
+</sc-if>
+<sc-if value="{{ dDecided }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;flex-direction:column;gap:10px">
+<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
+<span style="font-family:var(--font-heading);font-size:17px">{{ d.decisionLine }}</span>
+<sc-if value="{{ d.runsLabel }}" hint-placeholder-val="{{ false }}"><span class="tag tag-neutral">{{ d.runsLabel }}</span></sc-if>
+</div>
+<sc-if value="{{ dRejected }}" hint-placeholder-val="{{ false }}">
+<div style="max-width:64ch;font-size:13px;color:var(--color-neutral-700);border-left:2px solid var(--color-neutral-400);padding-left:12px">Internal note — never shown to the requester: “{{ d.rejectNote }}”</div>
+</sc-if>
+<sc-if value="{{ dCanResend }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+<button class="btn btn-secondary" onClick="{{ resend }}">Send the delivery again</button>
+<span style="font-size:12.5px;color:var(--color-neutral-700);max-width:52ch">{{ dResendLine }}</span>
+</div>
+</sc-if>
+<sc-if value="{{ dCanRerun }}" hint-placeholder-val="{{ false }}">
+<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+<button class="btn btn-secondary" onClick="{{ rerun }}">Re-run the extraction</button>
+<span style="font-size:12.5px;color:var(--color-neutral-700);max-width:52ch">Not a new decision — same requester, same parameters, same judgement. The previous link stays live until the new extract is ready, then is revoked.</span>
+</div>
+</sc-if>
+<sc-if value="{{ dRerunning }}" hint-placeholder-val="{{ false }}">
+<div style="font-size:12.5px;color:var(--color-accent-900)">Re-running. The previous link is still collectable — nothing is destroyed until there is something better.</div>
+</sc-if>
+</div>
+</sc-if>
+</div>
+
+<sc-if value="{{ dHasAlerts }}" hint-placeholder-val="{{ false }}">
+<div style="max-width:860px;display:flex;flex-direction:column;gap:12px">
+<h2 style="font-size:13px;letter-spacing:0.09em;text-transform:uppercase;color:var(--color-accent-900);margin:0">Alerts on this request</h2>
+<sc-for list="{{ dAlerts }}" as="a" hint-placeholder-count="1">
+<div class="blueprint" style="padding:15px 18px;display:flex;flex-direction:column;gap:10px">
+<i class="corner tl"></i><i class="corner tr"></i><i class="corner bl"></i><i class="corner br"></i>
+<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap">
+<span style="font-family:var(--font-heading);font-size:17px">{{ a.kind }}</span>
+<span style="font-size:12px;color:var(--color-neutral-700);font-variant-numeric:tabular-nums">raised {{ a.raised }}</span>
+</div>
+<p style="margin:0;font-size:12.5px;color:var(--color-neutral-700)">{{ a.statusLine }}</p>
+<sc-if value="{{ a.isOpen }}" hint-placeholder-val="{{ true }}">
+<div style="display:flex;flex-direction:column;gap:8px">
+<span style="font-size:12px;color:var(--color-neutral-700)">Clear it by naming the outcome. A closed set, never free text — the counts are the only measure of how often this happens.</span>
+<div style="display:flex;flex-wrap:wrap;gap:14px">
+<sc-for list="{{ a.outcomes }}" as="o" hint-placeholder-count="3">
+<label class="radio"><input type="radio" name="{{ a.radioName }}" checked="{{ o.checked }}" onChange="{{ o.pick }}"><span class="dot"></span><span>{{ o.label }}</span></label>
+</sc-for>
+</div>
+<div><button class="btn btn-primary" disabled="{{ a.cannotClear }}" onClick="{{ a.clear }}">Clear the alert</button></div>
+</div>
+</sc-if>
+</div>
+</sc-for>
+</div>
+</sc-if>
+
+<sc-if value="{{ dHasRuns }}" hint-placeholder-val="{{ false }}">
+<div style="max-width:860px;display:flex;flex-direction:column;gap:10px">
+<h2 style="font-size:13px;letter-spacing:0.09em;text-transform:uppercase;color:var(--color-accent-700);margin:0">Extracts</h2>
+<sc-for list="{{ dRuns }}" as="run" hint-placeholder-count="1">
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px 18px;padding:11px 0;border-top:1px solid var(--color-divider);font-size:13px;font-variant-numeric:tabular-nums">
+<span style="font-family:var(--font-heading);font-size:15px">{{ run.n }}</span>
+<span>{{ run.archive }}</span>
+<span>{{ run.rows }}</span>
+<span style="color:{{ run.tokenTone }}">{{ run.token }}</span>
+<span style="color:var(--color-neutral-700)">{{ run.attempts }}</span>
+<span style="color:var(--color-neutral-700)">{{ run.collected }}</span>
+</div>
+</sc-for>
+<p style="margin:0;font-size:12px;color:var(--color-neutral-700)">A reviewer can resend a delivery but never sees the link itself — that would put the capability in a second place.</p>
+</div>
+</sc-if>
+
+<div style="max-width:860px;display:flex;flex-direction:column;gap:10px">
+<h2 style="font-size:13px;letter-spacing:0.09em;text-transform:uppercase;color:var(--color-accent-700);margin:0">Event trail · append-only</h2>
+<sc-for list="{{ dEvents }}" as="e" hint-placeholder-count="4">
+<div style="display:grid;grid-template-columns:150px 1fr;gap:12px;padding:8px 0;border-top:1px solid color-mix(in srgb, var(--color-text) 8%, transparent);font-size:13px">
+<span style="color:var(--color-neutral-700);font-variant-numeric:tabular-nums">{{ e.time }}</span>
+<span>
+<span style="display:flex;align-items:baseline;gap:8px;flex-wrap:wrap">
+<span style="font-family:var(--font-heading);font-size:14px;letter-spacing:0.01em">{{ e.what }}</span>
+<span style="font-size:11.5px;color:{{ e.dot }}">{{ e.actor }}</span>
+<span style="font-size:11px;color:var(--color-neutral-700)">{{ e.actorKind }}</span>
+</span>
+<sc-if value="{{ e.detail }}" hint-placeholder-val="{{ false }}"><span style="display:block;font-size:12.5px;color:var(--color-neutral-700)">{{ e.detail }}</span></sc-if>
+</span>
+</div>
+</sc-for>
+<p style="margin:0;font-size:12px;color:var(--color-neutral-700)">Nothing here is ever edited or deleted. A correction is another event citing the one it corrects.</p>
+</div>
+</sc-if>
+
+</section>
+</div>
+</div>
+</sc-if>
+
+</div>
+
+<div style="flex:0 0 auto;display:flex;flex-direction:column;min-height:0;max-height:{{ dockMaxH }};width:{{ dockWidth }};border-{{ dockEdge }}:1px solid var(--color-neutral-700);background:var(--color-neutral-900);color:var(--color-neutral-100);box-shadow:var(--shadow-lg);font-size:12px">
+<button style="all:unset;flex:0 0 auto;cursor:pointer;display:flex;width:100%;box-sizing:border-box;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid rgba(245,245,248,0.18)" onClick="{{ toggleScaff }}">
+<span style="font-family:var(--font-heading);font-size:11px;letter-spacing:0.12em">SIMULATE · SCAFFOLDING</span>
+<span style="margin-left:auto;opacity:0.6;font-size:11px">{{ scaffToggleLabel }}</span>
+</button>
+<sc-if value="{{ scaffOpen }}" hint-placeholder-val="{{ true }}">
+<div style="flex:1 1 auto;min-height:0;padding:10px 12px 12px;display:flex;flex-direction:{{ dockDir }};flex-wrap:wrap;align-items:flex-start;gap:11px 22px;overflow-y:auto">
+<p style="margin:0;font-size:11px;opacity:0.6;line-height:1.45">Not part of the design — it stands in for time passing and for the queue and mail server doing their work.</p>
+
+<div style="display:flex;flex-direction:column;gap:5px">
+<span style="font-size:10px;letter-spacing:0.1em;opacity:0.55">SURFACE</span>
+<div style="display:flex;flex-wrap:wrap;gap:5px">
+<button class="btn" style="font-size:11.5px;padding:4px 9px;border-color:rgba(245,245,248,0.3);color:inherit" onClick="{{ goForm }}">Public form</button>
+<button class="btn" style="font-size:11.5px;padding:4px 9px;border-color:rgba(245,245,248,0.3);color:inherit" onClick="{{ goReviewer }}">Reviewer</button>
+<button class="btn" style="font-size:11.5px;padding:4px 9px;border-color:rgba(245,245,248,0.3);color:inherit" onClick="{{ goEmail }}">Delivery email</button>
+<button class="btn" style="font-size:11.5px;padding:4px 9px;border-color:rgba(245,245,248,0.3);color:inherit" onClick="{{ goDownload }}">Collection page</button>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:5px">
+<span style="font-size:10px;letter-spacing:0.1em;opacity:0.55">SELECTED · {{ selRefLabel }}</span>
+<button class="btn" disabled="{{ cannotAdvance }}" style="font-size:11.5px;padding:5px 9px;border-color:rgba(245,245,248,0.55);color:inherit;justify-content:flex-start" onClick="{{ advance }}">{{ advanceLabel }}</button>
+<div style="display:flex;flex-wrap:wrap;gap:5px">
+<button class="btn" style="font-size:11.5px;padding:4px 9px;border-color:rgba(245,245,248,0.3);color:inherit" onClick="{{ simExpirePending }}">Expire undecided</button>
+<button class="btn" style="font-size:11.5px;padding:4px 9px;border-color:rgba(245,245,248,0.3);color:inherit" onClick="{{ simFail }}">Extraction fails</button>
+<button class="btn" style="font-size:11.5px;padding:4px 9px;border-color:rgba(245,245,248,0.3);color:inherit" onClick="{{ simLapse }}">Collection lapse</button>
+<button class="btn" style="font-size:11.5px;padding:4px 9px;border-color:rgba(245,245,248,0.3);color:inherit" onClick="{{ simSend }}">Send abandoned</button>
+<button class="btn" style="font-size:11.5px;padding:4px 9px;border-color:rgba(245,245,248,0.3);color:inherit" onClick="{{ simExpireToken }}">Expire the link</button>
+<button class="btn" style="font-size:11.5px;padding:4px 9px;border-color:rgba(245,245,248,0.3);color:inherit" onClick="{{ simUncollected }}">Never collected</button>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:5px">
+<span style="font-size:10px;letter-spacing:0.1em;opacity:0.55">PROBE COUNT</span>
+<div style="display:flex;flex-wrap:wrap;gap:5px">
+<button class="btn" style="font-size:11.5px;padding:4px 9px;border-color:rgba(245,245,248,0.3);color:inherit" onClick="{{ probeOk }}">a number</button>
+<button class="btn" style="font-size:11.5px;padding:4px 9px;border-color:rgba(245,245,248,0.3);color:inherit" onClick="{{ probePending }}">pending</button>
+<button class="btn" style="font-size:11.5px;padding:4px 9px;border-color:rgba(245,245,248,0.3);color:inherit" onClick="{{ probeFailed }}">failed</button>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:5px">
+<span style="font-size:10px;letter-spacing:0.1em;opacity:0.55">CLOCK · {{ nowLabel }}</span>
+<div style="display:flex;flex-wrap:wrap;gap:5px">
+<button class="btn" style="font-size:11.5px;padding:4px 9px;border-color:rgba(245,245,248,0.3);color:inherit" onClick="{{ clock1 }}">+1 h</button>
+<button class="btn" style="font-size:11.5px;padding:4px 9px;border-color:rgba(245,245,248,0.3);color:inherit" onClick="{{ clock4 }}">+4 h</button>
+<button class="btn" style="font-size:11.5px;padding:4px 9px;border-color:rgba(245,245,248,0.3);color:inherit" onClick="{{ clock24 }}">+1 day</button>
+<button class="btn" style="font-size:11.5px;padding:4px 9px;border-color:rgba(245,245,248,0.3);color:inherit" onClick="{{ clock72 }}">+3 days</button>
+</div>
+</div>
+
+<div style="display:flex;flex-direction:column;gap:5px">
+<span style="font-size:10px;letter-spacing:0.1em;opacity:0.55">FILL THE FORM</span>
+<div style="display:flex;flex-wrap:wrap;gap:5px">
+<button class="btn" style="font-size:11.5px;padding:4px 9px;border-color:rgba(245,245,248,0.3);color:inherit" onClick="{{ prefillValid }}">valid</button>
+<button class="btn" style="font-size:11.5px;padding:4px 9px;border-color:rgba(245,245,248,0.3);color:inherit" onClick="{{ prefillPartial }}">half-filled</button>
+<button class="btn" style="font-size:11.5px;padding:4px 9px;border-color:rgba(245,245,248,0.3);color:inherit" onClick="{{ prefillOverspan }}">402 days</button>
+</div>
+</div>
+
+<div style="display:flex;gap:5px;flex-wrap:wrap">
+<button class="btn" style="font-size:11.5px;padding:5px 9px;border-color:rgba(245,245,248,0.3);color:inherit" onClick="{{ emptyQueue }}">Empty the queue</button>
+<button class="btn" style="font-size:11.5px;padding:5px 9px;border-color:rgba(245,245,248,0.3);color:inherit" onClick="{{ resetAll }}">Reset every fixture</button>
+</div>
+</div>
+</sc-if>
+</div>
+
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;$preview&quot;:{&quot;width&quot;:1440,&quot;height&quot;:900}}">
+const DAY = 86400000, MIN = 60000, HOUR = 3600000;
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const ICT = 7 * HOUR;
+
+/* The ten Disease groups — docs/disease-groups.md, ids are the stable keys.
+   Names authored in English per ADR-0010; Thai is the production string. */
+const GROUPS = [
+  { id:'air-pollution', name:'Air pollution exposure', th:'โรคจากการสัมผัสมลพิษทางอากาศ', codes:[201] },
+  { id:'silicosis', name:'Silicosis', th:'โรคซิลิโคสิส', codes:[202,203] },
+  { id:'asbestos', name:'Asbestos-related disease', th:'โรคจากแร่ใยหิน', codes:[204,205,206,207] },
+  { id:'lead', name:'Lead and lead compounds', th:'โรคจากตะกั่วและสารประกอบของตะกั่ว', codes:[208] },
+  { id:'pesticides', name:'Pesticide poisoning', th:'โรคจากสารกำจัดศัตรูพืช', codes:[209,210,211,212,213,214,215,216,217,218] },
+  { id:'confined-space', name:'Confined-space injury', th:'การบาดเจ็บจากภาวะอับอากาศ', codes:[219] },
+  { id:'radiation', name:'Radiation exposure', th:'โรคจากรังสี', codes:[222,223,224] },
+  { id:'work-related', name:'Work-related disease', th:'โรคจากการทำงาน', codes:[220] },
+  { id:'environmental-pollution', name:'Environmental pollution exposure', th:'โรคที่เกี่ยวข้องกับการสัมผัสมลพิษในสิ่งแวดล้อม', codes:[221] },
+  { id:'heat', name:'Heat-related illness', th:'โรคจากความร้อน', codes:[501] },
+];
+
+/* Measured rows per Report code per year — docs/disease-groups.md, probed 2026-09-02 */
+const ROWS_PER_CODE = {201:1952,202:120,203:9,204:40,205:20,206:10,207:3,208:95,
+  209:8,210:5,211:4,212:0,213:3,214:2,215:0,216:3,217:0,218:3,219:15,220:970,221:194,
+  222:3,223:1,224:0,501:401};
+
+/* docs/provinces.csv — canonical: [code, name_th, health_region] */
+const PROVINCES = [[10,'กรุงเทพมหานคร',13],[11,'สมุทรปราการ',6],[12,'นนทบุรี',4],[13,'ปทุมธานี',4],
+[14,'พระนครศรีอยุธยา',4],[15,'อ่างทอง',4],[16,'ลพบุรี',4],[17,'สิงห์บุรี',4],[18,'ชัยนาท',3],[19,'สระบุรี',4],
+[20,'ชลบุรี',6],[21,'ระยอง',6],[22,'จันทบุรี',6],[23,'ตราด',6],[24,'ฉะเชิงเทรา',6],[25,'ปราจีนบุรี',6],
+[26,'นครนายก',4],[27,'สระแก้ว',6],[30,'นครราชสีมา',9],[31,'บุรีรัมย์',9],[32,'สุรินทร์',9],[33,'ศรีสะเกษ',10],
+[34,'อุบลราชธานี',10],[35,'ยโสธร',10],[36,'ชัยภูมิ',9],[37,'อำนาจเจริญ',10],[38,'บึงกาฬ',8],[39,'หนองบัวลำภู',8],
+[40,'ขอนแก่น',7],[41,'อุดรธานี',8],[42,'เลย',8],[43,'หนองคาย',8],[44,'มหาสารคาม',7],[45,'ร้อยเอ็ด',7],
+[46,'กาฬสินธุ์',7],[47,'สกลนคร',8],[48,'นครพนม',8],[49,'มุกดาหาร',10],[50,'เชียงใหม่',1],[51,'ลำพูน',1],
+[52,'ลำปาง',1],[53,'อุตรดิตถ์',2],[54,'แพร่',1],[55,'น่าน',1],[56,'พะเยา',1],[57,'เชียงราย',1],
+[58,'แม่ฮ่องสอน',1],[60,'นครสวรรค์',3],[61,'อุทัยธานี',3],[62,'กำแพงเพชร',3],[63,'ตาก',2],[64,'สุโขทัย',2],
+[65,'พิษณุโลก',2],[66,'พิจิตร',3],[67,'เพชรบูรณ์',2],[70,'ราชบุรี',5],[71,'กาญจนบุรี',5],[72,'สุพรรณบุรี',5],
+[73,'นครปฐม',5],[74,'สมุทรสาคร',5],[75,'สมุทรสงคราม',5],[76,'เพชรบุรี',5],[77,'ประจวบคีรีขันธ์',5],
+[80,'นครศรีธรรมราช',11],[81,'กระบี่',11],[82,'พังงา',11],[83,'ภูเก็ต',11],[84,'สุราษฎร์ธานี',11],
+[85,'ระนอง',11],[86,'ชุมพร',11],[90,'สงขลา',12],[91,'สตูล',12],[92,'ตรัง',12],[93,'พัทลุง',12],
+[94,'ปัตตานี',12],[95,'ยะลา',12],[96,'นราธิวาส',12]];
+
+const REVIEWERS = [
+  { id:'suda', username:'suda.w', name:'สุดา วงศ์อนันต์', email:'suda.w@ddc.moph.go.th', active:true },
+  { id:'pichai', username:'pichai.r', name:'พิชัย รัตนกุล', email:'pichai.r@ddc.moph.go.th', active:true },
+];
+
+const MY_IP = '203.0.113.42';
+const NOW0 = Date.parse('2026-09-08T03:20:00Z'); /* 10:20 ICT, a Tuesday */
+
+/* ── the business-hours clock — spec §15.2, Mon–Fri 08:30–16:30 ICT ───────── */
+const BH_OPEN = 8 * 60 + 30, BH_CLOSE = 16 * 60 + 30;
+function ict(ms) { return ms + ICT; }
+function dayStartIct(ms) { return Math.floor(ict(ms) / DAY) * DAY - ICT; }
+function isWorkingDay(ms) { const wd = new Date(ict(ms)).getUTCDay(); return wd !== 0 && wd !== 6; }
+function businessHoursBetween(from, to) {
+  if (!from || to <= from) return 0;
+  let mins = 0;
+  for (let d = dayStartIct(from); d <= to; d += DAY) {
+    if (!isWorkingDay(d)) continue;
+    const s = Math.max(d + BH_OPEN * MIN, from), e = Math.min(d + BH_CLOSE * MIN, to);
+    if (e > s) mins += (e - s) / MIN;
+  }
+  return mins / 60;
+}
+function addBusinessHours(from, hours) {
+  let t = from, left = hours * 60;
+  while (left > 0) {
+    if (!isWorkingDay(t)) { t = dayStartIct(t) + DAY + BH_OPEN * MIN; continue; }
+    const open = dayStartIct(t) + BH_OPEN * MIN, close = dayStartIct(t) + BH_CLOSE * MIN;
+    if (t < open) t = open;
+    if (t >= close) { t = dayStartIct(t) + DAY + BH_OPEN * MIN; continue; }
+    const avail = (close - t) / MIN;
+    if (avail >= left) return t + left * MIN;
+    left -= avail; t = dayStartIct(t) + DAY + BH_OPEN * MIN;
+  }
+  return t;
+}
+
+/* ── formatting ──────────────────────────────────────────────────────────── */
+function fmtDate(ms) { const d = new Date(ict(ms)); return d.getUTCDate() + ' ' + MONTHS[d.getUTCMonth()] + ' ' + d.getUTCFullYear(); }
+function fmtTime(ms) { const d = new Date(ict(ms)); return String(d.getUTCHours()).padStart(2,'0') + ':' + String(d.getUTCMinutes()).padStart(2,'0'); }
+function fmtStamp(ms) { return fmtDate(ms) + ' · ' + fmtTime(ms); }
+function fmtIso(iso) { const p = iso.split('-'); return Number(p[2]) + ' ' + MONTHS[Number(p[1]) - 1] + ' ' + p[0]; }
+function fmtNum(n) { return n.toLocaleString('en-US'); }
+function fmtDur(hours) {
+  if (hours <= 0) return 'none left';
+  const h = Math.floor(hours), m = Math.round((hours - h) * 60);
+  return h + ' h ' + String(m).padStart(2,'0') + ' m';
+}
+function fmtAgo(ms, now) {
+  const m = Math.max(0, Math.round((now - ms) / MIN));
+  if (m < 1) return 'just now';
+  if (m < 60) return m + ' min ago';
+  const h = Math.floor(m / 60);
+  if (h < 24) return h + ' h ' + (m % 60) + ' m ago';
+  return Math.floor(h / 24) + ' d ago';
+}
+function parseIso(iso) { return Date.parse(iso + 'T00:00:00Z') - ICT; }
+function daysInclusive(from, to) { return Math.round((Date.parse(to + 'T00:00:00Z') - Date.parse(from + 'T00:00:00Z')) / DAY) + 1; }
+function spanDays(from, to) { return Math.round((Date.parse(to + 'T00:00:00Z') - Date.parse(from + 'T00:00:00Z')) / DAY); }
+
+/* the Span builder — one expression of the range (CONTEXT.md) */
+function buildSpan(from, to) {
+  const endExcl = new Date(Date.parse(to + 'T00:00:00Z') + DAY).toISOString().slice(0, 10);
+  return { start: from, endExclusive: endExcl };
+}
+function groupById(id) { return GROUPS.find(g => g.id === id) || GROUPS[0]; }
+function provincesOfRegion(r) { return PROVINCES.filter(p => p[2] === Number(r)); }
+function probeRows(codes, from, to) {
+  const days = daysInclusive(from, to);
+  return codes.reduce((t, c) => t + Math.round((ROWS_PER_CODE[c] || 0) * days / 365), 0);
+}
+function refFor(n) { return 'REQ-2569-' + String(n).padStart(4, '0'); }
+function archiveName(r, run) {
+  const d = new Date(ict(r.submittedAt));
+  const stamp = d.getUTCFullYear() + String(d.getUTCMonth() + 1).padStart(2,'0') + String(d.getUTCDate()).padStart(2,'0')
+    + '-' + String(d.getUTCHours()).padStart(2,'0') + String(d.getUTCMinutes()).padStart(2,'0') + String(d.getUTCSeconds()).padStart(2,'0');
+  return 'dds-envocc-sharing-' + stamp + (run > 1 ? '-r' + run : '') + '.zip';
+}
+
+const STATE_LABEL = { pending:'Pending', rejected:'Rejected', expired:'Expired undecided', queued:'Queued',
+  running:'Running', ready:'Ready', delivered:'Delivered', collected:'Collected', failed:'Extraction failed',
+  expired_uncollected:'Expired uncollected' };
+const STATE_TONE = { pending:'var(--color-accent-900)', rejected:'var(--color-neutral-700)', expired:'var(--color-neutral-700)', queued:'var(--color-accent-700)', running:'var(--color-accent-700)',
+  ready:'var(--color-accent-700)', delivered:'var(--color-accent-700)', collected:'var(--color-accent-700)', failed:'var(--color-accent-900)', expired_uncollected:'var(--color-neutral-700)' };
+const STATE_WASH = { pending:'var(--color-accent-200)', rejected:'var(--color-neutral-200)', expired:'var(--color-neutral-200)', queued:'var(--color-accent-100)', running:'var(--color-accent-100)',
+  ready:'var(--color-accent-100)', delivered:'var(--color-accent-100)', collected:'var(--color-accent-100)', failed:'var(--color-accent-100)', expired_uncollected:'var(--color-neutral-200)' };
+const ALERT_KIND = {
+  extraction_failure: { label:'Extraction failed', outcomes:[['contacted_requester','Contacted the requester'],['abandoned','Abandoned']] },
+  collection_lapse: { label:'Collection lapse', outcomes:[['reached','Reached the requester'],['could_not_reach','Could not reach the requester'],['no_action','No action needed']] },
+  send_failure: { label:'Send abandoned', outcomes:[['reached','Reached the requester'],['could_not_reach','Could not reach the requester'],['no_action','No action needed']] },
+};
+
+/* ── seed fixtures ───────────────────────────────────────────────────────── */
+function mkRequest(o) {
+  const g = groupById(o.groupId);
+  const r = Object.assign({
+    codes: g.codes.slice(), groupName: g.name, groupTh: g.th,
+    provinces: [], events: [], runs: [], probe: { status:'ok', rows:0 }, decision: null,
+    ip: o.ip || ('203.0.113.' + (10 + Math.floor(Math.random() * 200))),
+  }, o);
+  r.probe = o.probe || { status:'ok', rows: probeRows(r.codes, r.from, r.to) };
+  return r;
+}
+function ev(r, what, actorKind, actor, at, detail) {
+  r.events.push({ n: r.events.length + 1, what, actorKind, actor, at, detail: detail || '' });
+}
+
+function seedWorld() {
+  const t = NOW0;
+  const mk = (n, o) => mkRequest(Object.assign({ id:'r' + n, ref: refFor(n) }, o));
+  const list = [];
+
+  const a = mk(136, { groupId:'air-pollution', from:'2025-09-01', to:'2026-08-31', areaKind:'national', areaLabel:'Whole country',
+    name:'ธนพล', surname:'ศรีสมบัติ', tel:'081 233 4590', email:'thanaphon.s@cdc7.moph.go.th',
+    workplace:'สคร. 7 ขอนแก่น', submittedAt: t - 6.2 * DAY, state:'collected' });
+  ev(a,'request_submitted','requester',a.ip,a.submittedAt,'air-pollution expanded to [201]');
+  ev(a,'probe_performed','system','system',a.submittedAt + 4 * MIN, fmtNum(a.probe.rows) + ' rows over 1 code');
+  /* A reviewer only ever decides inside Mon–Fri 08:30–16:30; the machine work that
+     follows a decision is chained off it rather than off the submission. */
+  const decA = addBusinessHours(a.submittedAt, 3.4);
+  ev(a,'decision_recorded','reviewer','สุดา วงศ์อนันต์',decA,'approved');
+  ev(a,'job_completed','system','system',decA + 0.2 * HOUR,'1 call, ' + fmtNum(a.probe.rows) + ' rows');
+  ev(a,'delivery_sent','system','system',decA + 0.3 * HOUR,'to thanaphon.s@cdc7.moph.go.th');
+  ev(a,'download_attempted','token','token presenter · 1.46.19.x',decA + 1.7 * HOUR,'attempt 1 of 10 — 4.1 MB streamed');
+  a.decision = { reviewer:'สุดา วงศ์อนันต์', at: decA };
+  a.runs = [{ n:1, readyAt: decA + 0.2 * HOUR, deliveredAt: decA + 0.3 * HOUR,
+    collectedAt: decA + 1.7 * HOUR, token:'expired', attempts:1, rows:a.probe.rows }];
+  list.push(a);
+
+  const b = mk(138, { groupId:'silicosis', from:'2026-01-01', to:'2026-06-30', areaKind:'region', areaLabel:'เขตสุขภาพ 1',
+    name:'สุดารัตน์', surname:'อินทรวิชัย', tel:'089 441 2280', email:'sudarat.i@cdc1.moph.go.th',
+    workplace:'สคร. 1 เชียงใหม่', submittedAt: t - 5.5 * HOUR, state:'pending' });
+  b.provinces = provincesOfRegion(1).map(p => ({ code:p[0], name:p[1] }));
+  ev(b,'request_submitted','requester',b.ip,b.submittedAt,'silicosis expanded to [202, 203]; region 1 expanded to 8 provinces');
+  ev(b,'probe_performed','system','system',b.submittedAt + 3 * MIN, fmtNum(b.probe.rows) + ' rows over 2 codes');
+  list.push(b);
+
+  const c = mk(139, { groupId:'pesticides', from:'2025-10-01', to:'2026-09-01', areaKind:'province', areaLabel:'ขอนแก่น',
+    name:'ปวีณา', surname:'จันทโรจน์', tel:'086 720 1145', email:'paweena.c@kkh.go.th',
+    workplace:'โรงพยาบาลขอนแก่น', submittedAt: t - 2.1 * HOUR, state:'pending', probe:{ status:'pending', rows:0 } });
+  c.provinces = [{ code:40, name:'ขอนแก่น' }];
+  ev(c,'request_submitted','requester',c.ip,c.submittedAt,'pesticides expanded to [209 … 218]; province 40');
+  list.push(c);
+
+  const d = mk(140, { groupId:'work-related', from:'2026-03-01', to:'2026-08-31', areaKind:'national', areaLabel:'Whole country',
+    name:'อนุชา', surname:'พงษ์พานิช', tel:'092 118 7734', email:'anucha.p@dpc9.moph.go.th',
+    workplace:'สคร. 9 นครราชสีมา', submittedAt: t - 26.5 * HOUR, state:'pending', probe:{ status:'failed', rows:0 } });
+  ev(d,'request_submitted','requester',d.ip,d.submittedAt,'work-related expanded to [220]');
+  ev(d,'probe_abandoned','system','system',d.submittedAt + 9 * MIN,'retries exhausted on group_code 220 — the count is lost, the decision is not');
+  list.push(d);
+
+  const e = mk(141, { groupId:'heat', from:'2026-04-01', to:'2026-08-31', areaKind:'region', areaLabel:'เขตสุขภาพ 12',
+    name:'วิรัตน์', surname:'บุญมาก', tel:'084 552 9017', email:'wirat.b@cdc12.moph.go.th',
+    workplace:'สคร. 12 สงขลา', submittedAt: t - 4.2 * DAY, state:'delivered' });
+  e.provinces = provincesOfRegion(12).map(p => ({ code:p[0], name:p[1] }));
+  ev(e,'request_submitted','requester',e.ip,e.submittedAt,'heat expanded to [501]; region 12 expanded to 7 provinces');
+  ev(e,'probe_performed','system','system',e.submittedAt + 3 * MIN, fmtNum(e.probe.rows) + ' rows over 1 code');
+  const decE = addBusinessHours(e.submittedAt, 5.2);
+  ev(e,'decision_recorded','reviewer','พิชัย รัตนกุล',decE,'approved');
+  ev(e,'job_completed','system','system',decE + 0.2 * HOUR,'1 call, ' + fmtNum(e.probe.rows) + ' rows');
+  ev(e,'delivery_sent','system','system',decE + 0.3 * HOUR,'to wirat.b@cdc12.moph.go.th');
+  ev(e,'collection_lapse_raised','system','system',addBusinessHours(decE + 24 * HOUR, 0.1),'24 wall-clock hours, zero attempts — held until business hours to raise');
+  e.decision = { reviewer:'พิชัย รัตนกุล', at: decE };
+  e.runs = [{ n:1, readyAt:decE + 0.2 * HOUR, deliveredAt:decE + 0.3 * HOUR, collectedAt:null,
+    token:'live', attempts:0, rows:e.probe.rows }];
+  list.push(e);
+
+  const f = mk(142, { groupId:'lead', from:'2026-01-01', to:'2026-08-31', areaKind:'national', areaLabel:'Whole country',
+    name:'กมลวรรณ', surname:'เตชะวณิช', tel:'081 907 3312', email:'kamonwan.t@chiangrai.moph.go.th',
+    workplace:'สำนักงานสาธารณสุขจังหวัดเชียงราย', submittedAt: t - 30 * HOUR, state:'ready' });
+  ev(f,'request_submitted','requester',f.ip,f.submittedAt,'lead expanded to [208]');
+  ev(f,'probe_performed','system','system',f.submittedAt + 3 * MIN, fmtNum(f.probe.rows) + ' rows over 1 code');
+  const decF = addBusinessHours(f.submittedAt, 2.1);
+  ev(f,'decision_recorded','reviewer','สุดา วงศ์อนันต์',decF,'approved');
+  ev(f,'job_completed','system','system',decF + 0.3 * HOUR,'1 call, ' + fmtNum(f.probe.rows) + ' rows');
+  f.decision = { reviewer:'สุดา วงศ์อนันต์', at: decF };
+  f.runs = [{ n:1, readyAt:decF + 0.3 * HOUR, deliveredAt:null, collectedAt:null, token:'live', attempts:0, rows:f.probe.rows }];
+  list.push(f);
+
+  const g2 = mk(143, { groupId:'asbestos', from:'2025-09-15', to:'2026-09-01', areaKind:'province', areaLabel:'ระยอง',
+    name:'ณัฐพร', surname:'สุขเจริญ', tel:'085 330 6621', email:'nattaporn.s@si.mahidol.ac.th',
+    workplace:'โรงพยาบาลศิริราช', submittedAt: t - 2.4 * DAY, state:'failed' });
+  g2.provinces = [{ code:21, name:'ระยอง' }];
+  ev(g2,'request_submitted','requester',g2.ip,g2.submittedAt,'asbestos expanded to [204, 205, 206, 207]; province 21');
+  ev(g2,'probe_performed','system','system',g2.submittedAt + 5 * MIN, fmtNum(g2.probe.rows) + ' rows over 4 codes');
+  const decG = addBusinessHours(g2.submittedAt, 6.8);
+  ev(g2,'decision_recorded','reviewer','สุดา วงศ์อนันต์',decG,'approved');
+  ev(g2,'job_failed','system','system',decG + 0.8 * HOUR,'upstream 502 on group_code 206 — retries exhausted after 25 min');
+  g2.decision = { reviewer:'สุดา วงศ์อนันต์', at: decG };
+  list.push(g2);
+
+  const h = mk(144, { groupId:'radiation', from:'2026-02-01', to:'2026-07-31', areaKind:'national', areaLabel:'Whole country',
+    name:'เอกชัย', surname:'ธนวัฒน์', tel:'090 224 8815', email:'ekachai.t@gmail.com',
+    workplace:'บริษัท เอกชัย เอ็นจิเนียริ่ง จำกัด', submittedAt: t - 4.1 * DAY, state:'rejected' });
+  ev(h,'request_submitted','requester',h.ip,h.submittedAt,'radiation expanded to [222, 223, 224]');
+  ev(h,'probe_performed','system','system',h.submittedAt + 3 * MIN, fmtNum(h.probe.rows) + ' rows over 3 codes');
+  const decH = addBusinessHours(h.submittedAt, 12);
+  ev(h,'decision_recorded','reviewer','พิชัย รัตนกุล',decH,'rejected — internal note recorded');
+  h.decision = { reviewer:'พิชัย รัตนกุล', at: decH, rejected:true,
+    note:'Telephoned twice, no answer. No DDC or provincial-office affiliation; the workplace is a private contractor and the email is a personal account. Rejecting on identity, not on size.' };
+  list.push(h);
+
+  const i = mk(145, { groupId:'environmental-pollution', from:'2026-05-01', to:'2026-08-31', areaKind:'province', areaLabel:'สมุทรปราการ',
+    name:'ศิริพร', surname:'มณีวงศ์', tel:'083 661 0092', email:'siriporn.m@samutprakan.moph.go.th',
+    workplace:'สำนักงานสาธารณสุขจังหวัดสมุทรปราการ', submittedAt: t - 41 * HOUR, state:'expired' });
+  i.provinces = [{ code:11, name:'สมุทรปราการ' }];
+  ev(i,'request_submitted','requester',i.ip,i.submittedAt,'environmental-pollution expanded to [221]');
+  ev(i,'probe_performed','system','system',i.submittedAt + 3 * MIN, fmtNum(i.probe.rows) + ' rows over 1 code');
+  ev(i,'expired','system','system',addBusinessHours(i.submittedAt, 24),'24 business hours elapsed with no decision');
+  list.push(i);
+
+  const alerts = [
+    { id:'a1', kind:'collection_lapse', reqId:e.id, assigned:'พิชัย รัตนกุล', raisedAt:e.submittedAt + 29.5 * HOUR, status:'open', outcome:null, clearedBy:null },
+    { id:'a2', kind:'extraction_failure', reqId:g2.id, assigned:'สุดา วงศ์อนันต์', raisedAt:g2.submittedAt + 7.6 * HOUR, status:'open', outcome:null, clearedBy:null },
+  ];
+  return { requests: list, alerts, seq: 146 };
+}
+
+const EMPTY_FORM = { groupId:'', from:'', to:'', areaKind:'national', province:'40', region:'1',
+  name:'', surname:'', tel:'', email:'', workplace:'' };
+
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    const w = seedWorld();
+    this.state = {
+      screen:'form', now: NOW0, form: Object.assign({}, EMPTY_FORM), showErrors:false,
+      requests:w.requests, alerts:w.alerts, seq:w.seq,
+      myRequestId:null, submittedId:null,
+      reviewer:null, selectedId:'r138', variant:'a',
+      listRefreshedAt: NOW0 - 4.2 * MIN, changesSinceRefresh:0,
+      codesOpen:false, rejectOpen:false, rejectNote:'', approveOpen:false,
+      alertOutcome:{}, downloadId:null, scaffOpen:true, toast:null,
+    };
+  }
+
+  componentDidMount() {
+    this.onResize = () => {
+      const narrow = window.innerWidth < 1180;
+      if (narrow !== !!this.state.narrow) this.setState(s => ({ narrow, scaffOpen: narrow ? false : s.scaffOpen }));
+    };
+    this.onResize();
+    window.addEventListener('resize', this.onResize);
+  }
+  componentWillUnmount() { window.removeEventListener('resize', this.onResize); }
+
+  /* ── plumbing ───────────────────────────────────────────────────────── */
+  setField(k, v) { this.setState(s => ({ form: Object.assign({}, s.form, { [k]: v }) })); }
+  patchRequest(id, fn) {
+    this.setState(s => ({ requests: s.requests.map(r => {
+      if (r.id !== id) return r;
+      const copy = Object.assign({}, r, { events: r.events.slice(), runs: r.runs.map(x => Object.assign({}, x)) });
+      fn(copy); return copy;
+    }), changesSinceRefresh: s.changesSinceRefresh + 1 }));
+  }
+  sel() { return this.state.requests.find(r => r.id === this.state.selectedId) || null; }
+  errors() {
+    const f = this.state.form, e = {};
+    if (!f.groupId) e.group = true;
+    if (!f.from || !f.to) e.dates = 'Both dates are required — a request always names a range.';
+    else if (spanDays(f.from, f.to) < 0) e.dates = 'The end date is before the start date.';
+    else if (spanDays(f.from, f.to) > 365) e.dates = 'You asked for ' + fmtNum(daysInclusive(f.from, f.to)) + ' days; the maximum is 365. The DDC API caps the span, so this cannot be split for you — send more than one request.';
+    const missing = [];
+    if (!f.name.trim()) missing.push('name');
+    if (!f.surname.trim()) missing.push('surname');
+    if (!f.tel.trim()) missing.push('telephone');
+    if (!f.email.trim()) missing.push('email');
+    if (!f.workplace.trim()) missing.push('workplace');
+    if (missing.length) e.contact = 'A reviewer needs all five: ' + missing.join(', ') + ' still empty. None of them is validated, but all of them are read.';
+    return e;
+  }
+  areaOf(f) {
+    if (f.areaKind === 'province') { const p = PROVINCES.find(x => String(x[0]) === String(f.province)); return { kind:'province', label:p[1], provinces:[{ code:p[0], name:p[1] }] }; }
+    if (f.areaKind === 'region') return { kind:'region', label:'เขตสุขภาพ ' + f.region, provinces: provincesOfRegion(f.region).map(p => ({ code:p[0], name:p[1] })) };
+    return { kind:'national', label:'Whole country', provinces:[] };
+  }
+
+  submitFinal() {
+    const s = this.state, f = s.form;
+    const open = s.requests.find(r => r.ip === MY_IP && ['pending','queued','running','ready','delivered','failed'].includes(r.state));
+    if (open) { this.setState({ screen:'duplicate', myRequestId: open.id }); return; }
+    const g = groupById(f.groupId), area = this.areaOf(f), n = s.seq;
+    const r = mkRequest({ id:'r' + n, ref: refFor(n), groupId:f.groupId, from:f.from, to:f.to,
+      areaKind: area.kind, areaLabel: area.label, name:f.name, surname:f.surname, tel:f.tel, email:f.email,
+      workplace:f.workplace, submittedAt: s.now, state:'pending', ip: MY_IP });
+    r.provinces = area.provinces;
+    ev(r,'request_submitted','requester',MY_IP,s.now, g.id + ' expanded to [' + g.codes.join(', ') + ']'
+      + (area.kind === 'region' ? '; region expanded to ' + area.provinces.length + ' provinces' : ''));
+    r.probe = { status:'pending', rows:0 };
+    this.setState(s2 => ({ requests: [r].concat(s2.requests), seq: s2.seq + 1, screen:'submitted',
+      submittedId: r.id, myRequestId: r.id, selectedId: r.id, changesSinceRefresh: s2.changesSinceRefresh + 1,
+      form: Object.assign({}, EMPTY_FORM), showErrors:false }));
+  }
+
+  /* ── reviewer acts ──────────────────────────────────────────────────── */
+  approve() {
+    const r = this.sel(), me = this.state.reviewer, now = this.state.now;
+    if (businessHoursBetween(r.submittedAt, now) > 24) {
+      this.patchRequest(r.id, x => { x.state = 'expired';
+        ev(x,'expired','system','system',now,'a decision was attempted and refused — 24 business hours had already elapsed'); });
+      this.setState({ approveOpen:false, toast:'This request expired while you were reading it. The decision was refused and the attempt is on the record.' });
+      return;
+    }
+    this.patchRequest(r.id, x => {
+      x.state = 'queued'; x.decision = { reviewer: me.name, at: now };
+      ev(x,'decision_recorded','reviewer',me.name,now,'approved — snapshot taken: ' + x.groupName + ' over [' + x.codes.join(', ') + '], ' + fmtIso(x.from) + ' – ' + fmtIso(x.to) + ', ' + x.areaLabel);
+      ev(x,'job_queued','system','system',now + 2 * MIN, x.codes.length + ' upstream call' + (x.codes.length === 1 ? '' : 's') + ' planned, one per report code');
+    });
+    this.setState({ approveOpen:false, toast:'Approved. Your name is on this release permanently.' });
+  }
+  reject() {
+    const r = this.sel(), me = this.state.reviewer, now = this.state.now, note = this.state.rejectNote.trim();
+    if (note.length < 10) return;
+    this.patchRequest(r.id, x => {
+      x.state = 'rejected'; x.decision = { reviewer: me.name, at: now, rejected:true, note };
+      ev(x,'decision_recorded','reviewer',me.name,now,'rejected — internal note recorded, never shown to the requester');
+      ev(x,'rejection_sent','system','system',now + 3 * MIN,'to ' + x.email + ' — states that it was not approved, and gives no reason');
+    });
+    this.setState({ rejectOpen:false, rejectNote:'', toast:'Rejected. The requester is told it was not approved and nothing more.' });
+  }
+  rerun() {
+    const r = this.sel(), me = this.state.reviewer, now = this.state.now;
+    const n = r.runs.length + 1;
+    this.patchRequest(r.id, x => {
+      x.state = 'queued'; x.rerunning = true;
+      x.runs.push({ n, readyAt:null, deliveredAt:null, collectedAt:null, token:'none', attempts:0, rows:x.probe.rows });
+      ev(x,'re_run_started','reviewer',me.name,now,'run ' + n + ' — no new decision, and no re-probe. The previous download token stays live until the new extract is ready.');
+    });
+    this.setState(s => ({ alerts: s.alerts.map(a => a.reqId === r.id && a.status === 'open' ? Object.assign({}, a, { status:'rerunning' }) : a),
+      toast:'Re-running. The record reads approved once, extracted ' + n + ' times.' }));
+  }
+  resend() {
+    const r = this.sel(), me = this.state.reviewer, now = this.state.now;
+    const run = r.runs[r.runs.length - 1];
+    if (!run || run.token !== 'live') return;
+    this.patchRequest(r.id, x => {
+      const cur = x.runs[x.runs.length - 1];
+      cur.sends = (cur.sends || 1) + 1;
+      if (x.state === 'ready') x.state = 'delivered';
+      if (!cur.deliveredAt) cur.deliveredAt = now;
+      ev(x,'delivery_resent','reviewer',me.name,now,'the same link, sent again to ' + x.email + ' — no new extract, no new token, and the 72 hours still run from when the extract was made');
+    });
+    this.setState({ toast:'Sent again to the address on the request. You cannot see the link itself — putting it on this screen would be a second way to get the data.' });
+  }
+  clearAlert(alertId) {
+    const a = this.state.alerts.find(x => x.id === alertId), outcome = this.state.alertOutcome[alertId];
+    if (!outcome || !a) return;
+    const me = this.state.reviewer, now = this.state.now;
+    const label = (ALERT_KIND[a.kind].outcomes.find(o => o[0] === outcome) || ['',''])[1];
+    this.patchRequest(a.reqId, x => ev(x, a.kind + '_cleared','reviewer',me.name,now,'outcome: ' + label + ' — assigned to ' + a.assigned + ', cleared by ' + me.name));
+    this.setState(s => ({ alerts: s.alerts.map(x => x.id === alertId ? Object.assign({}, x, { status:'cleared', outcome:label, clearedBy: me.name, clearedAt: now }) : x),
+      toast:'Alert cleared as “' + label + '”.' }));
+  }
+
+  /* ── the simulate scaffolding ───────────────────────────────────────── */
+  nextStep(r) {
+    if (!r) return null;
+    const map = { queued:['running','job_started','extraction started — one call per report code, page_size 10000'],
+      running:['ready','job_completed','extract written and zipped'],
+      ready:['delivered','delivery_sent','download link emailed'],
+      delivered:['collected','download_attempted','attempt 1 of 10 — archive streamed'] };
+    return map[r.state] || null;
+  }
+  advance() {
+    const r = this.sel(), step = this.nextStep(r), now = this.state.now;
+    if (!step) return;
+    const [next, what, detail] = step;
+    this.patchRequest(r.id, x => {
+      x.state = next;
+      const run = x.runs[x.runs.length - 1];
+      if (next === 'running' && !run) x.runs.push({ n:1, readyAt:null, deliveredAt:null, collectedAt:null, token:'none', attempts:0, rows:x.probe.rows });
+      const cur = x.runs[x.runs.length - 1];
+      if (next === 'ready' && cur) {
+        cur.readyAt = now; cur.token = 'live';
+        cur.rows = x.probe.status === 'ok' ? x.probe.rows : probeRows(x.codes, x.from, x.to);
+        if (x.runs.length > 1) {
+          const prev = x.runs[x.runs.length - 2];
+          if (prev.token === 'live') { prev.token = 'revoked';
+            ev(x,'download_token_revoked','system','system',now,'the run ' + prev.n + ' link is revoked now that run ' + cur.n + ' is collectable — one request never has two live links'); }
+        }
+      }
+      if (next === 'delivered' && cur) cur.deliveredAt = now;
+      if (next === 'collected' && cur) { cur.collectedAt = now; cur.attempts = cur.attempts + 1; }
+      const isRerun = x.runs.length > 1;
+      ev(x, isRerun && what === 'job_completed' ? 're_run_completed' : what,
+        next === 'collected' ? 'token' : 'system', next === 'collected' ? 'token presenter · ' + x.ip : 'system', now,
+        detail + (cur && next === 'ready' ? ' — ' + fmtNum(cur.rows) + ' rows, ' + archiveName(x, cur.n) : ''));
+      if (next === 'ready' && isRerun) x.rerunning = false;
+    });
+    if (next === 'ready' && r.runs.length > 1) {
+      this.setState(s => ({ alerts: s.alerts.map(a => a.reqId === r.id && a.status === 'rerunning'
+        ? Object.assign({}, a, { status:'cleared', outcome:'Re-ran', clearedBy:'system', clearedAt: s.now }) : a) }));
+    }
+  }
+  simBranch(kind) {
+    const r = this.sel(), now = this.state.now;
+    if (!r) return;
+    if (kind === 'fail') {
+      this.patchRequest(r.id, x => { x.state = 'failed';
+        ev(x,'job_failed','system','system',now,'upstream 502 — retries exhausted after 25 min'); });
+      this.setState(s => ({ alerts: s.alerts.concat([{ id:'a' + (s.alerts.length + 1), kind:'extraction_failure', reqId:r.id,
+        assigned: (r.decision && r.decision.reviewer) || 'สุดา วงศ์อนันต์', raisedAt: now, status:'open', outcome:null, clearedBy:null }]) }));
+    }
+    if (kind === 'lapse') {
+      this.patchRequest(r.id, x => ev(x,'collection_lapse_raised','system','system',now,'24 wall-clock hours, zero attempts — raised in business hours'));
+      this.setState(s => ({ alerts: s.alerts.concat([{ id:'a' + (s.alerts.length + 1), kind:'collection_lapse', reqId:r.id,
+        assigned: (r.decision && r.decision.reviewer) || 'พิชัย รัตนกุล', raisedAt: now, status:'open', outcome:null, clearedBy:null }]) }));
+    }
+    if (kind === 'send') {
+      this.patchRequest(r.id, x => ev(x,'send_abandoned','system','system',now,'5 send attempts refused by the relay — abandoned'));
+      this.setState(s => ({ alerts: s.alerts.concat([{ id:'a' + (s.alerts.length + 1), kind:'send_failure', reqId:r.id,
+        assigned: (r.decision && r.decision.reviewer) || 'สุดา วงศ์อนันต์', raisedAt: now, status:'open', outcome:null, clearedBy:null }]) }));
+    }
+    if (kind === 'uncollected') {
+      this.patchRequest(r.id, x => { x.state = 'expired_uncollected';
+        const run = x.runs[x.runs.length - 1]; if (run) run.token = 'expired';
+        ev(x,'expired_uncollected','system','system',now,'72 hours passed with no attempt — the extract is destroyed and the link is dead'); });
+    }
+    if (kind === 'expire_token') {
+      this.patchRequest(r.id, x => { const run = x.runs[x.runs.length - 1];
+        if (run) { run.token = 'expired'; ev(x,'download_token_expired','system','system',now,'72 hours from job completion — never extended by use'); } });
+    }
+    if (kind === 'expire_pending') {
+      this.patchRequest(r.id, x => { x.state = 'expired';
+        ev(x,'expired','system','system',now,'24 business hours elapsed with no decision'); });
+    }
+    if (kind === 'probe_ok') this.patchRequest(r.id, x => { x.probe = { status:'ok', rows: probeRows(x.codes, x.from, x.to) };
+      ev(x,'probe_performed','system','system',now, fmtNum(probeRows(x.codes, x.from, x.to)) + ' rows over ' + x.codes.length + ' codes'); });
+    if (kind === 'probe_pending') this.patchRequest(r.id, x => { x.probe = { status:'pending', rows:0 }; });
+    if (kind === 'probe_failed') this.patchRequest(r.id, x => { x.probe = { status:'failed', rows:0 };
+      ev(x,'probe_abandoned','system','system',now,'retries exhausted — the count is lost, the decision is not'); });
+  }
+  jumpClock(hours) {
+    this.setState(s => {
+      const now = s.now + hours * HOUR;
+      const requests = s.requests.map(r => {
+        if (r.state === 'pending' && businessHoursBetween(r.submittedAt, now) > 24) {
+          const copy = Object.assign({}, r, { events: r.events.slice(), runs: r.runs.slice() });
+          copy.state = 'expired';
+          ev(copy,'expired','system','system', addBusinessHours(r.submittedAt, 24),'24 business hours elapsed with no decision');
+          return copy;
+        }
+        const run = r.runs[r.runs.length - 1];
+        if (run && run.token === 'live' && run.readyAt && now - run.readyAt > 72 * HOUR) {
+          const copy = Object.assign({}, r, { events: r.events.slice(), runs: r.runs.map(x => Object.assign({}, x)) });
+          const c = copy.runs[copy.runs.length - 1]; c.token = 'expired';
+          ev(copy,'download_token_expired','system','system', run.readyAt + 72 * HOUR,'72 hours from job completion — never extended by use');
+          if (copy.state === 'delivered') copy.state = 'expired_uncollected';
+          return copy;
+        }
+        return r;
+      });
+      return { now, requests, changesSinceRefresh: s.changesSinceRefresh + 1 };
+    });
+  }
+  reset() { const w = seedWorld(); this.setState({ requests:w.requests, alerts:w.alerts, seq:w.seq, now:NOW0,
+    form: Object.assign({}, EMPTY_FORM), showErrors:false, screen:'form', myRequestId:null, submittedId:null,
+    selectedId:'r138', listRefreshedAt: NOW0 - 4.2 * MIN, changesSinceRefresh:0, toast:null, downloadId:null,
+    rejectOpen:false, rejectNote:'', approveOpen:false, alertOutcome:{} }); }
+
+  prefill(kind) {
+    const base = { groupId:'silicosis', from:'2026-01-01', to:'2026-06-30', areaKind:'region', region:'1', province:'40',
+      name:'ธีรภัทร', surname:'ชาญวิทย์', tel:'081 445 2210', email:'teerapat.c@cdc1.moph.go.th', workplace:'สคร. 1 เชียงใหม่' };
+    if (kind === 'overspan') Object.assign(base, { from:'2025-06-01', to:'2026-07-07' });
+    if (kind === 'partial') Object.assign(base, { surname:'', tel:'', email:'', workplace:'', from:'2026-01-01', to:'' });
+    this.setState({ form: Object.assign({}, EMPTY_FORM, base), showErrors: kind !== 'partial', screen:'form' });
+  }
+
+  renderVals() {
+    const s = this.state, f = s.form, now = s.now, e = this.errors(), showE = s.showErrors;
+    const V = {};
+    V.isPublic = ['form','confirm','submitted','duplicate'].includes(s.screen);
+    V.isForm = s.screen === 'form'; V.isConfirm = s.screen === 'confirm';
+    V.isSubmitted = s.screen === 'submitted'; V.isDuplicate = s.screen === 'duplicate';
+    V.isEmail = s.screen === 'email' && !(this.sel() && this.sel().decision && this.sel().decision.rejected); V.isDownload = s.screen === 'download';
+    V.isSignin = s.screen === 'reviewer' && !s.reviewer;
+    V.isQueue = s.screen === 'reviewer' && !!s.reviewer;
+
+    /* form */
+    V.f = f;
+    V.groups = GROUPS.map(g => ({ id:g.id, name:g.name, checked: f.groupId === g.id, pick: () => this.setField('groupId', g.id) }));
+    V.setFrom = ev2 => this.setField('from', ev2.target.value);
+    V.setTo = ev2 => this.setField('to', ev2.target.value);
+    ['name','surname','tel','email','workplace'].forEach(k => {
+      V['set' + k.charAt(0).toUpperCase() + k.slice(1)] = ev2 => this.setField(k, ev2.target.value);
+    });
+    V.spanLabel = f.from && f.to && spanDays(f.from, f.to) >= 0 ? fmtNum(daysInclusive(f.from, f.to)) + ' days, inclusive of both' : 'no range set';
+    V.errGroup = showE && !!e.group; V.errDates = showE && !!e.dates; V.errDatesMsg = e.dates || '';
+    V.errContact = showE && !!e.contact; V.errContactMsg = e.contact || '';
+    V.areaIsNational = f.areaKind === 'national'; V.areaIsProvince = f.areaKind === 'province'; V.areaIsRegion = f.areaKind === 'region';
+    V.pickNational = () => this.setField('areaKind','national');
+    V.pickProvinceMode = () => this.setField('areaKind','province');
+    V.pickRegionMode = () => this.setField('areaKind','region');
+    V.provinceOptions = PROVINCES.map(p => ({ value:String(p[0]), label:p[1] + ' · ' + p[0] }));
+    V.regionOptions = [1,2,3,4,5,6,7,8,9,10,11,12,13].map(r => ({ value:String(r), label:'เขตสุขภาพ ' + r }));
+    V.setProvince = ev2 => this.setField('province', ev2.target.value);
+    V.setRegion = ev2 => this.setField('region', ev2.target.value);
+    const rp = provincesOfRegion(f.region);
+    V.regionProvinces = rp.map(p => ({ name:p[1] }));
+    V.regionExpandLabel = 'เขตสุขภาพ ' + f.region + ' is stored as its ' + rp.length + ' provinces, not as the region — so this request keeps meaning what it means today even if a boundary moves.';
+    V.goConfirm = () => {
+      const err = this.errors();
+      if (Object.keys(err).length) { this.setState({ showErrors:true }); return; }
+      this.setState({ screen:'confirm' });
+    };
+    V.backToForm = () => this.setState({ screen:'form' });
+    V.submitFinal = () => this.submitFinal();
+
+    /* confirm */
+    const area = this.areaOf(f), gsel = f.groupId ? groupById(f.groupId) : null;
+    V.confirmRows = [
+      { k:'Disease group', v: gsel ? gsel.name : '—', note: gsel ? 'Production shows the Thai name: ' + gsel.th : '' },
+      { k:'Date range', v: f.from && f.to ? fmtIso(f.from) + ' – ' + fmtIso(f.to) : '—', note: f.from && f.to ? 'inclusive of both days · ' + fmtNum(daysInclusive(f.from, f.to)) + ' days' : '' },
+      { k:'Area', v: area.label, note: area.kind === 'region' ? area.provinces.map(p => p.name).join(', ') : (area.kind === 'national' ? 'no area filter — every province' : 'province code ' + area.provinces[0].code) },
+      { k:'Name', v: (f.name + ' ' + f.surname).trim() || '—', note:'' },
+      { k:'Telephone', v: f.tel || '—', note:'a reviewer may call this number before deciding' },
+      { k:'Email', v: f.email || '—', note:'the extract link goes here, and nowhere else' },
+      { k:'Workplace', v: f.workplace || '—', note:'read by a person; never checked against a list' },
+    ];
+
+    /* submitted / duplicate */
+    const subReq = s.requests.find(r => r.id === s.submittedId);
+    V.sub = { ref: subReq ? subReq.ref : '—', email: subReq ? subReq.email : '—',
+      dueLabel: subReq ? fmtStamp(addBusinessHours(subReq.submittedAt, 24)) : '—' };
+    const dupReq = s.requests.find(r => r.id === s.myRequestId);
+    V.dup = { ref: dupReq ? dupReq.ref : '—', at: dupReq ? fmtStamp(dupReq.submittedAt) : '—',
+      line: dupReq ? 'We can see a request from this network sent ' + fmtAgo(dupReq.submittedAt, now) + ', currently ' + (STATE_LABEL[dupReq.state] || '').toLowerCase() + '.' : '' };
+    /* ── reviewer sign-in — username + password + TOTP on one form (§17.5) ── */
+    V.signinUser = s.signinUser === undefined ? 'suda.w' : s.signinUser;
+    V.signinPw = s.signinPw === undefined ? 'Prototype#2569' : s.signinPw;
+    V.signinCode = s.signinCode || '';
+    V.setSigninUser = ev2 => this.setState({ signinUser: ev2.target.value, signinError:'' });
+    V.setSigninPw = ev2 => this.setState({ signinPw: ev2.target.value, signinError:'' });
+    V.setSigninCode = ev2 => this.setState({ signinCode: ev2.target.value.replace(/[^0-9]/g, '').slice(0, 6), signinError:'' });
+    V.signinError = s.signinError || '';
+    V.hasSigninError = !!s.signinError;
+    V.signIn = () => {
+      const u = (this.state.signinUser === undefined ? 'suda.w' : this.state.signinUser).trim().toLowerCase();
+      const pw = this.state.signinPw === undefined ? 'Prototype#2569' : this.state.signinPw;
+      const code = (this.state.signinCode || '').trim();
+      const who = REVIEWERS.find(r => r.username === u);
+      /* One generic message, whichever of the three is wrong — a specific one would
+         tell an attacker when the password is right (§17.5). */
+      if (!who || pw.length < 12 || pw.length > 20 || code.length !== 6) {
+        this.setState({ signinError:'Username, password or code is wrong.', signinAttempts: (this.state.signinAttempts || 0) + 1 });
+        return;
+      }
+      this.setState({ reviewer: who, signinError:'', signinCode:'', listRefreshedAt: this.state.now, changesSinceRefresh:0 });
+    };
+    V.signinAttemptsLine = (s.signinAttempts || 0) > 0
+      ? (s.signinAttempts || 0) + ' failed attempt' + ((s.signinAttempts || 0) === 1 ? '' : 's') + ' on this account — recorded with IP and user agent, never with what you typed.'
+      : '';
+    V.hasSigninAttempts = (s.signinAttempts || 0) > 0;
+    V.signOut = () => this.setState({ reviewer:null });
+
+    /* ── the queue ────────────────────────────────────────────────────── */
+    V.reviewerName = s.reviewer ? s.reviewer.name : '';
+    /* Three zones, and a request is in exactly one of them at a time — whichever
+       carries the action it needs (spec §10.1). The queue is pending only; alerts
+       are must-clear items; the in-flight list is approved-and-not-yet-terminal.
+
+       Terminal is collected, expired uncollected, or a failure a reviewer cleared
+       as abandoned. Rejected and expired-undecided are not terminal *here* — they
+       left the surface at the decision and were never in flight at all. */
+    const FINISHED = ['collected','rejected','expired','expired_uncollected'];
+    const abandoned = {};
+    s.alerts.filter(a => a.kind === 'extraction_failure' && a.status === 'cleared' && a.outcome === 'Abandoned')
+      .forEach(a => { abandoned[a.reqId] = true; });
+    const live = s.requests.filter(r => !FINISHED.includes(r.state) && !abandoned[r.id]);
+    const openAlertBy = {};
+    s.alerts.filter(a => a.status !== 'cleared').forEach(a => { openAlertBy[a.reqId] = true; });
+    /* Oldest first: the 24-business-hour clock is what matters here. */
+    const pendingList = live.filter(r => r.state === 'pending').sort((a, b) => a.submittedAt - b.submittedAt);
+    /* An open alert suppresses its request's in-flight row entirely — no badge, no
+       duplicate. Sorted by submit order and nothing more urgent: the alert section
+       is the only part of this surface allowed to shout (§10.9). */
+    const inFlightList = live.filter(r => r.state !== 'pending' && !openAlertBy[r.id])
+      .sort((a, b) => a.submittedAt - b.submittedAt);
+    const ordered = pendingList.concat(inFlightList);
+    V.finishedCount = s.requests.length - live.length;
+    V.hasFinished = V.finishedCount > 0;
+    V.finishedLine = V.finishedCount + ' finished request' + (V.finishedCount === 1 ? '' : 's') + ' — collected, rejected or expired — ' + (V.finishedCount === 1 ? 'is' : 'are') + ' off the surface.';
+    V.pendingCount = pendingList.length + ' awaiting a decision';
+    V.queueEmpty = pendingList.length === 0;
+    V.inFlightCount = inFlightList.length ? inFlightList.length + ' still running' : 'none';
+    V.inFlightEmpty = inFlightList.length === 0;
+    /* Suppression is why a row can be missing from here, so say so rather than
+       letting a request appear to vanish. */
+    const suppressed = live.filter(r => r.state !== 'pending' && openAlertBy[r.id]).length;
+    V.inFlightEmptyLine = suppressed
+      ? 'Every approved request that is still running has an alert open on it, so it is listed above instead.'
+      : 'Nothing is approved and still running. An approved request appears here until its extract is collected or its link lapses.';
+    V.hasSuppressed = suppressed > 0 && inFlightList.length > 0;
+    V.suppressedLine = suppressed + ' approved request' + (suppressed === 1 ? ' is' : 's are') + ' not listed here — ' + (suppressed === 1 ? 'it has' : 'they have') + ' an alert open and ' + (suppressed === 1 ? 'is' : 'are') + ' in the alert section above.';
+    /* The dossier owns the pane whenever a request is selected — including one that
+       has just dropped off the list. The empty state only speaks when nothing is. */
+    V.hasSelection = !!(this.sel() && s.selectedId);
+    V.showNoSelection = ordered.length === 0 && !V.hasSelection;
+    V.listAgeLabel = 'List refreshed ' + fmtAgo(s.listRefreshedAt, now)
+      + (s.changesSinceRefresh ? ' · ' + s.changesSinceRefresh + ' change' + (s.changesSinceRefresh === 1 ? '' : 's') + ' since' : ' · nothing new');
+    V.listStale = s.changesSinceRefresh > 0;
+    V.refreshList = () => this.setState({ listRefreshedAt: this.state.now, changesSinceRefresh:0 });
+    const rowBase = r => ({ id:r.id, ref:r.ref, who: r.name + ' ' + r.surname, workplace:r.workplace,
+      group:r.groupName, stateLabel: STATE_LABEL[r.state], tone: STATE_TONE[r.state], wash: STATE_WASH[r.state],
+      submitted: fmtAgo(r.submittedAt, now),
+      selected: r.id === s.selectedId,
+      bg: r.id === s.selectedId ? 'color-mix(in srgb, var(--color-accent) 12%, transparent)' : 'transparent',
+      select: () => this.setState({ selectedId: r.id, codesOpen:false, rejectOpen:false, approveOpen:false, toast:null }) });
+    V.queueRows = pendingList.map(r => {
+      const rem = 24 - businessHoursBetween(r.submittedAt, now);
+      return Object.assign(rowBase(r), {
+        remaining: rem > 0 ? fmtDur(rem) + ' left' : 'past the 24 h' });
+    });
+    /* Each in-flight row answers 'what can I do with this, and how long have I got'.
+       'extracting' is the honest answer to why there is no button — without it a
+       reviewer assumes the screen is broken. The approving reviewer's name is NOT
+       here: it is accountability, not a scanning aid, and it lives on the dossier's
+       decision line. */
+    V.inFlightRows = inFlightList.map(r => {
+      const run = r.runs[r.runs.length - 1];
+      const extracting = r.state === 'queued' || r.state === 'running';
+      const left = (run && run.token === 'live' && run.readyAt)
+        ? Math.max(0, (run.readyAt + 72 * HOUR - now) / HOUR) : null;
+      return Object.assign(rowBase(r), {
+        extracting: extracting,
+        tokenLeft: left === null ? '' : fmtDur(left) + ' left on the link' });
+    });
+    const openAlerts = s.alerts.filter(a => a.status !== 'cleared');
+    V.emptyQueueLine = openAlerts.length
+      ? 'No request is waiting on a decision. The alert' + (openAlerts.length === 1 ? '' : 's') + ' above still need' + (openAlerts.length === 1 ? 's' : '') + ' an outcome named, so this desk is not clear yet.'
+      : 'Nothing is waiting on you. When a request arrives you will hear about it by email, not by this page changing on its own.';
+    V.emptyQueueTail = openAlerts.length
+      ? 'Clear those and there is nothing left to do here.'
+      : 'There is nothing to do here in the meantime. Signing out is safe — a decision is never lost by leaving.';
+    V.alertsCount = openAlerts.length ? openAlerts.length + ' must be cleared' : 'none open';
+    V.hasAlerts = openAlerts.length > 0;
+    V.alertRows = openAlerts.map(a => {
+      const r = s.requests.find(x => x.id === a.reqId) || {};
+      return { id:a.id, kind: ALERT_KIND[a.kind].label, ref: r.ref, who: (r.name || '') + ' ' + (r.surname || ''),
+        assigned: a.assigned, raised: fmtAgo(a.raisedAt, now),
+        rerunning: a.status === 'rerunning',
+        select: () => this.setState({ selectedId: a.reqId, toast:null }) };
+    });
+
+    /* ── the review screen ────────────────────────────────────────────── */
+    const r = this.sel();
+    if (r) {
+      const rem = 24 - businessHoursBetween(r.submittedAt, now);
+      const ahead = pendingList.filter(x => x.submittedAt < r.submittedAt).length;
+      const run = r.runs[r.runs.length - 1];
+      V.d = {
+        ref: r.ref, stateLabel: STATE_LABEL[r.state], tone: STATE_TONE[r.state], wash: STATE_WASH[r.state],
+        name: r.name, surname: r.surname, fullName: r.name + ' ' + r.surname, tel: r.tel, email: r.email, workplace: r.workplace,
+        groupName: r.groupName, groupTh: r.groupTh,
+        codesLabel: r.codes.join(' · '), codesCount: r.codes.length + ' report code' + (r.codes.length === 1 ? '' : 's'),
+        dateLabel: fmtIso(r.from) + ' – ' + fmtIso(r.to),
+        spanLabel: fmtNum(daysInclusive(r.from, r.to)) + ' days, inclusive',
+        wireLabel: 'upstream is asked for [' + r.from + ', ' + buildSpan(r.from, r.to).endExclusive + ') — the end date is exclusive there and inclusive here',
+        areaLabel: r.areaLabel,
+        areaNote: r.areaKind === 'region' ? r.provinces.map(p => p.name).join(', ')
+          : (r.areaKind === 'province' ? 'province code ' + r.provinces[0].code : 'no area filter'),
+        probeLabel: r.probe.status === 'ok' ? fmtNum(r.probe.rows) : (r.probe.status === 'pending' ? 'pending' : 'failed'),
+        probeNote: r.probe.status === 'ok' ? 'summed across ' + r.codes.length + ' report code' + (r.codes.length === 1 ? '' : 's')
+          : (r.probe.status === 'pending' ? 'the probe runs off the submit path and is still counting' : 'the probe was abandoned after its retries — the count is lost'),
+        probeOk: r.probe.status === 'ok',
+        submittedLabel: fmtStamp(r.submittedAt),
+        submittedAgo: fmtAgo(r.submittedAt, now),
+        remainingLabel: r.state === 'pending' ? (rem > 0 ? fmtDur(rem) + ' of 24 business hours left' : 'the 24 business hours have run out') : '—',
+        dueLabel: fmtStamp(addBusinessHours(r.submittedAt, 24)),
+        aheadLabel: ahead === 0 ? 'nothing ahead of it' : ahead + ' request' + (ahead === 1 ? '' : 's') + ' ahead of it',
+        ip: r.ip,
+        decisionLine: r.decision ? (r.decision.rejected ? 'Rejected by ' + r.decision.reviewer : 'Approved by ' + r.decision.reviewer) + ' · ' + fmtStamp(r.decision.at) : '',
+        rejectNote: r.decision && r.decision.note ? r.decision.note : '',
+        runsLabel: r.runs.length > 1 ? 'approved once, extracted ' + r.runs.length + ' times' : '',
+      };
+      V.dPending = r.state === 'pending';
+      V.dDecided = !!r.decision;
+      V.dRejected = !!(r.decision && r.decision.rejected);
+      V.dExpired = r.state === 'expired';
+      V.dHasRuns = r.runs.length > 0;
+      V.dCanRerun = !!r.decision && !r.decision.rejected && ['ready','delivered','collected','failed','expired_uncollected'].includes(r.state);
+      const lastRun = r.runs[r.runs.length - 1];
+      V.dCanResend = !!lastRun && lastRun.token === 'live';
+      V.dResendLine = lastRun && (lastRun.sends || 0) > 1 ? 'Sent ' + lastRun.sends + ' times so far — every send is on the trail.' : 'The same link, to the same address. It does not make a new extract and does not extend the 72 hours.';
+      V.resend = () => this.resend();
+      V.dRerunning = !!r.rerunning;
+      V.dRuns = r.runs.map(x => ({ n: 'Run ' + x.n, archive: archiveName(r, x.n),
+        rows: x.readyAt ? fmtNum(x.rows) + ' rows' : 'not written yet',
+        ready: x.readyAt ? fmtStamp(x.readyAt) : '—',
+        token: { live:'link live', revoked:'link revoked', expired:'link expired', none:'no link yet' }[x.token],
+        tokenTone: x.token === 'live' ? 'var(--color-accent-700)' : (x.token === 'revoked' ? 'var(--color-accent-900)' : 'var(--color-neutral-700)'),
+        attempts: x.attempts + ' of 10 attempts',
+        collected: x.collectedAt ? 'collected ' + fmtStamp(x.collectedAt) : 'not collected' }));
+      V.dEvents = r.events.slice().reverse().map(x => ({ n:x.n, what:x.what, detail:x.detail,
+        time: fmtStamp(x.at), actor: x.actor,
+        actorKind: { requester:'requester · network origin only', reviewer:'named reviewer', system:'the system', token:'anonymous token presenter' }[x.actorKind],
+        dot: { requester:'var(--color-accent-900)', reviewer:'var(--color-accent-700)', system:'var(--color-neutral-700)', token:'var(--color-neutral-900)' }[x.actorKind] }));
+      V.dCodesOpen = s.codesOpen;
+      V.toggleCodes = () => this.setState(st => ({ codesOpen: !st.codesOpen }));
+      V.dAlerts = s.alerts.filter(a => a.reqId === r.id).map(a => ({
+        id:a.id, kind: ALERT_KIND[a.kind].label, assigned: a.assigned, raised: fmtStamp(a.raisedAt),
+        isOpen: a.status !== 'cleared', rerunning: a.status === 'rerunning',
+        statusLine: a.status === 'cleared' ? 'Cleared as “' + a.outcome + '” by ' + a.clearedBy + (a.clearedBy === 'system' ? ' — nobody takes credit for a call they did not make' : '')
+          : (a.status === 'rerunning' ? 'Re-running. A re-run defers this alert; only an extract that actually arrives clears it.' : 'Assigned to ' + a.assigned + ' by name. Must be cleared by naming an outcome.'),
+        radioName: 'outcome-' + a.id,
+        outcomes: ALERT_KIND[a.kind].outcomes.map(o => ({ value:o[0], label:o[1], checked: s.alertOutcome[a.id] === o[0],
+          pick: () => this.setState(st => ({ alertOutcome: Object.assign({}, st.alertOutcome, { [a.id]: o[0] }) })) })),
+        canClear: !!s.alertOutcome[a.id] && a.status === 'open',
+        cannotClear: !(s.alertOutcome[a.id] && a.status === 'open'),
+        clear: () => this.clearAlert(a.id),
+      }));
+      V.dHasAlerts = V.dAlerts.length > 0;
+    }
+    V.approveOpen = s.approveOpen;
+    V.openApprove = () => this.setState({ approveOpen:true, rejectOpen:false });
+    V.cancelApprove = () => this.setState({ approveOpen:false });
+    V.confirmApprove = () => this.approve();
+    V.approveLine = s.reviewer && r ? 'Your name, ' + s.reviewer.name + ', goes onto this release permanently. There is no undo and no edit — a request you think is too broad is a reject, not a correction.' : '';
+    V.rejectOpen = s.rejectOpen;
+    V.openReject = () => this.setState({ rejectOpen:true, approveOpen:false });
+    V.cancelReject = () => this.setState({ rejectOpen:false, rejectNote:'' });
+    V.rejectNote = s.rejectNote;
+    V.setRejectNote = ev2 => this.setState({ rejectNote: ev2.target.value });
+    V.rejectValid = s.rejectNote.trim().length >= 10;
+    V.rejectInvalid = !V.rejectValid;
+    V.rejectHint = V.rejectValid ? 'Kept on the record for as long as the record exists.' : 'A note is required — say what you checked.';
+    V.scaffToggleLabel = s.scaffOpen ? 'hide' : 'show';
+    V.cannotAdvance = !this.nextStep(this.sel());
+    V.submitReject = () => this.reject();
+    V.rerun = () => this.rerun();
+    V.toast = s.toast; V.hasToast = !!s.toast; V.dismissToast = () => this.setState({ toast:null });
+
+    /* ── the delivery email and the collection page ───────────────────── */
+    /* The rejection email — says it was not approved, and says nothing else (§9.4). */
+    const rejReq = r && r.decision && r.decision.rejected ? r : s.requests.find(x => x.decision && x.decision.rejected);
+    V.isRejectionEmail = s.screen === 'email' && !!(r && r.decision && r.decision.rejected);
+    V.rj = rejReq ? { to: rejReq.email, name: rejReq.name + ' ' + rejReq.surname, ref: rejReq.ref,
+      subject: 'About your DDS request · ' + rejReq.ref,
+      sent: fmtStamp(rejReq.decision.at + 3 * MIN) } : { to:'—', name:'—', ref:'—', subject:'—', sent:'—' };
+
+    const dlReq = s.requests.find(x => x.id === s.downloadId) || s.requests.find(x => x.runs.length && x.runs[x.runs.length - 1].readyAt);
+    const dlRun = dlReq ? dlReq.runs[dlReq.runs.length - 1] : null;
+    V.em = dlReq && dlRun ? {
+      to: dlReq.email, name: dlReq.name + ' ' + dlReq.surname, ref: dlReq.ref,
+      subject: 'Your DDS extract is ready · ' + dlReq.ref,
+      group: dlReq.groupName, dates: fmtIso(dlReq.from) + ' – ' + fmtIso(dlReq.to), area: dlReq.areaLabel,
+      archive: archiveName(dlReq, dlRun.n),
+      expires: dlRun.readyAt ? fmtStamp(dlRun.readyAt + 72 * HOUR) : '—',
+      sent: dlRun.deliveredAt ? fmtStamp(dlRun.deliveredAt) : 'not sent yet',
+    } : { to:'—', name:'—', ref:'—', subject:'—', group:'—', dates:'—', area:'—', archive:'—', expires:'—', sent:'—' };
+    V.emReady = !!(dlReq && dlRun && dlRun.readyAt);
+    const tokenState = dlRun ? dlRun.token : 'none';
+    V.dl = dlReq && dlRun ? {
+      ref: dlReq.ref, archive: archiveName(dlReq, dlRun.n),
+      size: dlRun.readyAt ? (Math.max(0.1, dlRun.rows * 0.00042)).toFixed(1) + ' MB' : '—',
+      rows: fmtNum(dlRun.rows) + ' rows',
+      hoursLeft: dlRun.readyAt ? fmtDur(Math.max(0, (dlRun.readyAt + 72 * HOUR - now) / HOUR)) : '—',
+      expires: dlRun.readyAt ? fmtStamp(dlRun.readyAt + 72 * HOUR) : '—',
+      attempts: dlRun.attempts + ' of 10 attempts used',
+      url: 'dds.ddc.moph.go.th/d/9f3ac0…e71b',
+    } : { ref:'—', archive:'—', size:'—', rows:'—', hoursLeft:'—', expires:'—', attempts:'—', url:'dds.ddc.moph.go.th/d/…' };
+    V.dlLive = tokenState === 'live'; V.dlExpired = tokenState === 'expired'; V.dlRevoked = tokenState === 'revoked';
+    V.collect = () => { if (!dlReq) return; this.patchRequest(dlReq.id, x => { const run = x.runs[x.runs.length - 1];
+      run.attempts += 1; if (!run.collectedAt) run.collectedAt = this.state.now;
+      if (x.state === 'delivered' || x.state === 'ready') x.state = 'collected';
+      ev(x,'download_attempted','token','token presenter · ' + x.ip, this.state.now,'attempt ' + run.attempts + ' of 10 — archive streamed'); });
+      this.setState({ toast:'Archive streamed. The attempt is on the record; the link is not extended by use.' }); };
+
+    /* ── the scaffolding dock ─────────────────────────────────────────── */
+    const step = this.nextStep(r);
+    /* The dock never sits over the design: while it is open the page reserves
+       its width, and on a narrow viewport it collapses to its header strip. */
+    /* Wide: a side dock, and the shell reserves its width. Narrow: a bottom sheet
+       spanning the pane, and the shell reserves its height. Either way the panel
+       never sits on top of the design — it is scaffolding, not an overlay. */
+    /* The dock is a sibling of the design, never a layer over it: a right-hand
+       column on a wide viewport, a bottom sheet on a narrow one. Because the shell
+       is a definite-height flex box, the design keeps the remaining space and
+       scrolls inside it — which is also what gives the reviewer split its height. */
+    const narrow = !!s.narrow;
+    V.scaffOpen = s.scaffOpen;
+    V.shellDir = narrow ? 'column' : 'row';
+    V.dockWidth = narrow ? 'auto' : (s.scaffOpen ? '262px' : '178px');
+    V.dockMaxH = narrow ? (s.scaffOpen ? '38vh' : 'none') : 'none';
+    V.dockEdge = narrow ? 'top' : 'left';
+    V.dockDir = narrow ? 'row' : 'column';
+    V.toggleScaff = () => this.setState(st => ({ scaffOpen: !st.scaffOpen }));
+    V.nowLabel = fmtStamp(now) + ' ICT';
+    V.selRefLabel = r ? r.ref + ' · ' + STATE_LABEL[r.state] : '—';
+    V.canAdvance = !!step;
+    V.advanceLabel = step ? 'Advance → ' + STATE_LABEL[step[0]] : 'no automatic next state';
+    V.advance = () => this.advance();
+    V.goForm = () => this.setState({ screen:'form' });
+    V.goReviewer = () => this.setState({ screen:'reviewer' });
+    V.goEmail = () => this.setState({ screen:'email', downloadId: r ? r.id : null });
+    V.goDownload = () => this.setState({ screen:'download', downloadId: r ? r.id : null });
+    V.simFail = () => this.simBranch('fail');
+    V.simLapse = () => this.simBranch('lapse');
+    V.simSend = () => this.simBranch('send');
+    V.simExpirePending = () => this.simBranch('expire_pending');
+    V.simExpireToken = () => this.simBranch('expire_token');
+    V.simUncollected = () => this.simBranch('uncollected');
+    V.probeOk = () => this.simBranch('probe_ok');
+    V.probePending = () => this.simBranch('probe_pending');
+    V.probeFailed = () => this.simBranch('probe_failed');
+    V.clock1 = () => this.jumpClock(1);
+    V.clock4 = () => this.jumpClock(4);
+    V.clock24 = () => this.jumpClock(24);
+    V.clock72 = () => this.jumpClock(72);
+    V.emptyQueue = () => this.setState({ requests:[], alerts:[], selectedId:null, listRefreshedAt: this.state.now, changesSinceRefresh:0, toast:null });
+    V.prefillValid = () => this.prefill('valid');
+    V.prefillPartial = () => this.prefill('partial');
+    V.prefillOverspan = () => this.prefill('overspan');
+    V.resetAll = () => this.reset();
+    return V;
+  }
+}
+
+</script>
+</body>
+</html>
