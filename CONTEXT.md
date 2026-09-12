@@ -24,6 +24,10 @@ _Avoid_: Query, job, application
 A Reviewer's approve-or-reject act on a Request, carrying the Reviewer's identity, a timestamp, and (on reject) an internal note never shown to the Requester. **The judgement is about who is asking** — identity, Workplace, legitimacy — and it is **one test**: *does this person exist today, and do they work at the Workplace they named?* Where the Reviewer cannot answer that from the screen, they telephone the Requester before deciding either way — **uncertainty is a call, never a rejection**. It is **never about how much they ask for**: a large Request is slow, not illegitimate, and a long extraction completes rather than being refused. Size therefore never blocks or grounds a Decision, which is why nothing about a Decision waits on the Probe.
 _Avoid_: Approval, review, verdict
 
+**In flight**:
+A Request that has been approved and has not yet reached a terminal end — its Extract collected, its Download token expired uncollected, or its failure abandoned by a Reviewer. It names the span in which a Reviewer's work on a Request is not finished: the Extract can still be re-made or re-sent, the contact details are still readable on screen, and Redaction is unavailable. A rejected or expired Request is never in flight, because nothing remains to be done to it. Being in flight is derived from what has happened to a Request, never stored as a state of its own.
+_Avoid_: Open, active, live, in progress
+
 **Workplace**:
 The free-text organisation a Requester names for themselves. An input to the Reviewer's human judgement, never a credential and never validated.
 
@@ -96,7 +100,7 @@ A job that has exhausted its retries without producing an Extract. Two things at
 _Avoid_: Job error, crash, failed request
 
 **Alert**:
-A must-clear item on the Reviewer queue, raised when something needs a human and cleared only by naming an outcome from a closed set. Never free text — the count of each outcome is the only measure the service has of how often its silent failures actually happen. **Who it is assigned to and who may clear it are two different things**: an Alert is assigned to one Reviewer by name where the act rests on that person's own judgement, and deactivating them widens the clearing to any active Reviewer rather than stranding the item. The assignment is never rewritten — the name of the Reviewer who vouched stays where it is.
+A must-clear item on the Reviewer queue, raised when something needs a human and cleared only by naming an outcome from a closed set. Never free text — the count of each outcome is the only measure the service has of how often its silent failures actually happen. **Who it is assigned to and who may clear it are two different things**: an Alert is assigned to one Reviewer by name where the act rests on that person's own judgement, and deactivating them widens the clearing to any active Reviewer rather than stranding the item. The assignment is never rewritten — the name of the Reviewer who vouched stays where it is. An open Alert is also **where its Request lives**: a Request appears exactly once on the Reviewer surface, in whichever place carries the action it needs.
 _Avoid_: Notification, warning, flag, task
 
 **Re-run**:
@@ -122,7 +126,7 @@ One immutable entry in a Reviewer's own history — a sign-in, a failed sign-in,
 Whoever or whatever caused a Request event. One of four kinds: a Requester (known only by network origin), a named Reviewer, the system itself, or an anonymous presenter of a Download token. The kind is part of the record, so "which human did this" is never a guess.
 
 **Snapshot**:
-The copy of what a Reviewer had on screen, carried by their Decision — the Disease group's name over the Report codes it expanded to, the dates, the Area selection, the Probe row count, and the Workplace. Never the contact details. It makes a Decision legible on its own, years later.
+The copy of what a Reviewer had on screen, carried by their Decision — the Disease group's name over the Report codes it expanded to, the dates, the Area selection, the Probe row count, and the Workplace. Never the contact details. It makes a Decision legible on its own, years later. **The contact-free rule is about the record, not about the screen** — a Reviewer reads the live contact details for as long as the Request is in flight, because phoning a Requester and correcting a delivery address both need them.
 
 **Extract fingerprint**:
 The description of a released Extract that outlives the Extract itself — row count, column count, the size of the Extract, the size of its Extract archive, and a SHA-256 of the Extract's bytes as written. It answers what was released, where the record alone would only say that a release happened. The rows are never kept. It attests **content, not provenance**: two Requests asking the same question of the same data release identical bytes and so share a fingerprint, and every empty Extract shares one — so a match narrows to a set of Requests, never to one. The checksums of the reference data that produced the Extract are recorded beside it, never inside it: they describe what made the Extract, not what was released.

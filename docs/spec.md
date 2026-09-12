@@ -1305,6 +1305,13 @@ verify.
 
 **The queue does not auto-refresh** (§10.5).
 
+**The queue lists pending Requests only, and that is by design** — it is the list
+of Decisions not yet made. A decided Request is not on it. Approved Requests that
+are not yet finished live on the **in-flight list** (§10.9), and anything needing
+a human lands in the **Alert** section (§10.6). Those are the three zones of the
+Reviewer surface, and **a Request appears in exactly one of them at a time**,
+whichever carries the action it needs.
+
 ### 10.2 The review screen
 
 Shows, and only shows:
@@ -1382,6 +1389,23 @@ Too broad? Reject and let them resubmit narrower.
   than sprung at rejection time.
 - The Decision copies a **Snapshot** of what the Reviewer had on screen (§12.3).
 
+**What the Reviewer sees the instant a Decision lands.** The Decision is
+user-initiated, so re-rendering after it is not the polling §10.5 forbids. **The
+detail pane replaces the decision buttons with a plain statement of what was
+recorded** — *approved by you at 14:32; the Requester will be emailed when the
+Extract is ready*, or *rejected; the Requester was told no reason* — and the
+Request drops out of the pending list in that same response. The approve
+confirmation names the **in-flight list** (§10.9), which is how a Reviewer learns
+it exists.
+
+> ⚠️ **Do not auto-advance to the next pending Request.** Loading the next one
+> into a Reviewer's momentum undoes §10.2's scroll-past-the-identity requirement
+> in a single keystroke — that requirement exists to make each Decision cost
+> something. A toast is also not enough: approve and reject have **different**
+> consequences the Reviewer should see stated once — one released a job and put
+> their name permanently on a release, the other sent an email that gives no
+> reason — and a toast is where that sentence goes to die.
+
 ### 10.4 Expiry beats a late Decision
 
 **The Decision handler re-derives elapsed business hours before it inserts, and
@@ -1443,7 +1467,16 @@ one.
 ### 10.6 Alerts on the queue
 
 An **Alert** is a **must-clear queue item**, never a passive list — the queue does
-not auto-refresh, so a passive list is a list nobody looks at. It is cleared only
+not auto-refresh, so a passive list is a list nobody looks at.
+
+**An open Alert is where its Request lives.** Every alerted Request is also an
+in-flight Request (§10.9), so without a rule it would appear twice. **While its
+Alert is open, a Request is suppressed from the in-flight list**; clearing the
+Alert returns it there if it is still in flight — a cleared Collection lapse on
+an Extract still inside its 72 hours — or drops it from the surface entirely if
+the clearing was the last thing to do. Rendering Alerts as a badge on the
+in-flight list instead was rejected: a badge on a list that does not auto-refresh
+is exactly the passive list this section forbids. It is cleared only
 by naming an outcome **from a closed set, never free text**: the count of each
 outcome is the only measure this service has of how often its silent failures
 actually happen.
@@ -1510,7 +1543,8 @@ gets credit for a call they did not make, and the lapse count must stay honest.
 ### 10.7 Re-run
 
 A **Re-run** is a second extraction of an already-approved Request, started by a
-Reviewer pressing a button.
+Reviewer pressing a button — reached from the in-flight list (§10.9), or from the
+Alert if one is open.
 
 **A Re-run is NOT a new Decision.** Same Requester, same parameters, same
 judgement already snapshotted. Re-judging would put two Decisions on the record
@@ -1564,6 +1598,76 @@ exists to hold.
 *(Note the mirror with §10.7: a Re-run is not a new Decision because nothing
 changed but the clock; a corrected-address resend is, because the recipient
 changed.)*
+
+### 10.9 The in-flight list
+
+**Where §10.7's Re-run button and §10.8's resend controls actually live.** The
+queue is pending-only (§10.1), so without this list those two capabilities are
+reachable only through an Alert — and the two cases that raise no Alert, a
+same-address resend on a healthy Extract and a Re-run over a *successful* first
+run, would be unreachable.
+
+**In flight = approved, and not yet terminal.** Terminal is `collected`,
+`expired_uncollected`, or a failure a Reviewer cleared as `abandoned`. Rejected
+and expired Requests are never in flight — there is nothing left to do to them,
+and they leave the Reviewer surface at the Decision (§10.3).
+
+**Membership is derived at read time, never stored.** No `in_flight` column, no
+`entered_in_flight` / `left_in_flight` events — §12.4's catalogue stays closed.
+This follows the same rule as expiry (§10.4) and as Alert widening on
+deactivation (§10.6): a Request is on this list because of what is true about it,
+not because something wrote it there, so a dead scheduler can no more strand a
+Request on the list than it can un-expire one. **The definition of *terminal*
+therefore lives in exactly one place in the code**, because the list's query and
+every other reader must agree on it.
+
+**It is everyone's Requests, not only your own.** The approving Reviewer's name
+is on each row, and **any active Reviewer may act on any of them**. The name is
+accountability, not permission. Restricting the list to its approver rebuilds the
+failure [ADR 0013](adr/0013-deactivating-a-reviewer-widens-their-alerts.md) was
+written to remove — work only one person can reach, on a two-person team where
+that person is on leave a material fraction of the time. Re-running a failed
+extraction and resending a lost email are not the vouching act: that judgement
+was made and snapshotted already.
+
+**The screen shows the five live contact fields** — from the Request, never from
+the Snapshot — for as long as the Request is in flight
+([ADR 0015](adr/0015-the-record-is-contact-free-the-screen-is-not.md)). The
+Snapshot's contact-free rule governs the record, not the screen; a Reviewer
+clearing a Collection lapse needs the telephone number, and a corrected-address
+resend has to show the address it is correcting from.
+
+**Actions are gated by what is physically possible, not by policy:**
+
+| Extraction state | Row reads | Available |
+|---|---|---|
+| `queued`, `running` | *extracting* | nothing — read-only |
+| `ready` | time left on the Download token | Re-run, resend same address, resend corrected address |
+| `failed` | *extraction failed* | Re-run, and the Alert's clearing outcomes (§10.6) |
+
+There is no Delivery to resend before one has been sent, and a second job under
+concurrency 1 (§13.2) would queue behind the first and duplicate it. **Re-run
+over a successful Extract is explicitly allowed** — §10.7's revoke-at-*ready* is
+what makes that button safe. Render the `queued` / `running` state on the row:
+"extracting" is the honest answer to why the resend button is not there, and
+without it a Reviewer assumes the screen is broken.
+
+**Each row shows the time left on the Download token**, wall-clock. This is not
+the drain estimate §13.3 refuses: that was a *prediction* about upstream, this is
+a timestamp that already exists and that the system will act on. **Sort the list
+by submit order and nothing more urgent** — the Alert section is the only part of
+this surface allowed to shout.
+
+**Like the queue, it does not auto-refresh** (§10.5), and carries the same manual
+refresh control and staleness indicator.
+
+> ⚠️ **A lapsed Download token ends the Request. No Reviewer action revives it**
+> ([ADR 0016](adr/0016-a-lapsed-download-token-ends-the-request.md)). A Requester
+> who missed the 72 hours resubmits and is judged afresh — possibly by a
+> different Reviewer, possibly to a rejection. The stated cost is accepted: the
+> alternative is an approval whose authority outlives its own clock. The
+> intervention *inside* the window is the Collection lapse Alert at 24 hours
+> (§11.4), which is precisely what it is for.
 
 ---
 
@@ -1784,10 +1888,13 @@ fields (IP, user agent) that only the short-lived readers use. Accepted openly.
 
 **Why `request_contact` is split out.** It originally existed to make erasure a
 single `DELETE`. Erasure is gone and the split was **kept on a different
-justification**: the Reviewer queue is the only reader that needs those fields and
-it reads one Request at a time, so the join is cheap — while every other query
+justification**: the Reviewer surface is the only reader that needs those fields
+and it reads one Request at a time, so the join is cheap — while every other query
 (abuse patterns, service-promise measurement, what-was-released) touches **no
-personal data at all**.
+personal data at all**. That reader is the review screen (§10.2) *and* the
+in-flight screen (§10.9): a Decision's Snapshot still carries no contact field,
+because **the contact-free rule is about the record, not the screen**
+([ADR 0015](adr/0015-the-record-is-contact-free-the-screen-is-not.md)).
 
 **Why `token_lookup` is separate.** An unknown token resolves to no Request and so
 cannot be a child event of one. A *successful* presentation is written to **both**
