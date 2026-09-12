@@ -1,0 +1,32 @@
+:host {
+  display: block;
+  min-height: 100dvh;
+}
+
+.app-header {
+  background: var(--color-neutral-100);
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.app-header__inner {
+  max-width: 920px;
+  margin: 0 auto;
+  padding: 14px 24px;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.app-header__title {
+  font-family: var(--font-heading);
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.app-header__dept {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--color-neutral-600);
+}

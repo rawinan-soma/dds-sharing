@@ -4,8 +4,10 @@ import { ServeStaticModule } from "@nestjs/serve-static";
 import { fileURLToPath } from "node:url";
 import { HealthModule } from "./health/health.module.js";
 import { HEALTH_PATHS } from "./health/health-paths.js";
-import { ApiNotFoundController } from "./api-not-found.controller.js";
+import { ApiNotFoundModule } from "./api-not-found.module.js";
 import { ReferenceDataModule } from "./reference-data/reference-data.module.js";
+import { AppDbModule } from "./db/app-db.module.js";
+import { RequestsModule } from "./requests/requests.module.js";
 
 const webDistPath = fileURLToPath(
   new URL("../../web/dist/web/browser", import.meta.url),
@@ -23,7 +25,11 @@ const staticExclude = new RegExp(
     }),
     HealthModule,
     ReferenceDataModule,
+    AppDbModule,
+    RequestsModule,
+    // Last, deliberately (see api-not-found.module.ts): its catch-all must
+    // register after every feature module's routes, or it swallows them.
+    ApiNotFoundModule,
   ],
-  controllers: [ApiNotFoundController],
 })
 export class AppModule {}
