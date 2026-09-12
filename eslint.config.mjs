@@ -11,6 +11,10 @@ export default tseslint.config(
       "**/coverage/**",
       "**/.angular/**",
       "**/src/paraglide/**",
+      // The design tool's own prototype bundle (docs/design_handoff_dds_sharing/
+      // README.md: "reference only; do not port") — vendored browser JS, not
+      // project source, and not written to this repo's lint rules.
+      "docs/design_handoff_dds_sharing/**",
     ],
   },
   js.configs.recommended,

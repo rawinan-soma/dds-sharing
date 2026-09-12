@@ -1,0 +1,344 @@
+@if (mode() === "editing") {
+<main class="page">
+  <h1 class="page__title">{{ m.requester_page_title() }}</h1>
+
+  <section class="intro">
+    <p>{{ m.requester_gate_notice() }}</p>
+    <p>{{ m.requester_intro_service_promise() }}</p>
+    <p class="intro__notice">{{ m.requester_no_reason_notice() }}</p>
+  </section>
+
+  <section class="deid blueprint">
+    <p class="kicker">{{ m.requester_deid_kicker() }}</p>
+    <div class="deid__heading-row">
+      <h2>{{ m.requester_deid_heading() }}</h2>
+      <span class="deid__note">{{ m.requester_deid_note() }}</span>
+    </div>
+    <p>{{ m.requester_deid_intro() }}</p>
+    <div class="deid__columns">
+      <div>
+        <p class="kicker">{{ m.requester_deid_will_get_heading() }}</p>
+        <p>{{ m.requester_deid_will_get_list() }}</p>
+      </div>
+      <div>
+        <p class="kicker">{{ m.requester_deid_will_not_get_heading() }}</p>
+        <p>{{ m.requester_deid_will_not_get_list() }}</p>
+      </div>
+    </div>
+    <p class="deid__closing">{{ m.requester_deid_closing() }}</p>
+  </section>
+
+  <section class="notices">
+    <div>
+      <p class="kicker">{{ m.requester_email_notice_kicker() }}</p>
+      <p>{{ m.requester_email_warning() }}</p>
+    </div>
+    <div>
+      <p class="kicker">{{ m.requester_retention_notice_kicker() }}</p>
+      <p>{{ m.requester_retention_notice() }}</p>
+    </div>
+  </section>
+
+  <form class="form" (submit)="$event.preventDefault(); onCheckRequest()">
+    <section class="field-section">
+      <div class="field-section__heading">
+        <h2>{{ m.requester_section_disease_group_heading() }}</h2>
+        <span class="requirement-note"
+          >{{ m.requester_section_disease_group_required_note() }}</span
+        >
+      </div>
+      <div class="disease-group-grid">
+        @for (group of diseaseGroups; track group.id) {
+        <label class="radio-tile">
+          <input
+            type="radio"
+            name="diseaseGroup"
+            [value]="group.id"
+            [checked]="form().diseaseGroupId === group.id"
+            (change)="updateForm({ diseaseGroupId: group.id })"
+          />
+          <span>{{ group.nameTh }}</span>
+        </label>
+        }
+      </div>
+      @if (errors()?.diseaseGroupId) {
+      <p class="field-error">{{ errors()!.diseaseGroupId }}</p>
+      }
+    </section>
+
+    <section class="field-section">
+      <div class="field-section__heading">
+        <h2>{{ m.requester_section_date_range_heading() }}</h2>
+      </div>
+      <div class="date-row">
+        <label>
+          <span>{{ m.requester_date_from_label() }}</span>
+          <input
+            type="date"
+            [value]="form().from"
+            (change)="updateForm({ from: $any($event.target).value })"
+          />
+        </label>
+        <label>
+          <span>{{ m.requester_date_to_label() }}</span>
+          <input
+            type="date"
+            [value]="form().to"
+            [attr.min]="form().from || null"
+            [attr.max]="maxToDate()"
+            (change)="updateForm({ to: $any($event.target).value })"
+          />
+        </label>
+        @if (dayCount(); as days) {
+        <span class="day-count"
+          >{{ m.requester_date_count_readout({ days }) }}</span
+        >
+        }
+      </div>
+      <p class="helper-note">{{ m.requester_span_cap_notice() }}</p>
+      @if (errors()?.dateRange) {
+      <p class="field-error">{{ errors()!.dateRange }}</p>
+      }
+    </section>
+
+    <section class="field-section">
+      <div class="field-section__heading">
+        <h2>{{ m.requester_section_area_heading() }}</h2>
+        <span class="requirement-note"
+          >{{ m.requester_section_area_optional_note() }}</span
+        >
+      </div>
+      <div class="segmented">
+        <label>
+          <input
+            type="radio"
+            name="areaKind"
+            value="national"
+            [checked]="form().areaKind === 'national'"
+            (change)="updateForm({ areaKind: 'national', provinceId: null, region: null })"
+          />
+          <span>{{ m.requester_area_national_label() }}</span>
+        </label>
+        <label>
+          <input
+            type="radio"
+            name="areaKind"
+            value="province"
+            [checked]="form().areaKind === 'province'"
+            (change)="updateForm({ areaKind: 'province', region: null })"
+          />
+          <span>{{ m.requester_area_province_label() }}</span>
+        </label>
+        <label>
+          <input
+            type="radio"
+            name="areaKind"
+            value="region"
+            [checked]="form().areaKind === 'region'"
+            (change)="updateForm({ areaKind: 'region', provinceId: null })"
+          />
+          <span>{{ m.requester_area_region_label() }}</span>
+        </label>
+      </div>
+
+      @if (form().areaKind === "province") {
+      <label class="area-select">
+        <span>{{ m.requester_area_province_select_label() }}</span>
+        <select
+          [value]="form().provinceId ?? ''"
+          (change)="updateForm({ provinceId: $any($event.target).value || null })"
+        >
+          <option value="" disabled>—</option>
+          @for (province of provinces; track province.provinceId) {
+          <option [value]="province.provinceId">
+            {{ province.nameTh }} · {{ province.provinceId }}
+          </option>
+          }
+        </select>
+      </label>
+      <p class="helper-note">{{ m.requester_epidem_area_label() }}</p>
+      } @if (form().areaKind === "region") {
+      <label class="area-select">
+        <span>{{ m.requester_area_region_select_label() }}</span>
+        <select
+          [value]="form().region ?? ''"
+          (change)="updateForm({ region: $any($event.target).value ? +$any($event.target).value : null })"
+        >
+          <option value="" disabled>—</option>
+          @for (region of healthRegions; track region) {
+          <option [value]="region">{{ region }}</option>
+          }
+        </select>
+      </label>
+      @if (regionProvinces().length > 0) {
+      <div class="region-provinces">
+        <span class="kicker"
+          >{{ m.requester_area_region_provinces_heading() }}</span
+        >
+        <div class="tag-list">
+          @for (province of regionProvinces(); track province.provinceId) {
+          <span class="tag">{{ province.nameTh }}</span>
+          }
+        </div>
+      </div>
+      }
+      <p class="helper-note">{{ m.requester_region_vocabulary_note() }}</p>
+      <p class="helper-note">{{ m.requester_epidem_area_label() }}</p>
+      } @if (errors()?.area) {
+      <p class="field-error">{{ errors()!.area }}</p>
+      }
+    </section>
+
+    <section class="field-section">
+      <div class="field-section__heading">
+        <h2>{{ m.requester_section_contact_heading() }}</h2>
+      </div>
+      <div class="contact-grid">
+        <label>
+          <span>{{ m.requester_contact_name_label() }}</span>
+          <input
+            type="text"
+            [value]="form().contact.name"
+            (input)="updateContact({ name: $any($event.target).value })"
+          />
+        </label>
+        <label>
+          <span>{{ m.requester_contact_surname_label() }}</span>
+          <input
+            type="text"
+            [value]="form().contact.surname"
+            (input)="updateContact({ surname: $any($event.target).value })"
+          />
+        </label>
+        <label>
+          <span>{{ m.requester_contact_tel_label() }}</span>
+          <input
+            type="text"
+            [value]="form().contact.tel"
+            (input)="updateContact({ tel: $any($event.target).value })"
+          />
+        </label>
+        <label>
+          <span>{{ m.requester_contact_email_label() }}</span>
+          <input
+            type="text"
+            [value]="form().contact.email"
+            (input)="updateContact({ email: $any($event.target).value })"
+          />
+        </label>
+      </div>
+      <label class="workplace-field">
+        <span>{{ m.requester_contact_workplace_label() }}</span>
+        <input
+          type="text"
+          [value]="form().contact.workplace"
+          (input)="updateContact({ workplace: $any($event.target).value })"
+        />
+        <span class="helper-note"
+          >{{ m.requester_contact_workplace_note() }}</span
+        >
+      </label>
+      @if (errors()?.contact) {
+      <p class="field-error">{{ errors()!.contact }}</p>
+      }
+    </section>
+
+    @if (submitError(); as error) {
+    <p class="field-error">{{ error }}</p>
+    }
+
+    <footer class="form-footer">
+      <button type="submit" class="primary-button">
+        {{ m.requester_submit_button() }}
+      </button>
+      <span class="helper-note">{{ m.requester_submit_helper() }}</span>
+    </footer>
+  </form>
+</main>
+} @else {
+<main class="page page--review">
+  <h1>{{ m.requester_review_heading() }}</h1>
+  <p class="intro__notice">{{ m.requester_review_warning() }}</p>
+
+  <table class="review-table">
+    <tbody>
+      <tr>
+        <th>{{ m.requester_review_group_row_label() }}</th>
+        <td>{{ selectedDiseaseGroupName() }}</td>
+      </tr>
+      <tr>
+        <th>{{ m.requester_review_dates_row_label() }}</th>
+        <td>
+          {{ form().from }} – {{ form().to }} @if (dayCount(); as days) {
+          <span class="day-count"
+            >({{ m.requester_date_count_readout({ days }) }})</span
+          >
+          }
+        </td>
+      </tr>
+      <tr>
+        <th>{{ m.requester_review_area_row_label() }}</th>
+        <td>
+          @if (form().areaKind === "national") { {{
+          m.requester_area_national_label() }} } @else if (form().areaKind ===
+          "province") { {{ selectedProvinceName() }} } @else { {{
+          m.requester_area_region_value_label({ region: form().region ?? 0 }) }}
+          <div class="tag-list">
+            @for (province of regionProvinces(); track province.provinceId) {
+            <span class="tag">{{ province.nameTh }}</span>
+            }
+          </div>
+          }
+        </td>
+      </tr>
+      <tr>
+        <th>{{ m.requester_review_name_row_label() }}</th>
+        <td>{{ form().contact.name }} {{ form().contact.surname }}</td>
+      </tr>
+      <tr>
+        <th>{{ m.requester_review_tel_row_label() }}</th>
+        <td>
+          {{ form().contact.tel }}
+          <div class="helper-note">{{ m.requester_review_tel_row_note() }}</div>
+        </td>
+      </tr>
+      <tr>
+        <th>{{ m.requester_review_email_row_label() }}</th>
+        <td>
+          {{ form().contact.email }}
+          <div class="helper-note">
+            {{ m.requester_review_email_row_note() }}
+          </div>
+        </td>
+      </tr>
+      <tr>
+        <th>{{ m.requester_review_workplace_row_label() }}</th>
+        <td>{{ form().contact.workplace }}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  @if (submitError(); as error) {
+  <p class="field-error">{{ error }}</p>
+  }
+
+  <footer class="form-footer">
+    <button
+      type="button"
+      class="primary-button"
+      [disabled]="submitting()"
+      (click)="onConfirmSubmit()"
+    >
+      {{ m.requester_review_submit_button() }}
+    </button>
+    <button
+      type="button"
+      class="secondary-button"
+      [disabled]="submitting()"
+      (click)="onGoBack()"
+    >
+      {{ m.requester_review_back_button() }}
+    </button>
+  </footer>
+</main>
+}

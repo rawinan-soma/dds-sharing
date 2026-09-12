@@ -1,0 +1,535 @@
+{
+  "id": "7cea61d3-9145-4b74-83bf-530a66eef5d7",
+  "prevId": "8eb7cf95-d6eb-4e10-bad5-7de6b1f56a3a",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.province": {
+      "name": "province",
+      "schema": "",
+      "columns": {
+        "province_id": {
+          "name": "province_id",
+          "type": "varchar(2)",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name_th": {
+          "name": "name_th",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "health_region": {
+          "name": "health_region",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.reference_number_counter": {
+      "name": "reference_number_counter",
+      "schema": "",
+      "columns": {
+        "year": {
+          "name": "year",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "counter": {
+          "name": "counter",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.request": {
+      "name": "request",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "reference_number": {
+          "name": "reference_number",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "state": {
+          "name": "state",
+          "type": "request_state",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'pending'"
+        },
+        "disease_group_id": {
+          "name": "disease_group_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "disease_group_name_th": {
+          "name": "disease_group_name_th",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "report_codes": {
+          "name": "report_codes",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "from_date": {
+          "name": "from_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "to_date": {
+          "name": "to_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "area_kind": {
+          "name": "area_kind",
+          "type": "area_kind",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'national'"
+        },
+        "area_region": {
+          "name": "area_region",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "area_provinces": {
+          "name": "area_provinces",
+          "type": "text[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'"
+        },
+        "submitted_at": {
+          "name": "submitted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "request_reference_number_unique": {
+          "name": "request_reference_number_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "reference_number"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "request_area_region_iff_region_kind": {
+          "name": "request_area_region_iff_region_kind",
+          "value": "(\"request\".\"area_kind\" = 'region') = (\"request\".\"area_region\" IS NOT NULL)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.request_contact": {
+      "name": "request_contact",
+      "schema": "",
+      "columns": {
+        "request_id": {
+          "name": "request_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "surname": {
+          "name": "surname",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tel": {
+          "name": "tel",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "workplace": {
+          "name": "workplace",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "request_contact_request_id_request_id_fk": {
+          "name": "request_contact_request_id_request_id_fk",
+          "tableFrom": "request_contact",
+          "tableTo": "request",
+          "columnsFrom": [
+            "request_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.request_event": {
+      "name": "request_event",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "bigserial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "request_id": {
+          "name": "request_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "request_event_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "actor_type": {
+          "name": "actor_type",
+          "type": "actor_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reviewer_id": {
+          "name": "reviewer_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ip": {
+          "name": "ip",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "user_agent": {
+          "name": "user_agent",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "payload": {
+          "name": "payload",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
+        },
+        "occurred_at": {
+          "name": "occurred_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "recorded_at": {
+          "name": "recorded_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "request_event_request_id_idx": {
+          "name": "request_event_request_id_idx",
+          "columns": [
+            {
+              "expression": "request_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "request_event_type_ip_idx": {
+          "name": "request_event_type_ip_idx",
+          "columns": [
+            {
+              "expression": "type",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "ip",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "request_event_reviewer_id_iff_reviewer": {
+          "name": "request_event_reviewer_id_iff_reviewer",
+          "value": "(\"request_event\".\"actor_type\" = 'reviewer') = (\"request_event\".\"reviewer_id\" IS NOT NULL)"
+        },
+        "request_event_ip_iff_unauth": {
+          "name": "request_event_ip_iff_unauth",
+          "value": "(\"request_event\".\"actor_type\" IN ('requester', 'anonymous')) = (\"request_event\".\"ip\" IS NOT NULL)"
+        },
+        "request_event_user_agent_iff_unauth": {
+          "name": "request_event_user_agent_iff_unauth",
+          "value": "(\"request_event\".\"actor_type\" IN ('requester', 'anonymous')) = (\"request_event\".\"user_agent\" IS NOT NULL)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.reviewer_event": {
+      "name": "reviewer_event",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "bigserial",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "reviewer_id": {
+          "name": "reviewer_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "reviewer_event_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ip": {
+          "name": "ip",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "user_agent": {
+          "name": "user_agent",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "payload": {
+          "name": "payload",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::jsonb"
+        },
+        "occurred_at": {
+          "name": "occurred_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "recorded_at": {
+          "name": "recorded_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "reviewer_event_reviewer_id_idx": {
+          "name": "reviewer_event_reviewer_id_idx",
+          "columns": [
+            {
+              "expression": "reviewer_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {
+    "public.actor_type": {
+      "name": "actor_type",
+      "schema": "public",
+      "values": [
+        "requester",
+        "reviewer",
+        "system",
+        "anonymous"
+      ]
+    },
+    "public.area_kind": {
+      "name": "area_kind",
+      "schema": "public",
+      "values": [
+        "national",
+        "province",
+        "region"
+      ]
+    },
+    "public.request_event_type": {
+      "name": "request_event_type",
+      "schema": "public",
+      "values": [
+        "submitted",
+        "probe_performed",
+        "probe_failed",
+        "approved",
+        "rejected",
+        "note_amended",
+        "expired",
+        "contact_redacted",
+        "job_queued",
+        "job_deferred_low_disk",
+        "job_started",
+        "code_fetched",
+        "job_completed",
+        "job_failed",
+        "extraction_alert_raised",
+        "extraction_alert_cleared",
+        "extraction_rerun_queued",
+        "mail_sent",
+        "mail_send_failed",
+        "mail_send_abandoned",
+        "delivery_alert_raised",
+        "download_attempted",
+        "collection_lapse_raised",
+        "collection_lapse_cleared",
+        "download_token_revoked",
+        "download_token_reissued",
+        "expired_uncollected",
+        "object_deleted"
+      ]
+    },
+    "public.request_state": {
+      "name": "request_state",
+      "schema": "public",
+      "values": [
+        "pending",
+        "queued",
+        "running",
+        "ready",
+        "delivered",
+        "collected",
+        "rejected",
+        "expired",
+        "failed",
+        "expired_uncollected"
+      ]
+    },
+    "public.reviewer_event_type": {
+      "name": "reviewer_event_type",
+      "schema": "public",
+      "values": [
+        "login_succeeded",
+        "login_failed",
+        "logged_out",
+        "session_expired",
+        "password_changed",
+        "seeded",
+        "totp_enrolled",
+        "deactivated"
+      ]
+    }
+  },
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}
