@@ -2587,18 +2587,24 @@ contact fields, submit.
 the 24-business-hour service promise, and the telephone number. It must read as
 *you are done*, not as *something went wrong*.
 
-> ⚠️ **Structure, ordering and copy are settled; the visual layer is not. The repo
-> owner supplies a wireframe during the dev cycle.** Visual design, spacing,
-> typography and component choice are **not** settled here. Carry the two ordering
-> rules (this one and §10.2's) as requirements, and treat the wireframe as the
-> source of visual layout.
+> ⚠️ **Structure, ordering and copy are settled; the visual layer is not.**
+> Visual design, spacing, typography and component choice are **not** settled
+> here. Carry the two ordering rules (this one and §10.2's) as requirements, and
+> treat the wireframe as the source of visual layout.
 >
-> **The prototype these rules were settled in no longer exists in the repo.** The
-> `prototype/requester-reviewer-ui` branch was reverted out by `a76b2d1` and was
-> never pushed, so there is nothing to fetch and nothing to read. The requirements
-> it produced survive **only** as the prose here and in §10.2 — treat those two
-> sections as the whole of what it settled, and do not go looking for the
-> prototype to recover detail from.
+> **The wireframe is `docs/design_handoff_dds_sharing/`** — seven screens across
+> the public, delivery and Reviewer surfaces, with the design tokens beside them.
+> Read its `README.md` first; the prototype runs, and its runtime (`support.js`)
+> is reference only and must not be ported. Where it disagrees with this
+> specification, `CONTEXT.md`, `docs/disease-groups.md` or the ADRs, **they win**
+> — it says so itself.
+>
+> **The earlier prototype these rules were settled in no longer exists in the
+> repo.** The `prototype/requester-reviewer-ui` branch was reverted out by
+> `a76b2d1` and was never pushed, so there is nothing to fetch and nothing to
+> read. The requirements it produced survive **only** as the prose here and in
+> §10.2 — treat those two sections as the whole of what it settled, and do not
+> go looking for *that* prototype to recover detail from.
 
 **A worked example for acceptance testing:** seed the Reviewer queue with a
 request that is genuinely hard to judge — an "independent researcher" on a
