@@ -61,18 +61,19 @@ export type ReviewerEventType = (typeof REVIEWER_EVENT_TYPES)[number];
 // could disagree with itself.
 type SubmittedPayload = Record<string, never>;
 
-interface ProbePerformedPayload {
+export interface ProbePerformedPayload {
   span: { start: string; end: string };
   codes: Array<{
     groupCode: string;
     calls: number;
     totalItems: number;
-    xRequestId: string;
+    /** One entry per call made for this code, in attempt order — failed retries' ids included. */
+    xRequestIds: Array<string | null>;
   }>;
   totalItems: number;
 }
 
-interface ProbeFailedPayload {
+export interface ProbeFailedPayload {
   groupCode: string;
   errors: Array<{ message: string; xRequestId: string | null }>;
 }

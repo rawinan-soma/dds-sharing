@@ -41,7 +41,7 @@ function detail(overrides: Partial<RequestDetail> = {}): RequestDetail {
     timeRemainingLabel: '20 h 00 m left',
     isActionable: true,
     requestsAhead: 0,
-    probeRowCount: null,
+    probeRowCount: 'pending',
     ...overrides,
   };
 }
@@ -154,9 +154,38 @@ describe('ReviewerQueuePage (spec §10.1, §10.2, §10.3, tickets #65–#66)', (
     expect(el.textContent).toContain('202, 203');
     expect(el.textContent).toContain('Whole country');
     expect(el.textContent).toContain('0 requests ahead of it');
-    expect(el.textContent).toContain('Not available yet'); // the Probe's honest placeholder
+    expect(el.textContent).toContain('pending'); // the Probe's row count, before it lands (§5.4)
+    // §5.4: a Decision waits on none of the Probe's three states — Approve
+    // and Reject render even while the count is still "pending".
     expect(el.textContent).toContain('Approve and release');
     expect(el.querySelector('button.reject')?.textContent?.trim()).toBe('Reject');
+  });
+
+  it.each([
+    ['a landed summed total', 4, '4'],
+    ['an abandoned Probe', 'failed', 'failed'],
+  ])('renders the Probe row count as %s (§5.4, §10.2)', async (_label, probeRowCount, expected) => {
+    const getDetail = vi.fn().mockResolvedValue({
+      outcome: 'ok',
+      result: detail({ probeRowCount: probeRowCount as number | 'failed' }),
+    });
+    const { fixture } = setup({
+      listPending: vi.fn().mockResolvedValue({
+        outcome: 'ok',
+        result: { requests: [row()], refreshedAt: new Date().toISOString() },
+      }),
+      getDetail,
+    });
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    const el = fixture.nativeElement as HTMLElement;
+    el.querySelector<HTMLButtonElement>('button.queue-row')!.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(el.textContent).toContain(expected);
   });
 
   it('collapses the report codes behind a toggle rather than showing them as the headline', async () => {
