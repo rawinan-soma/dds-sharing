@@ -78,6 +78,13 @@
       "when": 1789360748438,
       "tag": "0010_drop_admin_role",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1789400639953,
+      "tag": "0011_grant_app_role_request_state",
+      "breakpoints": true
     }
   ]
 }

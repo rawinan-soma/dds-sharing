@@ -81,5 +81,10 @@
   "requester_state_delivered": "ส่งมอบแล้ว",
   "requester_state_failed": "กำลังลองดึงข้อมูลใหม่",
 
-  "requester_service_telephone": "0-2590-3000"
+  "requester_service_telephone": "0-2590-3000",
+
+  "requester_rejection_email_subject": "คำขอ {referenceNumber} ของท่านไม่ได้รับการอนุมัติ",
+  "requester_rejection_email_greeting": "เรียน ผู้ยื่นคำขอ",
+  "requester_rejection_email_body": "คำขอ {referenceNumber} ของท่านไม่ได้รับการอนุมัติ โดยไม่มีการแจ้งเหตุผล ตามที่ได้ระบุไว้ในแบบฟอร์มคำขอแล้ว",
+  "requester_rejection_email_contact": "หากท่านเห็นว่าเป็นความผิดพลาด กรุณาโทรศัพท์ {telephone} พร้อมแจ้งหมายเลขอ้างอิงของท่าน"
 }

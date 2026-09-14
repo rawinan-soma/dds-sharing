@@ -320,3 +320,85 @@ button.refresh:disabled {
   color: var(--color-accent-700);
   max-width: 640px;
 }
+
+// The decision buttons sit on a hairline top rule below the identity fields
+// and the ask (spec §10.2) — never reachable without scrolling past them.
+.actions {
+  border-top: 1px solid var(--color-divider);
+  margin-top: 20px;
+  padding-top: 16px;
+  max-width: 640px;
+}
+
+.actions-note {
+  margin: 0 0 12px;
+  font-size: 12.5px;
+  color: var(--color-neutral-600);
+}
+
+.action-buttons,
+.confirm-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+button.approve {
+  font: inherit;
+  padding: 10px 18px;
+  border: none;
+  background: var(--color-accent);
+  color: #fff;
+  cursor: pointer;
+}
+
+button.reject,
+button.cancel {
+  font: inherit;
+  padding: 10px 18px;
+  border: 1px solid var(--color-divider);
+  background: transparent;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.confirm {
+  padding: 14px 16px;
+  background: rgba(89, 128, 166, 0.1);
+  border: 1px solid var(--color-accent);
+}
+
+.confirm p {
+  margin: 0 0 12px;
+  font-size: 13.5px;
+}
+
+.confirm.reject label {
+  display: block;
+  font-size: 12.5px;
+  color: var(--color-neutral-600);
+  margin-bottom: 6px;
+}
+
+.confirm.reject textarea {
+  width: 100%;
+  font: inherit;
+  padding: 8px 10px;
+  border: 1px solid var(--color-divider);
+  margin-bottom: 12px;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.decision-line {
+  margin: 0 0 6px;
+  font-size: 14px;
+}
+
+.decision-error {
+  color: var(--color-failed-ink);
+}

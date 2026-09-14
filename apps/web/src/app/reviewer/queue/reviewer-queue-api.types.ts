@@ -48,3 +48,14 @@ export interface RequestDetail {
   requestsAhead: number;
   probeRowCount: null;
 }
+
+// The Decision (spec §10.3, §10.4, ticket #66) --------------------------
+
+export type DecisionOutcome =
+  | { outcome: 'approved'; decidedAt: string }
+  | { outcome: 'rejected'; decidedAt: string }
+  | { outcome: 'expired'; expiredAt: string }
+  | { outcome: 'not_pending' }
+  | { outcome: 'note_too_short' }
+  | { outcome: 'unauthenticated' }
+  | { outcome: 'unexpected' };

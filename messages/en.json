@@ -81,5 +81,10 @@
   "requester_state_delivered": "delivered",
   "requester_state_failed": "being retried",
 
-  "requester_service_telephone": "0-2590-3000"
+  "requester_service_telephone": "0-2590-3000",
+
+  "requester_rejection_email_subject": "Your DDS Sharing request {referenceNumber} was not approved",
+  "requester_rejection_email_greeting": "Dear applicant,",
+  "requester_rejection_email_body": "Your request {referenceNumber} was not approved. No reason is given for this decision — this was stated on the request form when you submitted it.",
+  "requester_rejection_email_contact": "If you believe this was a mistake, call {telephone} and quote your reference number."
 }
