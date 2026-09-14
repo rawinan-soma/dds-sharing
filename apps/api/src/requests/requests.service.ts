@@ -135,7 +135,6 @@ export class RequestsService {
           fromDate: value.from,
           toDate: value.to,
           areaKind: value.area.kind,
-          areaRegion: value.area.kind === "region" ? value.area.region : null,
           areaProvinces:
             value.area.kind === "province"
               ? [value.area.provinceId]

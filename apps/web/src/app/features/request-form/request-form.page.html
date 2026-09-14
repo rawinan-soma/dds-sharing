@@ -1,4 +1,3 @@
-@if (mode() === "editing") {
 <main class="page">
   <h1 class="page__title">{{ m.requester_page_title() }}</h1>
 
@@ -39,7 +38,7 @@
     </div>
   </section>
 
-  <form class="form" (submit)="$event.preventDefault(); onCheckRequest()">
+  <form class="form" (submit)="$event.preventDefault(); onSubmit()">
     <section class="field-section">
       <div class="field-section__heading">
         <h2>{{ m.requester_section_disease_group_heading() }}</h2>
@@ -248,97 +247,10 @@
     }
 
     <footer class="form-footer">
-      <button type="submit" class="primary-button">
+      <button type="submit" class="primary-button" [disabled]="submitting()">
         {{ m.requester_submit_button() }}
       </button>
       <span class="helper-note">{{ m.requester_submit_helper() }}</span>
     </footer>
   </form>
 </main>
-} @else {
-<main class="page page--review">
-  <h1>{{ m.requester_review_heading() }}</h1>
-  <p class="intro__notice">{{ m.requester_review_warning() }}</p>
-
-  <table class="review-table">
-    <tbody>
-      <tr>
-        <th>{{ m.requester_review_group_row_label() }}</th>
-        <td>{{ selectedDiseaseGroupName() }}</td>
-      </tr>
-      <tr>
-        <th>{{ m.requester_review_dates_row_label() }}</th>
-        <td>
-          {{ form().from }} – {{ form().to }} @if (dayCount(); as days) {
-          <span class="day-count"
-            >({{ m.requester_date_count_readout({ days }) }})</span
-          >
-          }
-        </td>
-      </tr>
-      <tr>
-        <th>{{ m.requester_review_area_row_label() }}</th>
-        <td>
-          @if (form().areaKind === "national") { {{
-          m.requester_area_national_label() }} } @else if (form().areaKind ===
-          "province") { {{ selectedProvinceName() }} } @else { {{
-          m.requester_area_region_value_label({ region: form().region ?? 0 }) }}
-          <div class="tag-list">
-            @for (province of regionProvinces(); track province.provinceId) {
-            <span class="tag">{{ province.nameTh }}</span>
-            }
-          </div>
-          }
-        </td>
-      </tr>
-      <tr>
-        <th>{{ m.requester_review_name_row_label() }}</th>
-        <td>{{ form().contact.name }} {{ form().contact.surname }}</td>
-      </tr>
-      <tr>
-        <th>{{ m.requester_review_tel_row_label() }}</th>
-        <td>
-          {{ form().contact.tel }}
-          <div class="helper-note">{{ m.requester_review_tel_row_note() }}</div>
-        </td>
-      </tr>
-      <tr>
-        <th>{{ m.requester_review_email_row_label() }}</th>
-        <td>
-          {{ form().contact.email }}
-          <div class="helper-note">
-            {{ m.requester_review_email_row_note() }}
-          </div>
-        </td>
-      </tr>
-      <tr>
-        <th>{{ m.requester_review_workplace_row_label() }}</th>
-        <td>{{ form().contact.workplace }}</td>
-      </tr>
-    </tbody>
-  </table>
-
-  @if (submitError(); as error) {
-  <p class="field-error">{{ error }}</p>
-  }
-
-  <footer class="form-footer">
-    <button
-      type="button"
-      class="primary-button"
-      [disabled]="submitting()"
-      (click)="onConfirmSubmit()"
-    >
-      {{ m.requester_review_submit_button() }}
-    </button>
-    <button
-      type="button"
-      class="secondary-button"
-      [disabled]="submitting()"
-      (click)="onGoBack()"
-    >
-      {{ m.requester_review_back_button() }}
-    </button>
-  </footer>
-</main>
-}

@@ -124,12 +124,6 @@
           "notNull": true,
           "default": "'national'"
         },
-        "area_region": {
-          "name": "area_region",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
         "area_provinces": {
           "name": "area_provinces",
           "type": "text[]",
@@ -158,12 +152,7 @@
         }
       },
       "policies": {},
-      "checkConstraints": {
-        "request_area_region_iff_region_kind": {
-          "name": "request_area_region_iff_region_kind",
-          "value": "(\"request\".\"area_kind\" = 'region') = (\"request\".\"area_region\" IS NOT NULL)"
-        }
-      },
+      "checkConstraints": {},
       "isRLSEnabled": false
     },
     "public.request_contact": {

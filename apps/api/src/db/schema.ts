@@ -143,23 +143,16 @@ export const request = pgTable(
 
     // Area selection (§4.4): national is the default and stores no region or
     // provinces. A province selection freezes a one-entry list; a region
-    // selection freezes the province list it expanded to at submit and keeps
-    // the region number only as the human form of the ask — the stored
-    // Request never names a bare region (§4.4, §4.9).
+    // selection freezes the province list it expanded to at submit — the
+    // stored Request never names a bare region (§4.4, §4.9), so no column
+    // here carries the region number itself.
     areaKind: areaKind("area_kind").notNull().default("national"),
-    areaRegion: integer("area_region"),
     areaProvinces: text("area_provinces").array().notNull().default([]),
 
     submittedAt: timestamp("submitted_at", { withTimezone: true, mode: "date" })
       .notNull()
       .defaultNow(),
   },
-  (table) => [
-    check(
-      "request_area_region_iff_region_kind",
-      sql`(${table.areaKind} = 'region') = (${table.areaRegion} IS NOT NULL)`,
-    ),
-  ],
 );
 
 // Split out from `request` (§12.3) — the only reader that needs these

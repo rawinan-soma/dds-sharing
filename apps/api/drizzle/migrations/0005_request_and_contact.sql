@@ -15,11 +15,9 @@ CREATE TABLE "request" (
 	"from_date" date NOT NULL,
 	"to_date" date NOT NULL,
 	"area_kind" "area_kind" DEFAULT 'national' NOT NULL,
-	"area_region" integer,
 	"area_provinces" text[] DEFAULT '{}' NOT NULL,
 	"submitted_at" timestamp with time zone DEFAULT now() NOT NULL,
-	CONSTRAINT "request_reference_number_unique" UNIQUE("reference_number"),
-	CONSTRAINT "request_area_region_iff_region_kind" CHECK (("request"."area_kind" = 'region') = ("request"."area_region" IS NOT NULL))
+	CONSTRAINT "request_reference_number_unique" UNIQUE("reference_number")
 );
 --> statement-breakpoint
 CREATE TABLE "request_contact" (

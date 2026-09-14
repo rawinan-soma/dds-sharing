@@ -150,11 +150,10 @@ describe.skipIf(!adminUrl || !appUrl)("RequestsService", () => {
     });
 
     const rows = await adminPool.query(
-      `SELECT area_kind, area_region, area_provinces FROM request WHERE reference_number = $1`,
+      `SELECT area_kind, area_provinces FROM request WHERE reference_number = $1`,
       [outcome.referenceNumber],
     );
     expect(rows.rows[0].area_kind).toBe("region");
-    expect(rows.rows[0].area_region).toBe(8);
     expect(rows.rows[0].area_provinces.length).toBeGreaterThan(1);
   });
 

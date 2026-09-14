@@ -20,15 +20,17 @@ export const REQUEST_STATES = [
 export type RequestState = (typeof REQUEST_STATES)[number];
 
 // §4.8 / design_handoff screen 4: a Request is "unfinished" — and so blocks
-// a duplicate submit from the same IP — in exactly these states. Terminal
-// states (rejected, expired, expired_uncollected, collected) do not count.
+// a duplicate submit from the same IP — only while nothing has come of it
+// yet. This is UX guarding a refresh or a double-posted form, not a rate
+// limit, so it lifts the moment the Requester has something to show for the
+// submit (delivered) or the attempt has run its course (failed, then a
+// fresh Request is the only way forward) — both excluded here alongside the
+// terminal states (rejected, expired, expired_uncollected, collected).
 export const UNFINISHED_REQUEST_STATES = [
   "pending",
   "queued",
   "running",
   "ready",
-  "delivered",
-  "failed",
 ] as const satisfies readonly RequestState[];
 
 // §4.4: Area selection is national (the default), one province, or one

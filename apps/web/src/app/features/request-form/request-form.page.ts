@@ -36,7 +36,6 @@ export class RequestFormPage {
   protected readonly healthRegions = HEALTH_REGIONS;
 
   protected readonly form = signal<RequestFormState>(emptyRequestFormState());
-  protected readonly mode = signal<'editing' | 'reviewing'>('editing');
   protected readonly errors = signal<RequestFormFieldErrors | null>(null);
   protected readonly submitting = signal(false);
   protected readonly submitError = signal<string | null>(null);
@@ -59,18 +58,6 @@ export class RequestFormPage {
     return this.provinces.filter((p) => p.healthRegion === region);
   });
 
-  protected readonly selectedDiseaseGroupName = computed(
-    () =>
-      this.diseaseGroups.find((g) => g.id === this.form().diseaseGroupId)
-        ?.nameTh ?? '',
-  );
-
-  protected readonly selectedProvinceName = computed(
-    () =>
-      this.provinces.find((p) => p.provinceId === this.form().provinceId)
-        ?.nameTh ?? '',
-  );
-
   protected updateForm(patch: Partial<RequestFormState>): void {
     this.form.update((current) => ({ ...current, ...patch }));
   }
@@ -82,21 +69,13 @@ export class RequestFormPage {
     }));
   }
 
-  protected onCheckRequest(): void {
+  protected async onSubmit(): Promise<void> {
     const result = validateRequestForm(this.form(), this.provinces);
     if (!result.ok) {
       this.errors.set(result.errors);
       return;
     }
     this.errors.set(null);
-    this.mode.set('reviewing');
-  }
-
-  protected onGoBack(): void {
-    this.mode.set('editing');
-  }
-
-  protected async onConfirmSubmit(): Promise<void> {
     this.submitting.set(true);
     this.submitError.set(null);
 
@@ -117,9 +96,7 @@ export class RequestFormPage {
     }
     if (outcome.kind === 'validation_error') {
       // The server re-checked and found something the client-side check
-      // did not (e.g. a stale page) — go back to editing so the Requester
-      // can see the fields again.
-      this.mode.set('editing');
+      // did not (e.g. a stale page).
       this.submitError.set(m.requester_submit_generic_error());
       return;
     }
