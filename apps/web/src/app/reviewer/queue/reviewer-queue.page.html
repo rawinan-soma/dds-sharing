@@ -124,6 +124,55 @@
         workplace they named? Where the screen cannot answer that, telephone the number above before
         deciding either way.
       </p>
+
+      <div class="actions">
+        @if (decisionPhase() === 'decided') {
+          @if (decisionMessage(); as message) {
+            <p class="decision-line">{{ message }}</p>
+          }
+          @if (decisionError(); as error) {
+            <p class="decision-line decision-error">{{ error }}</p>
+          }
+        } @else {
+          @if (decisionError(); as error) {
+            <p class="decision-error">{{ error }}</p>
+          }
+
+          @if (decisionPhase() === 'confirm_approve') {
+            <div class="confirm approve">
+              <p>Your name, {{ displayName }}, goes onto this release permanently.</p>
+              <div class="confirm-buttons">
+                <button type="button" class="approve" (click)="submitApprove()">Confirm approve</button>
+                <button type="button" class="cancel" (click)="cancelDecision()">Cancel</button>
+              </div>
+            </div>
+          } @else if (decisionPhase() === 'reject_note') {
+            <form class="confirm reject" (submit)="$event.preventDefault(); submitReject()">
+              <label for="reject-note">
+                Internal note — required, kept on the record, never shown or sent to the requester
+              </label>
+              <textarea id="reject-note" [formControl]="rejectNoteControl" rows="3" autocomplete="off"></textarea>
+              <div class="confirm-buttons">
+                <button type="submit" class="reject">Confirm reject</button>
+                <button type="button" class="cancel" (click)="cancelDecision()">Cancel</button>
+              </div>
+            </form>
+          } @else {
+            <p class="actions-note">
+              Approving is irreversible. A request that is too broad is a reject the requester can narrow
+              and resend, never an edit.
+            </p>
+            <div class="action-buttons">
+              <button type="button" class="approve" [disabled]="decisionPhase() === 'submitting'" (click)="askApprove()">
+                Approve and release
+              </button>
+              <button type="button" class="reject" [disabled]="decisionPhase() === 'submitting'" (click)="askReject()">
+                Reject
+              </button>
+            </div>
+          }
+        }
+      </div>
     }
   </section>
 </div>

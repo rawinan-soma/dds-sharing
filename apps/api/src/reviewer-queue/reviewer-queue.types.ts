@@ -53,3 +53,28 @@ export interface RequestDetail {
   requestsAhead: number;
   probeRowCount: ProbeRowCount;
 }
+
+// The Decision (spec §10.3, §10.4, ticket #66) --------------------------
+
+export interface RejectDecisionInput {
+  note: string;
+}
+
+/**
+ * What actually happened to a Decision attempt. `not_found` and
+ * `not_pending` both mean "nothing was written" — the caller (controller)
+ * decides the HTTP shape; this type only distinguishes what a Reviewer
+ * needs to be told apart: a Request that vanished from under them (raced by
+ * another Decision, or genuinely unknown) versus one that just aged out
+ * while they were reading it (§10.4).
+ */
+export type DecisionOutcome =
+  | { kind: "approved"; decidedAt: string }
+  | { kind: "rejected"; decidedAt: string }
+  | { kind: "expired"; expiredAt: string }
+  | { kind: "not_found" }
+  | { kind: "not_pending" }
+  | { kind: "note_too_short" };
+
+export type AmendNoteOutcome = { kind: "amended" } | { kind: "not_rejected" } | { kind: "note_too_short" };
+

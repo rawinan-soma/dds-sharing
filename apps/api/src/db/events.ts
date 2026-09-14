@@ -78,7 +78,7 @@ export interface ProbeFailedPayload {
   errors: Array<{ message: string; xRequestId: string | null }>;
 }
 
-interface Snapshot {
+export interface Snapshot {
   diseaseGroupName: string;
   reportCodes: string[];
   startDate: string;

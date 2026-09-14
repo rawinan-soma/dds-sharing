@@ -220,5 +220,114 @@ describe.skipIf(!adminUrl || !appUrl)(
       );
       expect(malformed.status).toBe(404);
     });
+
+    // The Decision (spec §10.3, §10.4, ticket #66) -----------------------
+
+    async function submitOne(): Promise<{ id: string; referenceNumber: string }> {
+      const res = await fetch(`${baseUrl}/api/requests`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(validBody()),
+      });
+      const { referenceNumber } = await res.json();
+      const list = await fetch(`${baseUrl}/api/reviewer/queue`, {
+        headers: { cookie: `reviewer_session=${sessionCookie}` },
+      });
+      const { requests } = await list.json();
+      const row = requests.find(
+        (r: { referenceNumber: string }) => r.referenceNumber === referenceNumber,
+      );
+      return { id: row.id, referenceNumber };
+    }
+
+    async function csrfHeaders(): Promise<Record<string, string>> {
+      const csrfRes = await fetch(`${baseUrl}/api/reviewer/csrf`, {
+        headers: { cookie: `reviewer_session=${sessionCookie}` },
+      });
+      const { csrfToken } = (await csrfRes.json()) as { csrfToken: string };
+      const csrfCookie = extractCookie(csrfRes, "reviewer_csrf")!;
+      return {
+        "content-type": "application/json",
+        cookie: `reviewer_session=${sessionCookie}; reviewer_csrf=${csrfCookie}`,
+        "x-csrf-token": csrfToken,
+      };
+    }
+
+    it("refuses approve and reject without the CSRF token, and without a live session", async () => {
+      const { id } = await submitOne();
+
+      const noCsrf = await fetch(`${baseUrl}/api/reviewer/queue/${id}/approve`, {
+        method: "POST",
+        headers: { cookie: `reviewer_session=${sessionCookie}` },
+      });
+      expect(noCsrf.status).toBe(403);
+
+      const headers = await csrfHeaders();
+      const noSession = await fetch(`${baseUrl}/api/reviewer/queue/${id}/approve`, {
+        method: "POST",
+        headers: {
+          ...headers,
+          cookie: headers.cookie.replace(
+            /reviewer_session=[^;]+/,
+            "reviewer_session=not-a-real-session",
+          ),
+        },
+      });
+      expect(noSession.status).toBe(401);
+
+      // Neither attempt should have moved the Request off pending.
+      const detail = await fetch(`${baseUrl}/api/reviewer/queue/${id}`, {
+        headers: { cookie: `reviewer_session=${sessionCookie}` },
+      });
+      expect(detail.status).toBe(200);
+    });
+
+    it("approves a pending Request, moves it off the queue, and states plainly what was recorded", async () => {
+      const { id } = await submitOne();
+      const headers = await csrfHeaders();
+
+      const res = await fetch(`${baseUrl}/api/reviewer/queue/${id}/approve`, {
+        method: "POST",
+        headers,
+      });
+      expect(res.status).toBe(201);
+      const body = await res.json();
+      expect(body.outcome).toBe("approved");
+      expect(body.decidedAt).toBeDefined();
+
+      const stillListed = await fetch(`${baseUrl}/api/reviewer/queue`, {
+        headers: { cookie: `reviewer_session=${sessionCookie}` },
+      });
+      const { requests } = await stillListed.json();
+      expect(requests.find((r: { id: string }) => r.id === id)).toBeUndefined();
+    });
+
+    it("refuses a reject with no internal note, and refuses approving an already-decided Request", async () => {
+      const { id } = await submitOne();
+      const headers = await csrfHeaders();
+
+      const tooShort = await fetch(`${baseUrl}/api/reviewer/queue/${id}/reject`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({ note: "short" }),
+      });
+      expect(tooShort.status).toBe(409);
+
+      const ok = await fetch(`${baseUrl}/api/reviewer/queue/${id}/reject`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          note: "Could not confirm this person's workplace by telephone.",
+        }),
+      });
+      expect(ok.status).toBe(201);
+      expect((await ok.json()).outcome).toBe("rejected");
+
+      const again = await fetch(`${baseUrl}/api/reviewer/queue/${id}/approve`, {
+        method: "POST",
+        headers,
+      });
+      expect(again.status).toBe(409);
+    });
   },
 );

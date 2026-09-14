@@ -46,11 +46,13 @@ function detail(overrides: Partial<RequestDetail> = {}): RequestDetail {
   };
 }
 
-describe('ReviewerQueuePage (spec §10.1, §10.2, ticket #65 — read-only)', () => {
+describe('ReviewerQueuePage (spec §10.1, §10.2, §10.3, tickets #65–#66)', () => {
   function setup(apiOverrides: Partial<ReviewerQueueApiService> = {}) {
     const api = {
       listPending: vi.fn().mockResolvedValue({ outcome: 'ok', result: { requests: [], refreshedAt: new Date().toISOString() } }),
       getDetail: vi.fn(),
+      approve: vi.fn(),
+      reject: vi.fn(),
       ...apiOverrides,
     };
     TestBed.configureTestingModule({
@@ -108,7 +110,7 @@ describe('ReviewerQueuePage (spec §10.1, §10.2, ticket #65 — read-only)', ()
     expect(el.querySelector('.time-remaining.expired')?.textContent?.trim()).toBe('expired');
   });
 
-  it('shows the dossier empty state until a row is picked, with no decision buttons ever rendered (that is #66)', async () => {
+  it('shows the dossier empty state until a row is picked, with no decision buttons rendered before then', async () => {
     const { fixture } = setup({
       listPending: vi.fn().mockResolvedValue({
         outcome: 'ok',
@@ -153,8 +155,10 @@ describe('ReviewerQueuePage (spec §10.1, §10.2, ticket #65 — read-only)', ()
     expect(el.textContent).toContain('Whole country');
     expect(el.textContent).toContain('0 requests ahead of it');
     expect(el.textContent).toContain('pending'); // the Probe's row count, before it lands (§5.4)
-    expect(el.textContent?.toLowerCase()).not.toContain('approve');
-    expect(el.textContent?.toLowerCase()).not.toContain('reject');
+    // §5.4: a Decision waits on none of the Probe's three states — Approve
+    // and Reject render even while the count is still "pending".
+    expect(el.textContent).toContain('Approve and release');
+    expect(el.querySelector('button.reject')?.textContent?.trim()).toBe('Reject');
   });
 
   it.each([
@@ -269,6 +273,149 @@ describe('ReviewerQueuePage (spec §10.1, §10.2, ticket #65 — read-only)', ()
     await fixture.whenStable();
 
     expect(expired).toBe(true);
+  });
+
+  // The Decision (spec §10.3, ticket #66) --------------------------------
+
+  async function selectFirstRow(fixture: ReturnType<typeof setup>['fixture']) {
+    fixture.detectChanges();
+    await fixture.whenStable();
+    fixture.detectChanges();
+    (fixture.nativeElement as HTMLElement).querySelector<HTMLButtonElement>('button.queue-row')!.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+  }
+
+  it('approve asks for confirmation naming the signed-in Reviewer before it calls the API', async () => {
+    const approve = vi.fn().mockResolvedValue({ outcome: 'approved', decidedAt: new Date().toISOString() });
+    const { fixture } = setup({
+      listPending: vi.fn().mockResolvedValue({ outcome: 'ok', result: { requests: [row()], refreshedAt: new Date().toISOString() } }),
+      getDetail: vi.fn().mockResolvedValue({ outcome: 'ok', result: detail() }),
+      approve,
+    });
+    await selectFirstRow(fixture);
+
+    const el = fixture.nativeElement as HTMLElement;
+    el.querySelector<HTMLButtonElement>('button.approve')!.click();
+    fixture.detectChanges();
+    expect(el.textContent).toContain('Alice Reviewer');
+    expect(approve).not.toHaveBeenCalled();
+
+    el.querySelectorAll<HTMLButtonElement>('button.approve').forEach((button) => {
+      if (button.textContent?.includes('Confirm approve')) button.click();
+    });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(approve).toHaveBeenCalledWith('r1');
+    expect(el.textContent).toContain('Approved by you');
+    expect(el.textContent).toContain('in-flight list');
+  });
+
+  it('reject refuses a note under 10 characters without calling the API, then submits a valid one', async () => {
+    const reject = vi.fn().mockResolvedValue({ outcome: 'rejected', decidedAt: new Date().toISOString() });
+    const { fixture } = setup({
+      listPending: vi.fn().mockResolvedValue({ outcome: 'ok', result: { requests: [row()], refreshedAt: new Date().toISOString() } }),
+      getDetail: vi.fn().mockResolvedValue({ outcome: 'ok', result: detail() }),
+      reject,
+    });
+    await selectFirstRow(fixture);
+
+    const el = fixture.nativeElement as HTMLElement;
+    el.querySelector<HTMLButtonElement>('button.reject')!.click();
+    fixture.detectChanges();
+
+    const textarea = el.querySelector<HTMLTextAreaElement>('textarea#reject-note')!;
+    textarea.value = 'short';
+    textarea.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    el.querySelector<HTMLButtonElement>('form.reject button[type="submit"]')!.click();
+    fixture.detectChanges();
+
+    expect(reject).not.toHaveBeenCalled();
+    expect(el.textContent).toContain('At least 10 characters.');
+
+    textarea.value = 'Could not confirm the workplace by telephone.';
+    textarea.dispatchEvent(new Event('input'));
+    fixture.detectChanges();
+    el.querySelector<HTMLButtonElement>('form.reject button[type="submit"]')!.click();
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(reject).toHaveBeenCalledWith('r1', 'Could not confirm the workplace by telephone.');
+    expect(el.textContent).toContain('Rejected');
+    expect(el.textContent).toContain('told no reason');
+  });
+
+  it('never auto-advances to another pending Request after a Decision', async () => {
+    const approve = vi.fn().mockResolvedValue({ outcome: 'approved', decidedAt: new Date().toISOString() });
+    const getDetail = vi.fn().mockResolvedValue({ outcome: 'ok', result: detail() });
+    const { fixture } = setup({
+      listPending: vi.fn().mockResolvedValue({
+        outcome: 'ok',
+        result: { requests: [row({ id: 'r1' }), row({ id: 'r2', referenceNumber: 'REQ-2569-0002' })], refreshedAt: new Date().toISOString() },
+      }),
+      getDetail,
+      approve,
+    });
+    await selectFirstRow(fixture);
+
+    const el = fixture.nativeElement as HTMLElement;
+    el.querySelector<HTMLButtonElement>('button.approve')!.click();
+    fixture.detectChanges();
+    el.querySelectorAll<HTMLButtonElement>('button.approve').forEach((button) => {
+      if (button.textContent?.includes('Confirm approve')) button.click();
+    });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    // getDetail was only ever asked about the decided row — nothing here
+    // ever picks up r2 on its own.
+    expect(getDetail).toHaveBeenCalledTimes(1);
+    expect(getDetail).toHaveBeenCalledWith('r1');
+    expect(el.querySelectorAll('li button.queue-row')).toHaveLength(1);
+    expect(el.textContent).toContain('Approved by you');
+  });
+
+  it('shows the request expired while reviewing, and removes it from the pending list', async () => {
+    const approve = vi.fn().mockResolvedValue({ outcome: 'expired', expiredAt: new Date().toISOString() });
+    const { fixture } = setup({
+      listPending: vi.fn().mockResolvedValue({ outcome: 'ok', result: { requests: [row()], refreshedAt: new Date().toISOString() } }),
+      getDetail: vi.fn().mockResolvedValue({ outcome: 'ok', result: detail() }),
+      approve,
+    });
+    await selectFirstRow(fixture);
+
+    const el = fixture.nativeElement as HTMLElement;
+    el.querySelector<HTMLButtonElement>('button.approve')!.click();
+    fixture.detectChanges();
+    el.querySelectorAll<HTMLButtonElement>('button.approve').forEach((button) => {
+      if (button.textContent?.includes('Confirm approve')) button.click();
+    });
+    await fixture.whenStable();
+    fixture.detectChanges();
+
+    expect(el.textContent).toContain('expired while you were reviewing it');
+    expect(el.querySelectorAll('li button.queue-row')).toHaveLength(0);
+  });
+
+  it('cancelling a confirm returns to the plain action buttons without calling the API', async () => {
+    const approve = vi.fn();
+    const { fixture } = setup({
+      listPending: vi.fn().mockResolvedValue({ outcome: 'ok', result: { requests: [row()], refreshedAt: new Date().toISOString() } }),
+      getDetail: vi.fn().mockResolvedValue({ outcome: 'ok', result: detail() }),
+      approve,
+    });
+    await selectFirstRow(fixture);
+
+    const el = fixture.nativeElement as HTMLElement;
+    el.querySelector<HTMLButtonElement>('button.approve')!.click();
+    fixture.detectChanges();
+    el.querySelector<HTMLButtonElement>('button.cancel')!.click();
+    fixture.detectChanges();
+
+    expect(approve).not.toHaveBeenCalled();
+    expect(el.textContent).toContain('Approve and release');
   });
 
   it('emits signOutRequested when the header sign-out button is pressed', async () => {
