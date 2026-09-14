@@ -3,6 +3,7 @@ import { UpstreamClient } from "./upstream-client.js";
 import {
   UpstreamAuthError,
   UpstreamMalformedResponseError,
+  UpstreamProbeExhaustedError,
   UpstreamRetriesExhaustedError,
   UpstreamTimeoutError,
 } from "./upstream-client-errors.js";
@@ -121,6 +122,47 @@ describe("UpstreamClient against the fake upstream harness", () => {
 
     expect(result.totalItems).toBe(7);
     expect(result.rows).toHaveLength(2);
+  });
+
+  describe("probeDiseaseGroup against the fake harness (§5.4)", () => {
+    it("makes exactly one call to the default fixture and reads its total_items", async () => {
+      const result = await client().probeDiseaseGroup({
+        groupCode: 202,
+        startDate: "2026-01-01",
+        endDate: "2026-01-08",
+      });
+
+      expect(result.totalItems).toBe(2);
+      expect(result.callsMade).toBe(1);
+      expect(result.requestId).toBeDefined();
+    });
+
+    it("retries a 500 on page 1 once, then succeeds", async () => {
+      const result = await client().probeDiseaseGroup({
+        groupCode: FAKE_UPSTREAM_SCENARIOS.probeRetryThenSucceed,
+        startDate: "2026-01-01",
+        endDate: "2026-01-08",
+      });
+
+      expect(result.totalItems).toBe(3);
+      expect(result.callsMade).toBe(2);
+    });
+
+    it("abandons after 3 attempts against a page that always truncates", async () => {
+      const error = await client()
+        .probeDiseaseGroup({
+          groupCode: FAKE_UPSTREAM_SCENARIOS.truncatedPage,
+          startDate: "2026-01-01",
+          endDate: "2026-01-08",
+        })
+        .catch((e) => e);
+
+      expect(error).toBeInstanceOf(UpstreamProbeExhaustedError);
+      expect(error.attempts).toHaveLength(3);
+      for (const attempt of error.attempts) {
+        expect(attempt.errorKind).toBe("malformed_response");
+      }
+    });
   });
 
   describe("§17.1: no case data in a log", () => {

@@ -45,9 +45,9 @@ export interface RequestDetail {
   isActionable: boolean;
   requestsAhead: number;
   /**
-   * Honest placeholder (spec §10.2 / ticket #65): the Probe that fills this
-   * in is a later slice. `null` here, never a fabricated number, "pending",
-   * or "failed" — those three real states arrive with the Probe.
+   * The Probe's single summed number (§5.4, §10.2) — or `"pending"` while it
+   * is still running, or `"failed"` if it was abandoned. A Decision waits on
+   * none of the three: approve is fully usable in every state.
    */
-  probeRowCount: null;
+  probeRowCount: number | "pending" | "failed";
 }

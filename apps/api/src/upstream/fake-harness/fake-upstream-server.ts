@@ -30,6 +30,8 @@ export const FAKE_UPSTREAM_SCENARIOS = {
   authExpiryMidJob: 9503,
   /** total_items disagrees between page 1 and page 2 on the first attempt, then stabilises. */
   shiftingTotalItems: 9504,
+  /** Page 1 returns 500 on the first attempt only, then succeeds — for the Probe's one-page retry-then-succeed path. */
+  probeRetryThenSucceed: 9505,
 } as const;
 
 const DISEASE_GROUPS_PATH = "/api/d506/v1/disease-groups";
@@ -75,6 +77,7 @@ function envelope(
   totalPages: number,
   totalItems: number,
   data: unknown[],
+  pageSize = 10_000,
 ) {
   return {
     status: true,
@@ -82,7 +85,7 @@ function envelope(
     data,
     meta: {
       page,
-      page_size: 10_000,
+      page_size: pageSize,
       total_items: totalItems,
       total_pages: totalPages,
       has_next: page < totalPages,
@@ -112,6 +115,7 @@ export function startFakeUpstreamServer(
 
     const groupCode = Number(url.searchParams.get("group_code"));
     const page = Number(url.searchParams.get("page"));
+    const pageSize = Number(url.searchParams.get("page_size")) || 10_000;
     const sentinel = req.headers["x-fixture-sentinel"];
     const sentinelValue = Array.isArray(sentinel) ? sentinel[0] : sentinel;
 
@@ -129,7 +133,7 @@ export function startFakeUpstreamServer(
           sendJson(
             res,
             200,
-            envelope(1, 2, 2, [sentinelRow(sentinelValue, 1)]),
+            envelope(1, 2, 2, [sentinelRow(sentinelValue, 1)], pageSize),
           );
           return;
         }
@@ -140,7 +144,11 @@ export function startFakeUpstreamServer(
           });
           return;
         }
-        sendJson(res, 200, envelope(2, 2, 2, [sentinelRow(sentinelValue, 2)]));
+        sendJson(
+          res,
+          200,
+          envelope(2, 2, 2, [sentinelRow(sentinelValue, 2)], pageSize),
+        );
         return;
       }
 
@@ -150,7 +158,7 @@ export function startFakeUpstreamServer(
             sendJson(
               res,
               200,
-              envelope(1, 1, 1, [sentinelRow(sentinelValue, 1)]),
+              envelope(1, 1, 1, [sentinelRow(sentinelValue, 1)], pageSize),
             ),
           SLOW_PAGE_DELAY_MS,
         );
@@ -164,7 +172,7 @@ export function startFakeUpstreamServer(
           "x-process-time-ms": "3500",
         });
         const wholeBody = JSON.stringify(
-          envelope(1, 1, 1, [sentinelRow(sentinelValue, 1)]),
+          envelope(1, 1, 1, [sentinelRow(sentinelValue, 1)], pageSize),
         );
         res.end(wholeBody.slice(0, Math.floor(wholeBody.length / 2)));
         return;
@@ -175,7 +183,7 @@ export function startFakeUpstreamServer(
           sendJson(
             res,
             200,
-            envelope(1, 2, 2, [sentinelRow(sentinelValue, 1)]),
+            envelope(1, 2, 2, [sentinelRow(sentinelValue, 1)], pageSize),
           );
           return;
         }
@@ -192,11 +200,37 @@ export function startFakeUpstreamServer(
           sendJson(
             res,
             200,
-            envelope(1, 2, stable ? 7 : 5, [sentinelRow(sentinelValue, 1)]),
+            envelope(
+              1,
+              2,
+              stable ? 7 : 5,
+              [sentinelRow(sentinelValue, 1)],
+              pageSize,
+            ),
           );
           return;
         }
-        sendJson(res, 200, envelope(2, 2, 7, [sentinelRow(sentinelValue, 2)]));
+        sendJson(
+          res,
+          200,
+          envelope(2, 2, 7, [sentinelRow(sentinelValue, 2)], pageSize),
+        );
+        return;
+      }
+
+      case FAKE_UPSTREAM_SCENARIOS.probeRetryThenSucceed: {
+        if (attempt <= 1) {
+          sendJson(res, 500, {
+            status: false,
+            message: `Internal Server Error ${sentinelValue ?? ""}`.trim(),
+          });
+          return;
+        }
+        sendJson(
+          res,
+          200,
+          envelope(1, 1, 3, [sentinelRow(sentinelValue, 1)], pageSize),
+        );
         return;
       }
 
@@ -205,11 +239,15 @@ export function startFakeUpstreamServer(
           sendJson(
             res,
             200,
-            envelope(1, 2, 2, [sentinelRow(sentinelValue, 1)]),
+            envelope(1, 2, 2, [sentinelRow(sentinelValue, 1)], pageSize),
           );
           return;
         }
-        sendJson(res, 200, envelope(2, 2, 2, [sentinelRow(sentinelValue, 2)]));
+        sendJson(
+          res,
+          200,
+          envelope(2, 2, 2, [sentinelRow(sentinelValue, 2)], pageSize),
+        );
         return;
       }
     }

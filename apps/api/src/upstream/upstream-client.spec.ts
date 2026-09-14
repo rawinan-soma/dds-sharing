@@ -1,10 +1,15 @@
 import { describe, it, expect, vi } from "vitest";
-import { UpstreamClient, DEFAULT_PAGE_SIZE } from "./upstream-client.js";
+import {
+  UpstreamClient,
+  DEFAULT_PAGE_SIZE,
+  MIN_PAGE_SIZE,
+} from "./upstream-client.js";
 import {
   UpstreamAuthError,
   UpstreamGatewayTimeoutError,
   UpstreamMetaMismatchError,
   UpstreamPageTooLargeError,
+  UpstreamProbeExhaustedError,
   UpstreamRangeError,
   UpstreamRetriesExhaustedError,
   UpstreamTimeoutError,
@@ -421,5 +426,184 @@ describe("UpstreamClient.fetchDiseaseGroup", () => {
       page: 1,
       totalItems: 42,
     });
+  });
+});
+
+describe("UpstreamClient.probeDiseaseGroup", () => {
+  it("makes exactly one call, page 1 only, and reads totalItems from it alone", async () => {
+    const fetchFn = vi.fn(async () =>
+      jsonResponse(
+        envelope({
+          page: 1,
+          page_size: MIN_PAGE_SIZE,
+          total_items: 42,
+          total_pages: 5,
+          has_next: true,
+        }),
+        { headers: { "x-request-id": "probe-req-1" } },
+      ),
+    );
+    const client = new UpstreamClient({
+      baseUrl: "https://upstream.example",
+      token: "t",
+      fetchFn,
+    });
+
+    const result = await client.probeDiseaseGroup(baseParams);
+
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+    const [url] = fetchFn.mock.calls[0] as [URL];
+    expect(url.searchParams.get("page")).toBe("1");
+    expect(url.searchParams.get("page_size")).toBe(String(MIN_PAGE_SIZE));
+    expect(result).toEqual({
+      totalItems: 42,
+      requestId: "probe-req-1",
+      callsMade: 1,
+    });
+  });
+
+  it("sends the exact page_size given, defaulting to MIN_PAGE_SIZE (20)", async () => {
+    const fetchFn = vi.fn(async () =>
+      jsonResponse(envelope({ page_size: MIN_PAGE_SIZE })),
+    );
+    const client = new UpstreamClient({
+      baseUrl: "https://upstream.example",
+      token: "t",
+      fetchFn,
+    });
+
+    await client.probeDiseaseGroup(baseParams);
+
+    const [url] = fetchFn.mock.calls[0] as [URL];
+    expect(url.searchParams.get("page_size")).toBe("20");
+  });
+
+  it("never emits a page_size below 20, and never calls fetch to do it", async () => {
+    const fetchFn = vi.fn();
+    const client = new UpstreamClient({
+      baseUrl: "https://upstream.example",
+      token: "t",
+      fetchFn,
+    });
+
+    await expect(
+      client.probeDiseaseGroup({ ...baseParams, pageSize: 19 }),
+    ).rejects.toThrow(RangeError);
+    expect(fetchFn).not.toHaveBeenCalled();
+  });
+
+  it("throws UpstreamProbeExhaustedError with one attempt for a non-retryable rejection", async () => {
+    const fetchFn = vi.fn(async () =>
+      jsonResponse(
+        { status: true, message: "Token invalid" },
+        { status: 401, headers: { "x-request-id": "probe-req-401" } },
+      ),
+    );
+    const client = new UpstreamClient({
+      baseUrl: "https://upstream.example",
+      token: "t",
+      fetchFn,
+    });
+
+    const error = await client.probeDiseaseGroup(baseParams).catch((e) => e);
+
+    expect(error).toBeInstanceOf(UpstreamProbeExhaustedError);
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+    expect((error as UpstreamProbeExhaustedError).attempts).toEqual([
+      { errorKind: "auth_error", requestId: "probe-req-401" },
+    ]);
+  });
+
+  it("retries a retryable failure then succeeds, and callsMade counts every physical call", async () => {
+    const fetchFn = vi
+      .fn()
+      .mockResolvedValueOnce(
+        jsonResponse(
+          { status: false, message: "Gateway Timeout" },
+          { status: 504, headers: { "x-request-id": "probe-req-fail" } },
+        ),
+      )
+      .mockResolvedValueOnce(
+        jsonResponse(envelope({ total_items: 7, page_size: MIN_PAGE_SIZE }), {
+          headers: { "x-request-id": "probe-req-succeed" },
+        }),
+      );
+    const client = new UpstreamClient({
+      baseUrl: "https://upstream.example",
+      token: "t",
+      fetchFn,
+      retryBaseDelayMs: 1,
+    });
+
+    const result = await client.probeDiseaseGroup(baseParams);
+
+    expect(fetchFn).toHaveBeenCalledTimes(2);
+    expect(result).toEqual({
+      totalItems: 7,
+      requestId: "probe-req-succeed",
+      callsMade: 2,
+    });
+  });
+
+  it("abandons after 3 attempts, carrying every attempt's errorKind and x-request-id", async () => {
+    const fetchFn = vi.fn(async () =>
+      jsonResponse(
+        { status: false, message: "Gateway Timeout" },
+        { status: 504, headers: { "x-request-id": "probe-req-504" } },
+      ),
+    );
+    const client = new UpstreamClient({
+      baseUrl: "https://upstream.example",
+      token: "t",
+      fetchFn,
+      retryBaseDelayMs: 1,
+    });
+
+    const error = await client.probeDiseaseGroup(baseParams).catch((e) => e);
+
+    expect(error).toBeInstanceOf(UpstreamProbeExhaustedError);
+    expect(fetchFn).toHaveBeenCalledTimes(3);
+    expect((error as UpstreamProbeExhaustedError).attempts).toEqual([
+      { errorKind: "gateway_timeout", requestId: "probe-req-504" },
+      { errorKind: "gateway_timeout", requestId: "probe-req-504" },
+      { errorKind: "gateway_timeout", requestId: "probe-req-504" },
+    ]);
+  });
+
+  it("treats a mismatched meta echo as an abandoned probe, not retried", async () => {
+    const fetchFn = vi.fn(async () => jsonResponse(envelope({ page: 2 })));
+    const client = new UpstreamClient({
+      baseUrl: "https://upstream.example",
+      token: "t",
+      fetchFn,
+    });
+
+    const error = await client.probeDiseaseGroup(baseParams).catch((e) => e);
+
+    expect(error).toBeInstanceOf(UpstreamProbeExhaustedError);
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+  });
+
+  it("never walks to page 2, even when has_next is true", async () => {
+    const fetchFn = vi.fn(async () =>
+      jsonResponse(
+        envelope({
+          page_size: MIN_PAGE_SIZE,
+          has_next: true,
+          total_pages: 99,
+          total_items: 3196,
+        }),
+      ),
+    );
+    const client = new UpstreamClient({
+      baseUrl: "https://upstream.example",
+      token: "t",
+      fetchFn,
+    });
+
+    const result = await client.probeDiseaseGroup(baseParams);
+
+    expect(fetchFn).toHaveBeenCalledTimes(1);
+    expect(result.totalItems).toBe(3196);
   });
 });

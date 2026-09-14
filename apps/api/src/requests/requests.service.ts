@@ -8,6 +8,7 @@ import {
   requestEvent,
   referenceNumberCounter,
 } from "../db/schema.js";
+import { ProbeService } from "../probe/probe.service.js";
 import { DISEASE_GROUPS } from "../reference-data/disease-groups.js";
 import {
   UNFINISHED_REQUEST_STATES,
@@ -57,7 +58,10 @@ type Tx = Parameters<Parameters<AppDb["db"]["transaction"]>[0]>[0];
 
 @Injectable()
 export class RequestsService {
-  constructor(@Inject(APP_DB) private readonly appDb: AppDb) {}
+  constructor(
+    @Inject(APP_DB) private readonly appDb: AppDb,
+    private readonly probeService: ProbeService,
+  ) {}
 
   async submit(
     input: SubmitRequestInput,
@@ -88,91 +92,113 @@ export class RequestsService {
     // near-simultaneous submits from the same origin against each other, so
     // a double-posted form can no longer slip both copies past the §4.8
     // duplicate check in the race between one's SELECT and its own INSERT.
-    return db.transaction(async (tx) => {
-      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${meta.ip}))`);
+    let insertedId: string | undefined;
 
-      const [duplicate] = await tx
-        .select({
-          referenceNumber: request.referenceNumber,
-          state: request.state,
-          submittedAt: request.submittedAt,
-        })
-        .from(request)
-        .innerJoin(
-          requestEvent,
-          and(
-            eq(requestEvent.requestId, request.id),
-            eq(requestEvent.type, "submitted"),
-          ),
-        )
-        .where(
-          and(
-            eq(requestEvent.ip, meta.ip),
-            inArray(request.state, UNFINISHED_REQUEST_STATES),
-          ),
-        )
-        .orderBy(desc(request.submittedAt))
-        .limit(1);
+    const outcome = await db.transaction(
+      async (tx): Promise<DuplicateOutcome | SubmittedOutcome> => {
+        await tx.execute(
+          sql`SELECT pg_advisory_xact_lock(hashtext(${meta.ip}))`,
+        );
 
-      if (duplicate) {
+        const [duplicate] = await tx
+          .select({
+            referenceNumber: request.referenceNumber,
+            state: request.state,
+            submittedAt: request.submittedAt,
+          })
+          .from(request)
+          .innerJoin(
+            requestEvent,
+            and(
+              eq(requestEvent.requestId, request.id),
+              eq(requestEvent.type, "submitted"),
+            ),
+          )
+          .where(
+            and(
+              eq(requestEvent.ip, meta.ip),
+              inArray(request.state, UNFINISHED_REQUEST_STATES),
+            ),
+          )
+          .orderBy(desc(request.submittedAt))
+          .limit(1);
+
+        if (duplicate) {
+          return {
+            kind: "duplicate",
+            existingReferenceNumber: duplicate.referenceNumber,
+            existingState: duplicate.state,
+            existingSubmittedAt: duplicate.submittedAt,
+          };
+        }
+
+        const referenceNumber = await this.nextReferenceNumber(tx, now);
+
+        const [inserted] = await tx
+          .insert(request)
+          .values({
+            referenceNumber,
+            diseaseGroupId: value.diseaseGroupId,
+            diseaseGroupNameTh: value.diseaseGroupNameTh,
+            reportCodes: value.reportCodes,
+            fromDate: value.from,
+            toDate: value.to,
+            areaKind: value.area.kind,
+            areaProvinces:
+              value.area.kind === "province"
+                ? [value.area.provinceId]
+                : value.area.kind === "region"
+                  ? value.area.provinces.map((p) => p.provinceId)
+                  : [],
+            submittedAt: now,
+          })
+          .returning({ id: request.id });
+        insertedId = inserted.id;
+
+        await tx.insert(requestContact).values({
+          requestId: inserted.id,
+          name: value.contact.name,
+          surname: value.contact.surname,
+          tel: value.contact.tel,
+          email: value.contact.email,
+          workplace: value.contact.workplace,
+        });
+
+        await tx.insert(requestEvent).values({
+          requestId: inserted.id,
+          type: "submitted",
+          actorType: "requester",
+          ip: meta.ip,
+          userAgent: meta.userAgent,
+          occurredAt: now,
+        });
+
         return {
-          kind: "duplicate",
-          existingReferenceNumber: duplicate.referenceNumber,
-          existingState: duplicate.state,
-          existingSubmittedAt: duplicate.submittedAt,
-        };
-      }
-
-      const referenceNumber = await this.nextReferenceNumber(tx, now);
-
-      const [inserted] = await tx
-        .insert(request)
-        .values({
+          kind: "submitted",
           referenceNumber,
-          diseaseGroupId: value.diseaseGroupId,
           diseaseGroupNameTh: value.diseaseGroupNameTh,
-          reportCodes: value.reportCodes,
-          fromDate: value.from,
-          toDate: value.to,
-          areaKind: value.area.kind,
-          areaProvinces:
-            value.area.kind === "province"
-              ? [value.area.provinceId]
-              : value.area.kind === "region"
-                ? value.area.provinces.map((p) => p.provinceId)
-                : [],
-          submittedAt: now,
-        })
-        .returning({ id: request.id });
+          from: value.from,
+          to: value.to,
+          days: value.days,
+          area: value.area,
+        };
+      },
+    );
 
-      await tx.insert(requestContact).values({
-        requestId: inserted.id,
-        name: value.contact.name,
-        surname: value.contact.surname,
-        tel: value.contact.tel,
-        email: value.contact.email,
-        workplace: value.contact.workplace,
-      });
-
-      await tx.insert(requestEvent).values({
-        requestId: inserted.id,
-        type: "submitted",
-        actorType: "requester",
-        ip: meta.ip,
-        userAgent: meta.userAgent,
-        occurredAt: now,
-      });
-
-      return {
-        kind: "submitted",
-        referenceNumber,
-        diseaseGroupNameTh: value.diseaseGroupNameTh,
+    // Off the synchronous submit path (§5.4): fired once the transaction has
+    // committed — never inside it, or the Probe could read a Request that a
+    // rollback later erases — and never awaited, so submit returns before
+    // any of its upstream calls does. `ProbeService.run` never rejects.
+    if (outcome.kind === "submitted" && insertedId) {
+      this.probeService.run({
+        requestId: insertedId,
+        reportCodes: value.reportCodes,
         from: value.from,
         to: value.to,
-        days: value.days,
-        area: value.area,
-      };
-    });
+      });
+    }
+
+    return outcome;
   }
 
   private async nextReferenceNumber(tx: Tx, at: Date): Promise<string> {

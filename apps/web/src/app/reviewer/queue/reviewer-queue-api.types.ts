@@ -46,5 +46,5 @@ export interface RequestDetail {
   timeRemainingLabel: string;
   isActionable: boolean;
   requestsAhead: number;
-  probeRowCount: null;
+  probeRowCount: number | 'pending' | 'failed';
 }

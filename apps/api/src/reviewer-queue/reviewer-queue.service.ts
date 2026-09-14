@@ -1,11 +1,21 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { asc, eq } from "drizzle-orm";
+import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { APP_DB, type AppDb } from "../db/app-db.module.js";
-import { province, request, requestContact } from "../db/schema.js";
+import {
+  province,
+  request,
+  requestContact,
+  requestEvent,
+} from "../db/schema.js";
+import type { ProbePerformedPayload } from "../db/events.js";
 import type { AreaKind } from "../requests/request-state.js";
 import { validateSpan } from "../requests/span.js";
 import { addBusinessHours, decisionWindowView } from "./business-hours.js";
-import type { AreaView, QueueRow, RequestDetail } from "./reviewer-queue.types.js";
+import type {
+  AreaView,
+  QueueRow,
+  RequestDetail,
+} from "./reviewer-queue.types.js";
 
 // Request expiry at 24 business hours (spec §10.4): a predicate computed at
 // read time, never a scheduled state change, so a Request past this
@@ -97,6 +107,7 @@ export class ReviewerQueueService {
     if (!row) return null;
 
     const area = await this.areaViewOf(row.areaKind, row.areaProvinces);
+    const probeRowCount = await this.probeRowCountOf(id);
 
     return {
       id: row.id,
@@ -115,18 +126,54 @@ export class ReviewerQueueService {
       days: validateSpan(row.fromDate, row.toDate).days,
       area,
       submittedAt: row.submittedAt.toISOString(),
-      decisionDueAt: addBusinessHours(row.submittedAt, DECISION_WINDOW_HOURS).toISOString(),
+      decisionDueAt: addBusinessHours(
+        row.submittedAt,
+        DECISION_WINDOW_HOURS,
+      ).toISOString(),
       ...decisionWindowView(row.submittedAt, now, DECISION_WINDOW_HOURS),
       requestsAhead,
-      probeRowCount: null,
+      probeRowCount,
     };
+  }
+
+  /**
+   * `"pending"` before the Probe has recorded anything, `"failed"` once it
+   * was abandoned, or its summed total once it landed (§5.4) — read from the
+   * audit spine, never from a column on `request` itself: `app_role` holds
+   * no UPDATE grant on that table (§12.3), so nothing but an insert-only
+   * event stream could carry this forward.
+   */
+  private async probeRowCountOf(
+    id: string,
+  ): Promise<number | "pending" | "failed"> {
+    const { db } = this.appDb;
+    const [event] = await db
+      .select({ type: requestEvent.type, payload: requestEvent.payload })
+      .from(requestEvent)
+      .where(
+        and(
+          eq(requestEvent.requestId, id),
+          inArray(requestEvent.type, ["probe_performed", "probe_failed"]),
+        ),
+      )
+      .orderBy(desc(requestEvent.id))
+      .limit(1);
+
+    if (!event) return "pending";
+    if (event.type === "probe_failed") return "failed";
+
+    return (event.payload as ProbePerformedPayload).totalItems;
   }
 
   // Never the bare region (§4.4, §12.3): a region Request stores the
   // province list it expanded to at submit, so the region number shown here
   // is derived from that frozen list's own health region, not stored raw.
-  private async areaViewOf(kind: AreaKind, areaProvinces: string[]): Promise<AreaView> {
-    if (kind === "national") return { kind: "national", label: "Whole country" };
+  private async areaViewOf(
+    kind: AreaKind,
+    areaProvinces: string[],
+  ): Promise<AreaView> {
+    if (kind === "national")
+      return { kind: "national", label: "Whole country" };
 
     const { db } = this.appDb;
     const [first] = await db
@@ -137,6 +184,9 @@ export class ReviewerQueueService {
     if (kind === "province") {
       return { kind: "province", label: first?.nameTh ?? areaProvinces[0] };
     }
-    return { kind: "region", label: `Health region ${first?.healthRegion ?? "?"}` };
+    return {
+      kind: "region",
+      label: `Health region ${first?.healthRegion ?? "?"}`,
+    };
   }
 }
