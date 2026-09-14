@@ -1,0 +1,66 @@
+<mxGraphModel dx="1200" dy="900" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1000" pageHeight="700" math="0" shadow="0" adaptiveColors="auto">
+  <root>
+    <mxCell id="0"/>
+    <mxCell id="1" parent="0"/>
+    <mxCell id="gScheme" value="DDS scheme (already built)" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;fontSize=16;fontStyle=1;fillColor=none;strokeColor=#333333;dashed=1;" vertex="1" parent="1">
+      <mxGeometry x="40" y="40" width="340" height="560" as="geometry"/>
+    </mxCell>
+    <mxCell id="gSharing" value="DDS Sharing (this product)" style="rounded=0;whiteSpace=wrap;html=1;verticalAlign=top;fontSize=16;fontStyle=1;fillColor=none;strokeColor=#333333;" vertex="1" parent="1">
+      <mxGeometry x="620" y="40" width="340" height="560" as="geometry"/>
+    </mxCell>
+    <mxCell id="sources" value="HIS API · Semi-Offline API&#10;DDS Portal key-in · vendor APIs" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+      <mxGeometry x="70" y="100" width="280" height="70" as="geometry"/>
+    </mxCell>
+    <mxCell id="hub" value="DDS collection / Data Hub" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="70" y="290" width="280" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="analytics" value="DDS analytics" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+      <mxGeometry x="70" y="480" width="280" height="60" as="geometry"/>
+    </mxCell>
+    <mxCell id="eSrcHub" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;" edge="1" parent="1" source="sources" target="hub">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="eHubAn" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;" edge="1" parent="1" source="hub" target="analytics">
+      <mxGeometry relative="1" as="geometry"/>
+    </mxCell>
+    <mxCell id="s1" value="Requester submits a Request" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#333333;" vertex="1" parent="1">
+      <mxGeometry x="650" y="90" width="280" height="40" as="geometry"/>
+    </mxCell>
+    <mxCell id="s2" value="Reviewer decides it" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#333333;" vertex="1" parent="1">
+      <mxGeometry x="650" y="150" width="280" height="40" as="geometry"/>
+    </mxCell>
+    <mxCell id="s3" value="Extractor fetches it live" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontStyle=1;" vertex="1" parent="1">
+      <mxGeometry x="650" y="210" width="280" height="40" as="geometry"/>
+    </mxCell>
+    <mxCell id="s4" value="De-identifier projects it" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#333333;" vertex="1" parent="1">
+      <mxGeometry x="650" y="270" width="280" height="40" as="geometry"/>
+    </mxCell>
+    <mxCell id="s5" value="Writer emits one CSV" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#333333;" vertex="1" parent="1">
+      <mxGeometry x="650" y="330" width="280" height="40" as="geometry"/>
+    </mxCell>
+    <mxCell id="s6" value="Delivery emails a token" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#333333;" vertex="1" parent="1">
+      <mxGeometry x="650" y="390" width="280" height="40" as="geometry"/>
+    </mxCell>
+    <mxCell id="s7" value="Object dies at 72 h" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+      <mxGeometry x="650" y="450" width="280" height="40" as="geometry"/>
+    </mxCell>
+    <mxCell id="s8" value="Record survives for ever" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+      <mxGeometry x="650" y="510" width="280" height="40" as="geometry"/>
+    </mxCell>
+    <mxCell id="e12" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;" edge="1" parent="1" source="s1" target="s2"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="e23" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;" edge="1" parent="1" source="s2" target="s3"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="e34" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;" edge="1" parent="1" source="s3" target="s4"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="e45" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;" edge="1" parent="1" source="s4" target="s5"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="e56" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;" edge="1" parent="1" source="s5" target="s6"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="e67" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;" edge="1" parent="1" source="s6" target="s7"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="e78" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;" edge="1" parent="1" source="s7" target="s8"><mxGeometry relative="1" as="geometry"/></mxCell>
+    <mxCell id="eApi" value="GET /api/d506/v1/disease-groups&#10;bearer token, one per service&#10;live, per Request — nothing is copied" style="edgeStyle=orthogonalEdgeStyle;rounded=0;html=1;endArrow=block;endFill=1;strokeColor=#6c8ebf;strokeWidth=2;fontColor=#1f4e79;labelBackgroundColor=#ffffff;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" edge="1" parent="1" source="hub" target="s3">
+      <mxGeometry relative="1" as="geometry">
+        <Array as="points"><mxPoint x="500" y="320"/><mxPoint x="500" y="230"/></Array>
+      </mxGeometry>
+    </mxCell>
+    <mxCell id="note" value="Beside the DDS scheme, not inside it: DDS Sharing is a client of the upstream API and holds no case rows of its own." style="text;html=1;align=center;verticalAlign=middle;whiteSpace=wrap;fontStyle=2;fontSize=11;fontColor=#555555;" vertex="1" parent="1">
+      <mxGeometry x="390" y="440" width="220" height="70" as="geometry"/>
+    </mxCell>
+  </root>
+</mxGraphModel>

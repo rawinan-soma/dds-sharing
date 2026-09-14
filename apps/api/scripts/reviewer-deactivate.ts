@@ -1,5 +1,4 @@
 import { pathToFileURL } from "node:url";
-import { userInfo } from "node:os";
 import type { NodePgDatabase } from "drizzle-orm/node-postgres";
 import * as schema from "../src/db/schema.js";
 import { createDb } from "../src/db/client.js";
@@ -14,7 +13,6 @@ export const MINIMUM_ACTIVE_REVIEWERS = 2;
 
 export interface DeactivateReviewerInput {
   username: string;
-  operator: string;
   force: boolean;
 }
 
@@ -40,7 +38,7 @@ export async function deactivateReviewerCli(
   await deactivateReviewer(db, reviewer.id);
   // Deactivation invalidates live sessions immediately (spec §17.5) — a Postgres query, not a wait for the session to expire on its own.
   await deleteAllSessionsForReviewer(db, reviewer.id);
-  await recordReviewerEvent(db, reviewer.id, { type: "deactivated", payload: { operator: input.operator, force: input.force } });
+  await recordReviewerEvent(db, reviewer.id, { type: "deactivated", payload: { force: input.force } });
 
   return { outcome: "deactivated" };
 }
@@ -49,7 +47,6 @@ async function main() {
   const args = process.argv.slice(2);
   const force = args.includes("--force");
   const username = args.find((arg) => !arg.startsWith("--"));
-  const operator = process.env.REVIEWER_CLI_OPERATOR || userInfo().username;
 
   if (!username) {
     console.error("Usage: reviewer-deactivate <username> [--force]");
@@ -59,7 +56,7 @@ async function main() {
 
   const { db, pool } = createDb(process.env.DATABASE_URL);
   try {
-    const result = await deactivateReviewerCli(db, { username, operator, force });
+    const result = await deactivateReviewerCli(db, { username, force });
 
     switch (result.outcome) {
       case "not_found":

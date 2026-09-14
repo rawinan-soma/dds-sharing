@@ -1,3 +1,20 @@
+.docname {Software Requirements Specification — DDS Sharing}
+.docdescription {Derived SRS for DDS Sharing: a web application for requesting de-identified, case-level extracts of Thai DDC DDS occupational- and environmental-disease surveillance data.}
+.doctype {paged}
+.doclang {English}
+.theme {paperwhite} layout:{latex}
+
+.pageformat size:{a4} margin:{2cm}
+
+.pagemargin {bottomcenter}
+    .currentpage / .totalpages
+
+.pagemargin {bottomleft}
+    .lastheading depth:{2}
+
+.nonumbering
+.autopagebreak maxdepth:{2}
+
 # Software Requirements Specification — DDS Sharing
 
 **Product:** DDS Sharing (`DDS-ENVOCC-Sharing`) — a web application for requesting
@@ -9,15 +26,18 @@ occupational- and environmental-disease surveillance data.
 | **SRS version** | 1.0 |
 | **Date** | 2026-09-03 |
 | **Status** | Derived. Adds no requirement that is not already decided in the repository. |
-| **Derived from** | [`docs/spec.md`](spec.md) v1.1 (2026-09-02) · [`CONTEXT.md`](../CONTEXT.md) · [`docs/adr/0001`–`0008`](adr/) · [`docs/disease-groups.md`](disease-groups.md) · [`docs/research/003-disease-group-codes.md`](research/003-disease-group-codes.md) · [`docs/project-charter.md`](project-charter.md) · closed issues [#2](https://github.com/rawinan-soma/dds-sharing/issues/2)–[#34](https://github.com/rawinan-soma/dds-sharing/issues/34) on [Map #1](https://github.com/rawinan-soma/dds-sharing/issues/1) |
+| **Derived from** | .link {`docs/spec.md`} url:{spec.md} v1.1 (2026-09-02) · .link {`CONTEXT.md`} url:{https://github.com/rawinan-soma/dds-sharing/blob/main/CONTEXT.md} · [`docs/adr/0001`–`0008`](adr/) · .link {`docs/disease-groups.md`} url:{disease-groups.md} · .link {`docs/research/003-disease-group-codes.md`} url:{research/003-disease-group-codes.md} · .link {`docs/project-charter.md`} url:{project-charter.md} · closed issues [#2](https://github.com/rawinan-soma/dds-sharing/issues/2)–[#34](https://github.com/rawinan-soma/dds-sharing/issues/34) on [Map #1](https://github.com/rawinan-soma/dds-sharing/issues/1) |
 | **Authority** | `spec.md` is the authoritative specification and `CONTEXT.md` is the canonical glossary. **Where this SRS and either of them disagree, they win and the disagreement is a bug in this document — report it.** This SRS restates their content in SRS form; it does not amend them. |
 
 > **This document invents nothing.** Every requirement below traces to a section
 > of `spec.md`, an ADR, or a closed issue, and the trace is printed on the
 > requirement. Where the repository has genuinely not decided something, it is
-> listed in [§6.4 Open questions](#64-open-questions) rather than guessed at.
+> listed in [§6.4 Open questions](#_64-open-questions) rather than guessed at.
 
 ---
+
+.tableofcontents maxdepth:{3}
+
 
 ## 1. Introduction
 
@@ -43,8 +63,8 @@ accountable (`project-charter.md`, *Problem or issue*):
    village, sub-district, point coordinates and free-text clinical prose.
    Removing these correctly *and identically every time* is not something a
    manual process can guarantee.
-3. **The upstream API cannot be used naively.** It costs ~3.5 s per call
-   near-independently of rows returned, paginates by `OFFSET` with a ~60 s
+3. **The upstream API cannot be used naively.** It costs around 3.5 s per call
+   near-independently of rows returned, paginates by `OFFSET` with a 60 s
    gateway timeout, and hard-caps a date range at 365 days. Every requester who
    tries meets these alone.
 4. **There is a real disclosure risk if this is done casually.** A careless
@@ -75,8 +95,8 @@ Data dictionary, Derived column, Span builder, Probe, Download token, Attempt,
 Delivery, Send failure, Collection lapse, Extraction failure, Alert, Re-run, Area
 selection, Duplicate suppression, Request event, Reviewer event, Actor, Snapshot,
 Extract fingerprint** — mean exactly what
-[`CONTEXT.md`](../CONTEXT.md) says they mean, including the words it rules out.
-They are not redefined here; [§6.1](#61-glossary) is an index back to it.
+.link {`CONTEXT.md`} url:{https://github.com/rawinan-soma/dds-sharing/blob/main/CONTEXT.md} says they mean, including the words it rules out.
+They are not redefined here; [§6.1](#_61-glossary) is an index back to it.
 
 **Thai domain terms are kept where the repository keeps them** (สคร., เขตสุขภาพ,
 รพ.สต., รหัสรายงานโรค, กรมควบคุมโรค, the ten Disease group names). English prose
@@ -122,7 +142,7 @@ clock is defined in ICT. The reference number renders a Buddhist-era year.
 | S2 | An **unauthenticated Requester surface** at `/` and an **authenticated Reviewer surface** at `/reviewer`, on the same app, the same build and the same public ingress | §3.1, §16.1–§16.2, [#26](https://github.com/rawinan-soma/dds-sharing/issues/26) |
 | S3 | **Human approval of every Request** by a named Reviewer before any data is fetched | §3.2, §10, [#1](https://github.com/rawinan-soma/dds-sharing/issues/1) |
 | S4 | **De-identification to a fixed 23-column allowlist**, geography no finer than district (`amp_code`), governed by six standing rules | §6, [#2](https://github.com/rawinan-soma/dds-sharing/issues/2), [#14](https://github.com/rawinan-soma/dds-sharing/issues/14), [#21](https://github.com/rawinan-soma/dds-sharing/issues/21), [#24](https://github.com/rawinan-soma/dds-sharing/issues/24), [#30](https://github.com/rawinan-soma/dds-sharing/issues/30) |
-| S5 | **Live extraction from the upstream DDC DDS API** — one call per Report code over the Request's whole span, sequential, global concurrency 1 | §5, §7, §13.2, [ADR 0008](adr/0008-the-pipeline-is-sized-for-one-page.md) |
+| S5 | **Live extraction from the upstream DDC DDS API** — one call per Report code over the Request's whole span, sequential, global concurrency 1 | §5, §7, §13.2, .link {ADR 0008} url:{adr/0008-the-pipeline-is-sized-for-one-page.md} |
 | S6 | **One zipped CSV per approved Request** (Extract + Data dictionary), delivered by an emailed Download token, expiring and deleted at 72 hours | §8, §9, [#9](https://github.com/rawinan-soma/dds-sharing/issues/9), [#25](https://github.com/rawinan-soma/dds-sharing/issues/25) |
 | S7 | A **permanent, append-only audit record** of Requests, Decisions, upstream traffic, Deliveries and download Attempts | §12, [#10](https://github.com/rawinan-soma/dds-sharing/issues/10) |
 | S8 | **Reviewer account management** — username + password + TOTP, minimum two reachable named Reviewers, CLI-seeded on the host | §17.5, [#18](https://github.com/rawinan-soma/dds-sharing/issues/18) |
@@ -134,7 +154,7 @@ clock is defined in ICT. The reference number renders a Buddhist-era year.
 
 **The service's data scope is the 25 EnvOcc Report codes** — `201`–`224` plus
 `501` — classified into **ten Disease groups** in
-[`docs/disease-groups.md`](disease-groups.md). ⚠️ These 25 are *this service's
+.link {`docs/disease-groups.md`} url:{disease-groups.md}. ⚠️ These 25 are *this service's
 scope*, not upstream's vocabulary: the same endpoint also answers to the general
 D506 notifiable-disease block (`02` acute diarrhoea, `301` tuberculosis, `601`
 hepatitis B and more nobody has enumerated). **Adding a communicable-disease code
@@ -146,26 +166,26 @@ to the classification is a scope change, not a classification fix**
 Named so nobody adds them back without reopening the decision (§1.2,
 `project-charter.md` *Outside of scope*).
 
-| # | Out of scope | Why, and where it was declined |
+| No. | Out of scope | Why, and where it was declined |
 |---|---|---|
 | X1 | **Mechanical identity verification** — email-domain rules, staff-directory matching, a `workplace` picklist | The check is human judgement; a mechanical layer would be false comfort, not defence in depth. §1.2, §3.3, [#7](https://github.com/rawinan-soma/dds-sharing/issues/7) |
 | X2 | **Reviewer editing of a Request before approval** | Approve or reject only. An editable Request breaks the audit chain: what was approved would no longer be what was asked. §10.3 |
 | X3 | **Live job progress for the Requester** | The flow is fully asynchronous: submit → confirmation page → close the tab → email. §1.2, [#8](https://github.com/rawinan-soma/dds-sharing/issues/8) |
 | X4 | **Ingesting or storing surveillance data at rest** | Premise 1. §1.1, §7.1 |
 | X5 | **A gated case-level or tambon-granularity service for outbreak investigation** | A different service, with real authentication and a lawful basis per request. §1.2 |
-| X6 | **Scraping resistance, per-client quotas, or any row cap** | §13.1–§13.3, [#5](https://github.com/rawinan-soma/dds-sharing/issues/5), [ADR 0007](adr/0007-the-reviewers-gate-is-identity-not-size.md) |
+| X6 | **Scraping resistance, per-client quotas, or any row cap** | §13.1–§13.3, [#5](https://github.com/rawinan-soma/dds-sharing/issues/5), .link {ADR 0007} url:{adr/0007-the-reviewers-gate-is-identity-not-size.md} |
 | X7 | **A fake upstream service as a product deliverable** | Required as an implementers' dev harness (§17.3), not part of the destination. [#6](https://github.com/rawinan-soma/dds-sharing/issues/6) |
-| X8 | **Server-side rendering and prerendering** of the SPA | Rejected on all three of SSR's benefits. §16.1, [ADR 0003](adr/0003-plain-spa-and-a-collection-path-that-bypasses-it.md) |
-| X9 | **Any retention or deletion job for the audit record** | Nothing is ever deleted. §12.7, [ADR 0004](adr/0004-personal-data-is-retained-indefinitely.md) |
+| X8 | **Server-side rendering and prerendering** of the SPA | Rejected on all three of SSR's benefits. §16.1, .link {ADR 0003} url:{adr/0003-plain-spa-and-a-collection-path-that-bypasses-it.md} |
+| X9 | **Any retention or deletion job for the audit record** | Nothing is ever deleted. §12.7, .link {ADR 0004} url:{adr/0004-personal-data-is-retained-indefinitely.md} |
 | X10 | **Self-service password or email reset for Reviewers, and TOTP recovery codes** | The second Reviewer is the recovery mechanism; anything else is a written-down bypass. §17.5 |
-| X11 | **A `mail_bounced` event and any bounce handling** | Bounces return to a mailbox the application does not own; an application-owned bounce mailbox was offered and declined. §11.1, §12.4, [ADR 0001](adr/0001-email-delivery-is-unobservable.md) |
+| X11 | **A `mail_bounced` event and any bounce handling** | Bounces return to a mailbox the application does not own; an application-owned bounce mailbox was offered and declined. §11.1, §12.4, .link {ADR 0001} url:{adr/0001-email-delivery-is-unobservable.md} |
 | X12 | **The ministry-managed edge itself** | Owned by DDC infra; its timeouts, buffering and body caps are shared ministry policy and are **not assumed tunable**. §17.4 |
 | X13 | **Multi-language UI** | Thai is the only language shown to a person. §16.3, [#26](https://github.com/rawinan-soma/dds-sharing/issues/26) |
 | X14 | **A facility (hospital) reference list in this repository** | `hospital_code` ships raw; MoPH publishes the register openly. §6.7, [#23](https://github.com/rawinan-soma/dds-sharing/issues/23) |
-| X15 | **Date-chunking, adaptive page sizing, a drain projection, or a submit-time size gate** | Removed by [ADR 0008](adr/0008-the-pipeline-is-sized-for-one-page.md). Do not reintroduce without new measurements. §7.2, §13.3 |
-| X16 | ~~**A PDPO consultation and a recorded PDPA lawful basis for the Extract**~~ **— WITHDRAWN 2026-09-04.** The consultation happened and the basis is **legal obligation** (§18.1). What remains out of scope is **producing a written artefact of it for this repository**: no memo, officer or section is checked in. See [§6.3 R1](#63-accepted-risks) |
-| X17 | **Backup, restore and disaster recovery for the database** | Declined by the repo owner, 2026-09-04, after the gap was put explicitly. The audit record therefore survives exactly as long as one disk does — carried as a risk, see [§6.3 R17](#63-accepted-risks) |
-| X18 | **A stated accessibility conformance target** (TWCAG / WCAG) for the Requester and Reviewer surfaces | Declined by the repo owner, 2026-09-04. Not deferred to the wireframe ([OQ-02](#64-open-questions)) — declined outright, so nobody reopens it as a design detail |
+| X15 | **Date-chunking, adaptive page sizing, a drain projection, or a submit-time size gate** | Removed by .link {ADR 0008} url:{adr/0008-the-pipeline-is-sized-for-one-page.md}. Do not reintroduce without new measurements. §7.2, §13.3 |
+| X16 | ~~**A PDPO consultation and a recorded PDPA lawful basis for the Extract**~~ **— WITHDRAWN 2026-09-04.** The consultation happened and the basis is **legal obligation** (§18.1). What remains out of scope is **producing a written artefact of it for this repository**: no memo, officer or section is checked in. See [§6.3 R1](#_63-accepted-risks) |
+| X17 | **Backup, restore and disaster recovery for the database** | Declined by the repo owner, 2026-09-04, after the gap was put explicitly. The audit record therefore survives exactly as long as one disk does — carried as a risk, see [§6.3 R17](#_63-accepted-risks) |
+| X18 | **A stated accessibility conformance target** (TWCAG / WCAG) for the Requester and Reviewer surfaces | Declined by the repo owner, 2026-09-04. Not deferred to the wireframe ([OQ-02](#_64-open-questions)) — declined outright, so nobody reopens it as a design detail |
 | X19 | **A redeploy, rollback and dependency-patching procedure** | Declined by the repo owner, 2026-09-04. §17.4 covers the *first* deploy only; there is no written way to back out a bad release |
 | X20 | **In-application amendment of the Disease group classification** | Declined by the repo owner, 2026-09-04: *a change to the ten groups is a revision of this application, not an operation on it.* The classification stays a checked-in file (R4), the partition test stays the guard (§17.1), and the **Data dictionary** is rebuilt by the same revision |
 | X21 | **43-แฟ้ม alignment of the `รหัสรายงานโรค` series** | Declined by the repo owner, 2026-09-04: *this is not 43-แฟ้ม.* The suspicion was already recorded as unconfirmed with positive reason to doubt — the source deck never mentions it. Do not map these codes onto the 43-แฟ้ม standard |
@@ -175,22 +195,22 @@ Named so nobody adds them back without reopening the decision (§1.2,
 | Reader | Read |
 |---|---|
 | **Implementer** | `CONTEXT.md` first, then `spec.md`, then this SRS as the requirement index and the ADRs for the reasoning behind anything that looks wrong |
-| **Reviewer of the design** (DDC, legal, whoever owns the data agreement) | §1.3, §2.5, §5 (privacy and auditability), [§6.3](#63-accepted-risks) |
-| **Project sponsor** | `project-charter.md`, then §1.1 and [§6.3](#63-accepted-risks) |
+| **Reviewer of the design** (DDC, legal, whoever owns the data agreement) | §1.3, §2.5, §5 (privacy and auditability), [§6.3](#_63-accepted-risks) |
+| **Project sponsor** | `project-charter.md`, then §1.1 and [§6.3](#_63-accepted-risks) |
 | **Operator** | §2.4, §3, FR-22 to FR-25, FR-28 to FR-31, NFR-05, NFR-11, NFR-19 to NFR-23, NFR-31, NFR-32 |
 
 ### 1.5 References
 
 | Ref | Document |
 |---|---|
-| R1 | [`docs/spec.md`](spec.md) **v1.2, 2026-09-04** — the authoritative specification, 19 sections |
-| R2 | [`CONTEXT.md`](../CONTEXT.md) — the canonical glossary |
-| R3 | [`docs/adr/0001`](adr/0001-email-delivery-is-unobservable.md)–[`0010`](adr/0010-copy-is-authored-in-english-and-translated-before-production.md) — the ten ratified decisions |
-| R4 | [`docs/disease-groups.md`](disease-groups.md) — the authoritative Disease group classification |
-| R5 | [`docs/research/003-disease-group-codes.md`](research/003-disease-group-codes.md) — the Report code seed and its provenance |
+| R1 | .link {`docs/spec.md`} url:{spec.md} **v1.2, 2026-09-04** — the authoritative specification, 19 sections |
+| R2 | .link {`CONTEXT.md`} url:{https://github.com/rawinan-soma/dds-sharing/blob/main/CONTEXT.md} — the canonical glossary |
+| R3 | .link {`docs/adr/0001`} url:{adr/0001-email-delivery-is-unobservable.md}–.link {`0010`} url:{adr/0010-copy-is-authored-in-english-and-translated-before-production.md} — the ten ratified decisions |
+| R4 | .link {`docs/disease-groups.md`} url:{disease-groups.md} — the authoritative Disease group classification |
+| R5 | .link {`docs/research/003-disease-group-codes.md`} url:{research/003-disease-group-codes.md} — the Report code seed and its provenance |
 | R6 | [`docs/provinces.csv`](provinces.csv) (77 rows), [`docs/districts.csv`](districts.csv) (929), [`docs/sub_districts.csv`](sub_districts.csv) (7,451) — geography reference data |
-| R7 | [`docs/project-charter.md`](project-charter.md) — sponsor-facing charter, **re-anchored against `spec.md` v1.2 on 2026-09-04** (OQ-06 closed) |
-| R8 | [`messages/th.json`](../messages/th.json) — the normative Thai copy catalogue, what ships — plus [`messages/en.json`](../messages/en.json), the maintained English source it is translated from, and [`project.inlang/settings.json`](../project.inlang/settings.json) ([ADR 0010](adr/0010-copy-is-authored-in-english-and-translated-before-production.md)) |
+| R7 | .link {`docs/project-charter.md`} url:{project-charter.md} — sponsor-facing charter, **re-anchored against `spec.md` v1.2 on 2026-09-04** (OQ-06 closed) |
+| R8 | [`messages/th.json`](https://github.com/rawinan-soma/dds-sharing/blob/main/messages/th.json) — the normative Thai copy catalogue, what ships — plus [`messages/en.json`](https://github.com/rawinan-soma/dds-sharing/blob/main/messages/en.json), the maintained English source it is translated from, and [`project.inlang/settings.json`](../project.inlang/settings.json) (.link {ADR 0010} url:{adr/0010-copy-is-authored-in-english-and-translated-before-production.md}) |
 | R9 | Closed issues [#2](https://github.com/rawinan-soma/dds-sharing/issues/2)–[#34](https://github.com/rawinan-soma/dds-sharing/issues/34) on [Map #1](https://github.com/rawinan-soma/dds-sharing/issues/1) — the decisions and their rationale |
 | R10 | `docs/DDS_Envocc_080169.pdf` — the primary DDC EnvOcc deck cited by R5. ⚠️ **Deliberately not checked in** (public repository; `.gitignore` excludes `docs/*.pdf` as source material not for public distribution). Identify the correct copy by **SHA-256 `d92701c6a0ca7d59db682c18e5049584e924c1c6a1b4244e5a3b4aa189e75a0b`, 22,491,508 bytes** — that hash is the provenance link the repo can carry without republishing the deck |
 | R11 | MoPH facility register — <https://hcode.moph.go.th/> — the public route by which a reader resolves `hospital_code` (§6.7) |
@@ -206,18 +226,12 @@ system and not a replacement for one. It sits beside the DDS scheme rather than
 inside it, and it consumes the upstream DDC DDS API as a client holding one
 bearer token issued for the whole service.
 
-```
-   DDS scheme (already built)                    DDS Sharing (this product)
-   ─────────────────────────                     ──────────────────────────
-   HIS API · Semi-Offline API      ┌────────►  Requester submits a Request
-   DDS Portal key-in · vendor APIs │           Reviewer decides it
-             │                     │           Extractor fetches it live
-             ▼                     │           De-identifier projects it
-   DDS collection / Data Hub ──────┘           Writer emits one CSV
-             │      (GET /api/d506/v1/          Delivery emails a token
-             ▼       disease-groups,            Object dies at 72 h
-        DDS analytics              bearer)      Record survives for ever
-```
+![Product perspective](diagrams/product-perspective.png)
+
+*Source: [`diagrams/product-perspective.drawio`](diagrams/product-perspective.drawio).
+The blue edge is the only coupling between the two: one `GET` per Request against
+`/api/d506/v1/disease-groups` with the service's bearer token. Nothing flows the
+other way, and nothing is copied.*
 
 Three properties of that position are load-bearing:
 
@@ -309,21 +323,21 @@ reader looks for the reason.
 
 | Layer | Choice | Why it is recorded here |
 |---|---|---|
-| **Runtime** | **Node 26**, **pnpm** | Pin the **exact patch** in the Dockerfile, never `26-alpine`: NFR-30 test 1 asserts one checksum across runs, and a reproducibility claim must not rest on a floating base image. ⚠️ Node 26 is Current today and reaches LTS in October 2026 — before the November handover ([OQ-04](#64-open-questions)), but not yet |
+| **Runtime** | **Node 26**, **pnpm** | Pin the **exact patch** in the Dockerfile, never `26-alpine`: NFR-30 test 1 asserts one checksum across runs, and a reproducibility claim must not rest on a floating base image. ⚠️ Node 26 is Current today and reaches LTS in October 2026 — before the November handover ([OQ-04](#_64-open-questions)), but not yet |
 | **ORM / migrations** | **Drizzle** | Already assumed by `spec.md` §13.3, where the event-type enum is *"a Drizzle enum plus a discriminated union in TypeScript"*. Promoted here from that single passing mention because migrations are load-bearing: the province seed migration's startup assert is a **boot failure, not a warning** (NFR-32), and adding an event type is a migration *and* a spec change |
-| **Extract writer** | **None — written in this repository** | [ADR 0009](adr/0009-the-extract-writer-is-ours-not-a-librarys.md). FR-17's eight rules *are* the fingerprint's definition; a library expresses them as defaults a minor release may change. **Conditional on NFR-30 tests 1 and 2 existing** — without them the trade is worse than the library |
-| **Extract archive** | **`yazl`** | Two entries, small, explicit per-entry mtime. The archive is transport and is deliberately **not** fingerprinted ([ADR 0005](adr/0005-the-fingerprint-covers-the-extract-not-the-archive.md)), so a compressor's defaults have nothing to break. Zip is genuinely intricate where this CSV, under the allowlist, is not |
-| **SPA** | **Angular 22** | One build, no SSR, no prerendering ([ADR 0003](adr/0003-plain-spa-and-a-collection-path-that-bypasses-it.md)). Fixed here so the repo has one answer to *which runner does the SPA use* — though **no NFR-30 test lives in the SPA**, so that choice carries no requirement either way |
-| **UI** | **Tailwind + DaisyUI** | Settles [OQ-02](#64-open-questions)'s *component choice*. The two ordering rules (NFR-33, §3.1) and the open de-identification block are **requirements, not styling**, and are not DaisyUI's to restyle |
+| **Extract writer** | **None — written in this repository** | .link {ADR 0009} url:{adr/0009-the-extract-writer-is-ours-not-a-librarys.md}. FR-17's eight rules *are* the fingerprint's definition; a library expresses them as defaults a minor release may change. **Conditional on NFR-30 tests 1 and 2 existing** — without them the trade is worse than the library |
+| **Extract archive** | **`yazl`** | Two entries, small, explicit per-entry mtime. The archive is transport and is deliberately **not** fingerprinted (.link {ADR 0005} url:{adr/0005-the-fingerprint-covers-the-extract-not-the-archive.md}), so a compressor's defaults have nothing to break. Zip is genuinely intricate where this CSV, under the allowlist, is not |
+| **SPA** | **Angular 22** | One build, no SSR, no prerendering (.link {ADR 0003} url:{adr/0003-plain-spa-and-a-collection-path-that-bypasses-it.md}). Fixed here so the repo has one answer to *which runner does the SPA use* — though **no NFR-30 test lives in the SPA**, so that choice carries no requirement either way |
+| **UI** | **Tailwind + DaisyUI** | Settles [OQ-02](#_64-open-questions)'s *component choice*. The two ordering rules (NFR-33, §3.1) and the open de-identification block are **requirements, not styling**, and are not DaisyUI's to restyle |
 | **Typeface** | **Noto Sans Thai**, self-hosted | **Self-hosted, not loaded from a font CDN** — an internet-facing `moph.go.th` service should not make a third-party request on every page load, and a CDN reachable from the Requester's network is not a dependency this service needs. Subset it and set `font-display: swap`. ⚠️ Thai stacks vowels above and tone marks above those, so **DaisyUI's default line-heights will clip** — raising them is a correctness fix, not a taste one |
 | **Validation** | **`class-validator`, `class-transformer`** | FR-04, server-side. Depends on `emitDecoratorMetadata` — see the next row, where that becomes a trap |
 | **Tests** | **Vitest** + **`supertest`**, with **`unplugin-swc`** | Run in the local container. ⚠️ Vitest's esbuild transform **does not emit decorator metadata**, so without `unplugin-swc` every `class-validator` rule silently disappears **in tests only** — a green suite over unvalidated input. If that friction is unwanted, NestJS scaffolds Jest + `@swc/jest`, which handles decorators unaided |
 | **Browser E2E** | **None** | Five of NFR-30's six required tests are pure backend logic, and test 6 is an HTTP `GET /d/<token>` carrying a `Range` header against the real edge — a request, not a browser session. Playwright and Cypress were considered and are not needed |
 | **TOTP** | **`otpauth`** + **`qrcode`** | FR-07, FR-29. Zero-dependency, RFC 6238/4226. **Defaults only — SHA-1, 6 digits, 30 s**: Google Authenticator *ignores* `algorithm` and `digits` in the enrolment URI, so a SHA-256 secret verifies on the server and fails on the phone with nothing on either side saying why. Accept **±1 step** and record the consumed step against replay — which is where NFR-23's NTP requirement stops being hygiene. `qrcode` renders the `otpauth://` URI as a terminal QR, because enrolment is a CLI ceremony over SSH and the alternative is typing a base32 secret by hand |
-| **Mail** | **`nodemailer`** | STARTTLS on the submission port; Mailpit in dev by configuration alone. ⚠️ A resolved `sendMail()` means **the relay accepted the message** and nothing more — [ADR 0001](adr/0001-email-delivery-is-unobservable.md) makes delivery unobservable, so it must never become a `delivery_confirmed` event |
+| **Mail** | **`nodemailer`** | STARTTLS on the submission port; Mailpit in dev by configuration alone. ⚠️ A resolved `sendMail()` means **the relay accepted the message** and nothing more — .link {ADR 0001} url:{adr/0001-email-delivery-is-unobservable.md} makes delivery unobservable, so it must never become a `delivery_confirmed` event |
 
 **Nothing in this table is open.** What the wireframe
-([OQ-02](#64-open-questions)) still owes is visual design and spacing — not the
+([OQ-02](#_64-open-questions)) still owes is visual design and spacing — not the
 framework, the component library or the typeface.
 
 
@@ -369,7 +383,7 @@ framework, the component library or the typeface.
   the binding constraint on password strength.
 - **No account lockout, throttling only** — a lockout an anonymous stranger can
   trigger against a named account *is* the denial of service.
-- **The Extract writer takes no CSV dependency** ([ADR 0009](adr/0009-the-extract-writer-is-ours-not-a-librarys.md)) — conditional on
+- **The Extract writer takes no CSV dependency** (.link {ADR 0009} url:{adr/0009-the-extract-writer-is-ours-not-a-librarys.md}) — conditional on
   NFR-30 tests 1 and 2 existing, and on nothing else.
 - **The copy is normative; the appearance is not** (the exact inverse of the
   ruling on styling).
@@ -381,7 +395,7 @@ framework, the component library or the typeface.
 |---|---|---|---|
 | A1 | The existing DDC data agreement, together with the human approval gate, covers the release of de-identified case-level DDS data | ⚠️ **Unverified, and deliberately not tested.** No PDPO consultation was sought and no §26 basis is recorded | §18.1, [#22](https://github.com/rawinan-soma/dds-sharing/issues/22) |
 | A2 | The 23-column allowlist, with geography no finer than district, renders the Extract non-personal for PDPA purposes | ⚠️ Unverified. The finest *effective* geography is narrower than the finest *named* geography | §18.2, [#21](https://github.com/rawinan-soma/dds-sharing/issues/21), [#23](https://github.com/rawinan-soma/dds-sharing/issues/23) |
-| A3 | Indefinite retention of contact, network, accountability and staff-performance data is lawful on **legal obligation and legitimate interest** | Decided, recorded, with reasons. Consent was rejected on the merits | §12.7, [ADR 0004](adr/0004-personal-data-is-retained-indefinitely.md) |
+| A3 | Indefinite retention of contact, network, accountability and staff-performance data is lawful on **legal obligation and legitimate interest** | Decided, recorded, with reasons. Consent was rejected on the merits | §12.7, .link {ADR 0004} url:{adr/0004-personal-data-is-retained-indefinitely.md} |
 | A4 | DDC infra provides a VM, a public route, a `moph.go.th` DNS name and a ministry TLS certificate | **Requested and verified after the fact — explicitly not preconditions** | §17.4, [#16](https://github.com/rawinan-soma/dds-sharing/issues/16) |
 | A5 | The upstream DDS API remains available on its current contract and the token is not revoked | Measured 2026-08-27 and 2026-09-02. Revocation is the failure no retry recovers from | §5, §5.5 |
 | A6 | Upstream `meta.total_items` is trustworthy as a completeness check | **Enforced**: a code whose received count disagrees fails the job and publishes nothing | §7.5 |
@@ -442,7 +456,7 @@ fully.
 
 *Source: [`diagrams/use-case.drawio`](diagrams/use-case.drawio). The two notes on
 it are requirements, not decoration: the gate judges **who is asking**
-([ADR 0007](adr/0007-the-reviewers-gate-is-identity-not-size.md)), and a Reviewer
+(.link {ADR 0007} url:{adr/0007-the-reviewers-gate-is-identity-not-size.md}), and a Reviewer
 never sees case rows or a Download token (§10.8, §14.4).*
 
 #### 2.8.2 Entity–relationship diagram
@@ -466,7 +480,7 @@ application role may `DELETE` from (§15.4).*
 The runtime model — the domain objects and the collaborating services. Two edges
 carry decisions rather than structure: **`Probe` and `ExtractionJob` both depend
 on the single `SpanBuilder`** (one expression of the date range, so the two can
-never disagree — [ADR 0008](adr/0008-the-pipeline-is-sized-for-one-page.md)), and
+never disagree — .link {ADR 0008} url:{adr/0008-the-pipeline-is-sized-for-one-page.md}), and
 **`CsvWriter` has no dependency on `ProjectStage`'s column semantics** (give the
 writer column semantics and allowlist rule 6 is what gets violated later, §7.4).
 
@@ -497,7 +511,7 @@ FR-10 through FR-22.
 *Source: [`diagrams/sequence.drawio`](diagrams/sequence.drawio). Note that the
 Probe branches off the submit path immediately after the confirmation is returned,
 and that the collection leg touches NestJS only — never the Angular bundle
-([ADR 0003](adr/0003-plain-spa-and-a-collection-path-that-bypasses-it.md)).*
+(.link {ADR 0003} url:{adr/0003-plain-spa-and-a-collection-path-that-bypasses-it.md}).*
 
 #### 2.8.6 Deployment diagram
 
@@ -519,7 +533,7 @@ question** than internet reachability, requiring host-level firewalling.
 
 **One Angular SPA, one build, Thai only, no language prefix in any address.**
 NestJS serves the built files from the same origin as the API, excluding the API
-prefix from the SPA fallback (§16.1, [ADR 0003](adr/0003-plain-spa-and-a-collection-path-that-bypasses-it.md)).
+prefix from the SPA fallback (§16.1, .link {ADR 0003} url:{adr/0003-plain-spa-and-a-collection-path-that-bypasses-it.md}).
 
 **Routes** (§16.2):
 
@@ -558,7 +572,7 @@ treats the path as a secret worth protecting.
 > ⚠️ **Visual design is not settled here.** Structure, ordering and copy are
 > settled. **Component choice and typeface are now settled — Tailwind + DaisyUI on
 > Noto Sans Thai (§2.4.1).** Visual design and spacing still come from a wireframe
-> the repo owner supplies during the dev cycle ([OQ-02](#64-open-questions)). Carry
+> the repo owner supplies during the dev cycle ([OQ-02](#_64-open-questions)). Carry
 > the two ordering rules above as requirements.
 >
 > **The prototype they were settled in no longer exists in the repo** — the
@@ -568,7 +582,7 @@ treats the path as a secret worth protecting.
 
 **Copy.** All human-visible text shown to a person is Thai, held in
 `messages/th.json` through Paraglide. **The copy is authored in English in
-`messages/en.json` and translated to Thai before production** ([ADR 0010](adr/0010-copy-is-authored-in-english-and-translated-before-production.md)):
+`messages/en.json` and translated to Thai before production** (.link {ADR 0010} url:{adr/0010-copy-is-authored-in-english-and-translated-before-production.md}):
 development runs `baseLocale: "en"`, `locales: ["en", "th"]`, production runs
 `baseLocale: "th"`, `locales: ["th"]`, and `strategy: ["cookie", "baseLocale"]`
 throughout — the `url` strategy is never added. Both catalogues are checked in and
@@ -618,7 +632,7 @@ Two host-level facts are nevertheless requirements on the machine (§17.4):
 | **PostgreSQL** | Outbound | The system of record. Application role: `INSERT`/`SELECT` on event tables, `DELETE` **nowhere** except `reviewer_session` and the login-throttle table; read-only on `province`. No role holds `UPDATE` on `request` or `request_contact` (§12.2, §15.4) |
 | **Redis + BullMQ** | Outbound | Executor only. **AOF persistence required.** The BullMQ job carries a reference; Postgres carries the authoritative state. BullMQ repeatable jobs are rejected — a schedule living only in Redis is a schedule a Redis loss silently cancels (§7.7, §15.3) |
 | **MinIO (S3-compatible)** | Outbound | One object per completed job, uploaded in **one** operation, so *"an object exists in the bucket"* means exactly *"a complete, publishable Extract"*. Bucket lifecycle 72 h as a **backstop only** (§7.8, §9.5) |
-| **SMTP relay** | Outbound | `SMTP_HOST=mailrelay.uc-workd.com`, `SMTP_STARTTLS=true`, `SMTP_SECURE=false`, `SMTP_USER=envocc@ddc.mail.go.th`. `SMTP_PORT` and `SMTP_PASS` supplied at dev cycle. Four message kinds: `delivery`, `queue_notification`, `rejection`, `extraction_failure`. **No inbound mail interface exists and none may be added without reopening [ADR 0001](adr/0001-email-delivery-is-unobservable.md)** |
+| **SMTP relay** | Outbound | `SMTP_HOST=mailrelay.uc-workd.com`, `SMTP_STARTTLS=true`, `SMTP_SECURE=false`, `SMTP_USER=envocc@ddc.mail.go.th`. `SMTP_PORT` and `SMTP_PASS` supplied at dev cycle. Four message kinds: `delivery`, `queue_notification`, `rejection`, `extraction_failure`. **No inbound mail interface exists and none may be added without reopening .link {ADR 0001} url:{adr/0001-email-delivery-is-unobservable.md}** |
 | **Reference data files** | Inbound, build time | `docs/provinces.csv` → a checked-in seed migration (77 rows + checksum asserted at startup, **failing fast**); `docs/disease-groups.md` + `docs/research/003-disease-group-codes.md` → the Disease group picker and the Data dictionary's classification block; the Thai holiday config file, reviewed annually |
 | **Fake upstream dev harness** | Outbound, development | Must expose a **500 mid-loop, a slow page, a truncated page, an auth expiry mid-job, and a `total_items` that shifts between attempts** — that last one is what tests the retry guard, and no fixture can produce it. **Standing constraint: no real patient data ever seeds it** (§17.3) |
 | **Mailpit** | Outbound, development | Covers mail in development |
@@ -728,7 +742,7 @@ starts no extraction: *"นี่ไม่ใช่ปุ่มดาวน์�
 [#15](https://github.com/rawinan-soma/dds-sharing/issues/15),
 [#28](https://github.com/rawinan-soma/dds-sharing/issues/28),
 [#30](https://github.com/rawinan-soma/dds-sharing/issues/30) ·
-[ADR 0006](adr/0006-a-disease-group-is-a-family-of-report-codes.md)
+.link {ADR 0006} url:{adr/0006-a-disease-group-is-a-family-of-report-codes.md}
 
 ### 4.2 FR-02 — Read the confirmation page
 
@@ -819,7 +833,7 @@ runs; only the zero-row catch is lost.
 > "Probe stalled" Alert. Do not "fix" either.** An earlier draft blocked approve
 > on the count, on the ground that it was "the proportionality signal the gate
 > exists for". **That ground is false** — the gate is about *who is asking*
-> ([ADR 0007](adr/0007-the-reviewers-gate-is-identity-not-size.md)). Blocking
+> (.link {ADR 0007} url:{adr/0007-the-reviewers-gate-is-identity-not-size.md}). Blocking
 > approve made a real person wait for a number they are not permitted to act on,
 > and the Alert existed only to rescue them.
 
@@ -835,8 +849,8 @@ runs; only the zero-row catch is lost.
 [#27](https://github.com/rawinan-soma/dds-sharing/issues/27),
 [#31](https://github.com/rawinan-soma/dds-sharing/issues/31),
 [#34](https://github.com/rawinan-soma/dds-sharing/issues/34) ·
-[ADR 0007](adr/0007-the-reviewers-gate-is-identity-not-size.md),
-[ADR 0008](adr/0008-the-pipeline-is-sized-for-one-page.md)
+.link {ADR 0007} url:{adr/0007-the-reviewers-gate-is-identity-not-size.md},
+.link {ADR 0008} url:{adr/0008-the-pipeline-is-sized-for-one-page.md}
 
 ### 4.4 FR-04 — Validate the Request parameters server-side
 
@@ -933,7 +947,7 @@ redrawn.
 **Source:** §4.4, §4.9, §12.3, §6.4 ·
 [#15](https://github.com/rawinan-soma/dds-sharing/issues/15),
 [#30](https://github.com/rawinan-soma/dds-sharing/issues/30) ·
-[ADR 0006](adr/0006-a-disease-group-is-a-family-of-report-codes.md)
+.link {ADR 0006} url:{adr/0006-a-disease-group-is-a-family-of-report-codes.md}
 
 ### 4.6 FR-06 — Suppress duplicate submits
 
@@ -1085,7 +1099,7 @@ render time**, so a Request past the threshold is simply not actionable.
 **Source:** §10.1, §10.2, §13.3, §15.1, §15.3, §14.2 ·
 [#20](https://github.com/rawinan-soma/dds-sharing/issues/20),
 [#27](https://github.com/rawinan-soma/dds-sharing/issues/27) ·
-[ADR 0008](adr/0008-the-pipeline-is-sized-for-one-page.md)
+.link {ADR 0008} url:{adr/0008-the-pipeline-is-sized-for-one-page.md}
 
 ### 4.9 FR-09 — Review one Request
 
@@ -1147,7 +1161,7 @@ fields, the ask in human terms, and the count or its absence.
 > Workplace** — the only source being asked is the person making the claim. The
 > call raises the cost of a false identity; it does not close it. This is the
 > **weak form**, like the button placement, and it is the human half of the
-> control [R4](#63-accepted-risks) accepts in place of a credential.
+> control [R4](#_63-accepted-risks) accepts in place of a credential.
 
 > **The system presents and records. It does not judge, score, or match.** A
 > Reviewer reads five contact fields, one of which (`workplace`) is free text
@@ -1223,7 +1237,7 @@ release the extraction job.
 [#10](https://github.com/rawinan-soma/dds-sharing/issues/10),
 [#20](https://github.com/rawinan-soma/dds-sharing/issues/20),
 [#31](https://github.com/rawinan-soma/dds-sharing/issues/31) ·
-[ADR 0007](adr/0007-the-reviewers-gate-is-identity-not-size.md)
+.link {ADR 0007} url:{adr/0007-the-reviewers-gate-is-identity-not-size.md}
 
 ### 4.11 FR-11 — Reject a Request
 
@@ -1418,7 +1432,7 @@ undifferentiated failure email goes to the Requester (FR-18).
 [#24](https://github.com/rawinan-soma/dds-sharing/issues/24),
 [#27](https://github.com/rawinan-soma/dds-sharing/issues/27),
 [#34](https://github.com/rawinan-soma/dds-sharing/issues/34) ·
-[ADR 0008](adr/0008-the-pipeline-is-sized-for-one-page.md)
+.link {ADR 0008} url:{adr/0008-the-pipeline-is-sized-for-one-page.md}
 
 ### 4.14 FR-14 — Fetch (stage 1) and the shared span builder
 
@@ -1482,7 +1496,7 @@ over that span has been received in memory and handed to filter, and
 [#4](https://github.com/rawinan-soma/dds-sharing/issues/4),
 [#7](https://github.com/rawinan-soma/dds-sharing/issues/7),
 [#34](https://github.com/rawinan-soma/dds-sharing/issues/34) ·
-[ADR 0008](adr/0008-the-pipeline-is-sized-for-one-page.md)
+.link {ADR 0008} url:{adr/0008-the-pipeline-is-sized-for-one-page.md}
 
 ### 4.15 FR-15 — Filter (stage 2)
 
@@ -1659,7 +1673,7 @@ suppressed, and **no facility reference list joins this repo**. The 5-digit code
 is a running number carrying no structure, so coarsening by truncation does not
 exist; and the register is **published openly** by MoPH, so withholding a lookup
 protects nothing. The reader resolves it at <https://hcode.moph.go.th/>. See
-[§6.3 R2](#63-accepted-risks) for the risk this retains.
+[§6.3 R2](#_63-accepted-risks) for the risk this retains.
 
 **Source:** §6.1–§6.7, §7.4, §15.3 ·
 [#2](https://github.com/rawinan-soma/dds-sharing/issues/2),
@@ -1668,8 +1682,8 @@ protects nothing. The reader resolves it at <https://hcode.moph.go.th/>. See
 [#23](https://github.com/rawinan-soma/dds-sharing/issues/23),
 [#24](https://github.com/rawinan-soma/dds-sharing/issues/24),
 [#30](https://github.com/rawinan-soma/dds-sharing/issues/30) ·
-[ADR 0002](adr/0002-derived-extract-columns-anchored-to-the-case.md),
-[ADR 0006](adr/0006-a-disease-group-is-a-family-of-report-codes.md)
+.link {ADR 0002} url:{adr/0002-derived-extract-columns-anchored-to-the-case.md},
+.link {ADR 0006} url:{adr/0006-a-disease-group-is-a-family-of-report-codes.md}
 
 ### 4.17 FR-17 — Write the Extract, build the archive, fingerprint it
 
@@ -1756,7 +1770,7 @@ no column semantics**:
 [#25](https://github.com/rawinan-soma/dds-sharing/issues/25),
 [#29](https://github.com/rawinan-soma/dds-sharing/issues/29),
 [#33](https://github.com/rawinan-soma/dds-sharing/issues/33) ·
-[ADR 0005](adr/0005-the-fingerprint-covers-the-extract-not-the-archive.md)
+.link {ADR 0005} url:{adr/0005-the-fingerprint-covers-the-extract-not-the-archive.md}
 
 ### 4.18 FR-18 — Send an email
 
@@ -1818,7 +1832,7 @@ After the fifth failure, `mail_send_abandoned`.
 **Source:** §11.1–§11.3, §12.4, §14.3 ·
 [#17](https://github.com/rawinan-soma/dds-sharing/issues/17),
 [#19](https://github.com/rawinan-soma/dds-sharing/issues/19) ·
-[ADR 0001](adr/0001-email-delivery-is-unobservable.md)
+.link {ADR 0001} url:{adr/0001-email-delivery-is-unobservable.md}
 
 ### 4.19 FR-19 — Collect the Extract
 
@@ -1872,7 +1886,7 @@ The presenter is redirected to `/link-expired` (FR-20).
 [#5](https://github.com/rawinan-soma/dds-sharing/issues/5),
 [#9](https://github.com/rawinan-soma/dds-sharing/issues/9),
 [#26](https://github.com/rawinan-soma/dds-sharing/issues/26) ·
-[ADR 0003](adr/0003-plain-spa-and-a-collection-path-that-bypasses-it.md)
+.link {ADR 0003} url:{adr/0003-plain-spa-and-a-collection-path-that-bypasses-it.md}
 
 ### 4.20 FR-20 — Serve the expiry page
 
@@ -2198,7 +2212,7 @@ writes an event carrying a **closed-set outcome, never free text**.
 **Source:** §10.6, §11.3, §11.4, §12.4, §14.2 ·
 [#19](https://github.com/rawinan-soma/dds-sharing/issues/19),
 [#27](https://github.com/rawinan-soma/dds-sharing/issues/27) ·
-[ADR 0001](adr/0001-email-delivery-is-unobservable.md)
+.link {ADR 0001} url:{adr/0001-email-delivery-is-unobservable.md}
 
 ### 4.26 FR-26 — Re-run an extraction
 
@@ -2290,7 +2304,7 @@ with a fresh 72 hours**; the old token is dead.
 **Source:** §10.8, §12.4 ·
 [#19](https://github.com/rawinan-soma/dds-sharing/issues/19)
 
-### 4.28 FR-28 — Removed — see [ADR 0019](adr/0019-a-requesters-contact-details-are-never-removed.md).
+### 4.28 FR-28 — Removed — see .link {ADR 0019} url:{adr/0019-a-requesters-contact-details-are-never-removed.md}
 
 ### 4.29 FR-29 — Manage the Reviewer account lifecycle
 
@@ -2314,10 +2328,10 @@ present or on a call.
 - Deactivation: `deactivated_at` set — **never a row deletion** — live sessions
   invalidated immediately by a Postgres query, and a `deactivated` event recording
   what happened to the Reviewer, never who ran the command
-  ([ADR 0020](adr/0020-a-host-command-does-not-record-who-ran-it.md)). **Their
-  open Alerts become clearable by any active Reviewer from that moment** (FR-25,
-  ADR 0013); the assignment is not rewritten, and nothing about the Request stream
-  is touched.
+  (.link {ADR 0020} url:{adr/0020-a-host-command-does-not-record-who-ran-it.md}).
+  **Their open Alerts become clearable by any active Reviewer from that moment**
+  (FR-25, ADR 0013); the assignment is not rewritten, and nothing about the
+  Request stream is touched.
 
 **Exception conditions:**
 - ⚠️ **Deactivating below two active Reviewers** → the CLI **refuses**, overridable
@@ -2394,7 +2408,7 @@ match — **and the asymmetry, printed every time.**
 
 **Source:** §8.4, §12.1 ·
 [#29](https://github.com/rawinan-soma/dds-sharing/issues/29) ·
-[ADR 0005](adr/0005-the-fingerprint-covers-the-extract-not-the-archive.md)
+.link {ADR 0005} url:{adr/0005-the-fingerprint-covers-the-extract-not-the-archive.md}
 
 ### 4.31 FR-31 — Report upstream traffic
 
@@ -2451,7 +2465,7 @@ not tune it upward expecting throughput.
 concurrent upstream calls degraded from ~3.9 s to ~14.3 s each with zero
 throughput gained — the upstream serializes.
 
-**Source:** §5.3, §7.2, §13.2 · [#4](https://github.com/rawinan-soma/dds-sharing/issues/4), [#5](https://github.com/rawinan-soma/dds-sharing/issues/5), [ADR 0008](adr/0008-the-pipeline-is-sized-for-one-page.md)
+**Source:** §5.3, §7.2, §13.2 · [#4](https://github.com/rawinan-soma/dds-sharing/issues/4), [#5](https://github.com/rawinan-soma/dds-sharing/issues/5), .link {ADR 0008} url:{adr/0008-the-pipeline-is-sized-for-one-page.md}
 
 #### NFR-02 — Pipeline latency ceiling
 
@@ -2706,7 +2720,7 @@ consent that cannot be withdrawn is not consent.
 > ever.*** ***"Data does not linger" is formally a claim about surveillance data
 > only.*** Any sentence saying it without that qualifier is wrong.
 
-**Source:** §12.7, §1.1 premise 6 · [#10](https://github.com/rawinan-soma/dds-sharing/issues/10), [#28](https://github.com/rawinan-soma/dds-sharing/issues/28) · [ADR 0004](adr/0004-personal-data-is-retained-indefinitely.md)
+**Source:** §12.7, §1.1 premise 6 · [#10](https://github.com/rawinan-soma/dds-sharing/issues/10), [#28](https://github.com/rawinan-soma/dds-sharing/issues/28) · .link {ADR 0004} url:{adr/0004-personal-data-is-retained-indefinitely.md}
 
 #### NFR-17 — Transparency to both populations
 
@@ -2741,7 +2755,7 @@ owner has **consulted the DDC PDPO**. The documentation must equally state that
 
 **Measure.** §18.1 says all three things explicitly, including the uncomfortable
 one. **Reversal path: the kill switch (NFR-32), then a fresh effort against a
-redrawn scope.** See [§6.3 R1–R3](#63-accepted-risks).
+redrawn scope.** See [§6.3 R1–R3](#_63-accepted-risks).
 
 > **The distinction this requirement exists to protect:** a consultation that
 > happened and a consultation that can be produced are different facts, and only
@@ -2886,7 +2900,7 @@ would show two hashes for one ask and nothing explaining why. ⚠️ **The finge
 attests content, not provenance** — a match narrows to a *set* of Requests, never
 to one.
 
-**Source:** §6.4, §8.4, §12.4 · [#24](https://github.com/rawinan-soma/dds-sharing/issues/24), [#29](https://github.com/rawinan-soma/dds-sharing/issues/29) · [ADR 0005](adr/0005-the-fingerprint-covers-the-extract-not-the-archive.md)
+**Source:** §6.4, §8.4, §12.4 · [#24](https://github.com/rawinan-soma/dds-sharing/issues/24), [#29](https://github.com/rawinan-soma/dds-sharing/issues/29) · .link {ADR 0005} url:{adr/0005-the-fingerprint-covers-the-extract-not-the-archive.md}
 
 ### 5.6 Internationalisation and localisation
 
@@ -2901,7 +2915,7 @@ archive. ***English is in the file, never on the screen.***
 `strategy: ["cookie", "baseLocale"]` throughout — **the `url` strategy is never
 added**, because its default patterns would make `baseLocale` decide which
 language owns `/`. **`messages/en.json` is checked in and permanently maintained**
-as the English source the Thai is translated from ([ADR 0010](adr/0010-copy-is-authored-in-english-and-translated-before-production.md)); only Thai is
+as the English source the Thai is translated from (.link {ADR 0010} url:{adr/0010-copy-is-authored-in-english-and-translated-before-production.md}); only Thai is
 ever served.
 
 **Measure.** The catalogue's job is **governance of the copy, not translation**: a
@@ -2911,13 +2925,13 @@ like a template change, **and nobody reviews that as a decision change**. A wron
 key in code fails the build, because the compiler emits TypeScript declarations.
 **A key missing from `th.json` does not** — it renders the raw key on a live page,
 silently, with no compiler diagnostic and no strict mode to turn on. §17.1's
-catalogue-parity test is the only thing that catches it ([ADR 0010](adr/0010-copy-is-authored-in-english-and-translated-before-production.md)).
+catalogue-parity test is the only thing that catches it (.link {ADR 0010} url:{adr/0010-copy-is-authored-in-english-and-translated-before-production.md}).
 
 > **The reason is not audience convenience.** Several Thai sentences are **the only
 > record of a decision this design made in prose**. A second served language means
 > writing every promise twice, and two versions drift into two different promises —
 > this design's silently-wrong-artifact hazard, relocated into the UI.
-> **[ADR 0010](adr/0010-copy-is-authored-in-english-and-translated-before-production.md) narrowed this, and only this:** the argument is about *served*
+> **.link {ADR 0010} url:{adr/0010-copy-is-authored-in-english-and-translated-before-production.md} narrowed this, and only this:** the argument is about *served*
 > languages. With `locales: ["th"]` in production and no `url` strategy, English
 > has no route to a screen, so a drift between the two catalogues is a
 > documentation defect rather than a broken promise to a Requester.
@@ -2971,7 +2985,7 @@ defect:
 once lost.* A required test asserts the Probe and the extraction job derive
 **byte-identical** `start_date` and `end_date` for the same Request.
 
-**Source:** §4.3, §5.4, §6.4, §7.2, §7.4, §15.2, §17.1, §17.5 · [#34](https://github.com/rawinan-soma/dds-sharing/issues/34) · [ADR 0008](adr/0008-the-pipeline-is-sized-for-one-page.md)
+**Source:** §4.3, §5.4, §6.4, §7.2, §7.4, §15.2, §17.1, §17.5 · [#34](https://github.com/rawinan-soma/dds-sharing/issues/34) · .link {ADR 0008} url:{adr/0008-the-pipeline-is-sized-for-one-page.md}
 
 #### NFR-30 — Required tests
 
@@ -3044,7 +3058,7 @@ serves case-level (de-identified) DDS surveillance data.
 tool" assumptions is a mismatch that surfaces at the worst moment, and **the person
 granting it carries part of the PDPA question knowingly**.
 
-**Source:** §6.4, §16.1, §17.4 · [#16](https://github.com/rawinan-soma/dds-sharing/issues/16), [#26](https://github.com/rawinan-soma/dds-sharing/issues/26) · [ADR 0003](adr/0003-plain-spa-and-a-collection-path-that-bypasses-it.md)
+**Source:** §6.4, §16.1, §17.4 · [#16](https://github.com/rawinan-soma/dds-sharing/issues/16), [#26](https://github.com/rawinan-soma/dds-sharing/issues/26) · .link {ADR 0003} url:{adr/0003-plain-spa-and-a-collection-path-that-bypasses-it.md}
 
 ### 5.8 Usability
 
@@ -3079,7 +3093,7 @@ against a request that is hard to judge.***
 
 ### 6.1 Glossary
 
-[`CONTEXT.md`](../CONTEXT.md) is **canonical** and is not restated here. This is a
+.link {`CONTEXT.md`} url:{https://github.com/rawinan-soma/dds-sharing/blob/main/CONTEXT.md} is **canonical** and is not restated here. This is a
 one-line index, with the words the glossary explicitly rules out, so that a reader
 of this SRS can tell whether a term is a domain term or ordinary prose.
 
@@ -3253,16 +3267,16 @@ statements are in `spec.md` §18 and in `project-charter.md`.
 | **R3** | **Full `birth_date` is retained beside a derived `onset_age` that already replaces it.** `{amp_code, gender, birth_date, onset_date}` is a live quasi-identifier. DOB coarsening has been **offered and declined four times**. **The realistic adversary is the employer**, who holds the auxiliary data and whose motive is compensation liability under พ.ร.บ. 2562. | High, accepted | Three mitigations remain available and unused, each a single configuration point: coarsening `birth_date` to `onset_age` alone, coarsening geography to province, and a two-tier open/gated split. §18.3 |
 | **R4** | **Upstream is authenticated; this service is not.** Every documented path into the upstream DDC system is MoPH account / Provider ID RBAC. This service is a **weaker door onto records derived from the same source**, with a human gate in front of it rather than a credential. | High, accepted | The gate, the allowlist, and the kill switch. §18.4 |
 | **R5** | **Excel silently corrupts a leading-zero `hospital_code`.** ⚠️ **Narrowed 2026-09-04 — the risk was stated far too widely and its headline example does not exist.** It named the four geography columns and offered `01` → `1`; **there is no province `01`.** The domain runs **10–96**, prefix-nested at 2/4/6 digits, re-verified against 77 provinces, 929 districts and 7,451 subdistricts: **zero codes begin with `0`.** §4.6 always said so. | **Reduced to low.** Only `hospital_code` can carry the risk, and it is **not verifiable from this repo** — X14 keeps no facility list | `="01"` escaping and `.xlsx` were both rejected and stay rejected. **This is the second Excel risk found to rest on an unmeasured premise (§18.6 was the first) — distrust the reasoning, not just the claim.** §18.5 |
-| **R6** | **Email delivery is unobservable.** The sharpest instance: a failed **Reviewer queue notification** means the approval gate has no trigger and a Request expires at 24 business hours **through nobody's fault**. | Medium, by design | Operator banner on the **first** queue-notification failure; Collection lapse Alert at 24 business hours; `expired_uncollected` as a distinct terminal state. §18.8, [ADR 0001](adr/0001-email-delivery-is-unobservable.md) |
+| **R6** | **Email delivery is unobservable.** The sharpest instance: a failed **Reviewer queue notification** means the approval gate has no trigger and a Request expires at 24 business hours **through nobody's fault**. | Medium, by design | Operator banner on the **first** queue-notification failure; Collection lapse Alert at 24 business hours; `expired_uncollected` as a distinct terminal state. §18.8, .link {ADR 0001} url:{adr/0001-email-delivery-is-unobservable.md} |
 | **R7** | **The audit record is permanent personal data, including about people who never used the service** — `token_lookup` rows matching no Request are IP addresses of anonymous strangers. | Medium, accepted | Kept deliberately: a token-guessing sweep is only visible in hindsight. §18.9, NFR-16 |
 | **R8** | **The record measures named staff, permanently** — expiry timings, the login and failed-login stream, `collection_lapse_cleared` (a permanent record that a named Reviewer did *not* chase a lapse), `extraction_alert_cleared`. | Medium, accepted | **They are told, at seeding and first login** — not in a document they will never read. §18.10, NFR-17 |
 | **R9** | **The record cannot say which Request produced an Extract.** A content hash narrows to a *set*. | Low, accepted | **No identifying mark is added.** The verification command prints the asymmetry. §18.7, FR-30 |
-| **R10** | **Upstream token revocation.** The failure mode to fear is not a throttle but **DDC noticing our traffic and revoking the token**, which no retry recovers from. | High, operational | `N = 1`; one call per Report code; the traffic report (FR-31). Needs a **named upstream owner** ([OQ-05](#64-open-questions)). §5.5, §13.6 |
+| **R10** | **Upstream token revocation.** The failure mode to fear is not a throttle but **DDC noticing our traffic and revoking the token**, which no retry recovers from. | High, operational | `N = 1`; one call per Report code; the traffic report (FR-31). Needs a **named upstream owner** ([OQ-05](#_64-open-questions)). §5.5, §13.6 |
 | **R11** | **Internal reachability is a larger question than internet reachability.** A directly reachable MinIO bucket would bypass the Download token and the download audit entirely. | Medium | **Host-level firewalling required, not just edge routing**, confirmed by testing from outside. §17.4, NFR-11 |
 | **R12** | **NTP drift locks out every Reviewer simultaneously**, and the only fix is shell access to the machine that is broken. | Medium, severe if it fires | NTP is a hard deployment requirement. A near-miss TOTP code is recorded distinctly so the cause is diagnosable. §17.4, NFR-23 |
-| **R13** | **Single-developer project.** One person builds, deploys and operates this; there is no second person who knows the system. | High, **not in `spec.md` §18** | ⚠️ **No response on record.** `project-charter.md` R4 suggests naming a second technical contact before the Control phase ([OQ-05](#64-open-questions)) |
-| **R14** | **This project adds a system to maintain**, with no budget line for its operation after November 2026. | Medium | ⚠️ Operational ownership after handover is **not on record**. `project-charter.md` R14, [OQ-05](#64-open-questions) |
-| **R15** | **A Report code that outgrows the ~50-page cliff kills its group's Requests until a human splits it.** Adaptive tiling would have absorbed this and was rejected as machinery built for a 256× event, tested by nobody. | Low, accepted | The failure is **loud, rare and actionable**: a `504` the retry cannot clear, then a failed job and an Alert. [ADR 0008](adr/0008-the-pipeline-is-sized-for-one-page.md) |
+| **R13** | **Single-developer project.** One person builds, deploys and operates this; there is no second person who knows the system. | High, **not in `spec.md` §18** | ⚠️ **No response on record.** `project-charter.md` R4 suggests naming a second technical contact before the Control phase ([OQ-05](#_64-open-questions)) |
+| **R14** | **This project adds a system to maintain**, with no budget line for its operation after November 2026. | Medium | ⚠️ Operational ownership after handover is **not on record**. `project-charter.md` R14, [OQ-05](#_64-open-questions) |
+| **R15** | **A Report code that outgrows the ~50-page cliff kills its group's Requests until a human splits it.** Adaptive tiling would have absorbed this and was rejected as machinery built for a 256× event, tested by nobody. | Low, accepted | The failure is **loud, rare and actionable**: a `504` the retry cannot clear, then a failed job and an Alert. .link {ADR 0008} url:{adr/0008-the-pipeline-is-sized-for-one-page.md} |
 | **R16** | **A Report code that exists upstream and is in no Disease group is unreachable data, and nothing in the system will notice.** The partition test compares the classification against the *seed*, never the seed against upstream. | Low, accepted | The control is a **periodic human re-probe**, not a build. §4.9, §17.1, NFR-30 |
 | **R17** | **There is no copy of the database, by decision.** The audit record is permanent, append-only, and the main deliverable of this project — *"no record of who released what to whom"* is problem #1 in the charter. It exists on **one disk, on one Docker host**. A disk failure destroys every **Decision**, **Snapshot** and **Extract fingerprint** the service has ever made, and no **Reviewer**'s accountability survives it. | **High, accepted.** Owned by the repo owner | ⚠️ **No response on record.** Backup and restore were put explicitly and declined on 2026-09-04 (X17). The exposure is bounded only by the fact that an **Extract archive** is disposable by design and **Redis** is restartable — **the record is neither** |
 | **R18** | **Delivery is believed rather than demonstrated, and every recipient is external.** The three test sends were closed 2026-09-04 without being made, on the repo owner's knowledge that the relay is in official organisational use. ⚠️ **Confirmed the same day: no user of this service, Reviewers included, reads mail at `moph.go.th`** — so **100% of this service's mail crosses to public providers**, and the relay's standing inside DDC is judged by none of them. **Not on record:** whether `ddc.mail.go.th`'s SPF authorises `mailrelay.uc-workd.com`, whether DKIM signs for the sender domain, whether the hostname is free of a typo, or that any message from this service has ever arrived anywhere. | **Medium, accepted.** Owned by the repo owner | The machinery already covers the Requester-facing failure: a junked Delivery expires its **Download token** in 72 hours and surfaces as a **Collection lapse** Alert (R6). ⚠️ **The sharper path is the Reviewer queue notification** — junked, the approval gate has no trigger and a Request expires through nobody's fault, with no Requester to notice. **Reversal is one email.** §11.1, §18.13 |
@@ -3298,7 +3312,7 @@ waiting for its value. Listed here rather than guessed at.
 | **OQ-03** | **A written artefact of the PDPO consultation for this repository** — a dated memo, the officer's name, the section relied on | Repo owner / PDPO | **Narrowed 2026-09-04, not closed.** The consultation happened and the basis is legal obligation (§18.1, R1). What is missing is anything a later reader or auditor could be shown | §18.1, NFR-18, R1 |
 | **OQ-04** | **Unnamed people the project depends on**: the sponsor (Director, EnvOcc), the **upstream DDS API owner** who holds the token and the data agreement, the **mail relay owner**, the **second named Reviewer**, a **second technical contact** (R13), and **operational ownership after November 2026** (R14) | Project manager | Each is a `TBD` in the charter. The second Reviewer is not merely an account — **the minimum is two *reachable people***, and it is the only TOTP recovery mechanism | `project-charter.md` Resources, Risks |
 | **OQ-05** | The **baseline** for the charter's benefit rows — requests handled manually per year, and staff-hours each | Project manager | Without them, monetised cost-saving and productivity figures would be invented, and the charter does not invent them | `project-charter.md` A11 |
-| **OQ-07** | **The Thai copy catalogue must be written fresh, and must not bring back the decisions it used to assert.** `messages/th.json` was removed with the rest of the code by `a76b2d1`, so there is nothing to correct — but the strings it carried are a list of **rejected decisions** an implementer will otherwise re-derive: `rev_drain_label` / `rev_drain_note` (the drain projection was removed by [ADR 0008](adr/0008-the-pipeline-is-sized-for-one-page.md)), `rev_approve_locked` / `rev_expand_identity` (approve-gated-on-expanding-identity was rejected), `rev_rows_probe_note` (*"เป็นตัวเลขจริง ไม่ใช่ประมาณการ"* — the count may read *pending* or *failed*), `req_step_of` / `req_next` / `req_back` (the stepped wizard was rejected), and six `group_*` keys naming communicable diseases rather than the ten **Disease groups** | Repo owner | **The copy is normative**, so this is a specification of what the new catalogue may not say, not a cleanup. Recover the old file from `git show 6eddf37:messages/th.json` if the Thai wording is worth reusing — but not its decisions. **Amended by [ADR 0010](adr/0010-copy-is-authored-in-english-and-translated-before-production.md):** the new catalogue is authored in **English** first and translated before production, so this open question governs `messages/en.json` as much as `messages/th.json`, and the recovered Thai is a translation source, never a decision source | R8 vs §5.4, §10.1, §13.3, §16.3, §16.4 |
+| **OQ-07** | **The Thai copy catalogue must be written fresh, and must not bring back the decisions it used to assert.** `messages/th.json` was removed with the rest of the code by `a76b2d1`, so there is nothing to correct — but the strings it carried are a list of **rejected decisions** an implementer will otherwise re-derive: `rev_drain_label` / `rev_drain_note` (the drain projection was removed by .link {ADR 0008} url:{adr/0008-the-pipeline-is-sized-for-one-page.md}), `rev_approve_locked` / `rev_expand_identity` (approve-gated-on-expanding-identity was rejected), `rev_rows_probe_note` (*"เป็นตัวเลขจริง ไม่ใช่ประมาณการ"* — the count may read *pending* or *failed*), `req_step_of` / `req_next` / `req_back` (the stepped wizard was rejected), and six `group_*` keys naming communicable diseases rather than the ten **Disease groups** | Repo owner | **The copy is normative**, so this is a specification of what the new catalogue may not say, not a cleanup. Recover the old file from `git show 6eddf37:messages/th.json` if the Thai wording is worth reusing — but not its decisions. **Amended by .link {ADR 0010} url:{adr/0010-copy-is-authored-in-english-and-translated-before-production.md}:** the new catalogue is authored in **English** first and translated before production, so this open question governs `messages/en.json` as much as `messages/th.json`, and the recovered Thai is a translation source, never a decision source | R8 vs §5.4, §10.1, §13.3, §16.3, §16.4 |
 
 ### 6.5 Dev-cycle asks, restated as a checklist
 
@@ -3316,7 +3330,7 @@ rule already waiting for it** — none is a design question (§17.2).
 - [x] ~~Run the **three test sends**~~ and ~~confirm the **relay hostname
       verbatim**~~ — **closed 2026-09-04 without being performed.** The relay is
       in official organisational use and its mail is not filed as spam.
-      **Accepted as a risk instead: [R18](#63-accepted-risks), §18.13.**
+      **Accepted as a risk instead: [R18](#_63-accepted-risks), §18.13.**
 - [ ] Supply the **wireframe** (OQ-02).
 
 And, at deployment (§17.4):
@@ -3356,7 +3370,7 @@ And, at deployment (§17.4):
 |---|---|---|
 | 1.0 | 2026-09-03 | First issue. Derived from `spec.md` v1.1 (2026-09-02), `CONTEXT.md`, ADRs 0001–0008, `docs/disease-groups.md`, `docs/research/003-disease-group-codes.md`, `docs/project-charter.md`, and closed issues #2–#34. 31 functional requirements, 33 non-functional requirements, 19 open questions, 16 accepted risks, six diagrams. |
 | 1.1 | 2026-09-04 | **Six gaps closed and sixteen open questions answered by the repo owner.** *Added:* the Reviewer's identity test and the mandatory call on uncertainty, **not recorded** (FR-09, `spec.md` §10.3, `CONTEXT.md` *Decision*); a ban on case data in application logs with a 72-hour lifetime and a sentinel test (NFR-34, `spec.md` §14.5, §17.1). *Upstream settled:* `chw_code`/`epidem_chw_code` and `group_code` are **bare JSON integers**, normalised by a plain cast — **no padding**, because the geography domain starts at `10`; `group_code` does **not** populate `epidem_report_group_id`; `diagnosis_icd10_list`'s delimiter is a **comma**; the `birth_date` null rate is **estimated below 1%**; `T67.0XXA` is an upstream typo; the Disease group seed **stays embedded**. *Legal:* R1 **reduced from highest to medium** — the PDPO was consulted, basis is **legal obligation** under พ.ร.บ. 2562 (§18.1, NFR-18, X16 withdrawn); a **written artefact** of it remains open (OQ-03). *Mail:* the three test sends were **closed without being made** on the repo owner's ruling that the relay is in official organisational use; §11.1's junk-filing argument withdrawn. ⚠️ Confirmed the same day that **no user reads mail at `moph.go.th`** — there is **no internal leg**, so all mail crosses to public providers and the closing argument covers none of it. Both recorded, neither reconciled. The unobservability premise and ADR 0001 are **unchanged**. Carried as **R18** and §18.13. *Corrected:* **R5 narrowed to `hospital_code` alone** — its headline example, province `01`, does not exist, re-verified against all 77 provinces, 929 districts and 7,451 subdistricts; the second Excel risk in this register found to rest on an unmeasured premise. *Declined as out of scope:* X17 backup and restore (carried as R17), X18 accessibility target, X19 rollback procedure, X20 in-app amendment of the classification, X21 43-แฟ้ม alignment; the source deck **stays out of this public repository**, provenance carried as a SHA-256 in R10. **31 functional requirements, 34 non-functional requirements, 7 open questions, 18 accepted risks.** |
-| 1.2 | 2026-09-04 | **The implementation stack, decided.** §2.4 fixed the architecture but named no libraries, and only one of the gaps was tracked as an open question — so eight decisions that carry requirements were sitting in nobody's court. *New:* **§2.4.1 Implementation stack** and **[ADR 0009](adr/0009-the-extract-writer-is-ours-not-a-librarys.md)**. *Decided:* **Node 26 + pnpm** (pin the exact patch — NFR-30 test 1 is a reproducibility claim); **Drizzle**, promoted from a single passing mention in `spec.md` §13.3 into the stack, because NFR-32's province-seed assert is a boot failure; **no CSV library** — FR-17's eight rules are the fingerprint's definition and ADR 0005's *"one `pnpm up` from breaking silently"* applies harder to the Extract than to the archive it was written about, **conditional on NFR-30 tests 1–2 existing**; **`yazl`** for the archive, the asymmetry justified by the archive not being fingerprinted; **Tailwind + DaisyUI**; **`class-validator` / `class-transformer`**; **Vitest + `supertest` + `unplugin-swc`** — the plugin is not optional, since Vitest's esbuild transform drops decorator metadata and every validator would vanish *in tests only*; **`otpauth` + `qrcode`**, defaults only, because Google Authenticator ignores `algorithm` and `digits` and a SHA-256 secret fails on the phone alone; **`nodemailer`**, with a resolved `sendMail()` barred from ever becoming a `delivery_confirmed` event (ADR 0001). *Ruled out as a dependency:* **Playwright and Cypress** — five of NFR-30's six tests are backend logic and the sixth is an HTTP `GET` with a `Range` header. *Frontend:* **Angular 22**, and **Noto Sans Thai self-hosted** rather than fetched from a font CDN — an internet-facing `moph.go.th` page should not make a third-party request per load; note that Thai stacks vowel and tone marks two levels above the baseline, so DaisyUI's default line-heights clip and raising them is a correctness fix. *Narrowed:* **OQ-02** keeps the wireframe — visual design and spacing only, component choice and typeface having been settled the same day. **31 functional requirements, 34 non-functional requirements, 7 open questions, 18 accepted risks, nine ADRs.** |
-| 1.3 | 2026-09-04 | **OQ-06 closed: the charter re-anchored against `spec.md` v1.2.** `docs/project-charter.md` was written against v1.0 and still told a sponsor that the Extract had **22 columns**, that the worst case was a full-year group `02` extract of **1,141,658 rows in 10–25 minutes**, that the archive was **~20–30 MB**, and that date-chunking was *"mandatory for correctness"*. Every one of those was superseded by [#30](https://github.com/rawinan-soma/dds-sharing/issues/30), [#33](https://github.com/rawinan-soma/dds-sharing/issues/33) and [#34](https://github.com/rawinan-soma/dds-sharing/issues/34). *Corrected throughout:* **23 columns** (21 passthrough + 2 derived); the worst case a Requester can express is **1,952 rows in ~3.5 s**, the widest group by calls **~35 s**, the whole domain **3,861 rows a year**; the archive is **tens of KB**; monthly chunking is gone and the **Span builder** holds the one expression of a date range ([ADR 0008](adr/0008-the-pipeline-is-sized-for-one-page.md)); **25 Report codes**, not 24 — `501` was missing; ADRs **0001–0009** and 33 tickets (#2–#34). *Risk register:* **R1 reduced to medium** — the PDPO was consulted, the gap is now the **written artefact**, not the position; **R11 reduced to low** — no province `01` exists and the Excel row-truncation claim is retired. *Assumptions:* **A1** revised, **A2** flagged as *not* what the PDPO was asked about, **A6** reworded per Report code, **A10** resized. ⚠️ **Every correction makes the engineering problem smaller**, so the charter now says what the real difficulty is — **correctness across up to ten calls per ask** — rather than dropping the withdrawn volume claim in silence. *Also fixed:* R1 of §1.5 pointed at `spec.md` v1.1; the spec has been at **v1.2** since 2026-09-04. **31 functional requirements, 34 non-functional requirements, 6 open questions, 18 accepted risks, nine ADRs.** |
-| 1.4 | 2026-09-04 | **The copy is authored in English and translated before production** ([ADR 0010](adr/0010-copy-is-authored-in-english-and-translated-before-production.md)), reversing §16.3's ruling that `messages/en.json` was deliberately not maintained. *Why the reversal:* the message catalogue **cannot carry a description field** — the inlang SDK data model is three tables with no metadata column, and a sibling `_note` key would compile into a shipped message function — so *"mitigated by descriptive English keys"* was not a mitigation that could be strengthened, it was the ceiling; and the copy is authored by an agent, whose Thai reads badly while its English does not. *The narrowing the reversal rests on:* §16.3's *"two versions drift into two different promises"* is an argument about **served** languages, and with `locales: ["th"]` in production and no `url` strategy English has no route to a screen, so a drift is a documentation defect rather than a broken promise. *Decided:* development `baseLocale: "en"`, `locales: ["en", "th"]`; production `baseLocale: "th"`, `locales: ["th"]`; `strategy: ["cookie", "baseLocale"]` throughout and **the `url` strategy never added**; both catalogues checked in and maintained, changed in one commit; **one catalogue for the Angular screens and the four NestJS emails** — the rejection email's wording is a decision (§10.3) and outside the catalogue it changes as a template edit nobody reviews as one; descriptive keys scoped by surface; the Thai reviewed by the repo owner and named colleagues **on a staging deploy**, not in JSON. *New required test (§17.1):* key-set parity between the two catalogues plus a **U+0E00–U+0E7F assertion** on every `th.json` value — Paraglide has no strict mode, emits no warning for a missing message, and inlang's lint rules were removed in CLI v3, so after the flip a missing key renders **the raw key** on a Requester's screen; and because `en.json` leaves `locales` at the flip, that test is the only thing binding the two files. *Also recorded:* **Paraglide has no Angular support** — the `paraglide-js compile` CLI prebuild step is the only route with primary sources behind it — and `src/paraglide` is deleted at the flip, a stale outdir rendering Thai screens in English. *Cost inverted (§18.14):* no longer the implementer who cannot read a Thai-only catalogue, but the domain reader who cannot check the Thai until staging. *Load-bearing string tables in §16.3 and §3 now name **keys**, not Thai prose* — a third copy in these documents would drift against two it cannot be checked against. **31 functional requirements, 34 non-functional requirements, 6 open questions, 18 accepted risks, ten ADRs.** |
-| 1.5 | 2026-09-08 | **Four defects in the Alert and clock model, found by driving the Request lifecycle by hand.** A throwaway prototype (`prototypes/request-lifecycle.prototype.html`) pushed one Request through submit, Probe, Decision, extraction, Delivery and collection, and reached four states the prose did not cover. *New:* **[ADR 0011](adr/0011-the-collection-lapse-trip-wire-runs-on-wall-clock-time.md)**, **[ADR 0012](adr/0012-a-re-run-revokes-the-previous-download-token.md)**, **[ADR 0013](adr/0013-deactivating-a-reviewer-widens-their-alerts.md)** and **[ADR 0014](adr/0014-a-re-run-defers-its-alert-rather-than-clearing-it.md)**. *Corrected — the Collection lapse could never arrive in time:* the trip-wire ran on the business clock while the Download token it warns about runs on the wall clock, and **24 business hours are exactly 72 wall-clock hours** on a weekend-free week — so the Alert landed on the token's expiry at best (Monday 09:00 Delivery → both at Thursday 09:00) and **48 hours after the Extract was deleted** at worst (Friday 15:00 Delivery). Lowering the threshold does not help; the two clocks were incommensurable. **The silence is now measured in 24 wall-clock hours and the Alert raised at the next business-hours opening** — 48 hours to telephone on a Monday Delivery, 6.5 on a Friday one. *Corrected — two live Download tokens:* §10.7 fixed what a Re-run creates and was silent on what it retires, so a Re-run over a successful first run left two collectable Extracts. **The previous token is revoked at `ready`**, never at the press of the button, so a failed re-run destroys nothing. *Corrected — an unclearable must-clear item:* a Collection lapse is assigned by name and a Reviewer is never removed, only deactivated, so deactivating the approving Reviewer stranded their Alerts permanently. **Deactivation now widens clearing to any active Reviewer and never rewrites the assignment.** *Corrected — `re_ran` was never an outcome:* clearing an extraction-failure Alert with it recorded a button press whose result was unknown, so one broken promise read as one `re_ran` plus one open Alert. **Re-run now defers the Alert**; a completed re-run clears it as `system`, a failed one leaves it open. *Not a migration:* all four are payload and actor changes — `request_event` stays closed, and none of this blocks tickets being cut. **31 functional requirements, 34 non-functional requirements, 6 open questions, 18 accepted risks, fourteen ADRs.** |
+| 1.2 | 2026-09-04 | **The implementation stack, decided.** §2.4 fixed the architecture but named no libraries, and only one of the gaps was tracked as an open question — so eight decisions that carry requirements were sitting in nobody's court. *New:* **§2.4.1 Implementation stack** and **.link {ADR 0009} url:{adr/0009-the-extract-writer-is-ours-not-a-librarys.md}**. *Decided:* **Node 26 + pnpm** (pin the exact patch — NFR-30 test 1 is a reproducibility claim); **Drizzle**, promoted from a single passing mention in `spec.md` §13.3 into the stack, because NFR-32's province-seed assert is a boot failure; **no CSV library** — FR-17's eight rules are the fingerprint's definition and ADR 0005's *"one `pnpm up` from breaking silently"* applies harder to the Extract than to the archive it was written about, **conditional on NFR-30 tests 1–2 existing**; **`yazl`** for the archive, the asymmetry justified by the archive not being fingerprinted; **Tailwind + DaisyUI**; **`class-validator` / `class-transformer`**; **Vitest + `supertest` + `unplugin-swc`** — the plugin is not optional, since Vitest's esbuild transform drops decorator metadata and every validator would vanish *in tests only*; **`otpauth` + `qrcode`**, defaults only, because Google Authenticator ignores `algorithm` and `digits` and a SHA-256 secret fails on the phone alone; **`nodemailer`**, with a resolved `sendMail()` barred from ever becoming a `delivery_confirmed` event (ADR 0001). *Ruled out as a dependency:* **Playwright and Cypress** — five of NFR-30's six tests are backend logic and the sixth is an HTTP `GET` with a `Range` header. *Frontend:* **Angular 22**, and **Noto Sans Thai self-hosted** rather than fetched from a font CDN — an internet-facing `moph.go.th` page should not make a third-party request per load; note that Thai stacks vowel and tone marks two levels above the baseline, so DaisyUI's default line-heights clip and raising them is a correctness fix. *Narrowed:* **OQ-02** keeps the wireframe — visual design and spacing only, component choice and typeface having been settled the same day. **31 functional requirements, 34 non-functional requirements, 7 open questions, 18 accepted risks, nine ADRs.** |
+| 1.3 | 2026-09-04 | **OQ-06 closed: the charter re-anchored against `spec.md` v1.2.** `docs/project-charter.md` was written against v1.0 and still told a sponsor that the Extract had **22 columns**, that the worst case was a full-year group `02` extract of **1,141,658 rows in 10–25 minutes**, that the archive was **~20–30 MB**, and that date-chunking was *"mandatory for correctness"*. Every one of those was superseded by [#30](https://github.com/rawinan-soma/dds-sharing/issues/30), [#33](https://github.com/rawinan-soma/dds-sharing/issues/33) and [#34](https://github.com/rawinan-soma/dds-sharing/issues/34). *Corrected throughout:* **23 columns** (21 passthrough + 2 derived); the worst case a Requester can express is **1,952 rows in ~3.5 s**, the widest group by calls **~35 s**, the whole domain **3,861 rows a year**; the archive is **tens of KB**; monthly chunking is gone and the **Span builder** holds the one expression of a date range (.link {ADR 0008} url:{adr/0008-the-pipeline-is-sized-for-one-page.md}); **25 Report codes**, not 24 — `501` was missing; ADRs **0001–0009** and 33 tickets (#2–#34). *Risk register:* **R1 reduced to medium** — the PDPO was consulted, the gap is now the **written artefact**, not the position; **R11 reduced to low** — no province `01` exists and the Excel row-truncation claim is retired. *Assumptions:* **A1** revised, **A2** flagged as *not* what the PDPO was asked about, **A6** reworded per Report code, **A10** resized. ⚠️ **Every correction makes the engineering problem smaller**, so the charter now says what the real difficulty is — **correctness across up to ten calls per ask** — rather than dropping the withdrawn volume claim in silence. *Also fixed:* R1 of §1.5 pointed at `spec.md` v1.1; the spec has been at **v1.2** since 2026-09-04. **31 functional requirements, 34 non-functional requirements, 6 open questions, 18 accepted risks, nine ADRs.** |
+| 1.4 | 2026-09-04 | **The copy is authored in English and translated before production** (.link {ADR 0010} url:{adr/0010-copy-is-authored-in-english-and-translated-before-production.md}), reversing §16.3's ruling that `messages/en.json` was deliberately not maintained. *Why the reversal:* the message catalogue **cannot carry a description field** — the inlang SDK data model is three tables with no metadata column, and a sibling `_note` key would compile into a shipped message function — so *"mitigated by descriptive English keys"* was not a mitigation that could be strengthened, it was the ceiling; and the copy is authored by an agent, whose Thai reads badly while its English does not. *The narrowing the reversal rests on:* §16.3's *"two versions drift into two different promises"* is an argument about **served** languages, and with `locales: ["th"]` in production and no `url` strategy English has no route to a screen, so a drift is a documentation defect rather than a broken promise. *Decided:* development `baseLocale: "en"`, `locales: ["en", "th"]`; production `baseLocale: "th"`, `locales: ["th"]`; `strategy: ["cookie", "baseLocale"]` throughout and **the `url` strategy never added**; both catalogues checked in and maintained, changed in one commit; **one catalogue for the Angular screens and the four NestJS emails** — the rejection email's wording is a decision (§10.3) and outside the catalogue it changes as a template edit nobody reviews as one; descriptive keys scoped by surface; the Thai reviewed by the repo owner and named colleagues **on a staging deploy**, not in JSON. *New required test (§17.1):* key-set parity between the two catalogues plus a **U+0E00–U+0E7F assertion** on every `th.json` value — Paraglide has no strict mode, emits no warning for a missing message, and inlang's lint rules were removed in CLI v3, so after the flip a missing key renders **the raw key** on a Requester's screen; and because `en.json` leaves `locales` at the flip, that test is the only thing binding the two files. *Also recorded:* **Paraglide has no Angular support** — the `paraglide-js compile` CLI prebuild step is the only route with primary sources behind it — and `src/paraglide` is deleted at the flip, a stale outdir rendering Thai screens in English. *Cost inverted (§18.14):* no longer the implementer who cannot read a Thai-only catalogue, but the domain reader who cannot check the Thai until staging. *Load-bearing string tables in §16.3 and §3 now name **keys**, not Thai prose* — a third copy in these documents would drift against two it cannot be checked against. **31 functional requirements, 34 non-functional requirements, 6 open questions, 18 accepted risks, ten ADRs.** |
+| 1.5 | 2026-09-08 | **Four defects in the Alert and clock model, found by driving the Request lifecycle by hand.** A throwaway prototype (`prototypes/request-lifecycle.prototype.html`) pushed one Request through submit, Probe, Decision, extraction, Delivery and collection, and reached four states the prose did not cover. *New:* **.link {ADR 0011} url:{adr/0011-the-collection-lapse-trip-wire-runs-on-wall-clock-time.md}**, **.link {ADR 0012} url:{adr/0012-a-re-run-revokes-the-previous-download-token.md}**, **.link {ADR 0013} url:{adr/0013-deactivating-a-reviewer-widens-their-alerts.md}** and **.link {ADR 0014} url:{adr/0014-a-re-run-defers-its-alert-rather-than-clearing-it.md}**. *Corrected — the Collection lapse could never arrive in time:* the trip-wire ran on the business clock while the Download token it warns about runs on the wall clock, and **24 business hours are exactly 72 wall-clock hours** on a weekend-free week — so the Alert landed on the token's expiry at best (Monday 09:00 Delivery → both at Thursday 09:00) and **48 hours after the Extract was deleted** at worst (Friday 15:00 Delivery). Lowering the threshold does not help; the two clocks were incommensurable. **The silence is now measured in 24 wall-clock hours and the Alert raised at the next business-hours opening** — 48 hours to telephone on a Monday Delivery, 6.5 on a Friday one. *Corrected — two live Download tokens:* §10.7 fixed what a Re-run creates and was silent on what it retires, so a Re-run over a successful first run left two collectable Extracts. **The previous token is revoked at `ready`**, never at the press of the button, so a failed re-run destroys nothing. *Corrected — an unclearable must-clear item:* a Collection lapse is assigned by name and a Reviewer is never removed, only deactivated, so deactivating the approving Reviewer stranded their Alerts permanently. **Deactivation now widens clearing to any active Reviewer and never rewrites the assignment.** *Corrected — `re_ran` was never an outcome:* clearing an extraction-failure Alert with it recorded a button press whose result was unknown, so one broken promise read as one `re_ran` plus one open Alert. **Re-run now defers the Alert**; a completed re-run clears it as `system`, a failed one leaves it open. *Not a migration:* all four are payload and actor changes — `request_event` stays closed, and none of this blocks tickets being cut. **31 functional requirements, 34 non-functional requirements, 6 open questions, 18 accepted risks, fourteen ADRs.** |

@@ -64,6 +64,20 @@
       "when": 1789357252999,
       "tag": "0008_grant_app_role_reviewer",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1789360737292,
+      "tag": "0009_remove_contact_redacted",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1789360748438,
+      "tag": "0010_drop_admin_role",
+      "breakpoints": true
     }
   ]
 }

@@ -1,12 +1,29 @@
+.docname {Project Charter — DDS-ENVOCC-Sharing}
+.docdescription {Project charter (กฎบัตรโครงการ) for DDS-ENVOCC-Sharing: a human-gated, audited service delivering de-identified case-level DDS occupational- and environmental-disease surveillance extracts.}
+.doctype {paged}
+.doclang {English}
+.theme {paperwhite} layout:{latex}
+
+.pageformat size:{a4} margin:{2cm}
+
+.pagemargin {bottomcenter}
+    .currentpage / .totalpages
+
+.pagemargin {bottomleft}
+    DDS-ENVOCC-Sharing
+
+.nonumbering
+.autopagebreak maxdepth:{2}
+
 # PROJECT CHARTER (กฎบัตรโครงการ)
 
 > **Drafting note.** Written in English so it can be produced and reviewed against
-> [`spec.md`](spec.md) directly; **the delivered document is Thai** and the
+> .link {`spec.md`} url:{spec.md} directly; **the delivered document is Thai** and the
 > translation is the project manager's. Field labels are carried in the form's own
 > bilingual wording so the mapping back to the workshop template is mechanical.
 >
-> **Re-anchored 2026-09-04 against [`spec.md`](spec.md) v1.2**, closing OQ-06 of
-> [`docs/srs.md`](srs.md). The v1.0 figures this charter carried — **22 columns**,
+> **Re-anchored 2026-09-04 against .link {`spec.md`} url:{spec.md} v1.2**, closing OQ-06 of
+> .link {`docs/srs.md`} url:{srs.md}. The v1.0 figures this charter carried — **22 columns**,
 > a full-year group `02` worst case of **1,141,658 rows in 10–25 minutes**, a
 > **~20–30 MB** archive, and **date-chunking as *"mandatory for correctness"*** —
 > were superseded by [#30](https://github.com/rawinan-soma/dds-sharing/issues/30),
@@ -18,14 +35,17 @@
 > old claim — a sponsor who was shown the old numbers should be able to see what
 > changed.
 >
-> Every substantive claim below traces to [`spec.md`](spec.md) **v1.2
-> (2026-09-04)**, to [`docs/srs.md`](srs.md) **v1.2**, to
-> [`CONTEXT.md`](../CONTEXT.md), or to a closed ticket on
+> Every substantive claim below traces to .link {`spec.md`} url:{spec.md} **v1.2
+> (2026-09-04)**, to .link {`docs/srs.md`} url:{srs.md} **v1.2**, to
+> .link {`CONTEXT.md`} url:{https://github.com/rawinan-soma/dds-sharing/blob/main/CONTEXT.md}, or to a closed ticket on
 > [Map: DDS surveillance data-sharing service](https://github.com/rawinan-soma/dds-sharing/issues/1).
 > Section references in this charter (§n) are `spec.md` sections.
 >
 > `TBD` marks a value the project manager must supply. Nothing here is invented to
 > fill a blank.
+
+
+.tableofcontents maxdepth:{3}
 
 ---
 
@@ -115,7 +135,7 @@ ICD-10 code: `201`–`224` — **15 established under พ.ร.บ.ควบค�
 (Heat Stroke, โรคลมแดด)**. The set is amendable by announcement and is **not
 contiguous**. Those 25 are grouped into the **ten Disease groups** a Requester
 chooses from, a classification made by DDC's own officers rather than received
-from upstream ([ADR 0006](adr/0006-a-disease-group-is-a-family-of-report-codes.md)).
+from upstream (.link {ADR 0006} url:{adr/0006-a-disease-group-is-a-family-of-report-codes.md}).
 
 What the scheme watches, in its own categories: pneumoconioses and
 asbestos-related disease (`202`–`206`), mesothelioma (`207`), lead toxicity
@@ -274,7 +294,7 @@ targeted yet, because the current manual process is unmeasured (assumption A11).
 3. **Extraction pipeline** — Probe, Fetch (**one call per Report code over one
    shared half-open span**, from the single Span builder), Filter, Project,
    Completeness assert, retry/resume/stall handling (§5.4, §7,
-   [ADR 0008](adr/0008-the-pipeline-is-sized-for-one-page.md)).
+   .link {ADR 0008} url:{adr/0008-the-pipeline-is-sized-for-one-page.md}).
 4. **De-identification layer** — the six rules and the 23-column allowlist (§6).
 5. **Extract writer** — one flat CSV, eight writer rules, zipped, fingerprinted
    (§8).
@@ -304,10 +324,10 @@ targeted yet, because the current manual process is unmeasured (assumption A11).
 
 **Documentation (already delivered)**
 
-16. [`spec.md`](spec.md) **v1.2** — 2,914 lines, complete for implementation.
-17. [`CONTEXT.md`](../CONTEXT.md) — the canonical glossary.
+16. .link {`spec.md`} url:{spec.md} **v1.2** — 2,914 lines, complete for implementation.
+17. .link {`CONTEXT.md`} url:{https://github.com/rawinan-soma/dds-sharing/blob/main/CONTEXT.md} — the canonical glossary.
 18. **ADRs 0001–0009** — the hard-to-reverse decisions and their reasoning.
-19. [`docs/srs.md`](srs.md) **v1.2** — 31 functional and 34 non-functional
+19. .link {`docs/srs.md`} url:{srs.md} **v1.2** — 31 functional and 34 non-functional
     requirements, the traceability matrix, the accepted-risk register and the
     seven remaining open questions.
 
@@ -374,14 +394,14 @@ within the September–November 2026 window and are `TBD: confirm`.
 
 | KEY MILESTONE | Mapped work | START (วันที่เริ่ม) | FINISH (วันที่สิ้นสุด) |
 |---|---|---|---|
-| **Form Project Team / Preliminary Review / Scope** | Repo, skills config, upstream API verification (#4), disease-group research (#3) | 2026-08-27 | 2026-09-01 |
-| **Finalize Project Plan / Charter / Kick Off** | This charter; sponsor sign-off | 2026-09-02 | 2026-09-05 |
-| **Perform Defining Phase** | **✅ COMPLETE** — 33 decision tickets resolved (#2–#34), `CONTEXT.md`, ADRs 0001–0009, `spec.md` v1.2, `docs/srs.md` v1.2 | 2026-08-27 | 2026-09-04 |
-| **Perform Measurement Phase** | Dev-cycle asks §17.2. ✅ **Closed 2026-09-04:** ~~`birth_date` null rate~~ (estimated <1%), ~~`diagnosis_icd10_list` delimiter~~ (a comma), ~~three test sends~~ and ~~relay hostname~~ (closed without being performed; carried as risk R18 instead). **Remaining:** SMTP config (`SMTP_PORT`, `SMTP_PASS`, `FRONTEND_URL`) and the **wireframe** | 2026-09-08 | 2026-09-19 |
-| **Perform Analysis Phase** | Ticket breakdown from `spec.md` with blocking edges; dev harness design | 2026-09-08 | 2026-09-12 |
-| **Perform Improvement Phase** | Build, ticket by ticket, test-first: fake upstream harness → pipeline → de-identification → writer → delivery → Reviewer surface + auth → email → audit → observability | 2026-09-15 | 2026-10-31 |
-| **Perform Control Phase** | Required tests §17.1; VM request; host firewalling; NTP; province seed; **end-to-end download smoke test through the real ministry edge as a first-deploy gate**; Reviewer seeding ceremony; production deploy | 2026-11-03 | 2026-11-21 |
-| **Deliver Project Summary Report and Close Out** | Handover, operator runbook, close map issue #1 | 2026-11-24 | 2026-11-28 |
+| **Form Project Team / Preliminary Review / Scope** | Repo, skills config, upstream API verification (#4), disease-group research (#3) | 2026‑08‑27 | 2026‑09‑01 |
+| **Finalize Project Plan / Charter / Kick Off** | This charter; sponsor sign-off | 2026‑09‑02 | 2026‑09‑05 |
+| **Perform Defining Phase** | **✅ COMPLETE** — 33 decision tickets resolved (#2–#34), `CONTEXT.md`, ADRs 0001–0009, `spec.md` v1.2, `docs/srs.md` v1.2 | 2026‑08‑27 | 2026‑09‑04 |
+| **Perform Measurement Phase** | Dev-cycle asks §17.2. ✅ **Closed 2026‑09‑04:** ~~`birth_date` null rate~~ (estimated <1%), ~~`diagnosis_icd10_list` delimiter~~ (a comma), ~~three test sends~~ and ~~relay hostname~~ (closed without being performed; carried as risk R18 instead). **Remaining:** SMTP config (`SMTP_PORT`, `SMTP_PASS`, `FRONTEND_URL`) and the **wireframe** | 2026‑09‑08 | 2026‑09‑19 |
+| **Perform Analysis Phase** | Ticket breakdown from `spec.md` with blocking edges; dev harness design | 2026‑09‑08 | 2026‑09‑12 |
+| **Perform Improvement Phase** | Build, ticket by ticket, test-first: fake upstream harness → pipeline → de-identification → writer → delivery → Reviewer surface + auth → email → audit → observability | 2026‑09‑15 | 2026‑10‑31 |
+| **Perform Control Phase** | Required tests §17.1; VM request; host firewalling; NTP; province seed; **end-to-end download smoke test through the real ministry edge as a first-deploy gate**; Reviewer seeding ceremony; production deploy | 2026‑11‑03 | 2026‑11‑21 |
+| **Deliver Project Summary Report and Close Out** | Handover, operator runbook, close map issue #1 | 2026‑11‑24 | 2026‑11‑28 |
 
 > ⚠️ **The largest schedule risk sits in Control, not Improvement.** The
 > end-to-end download through the real ministry edge is **the last item
@@ -503,7 +523,7 @@ none is an oversight.** Ordered by exposure.
   Requester can express is **one page**, so this is handled by one loud failure and
   by nothing else. *This charter previously called date-chunking "mandatory for
   correctness"; monthly chunking was removed as self-inflicted
-  ([ADR 0008](adr/0008-the-pipeline-is-sized-for-one-page.md)), and a single **Span
+  (.link {ADR 0008} url:{adr/0008-the-pipeline-is-sized-for-one-page.md}), and a single **Span
   builder** now holds the one expression of a Request's date range.*
 - **An unknown `group_code` returns `200` with `data: []`**, so a stale or
   mistyped code is indistinguishable from *"no cases this period"* — which is why
@@ -571,9 +591,9 @@ none is an oversight.** Ordered by exposure.
 
 **Sponsor approval**
 
-| APPROVED BY | TITLE | DATE | SIGNATURE |
+| APPROVED BY | TITLE | DATE (วันที่) | SIGNATURE (ลายเซ็น) |
 |---|---|---|---|
-| `TBD` | Director, EnvOcc | | |
+| `TBD` | Director, EnvOcc | .whitespace width:{3cm} | .whitespace width:{4cm} |
 
 > **What signing this charter accepts.** The lawful basis is **legal obligation**
 > under พ.ร.บ. 2562, and the DDC PDPO **has been consulted** (A1, §18.1) — but

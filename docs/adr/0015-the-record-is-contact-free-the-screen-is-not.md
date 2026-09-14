@@ -13,6 +13,11 @@ and amends #74. Found while triaging the post-Decision Reviewer surface: #74 giv
 button and two kinds of resend, and nothing in §10 said where those buttons
 live or what is on the screen around them.
 
+Also amended by
+[ADR 0019](0019-a-requesters-contact-details-are-never-removed.md), which
+removed Redaction: the first Consequence's boundary now ends only the contact
+details' time on the Reviewer's screen.
+
 ## Context
 
 Two rules in this service both concern contact details, and they are easy to
