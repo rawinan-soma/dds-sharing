@@ -110,3 +110,33 @@ button.secondary {
   font-size: 12px;
   color: var(--color-accent-700);
 }
+
+.notice {
+  margin: 0 0 16px;
+  font-size: 13px;
+  color: var(--color-accent-700);
+}
+
+ul.error {
+  margin: 0;
+  padding: 8px 10px 8px 26px;
+  border-left: 2px solid var(--color-failed-ink);
+  background: var(--color-failed-wash);
+  color: var(--color-failed-ink);
+  font-size: 13px;
+}
+
+// Non-blocking: fixed, out of the document flow, never intercepts clicks on
+// the rest of the page (spec §17.5 — a toast, not a modal or banner).
+.session-toast {
+  position: fixed;
+  left: 16px;
+  bottom: 16px;
+  max-width: 320px;
+  padding: 10px 14px;
+  border-left: 2px solid var(--color-accent);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-size: 13px;
+  box-shadow: 0 2px 8px rgba(29, 31, 32, 0.16);
+}

@@ -34,6 +34,12 @@ describe("App (e2e)", () => {
     expect(res.headers.get("content-type")).toContain("text/html");
   });
 
+  it("sends X-Robots-Tag: noindex on the reviewer SPA shell (spec §17.4)", async () => {
+    const res = await fetch(`${baseUrl}/reviewer`);
+    expect(res.status).toBe(200);
+    expect(res.headers.get("x-robots-tag")).toBe("noindex");
+  });
+
   it("returns an API 404, not the SPA shell, for an unmatched /api route", async () => {
     const res = await fetch(`${baseUrl}/api/does-not-exist`);
     expect(res.status).toBe(404);
