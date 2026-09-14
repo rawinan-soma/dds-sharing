@@ -1,0 +1,322 @@
+:host {
+  // Industry design system tokens (docs/design_handoff_dds_sharing) — the
+  // same small subset sign-in.scss references, not a ported stylesheet.
+  --color-bg: #f2f2f3;
+  --color-text: #1d1f20;
+  --color-accent: #5980a6;
+  --color-accent-700: #597ea3;
+  --color-accent-900: #1d2d3d;
+  --color-divider: rgba(29, 31, 32, 0.16);
+  --color-neutral-100: #f5f5f8;
+  --color-neutral-600: #7a7a7d;
+  --color-pending-ink: #8a5a00;
+  --color-pending-wash: #fbf1dc;
+  --color-failed-ink: #8c2b21;
+  --font-heading: 'Barlow Condensed', sans-serif;
+
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: 'Barlow', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.reviewer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 20px;
+  background: var(--color-accent-900);
+  color: #fff;
+  font-size: 13px;
+}
+
+.brand {
+  font-family: var(--font-heading);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.signed-in-as {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+button.sign-out {
+  font: inherit;
+  padding: 6px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+}
+
+.split {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(280px, 378px) minmax(0, 1fr);
+  min-height: 0;
+}
+
+.sidebar {
+  background: var(--color-neutral-100);
+  border-right: 1px solid var(--color-divider);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+}
+
+// Each zone (Queue here; Alerts and in-flight land the same way in #73/#74)
+// shrinks independently — every block needs its own `min-height: 0` or the
+// flex column refuses to shrink and starves the list (design handoff).
+.zone {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.zone-queue {
+  flex: 1;
+}
+
+.sidebar-header {
+  padding: 16px 16px 12px;
+  border-bottom: 1px solid var(--color-divider);
+  flex-shrink: 0;
+}
+
+.sidebar-header h1 {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 19px;
+  margin: 0 0 6px;
+  display: inline-block;
+}
+
+.pending-count {
+  font-size: 12px;
+  color: var(--color-neutral-600);
+  margin-left: 8px;
+}
+
+button.refresh {
+  font: inherit;
+  display: block;
+  margin-top: 10px;
+  padding: 6px 12px;
+  border: 1px solid var(--color-divider);
+  background: transparent;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+button.refresh:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.staleness-note {
+  margin: 8px 0 0;
+  font-size: 11.5px;
+  color: var(--color-neutral-600);
+}
+
+.queue-list {
+  flex: 1;
+  min-height: 110px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.empty-state {
+  padding: 20px 16px;
+  color: var(--color-neutral-600);
+  font-size: 13px;
+}
+
+.empty-state.error {
+  color: var(--color-failed-ink);
+}
+
+.queue-row {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  text-align: left;
+  font: inherit;
+  padding: 10px 16px;
+  border: none;
+  border-bottom: 1px solid var(--color-divider);
+  background: transparent;
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.queue-row.selected {
+  background: rgba(89, 128, 166, 0.12);
+}
+
+.row-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-variant-numeric: tabular-nums;
+}
+
+.reference {
+  font-weight: 600;
+}
+
+.state-tag {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 6px;
+  background: var(--color-pending-wash);
+  color: var(--color-pending-ink);
+}
+
+.requester,
+.workplace,
+.group {
+  font-size: 12.5px;
+  color: var(--color-neutral-600);
+}
+
+.time-remaining {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-pending-ink);
+}
+
+.expired {
+  color: var(--color-neutral-600);
+}
+
+.dossier {
+  padding: 20px 24px 60px;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.dossier-header {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.dossier-header .reference {
+  font-family: var(--font-heading);
+  font-size: 19px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.dossier-header .position {
+  font-size: 12.5px;
+  color: var(--color-neutral-600);
+}
+
+// The reviewer split is desktop-only by design (design handoff) — no
+// narrow-width rules for the ledger/strip grids below.
+.ledger {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  border: 1px solid var(--color-divider);
+  padding: 18px 20px;
+}
+
+.ledger h2 {
+  font-family: var(--font-heading);
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-accent-700);
+  margin: 0 0 10px;
+}
+
+.who .name {
+  font-family: var(--font-heading);
+  font-size: 19px;
+  margin: 0;
+}
+
+.who .workplace {
+  font-size: 15px;
+  margin: 2px 0 10px;
+}
+
+.who dl {
+  margin: 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 10px;
+  font-size: 13px;
+}
+
+.who dt {
+  color: var(--color-neutral-600);
+}
+
+.what .group-name {
+  font-family: var(--font-heading);
+  font-size: 19px;
+  margin: 0 0 6px;
+}
+
+.what details {
+  font-size: 12.5px;
+  margin-bottom: 10px;
+}
+
+.what code {
+  font-variant-numeric: tabular-nums;
+}
+
+.what .dates,
+.what .area {
+  font-size: 13px;
+  margin: 4px 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.strip {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin: 20px 0;
+}
+
+.strip .cell {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.strip .label {
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-neutral-600);
+}
+
+.strip .value {
+  font-size: 20px;
+  font-variant-numeric: tabular-nums;
+}
+
+.judgement {
+  border-top: 1px solid var(--color-divider);
+  padding-top: 16px;
+  font-size: 13px;
+  color: var(--color-accent-700);
+  max-width: 640px;
+}

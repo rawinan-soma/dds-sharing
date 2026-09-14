@@ -5,6 +5,7 @@ import { signal } from '@angular/core';
 import { ReviewerSignIn } from './sign-in';
 import { ReviewerApiService } from '../reviewer-api.service';
 import { SessionCeilingService } from '../session-ceiling.service';
+import { ReviewerQueueApiService } from '../queue/reviewer-queue-api.service';
 
 describe('ReviewerSignIn (spec §17.5: one form, one generic failure)', () => {
   function setup(apiOverrides: Partial<ReviewerApiService> = {}, sessionCeilingOverrides: Partial<SessionCeilingService> = {}) {
@@ -23,12 +24,20 @@ describe('ReviewerSignIn (spec §17.5: one form, one generic failure)', () => {
       stop: vi.fn(),
       ...sessionCeilingOverrides,
     };
+    // The signed-in view mounts ReviewerQueuePage (ticket #65), which owns
+    // its own spec (reviewer-queue.page.spec.ts) — stubbed here so these
+    // sign-in-flow tests never make a real HTTP call.
+    const reviewerQueueApi = {
+      listPending: vi.fn().mockResolvedValue({ outcome: 'ok', result: { requests: [], refreshedAt: new Date().toISOString() } }),
+      getDetail: vi.fn(),
+    };
     TestBed.configureTestingModule({
       imports: [ReviewerSignIn],
       providers: [
         provideRouter([]),
         { provide: ReviewerApiService, useValue: api },
         { provide: SessionCeilingService, useValue: sessionCeiling },
+        { provide: ReviewerQueueApiService, useValue: reviewerQueueApi },
       ],
     });
     const fixture = TestBed.createComponent(ReviewerSignIn);
@@ -123,9 +132,9 @@ describe('ReviewerSignIn (spec §17.5: one form, one generic failure)', () => {
     fixture.detectChanges();
 
     let el = fixture.nativeElement as HTMLElement;
-    expect(el.textContent).toContain('Welcome, Alice Reviewer.');
+    expect(el.textContent).toContain('Alice Reviewer');
 
-    el.querySelector<HTMLButtonElement>('button.secondary')!.click();
+    el.querySelector<HTMLButtonElement>('button.sign-out')!.click();
     await fixture.whenStable();
     fixture.detectChanges();
 
@@ -197,7 +206,7 @@ describe('ReviewerSignIn (spec §17.5: one form, one generic failure)', () => {
       fixture.detectChanges();
 
       const el = fixture.nativeElement as HTMLElement;
-      expect(el.textContent).not.toContain('Welcome, Alice Reviewer.');
+      expect(el.textContent).not.toContain('Alice Reviewer');
       expect(el.querySelector('input[formcontrolname="currentPassword"]')).toBeTruthy();
       expect(el.querySelector('input[formcontrolname="newPassword"]')).toBeTruthy();
       expect(el.querySelector('form.change-password input[formcontrolname="totpCode"]')).toBeTruthy();
@@ -220,7 +229,7 @@ describe('ReviewerSignIn (spec §17.5: one form, one generic failure)', () => {
 
       expect(api.changePassword).toHaveBeenCalledWith('x', 'Correct-Horse1!', '654321');
       const el = fixture.nativeElement as HTMLElement;
-      expect(el.textContent).toContain('Welcome, Alice Reviewer.');
+      expect(el.textContent).toContain('Alice Reviewer');
     });
 
     it('shows the specific policy violations for a non-compliant new password, not a generic error', async () => {
@@ -303,7 +312,7 @@ describe('ReviewerSignIn (spec §17.5: one form, one generic failure)', () => {
     fixture.detectChanges();
 
     let el = fixture.nativeElement as HTMLElement;
-    expect(el.textContent).toContain('Welcome, Alice Reviewer.');
+    expect(el.textContent).toContain('Alice Reviewer');
 
     capturedOnExpire!();
     fixture.detectChanges();

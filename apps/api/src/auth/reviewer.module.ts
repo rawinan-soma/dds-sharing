@@ -9,5 +9,9 @@ import { SessionGuard } from "./session.guard.js";
 @Module({
   controllers: [ReviewerController],
   providers: [AuthService, CsrfGuard, SessionGuard],
+  // SessionGuard (and the AuthService it depends on) is every other
+  // `/reviewer/*` module's gate too — exported so ReviewerQueueModule can
+  // reuse this one instance instead of standing up a second.
+  exports: [AuthService, SessionGuard],
 })
 export class ReviewerModule {}

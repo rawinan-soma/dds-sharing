@@ -1,0 +1,129 @@
+<header class="reviewer-header">
+  <span class="brand">DDS SHARING · Reviewer</span>
+  <span class="signed-in-as">
+    {{ displayName }}
+    <button type="button" class="sign-out" (click)="signOutRequested.emit()">Sign out</button>
+  </span>
+</header>
+
+<div class="split">
+  <!--
+    Three zones share this sidebar (spec §10.1): Queue (here), Alerts (#73)
+    and in-flight (#74) — a Request lives in exactly one at a time. Only the
+    Queue zone is built by this ticket; it is its own <section> precisely so
+    the other two can be added as siblings later without touching this one.
+  -->
+  <aside class="sidebar">
+    <section class="zone zone-queue" aria-labelledby="queue-heading">
+      <div class="sidebar-header">
+        <h1 id="queue-heading">Queue</h1>
+        <span class="pending-count">{{ rows().length }} pending</span>
+        <button type="button" class="refresh" [disabled]="queueState() === 'loading'" (click)="refresh()">
+          Refresh
+        </button>
+        <p class="staleness-note">
+          {{ refreshedAgoLabel() }} — this list does not update on its own; mail is the notification channel.
+        </p>
+      </div>
+
+      <ul class="queue-list">
+        @if (queueState() === 'loading' && rows().length === 0) {
+          <li class="empty-state">Loading the queue…</li>
+        } @else if (queueState() === 'error') {
+          <li class="empty-state error">Could not load the queue. <button type="button" (click)="refresh()">Try again</button></li>
+        } @else if (rows().length === 0 && hasOpenAlerts()) {
+          <li class="empty-state">The desk isn't clear — open Alerts still need you.</li>
+        } @else if (rows().length === 0) {
+          <li class="empty-state">Nothing to decide right now.</li>
+        } @else {
+          @for (row of rows(); track row.id) {
+            <li>
+              <button
+                type="button"
+                class="queue-row"
+                [class.selected]="selectedId() === row.id"
+                (click)="select(row.id)"
+              >
+                <span class="row-top">
+                  <span class="reference">{{ row.referenceNumber }}</span>
+                  <span class="state-tag">Pending</span>
+                </span>
+                <span class="requester">{{ row.requesterName }}</span>
+                <span class="workplace">{{ row.workplace }}</span>
+                <span class="group">{{ row.diseaseGroupNameTh }}</span>
+                <span class="time-remaining" [class.expired]="!row.isActionable">{{ row.timeRemainingLabel }}</span>
+              </button>
+            </li>
+          }
+        }
+      </ul>
+    </section>
+  </aside>
+
+  <section class="dossier" aria-label="Request detail">
+    @if (!selectedId()) {
+      <p class="empty-state">Pick a request from the queue to see its detail.</p>
+    } @else if (detailState() === 'loading') {
+      <p class="empty-state">Loading…</p>
+    } @else if (detailState() === 'not_found') {
+      <p class="empty-state">This request is no longer pending.</p>
+    } @else if (detailState() === 'error') {
+      <p class="empty-state error">Could not load this request. <button type="button" (click)="select(selectedId()!)">Try again</button></p>
+    } @else if (detail(); as detail) {
+      <header class="dossier-header">
+        <span class="reference">{{ detail.referenceNumber }}</span>
+        <span class="state-tag">Pending</span>
+        <span class="position">{{ detail.requestsAhead }} request{{ detail.requestsAhead === 1 ? '' : 's' }} ahead of it</span>
+      </header>
+
+      <div class="ledger">
+        <div class="who">
+          <h2>Who is asking</h2>
+          <p class="name">{{ detail.contact.name }} {{ detail.contact.surname }}</p>
+          <p class="workplace">{{ detail.contact.workplace }}</p>
+          <dl>
+            <dt>Telephone</dt>
+            <dd>{{ detail.contact.tel }}</dd>
+            <dt>Email</dt>
+            <dd>{{ detail.contact.email }}</dd>
+          </dl>
+        </div>
+
+        <div class="what">
+          <h2>What they asked for</h2>
+          <p class="group-name">{{ detail.diseaseGroupNameTh }}</p>
+          <details>
+            <summary>Report codes ({{ detail.reportCodes.length }})</summary>
+            <code>{{ detail.reportCodes.join(', ') }}</code>
+          </details>
+          <p class="dates">
+            {{ formatIsoDate(detail.fromDate) }} – {{ formatIsoDate(detail.toDate) }}
+            ({{ detail.days }} day{{ detail.days === 1 ? '' : 's' }})
+          </p>
+          <p class="area">{{ detail.area.label }}</p>
+        </div>
+      </div>
+
+      <div class="strip">
+        <div class="cell">
+          <span class="label">Probe row count</span>
+          <span class="value">{{ detail.probeRowCount ?? 'Not available yet' }}</span>
+        </div>
+        <div class="cell">
+          <span class="label">Time remaining</span>
+          <span class="value" [class.expired]="!detail.isActionable">{{ detail.timeRemainingLabel }}</span>
+        </div>
+        <div class="cell">
+          <span class="label">Submitted</span>
+          <span class="value">{{ formatDateTime(detail.submittedAt) }}</span>
+        </div>
+      </div>
+
+      <p class="judgement">
+        Judge identity, and identity only — does this person exist today, and do they work at the
+        workplace they named? Where the screen cannot answer that, telephone the number above before
+        deciding either way.
+      </p>
+    }
+  </section>
+</div>
