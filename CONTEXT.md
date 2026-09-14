@@ -14,6 +14,10 @@ _Avoid_: User, client, applicant
 The person in the operating organisation who checks a Requester's identity and approves or rejects their Request. Authenticated, named, and accountable for each release. A Reviewer is never removed — only deactivated — because their name stays on every Decision they made. At least two must be **reachable** at any time: one Reviewer is the other's only recovery path.
 _Avoid_: Admin, approver, moderator
 
+**Operator**:
+The named person running a command on the host — seeding or deactivating a Reviewer, a Redaction. Named by the person themselves each time a command is run, never inferred from a login or carried over from a setting, because a shared login or a left-behind name would put the wrong person on a permanent record.
+_Avoid_: Admin, root, sysadmin
+
 ### The request
 
 **Request**:

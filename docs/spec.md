@@ -1453,9 +1453,12 @@ resurrect state that matters, and a throttle a `docker compose restart` clears i
 a throttle an attacker can wait out. Volume is a handful of rows a week.
 
 **Cookie:** `httpOnly`, `SameSite=Lax`, and **`Secure` on by default, disabled
-only by an explicit development config flag.** There is no TLS before production,
+only by `ALLOW_INSECURE_TRANSPORT=true`.** There is no TLS before production,
 so the insecure setting must be opted into and can never be reached by silent
-degradation.
+degradation. The same flag permits `http` for `FRONTEND_URL` and the upstream
+base URL, because all three are one fact — *this deployment has no TLS* — and a
+flag that is on is announced at boot and in `/health`
+([ADR 0018](adr/0018-the-environment-holds-deployment-facts-not-policy.md)).
 
 **CSRF:** double-submit token on every state-changing `/reviewer` post, on top of
 `SameSite=Lax`. Justified because the thing protected is a one-click irreversible
@@ -1727,8 +1730,15 @@ SMTP_STARTTLS=true
 SMTP_SECURE=false     # explicit STARTTLS on submission, not implicit TLS
 SMTP_USER=envocc@ddc.mail.go.th
 SMTP_PASS=            # supplied at dev cycle
-FRONTEND_URL=         # supplied at dev cycle — absolute, never derived from Host
+SMTP_FROM=envocc@ddc.mail.go.th
+SMTP_ALLOW_PLAINTEXT=false   # development only — Mailpit; plaintext SMTP fails boot without it
+FRONTEND_URL=         # supplied at dev cycle — origin only, never derived from Host
 ```
+
+Every one of these is required and validated at boot; a missing or malformed
+value fails the boot, naming the variable and never its value. `STARTTLS=true`
+with `SECURE=true` always fails.
+[ADR 0018](adr/0018-the-environment-holds-deployment-facts-not-policy.md).
 
 Sender identity is `envocc@ddc.mail.go.th`. Rate limits were not asked about and
 are not a design risk: volume is single-digit messages per Request. **Confirm the
@@ -2130,8 +2140,10 @@ security heading and banks a safeguard that is not there.
 **Keyed on nothing. Not a conservative guess — what the measurements force.**
 Eight concurrent upstream calls degraded to ~14.3 s each with zero throughput
 gained (§5.3). Any N > 1 makes the service slower for everyone while increasing
-the chance DDC notices us. `N` is configurable; **record why it is 1** so a future
-operator does not tune it upward expecting throughput.
+the chance DDC notices us. `N` is a **reviewed constant in code, not an
+environment variable**; **record why it is 1** beside it so a future
+operator does not tune it upward expecting throughput
+([ADR 0018](adr/0018-the-environment-holds-deployment-facts-not-policy.md)).
 
 **Per-client quotas are rejected outright.** A 1000× cost spread between Requests
 makes counting submissions meaningless — one full-year `201` Request is a single
@@ -2697,6 +2709,10 @@ judge.**
   archive under a fixed filename. Its content is a build-time task, not a decision.
 - The **province seed migration**, generated from `docs/provinces.csv`.
 - The **Thai holiday config file**, reviewed annually.
+- **`.env.example`**, listing every environment variable the application reads,
+  each with a comment. It is the operator's reference for the VM's `.env`, which
+  is never committed. The environment holds deployment facts only — policy is a
+  constant in code ([ADR 0018](adr/0018-the-environment-holds-deployment-facts-not-policy.md)).
 - **Host CLI commands**: Reviewer seeding / password reset / TOTP re-enrolment /
   deactivation (§17.5), Redaction (§12.8), the fingerprint verification command
   (§8.4), and the upstream traffic report (§13.6).
@@ -2821,7 +2837,9 @@ failed; the screen does not.**
 
 **Deactivation is `deactivated_at`, never a row deletion.** It invalidates live
 sessions immediately (a Postgres query) and is itself a recorded event naming the
-operator who ran it. **The display name stays on every Decision, permanently** —
+operator who ran it — given as a required `--operator` argument on every run,
+never inferred from the host login and never read from a setting, because a
+shared login or a left-behind name puts the wrong person on a permanent record. **The display name stays on every Decision, permanently** —
 `display_name` must be the person's real name, and the CLI prompts for it
 deliberately rather than deriving it from the username, because it is unerasable.
 
