@@ -102,9 +102,7 @@ export const transportSchemaFields = {
 };
 
 export const fakeUpstreamSchemaFields = {
-  // Dev-only tooling, outside the production inventory (ADR 0018) — kept
-  // developer-friendly with the harness's long-standing default port.
-  FAKE_UPSTREAM_PORT: Joi.number().integer().min(1).max(65535).default(4010),
+  FAKE_UPSTREAM_PORT: Joi.number().integer().min(1).max(65535).required(),
 };
 
 // FRONTEND_URL and UPSTREAM_BASE_URL each need https unless

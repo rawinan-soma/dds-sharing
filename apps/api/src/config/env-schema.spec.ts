@@ -224,10 +224,9 @@ describe("hostCliEnvSchema", () => {
 });
 
 describe("fakeUpstreamEnvSchema", () => {
-  it("defaults FAKE_UPSTREAM_PORT to 4010 when unset", () => {
-    const { error, value } = fakeUpstreamEnvSchema().validate({});
-    expect(error).toBeUndefined();
-    expect(value.FAKE_UPSTREAM_PORT).toBe(4010);
+  it("requires FAKE_UPSTREAM_PORT", () => {
+    const { error } = fakeUpstreamEnvSchema().validate({});
+    expect(error?.message).toMatch(/FAKE_UPSTREAM_PORT/);
   });
 
   it("rejects an out-of-range port", () => {
