@@ -146,10 +146,13 @@ describe.skipIf(!adminUrl || !appUrl)("AuthService (spec §17.5)", () => {
     expect(Number(rows.rows[0].count)).toBe(0);
   });
 
-  it("a deactivated Reviewer cannot sign in even with correct credentials", async () => {
-    const { secret } = await seedReviewer("grace", { deactivated: true });
+  it("a deactivated Reviewer cannot sign in even with correct credentials, and the audit record says so rather than blaming the password", async () => {
+    const { reviewer, secret } = await seedReviewer("grace", { deactivated: true });
     const result = await service.signIn("grace", PASSWORD, codeFor(secret.base32), CONTEXT);
     expect(result).toEqual({ outcome: "invalid_credentials" });
+
+    const events = await eventsFor(reviewer.id);
+    expect(events).toEqual([{ type: "login_failed", payload: { factor: "deactivated", totpClockDrift: false } }]);
   });
 
   it("throttles after repeated failures, per account, without ever locking out", async () => {
@@ -230,6 +233,17 @@ describe.skipIf(!adminUrl || !appUrl)("AuthService (spec §17.5)", () => {
       const { reviewer, secret } = await seedReviewer("olive");
       const result = await service.changePassword(reviewer.id, PASSWORD, "short", codeFor(secret.base32));
       expect(result).toMatchObject({ outcome: "policy_violation" });
+    });
+
+    it("spends the TOTP code even when the new password is rejected — a policy violation must not leave it replayable", async () => {
+      const { reviewer, secret } = await seedReviewer("oscar");
+      const code = codeFor(secret.base32);
+
+      const violation = await service.changePassword(reviewer.id, PASSWORD, "short", code);
+      expect(violation).toMatchObject({ outcome: "policy_violation" });
+
+      const replay = await service.changePassword(reviewer.id, PASSWORD, "New-Password9!", code);
+      expect(replay).toEqual({ outcome: "invalid_current_credentials" });
     });
 
     it("throttles repeated wrong attempts — a stolen session cookie is not an unthrottled place to grind a TOTP code", async () => {

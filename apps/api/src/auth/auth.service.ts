@@ -66,7 +66,11 @@ export class AuthService {
     if (!succeeded) {
       await recordThrottleFailure(this.db, accountKey);
       await recordThrottleFailure(this.db, ipKey);
-      const factor: "password" | "totp" = !isActive(reviewer) || !passwordOk ? "password" : "totp";
+      const factor: "password" | "totp" | "deactivated" = !isActive(reviewer)
+        ? "deactivated"
+        : !passwordOk
+          ? "password"
+          : "totp";
       await recordReviewerEvent(
         this.db,
         reviewer.id,
@@ -159,13 +163,15 @@ export class AuthService {
       return { outcome: "invalid_current_credentials" };
     }
     await resetThrottle(this.db, throttleKey);
+    // Marked spent as soon as it's confirmed valid — a policy violation below
+    // must not leave a still-valid TOTP code eligible for reuse.
+    await recordTotpStepUsed(this.db, reviewer.id, totpResult.step);
 
     const violations = checkPasswordPolicy(newPassword);
     if (violations.length > 0) {
       return { outcome: "policy_violation", violations };
     }
 
-    await recordTotpStepUsed(this.db, reviewer.id, totpResult.step);
     const passwordHash = await hashPassword(newPassword);
     await updatePasswordHash(this.db, reviewer.id, passwordHash);
     await recordReviewerEvent(this.db, reviewer.id, { type: "password_changed", payload: {} });

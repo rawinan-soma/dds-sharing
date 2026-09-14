@@ -90,8 +90,11 @@ export const reviewerEvent = pgTable(
 
 // Reviewer identity (spec §17.5, ticket #64). Seeded by a CLI ceremony on the
 // Docker host — there is no self-service sign-up. `totpConfirmedAt` null means
-// "inert": the account cannot sign in until one TOTP code has confirmed
-// enrolment. `totpLastUsedStep` blocks replay of an already-spent code within
+// "inert": the account cannot act as a Reviewer anywhere else in the system
+// until one TOTP code has confirmed enrolment — that confirming code is
+// presented at the account's first sign-in, which is itself allowed to
+// succeed (see AuthService.signIn and reviewer.repository.ts's `isActive`).
+// `totpLastUsedStep` blocks replay of an already-spent code within
 // the ±1-step validation window. `deactivatedAt` is the only way a Reviewer
 // stops being able to sign in — the row is never deleted, because
 // `display_name` stays on every Decision permanently.

@@ -265,7 +265,7 @@ export type RequestEventPayload =
 type LoginSucceededPayload = Record<string, never>;
 
 interface LoginFailedPayload {
-  factor: "password" | "totp";
+  factor: "password" | "totp" | "deactivated";
   totpClockDrift: boolean;
 }
 
