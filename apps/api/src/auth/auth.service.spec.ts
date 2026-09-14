@@ -6,7 +6,7 @@ import { runMigrations } from "../db/migrate.js";
 import { hashPassword } from "./password-hash.js";
 import { generateTotpSecret } from "./totp.js";
 import { insertReviewer, deactivateReviewer, findReviewerByUsername } from "./reviewer.repository.js";
-import { APP_DB } from "./app-db.provider.js";
+import { APP_DB } from "../db/app-db.module.js";
 import { AuthService } from "./auth.service.js";
 
 const adminUrl = process.env.DATABASE_URL;
@@ -38,7 +38,7 @@ describe.skipIf(!adminUrl || !appUrl)("AuthService (spec §17.5)", () => {
     app = createDb(appUrl);
 
     const moduleRef = await Test.createTestingModule({
-      providers: [AuthService, { provide: APP_DB, useValue: app.db }],
+      providers: [AuthService, { provide: APP_DB, useValue: app }],
     }).compile();
     service = moduleRef.get(AuthService);
   });

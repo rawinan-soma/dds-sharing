@@ -1,7 +1,5 @@
 import { Inject, Injectable } from "@nestjs/common";
-import type { NodePgDatabase } from "drizzle-orm/node-postgres";
-import * as schema from "../db/schema.js";
-import { APP_DB } from "./app-db.provider.js";
+import { APP_DB, type AppDb } from "../db/app-db.module.js";
 import { hashPassword, verifyPassword } from "./password-hash.js";
 import { verifyTotpCode } from "./totp.js";
 import { checkPasswordPolicy, type PasswordPolicyViolation } from "./password-policy.js";
@@ -42,20 +40,21 @@ export type SignInResult =
  */
 @Injectable()
 export class AuthService {
-  constructor(@Inject(APP_DB) private readonly db: NodePgDatabase<typeof schema>) {}
+  constructor(@Inject(APP_DB) private readonly appDb: AppDb) {}
 
   async signIn(username: string, password: string, totpCode: string, context: RequestContext): Promise<SignInResult> {
+    const { db } = this.appDb;
     const accountKey = accountThrottleKey(username);
     const ipKey = ipThrottleKey(context.ip);
 
-    if ((await isThrottled(this.db, accountKey)) || (await isThrottled(this.db, ipKey))) {
+    if ((await isThrottled(db, accountKey)) || (await isThrottled(db, ipKey))) {
       return { outcome: "throttled" };
     }
 
-    const reviewer = await findReviewerByUsername(this.db, username);
+    const reviewer = await findReviewerByUsername(db, username);
     if (!reviewer) {
-      await recordThrottleFailure(this.db, accountKey);
-      await recordThrottleFailure(this.db, ipKey);
+      await recordThrottleFailure(db, accountKey);
+      await recordThrottleFailure(db, ipKey);
       return { outcome: "invalid_credentials" };
     }
 
@@ -64,15 +63,15 @@ export class AuthService {
     const succeeded = isActive(reviewer) && passwordOk && totpResult.outcome === "valid";
 
     if (!succeeded) {
-      await recordThrottleFailure(this.db, accountKey);
-      await recordThrottleFailure(this.db, ipKey);
+      await recordThrottleFailure(db, accountKey);
+      await recordThrottleFailure(db, ipKey);
       const factor: "password" | "totp" | "deactivated" = !isActive(reviewer)
         ? "deactivated"
         : !passwordOk
           ? "password"
           : "totp";
       await recordReviewerEvent(
-        this.db,
+        db,
         reviewer.id,
         { type: "login_failed", payload: { factor, totpClockDrift: totpResult.outcome === "drifted" } },
         context,
@@ -80,20 +79,20 @@ export class AuthService {
       return { outcome: "invalid_credentials" };
     }
 
-    await resetThrottle(this.db, accountKey);
-    await resetThrottle(this.db, ipKey);
+    await resetThrottle(db, accountKey);
+    await resetThrottle(db, ipKey);
 
     if (totpResult.outcome === "valid") {
-      await recordTotpStepUsed(this.db, reviewer.id, totpResult.step);
+      await recordTotpStepUsed(db, reviewer.id, totpResult.step);
     }
     // A seeded-but-unconfirmed account's first successful sign-in is what confirms TOTP enrolment (spec §17.5).
     if (reviewer.totpConfirmedAt === null) {
-      await confirmTotpEnrolment(this.db, reviewer.id);
-      await recordReviewerEvent(this.db, reviewer.id, { type: "totp_enrolled", payload: {} }, context);
+      await confirmTotpEnrolment(db, reviewer.id);
+      await recordReviewerEvent(db, reviewer.id, { type: "totp_enrolled", payload: {} }, context);
     }
 
-    await recordReviewerEvent(this.db, reviewer.id, { type: "login_succeeded", payload: {} }, context);
-    const session = await createSession(this.db, reviewer.id, context);
+    await recordReviewerEvent(db, reviewer.id, { type: "login_succeeded", payload: {} }, context);
+    const session = await createSession(db, reviewer.id, context);
 
     return {
       outcome: "success",
@@ -105,23 +104,26 @@ export class AuthService {
   }
 
   async currentReviewer(reviewerId: string): Promise<{ displayName: string; mustChangePassword: boolean } | undefined> {
-    const reviewer = await findReviewerById(this.db, reviewerId);
+    const { db } = this.appDb;
+    const reviewer = await findReviewerById(db, reviewerId);
     return reviewer && { displayName: reviewer.displayName, mustChangePassword: reviewer.mustChangePassword };
   }
 
   async signOut(token: string, context: RequestContext): Promise<void> {
-    const validation = await validateAndTouchSession(this.db, token);
-    await deleteSession(this.db, token);
+    const { db } = this.appDb;
+    const validation = await validateAndTouchSession(db, token);
+    await deleteSession(db, token);
     if (validation.outcome === "valid") {
-      await recordReviewerEvent(this.db, validation.reviewerId, { type: "logged_out", payload: {} }, context);
+      await recordReviewerEvent(db, validation.reviewerId, { type: "logged_out", payload: {} }, context);
     }
   }
 
   async validateSession(token: string, context: RequestContext) {
-    const result = await validateAndTouchSession(this.db, token);
+    const { db } = this.appDb;
+    const result = await validateAndTouchSession(db, token);
     if (result.outcome === "expired") {
       await recordReviewerEvent(
-        this.db,
+        db,
         result.reviewerId,
         { type: "session_expired", payload: { reason: result.reason } },
         context,
@@ -148,24 +150,25 @@ export class AuthService {
     | { outcome: "invalid_current_credentials" }
     | { outcome: "policy_violation"; violations: PasswordPolicyViolation[] }
   > {
+    const { db } = this.appDb;
     const throttleKey = passwordChangeThrottleKey(reviewerId);
-    if (await isThrottled(this.db, throttleKey)) {
+    if (await isThrottled(db, throttleKey)) {
       return { outcome: "throttled" };
     }
 
-    const reviewer = await findReviewerById(this.db, reviewerId);
+    const reviewer = await findReviewerById(db, reviewerId);
     if (!reviewer) return { outcome: "invalid_current_credentials" };
 
     const passwordOk = await verifyPassword(reviewer.passwordHash, currentPassword);
     const totpResult = verifyTotpCode(reviewer.totpSecret, totpCode, reviewer.totpLastUsedStep);
     if (!passwordOk || totpResult.outcome !== "valid") {
-      await recordThrottleFailure(this.db, throttleKey);
+      await recordThrottleFailure(db, throttleKey);
       return { outcome: "invalid_current_credentials" };
     }
-    await resetThrottle(this.db, throttleKey);
+    await resetThrottle(db, throttleKey);
     // Marked spent as soon as it's confirmed valid — a policy violation below
     // must not leave a still-valid TOTP code eligible for reuse.
-    await recordTotpStepUsed(this.db, reviewer.id, totpResult.step);
+    await recordTotpStepUsed(db, reviewer.id, totpResult.step);
 
     const violations = checkPasswordPolicy(newPassword);
     if (violations.length > 0) {
@@ -173,8 +176,8 @@ export class AuthService {
     }
 
     const passwordHash = await hashPassword(newPassword);
-    await updatePasswordHash(this.db, reviewer.id, passwordHash);
-    await recordReviewerEvent(this.db, reviewer.id, { type: "password_changed", payload: {} });
+    await updatePasswordHash(db, reviewer.id, passwordHash);
+    await recordReviewerEvent(db, reviewer.id, { type: "password_changed", payload: {} });
     return { outcome: "ok" };
   }
 }

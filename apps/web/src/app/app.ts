@@ -1,5 +1,6 @@
-import { Component, signal } from '@angular/core';
+import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import * as m from '../paraglide/messages.js';
 
 @Component({
   imports: [RouterOutlet],
@@ -8,5 +9,5 @@ import { RouterOutlet } from '@angular/router';
   templateUrl: './app.html',
 })
 export class App {
-  protected readonly title = signal('web');
+  protected readonly departmentLine = m.requester_department_line();
 }
