@@ -22,7 +22,7 @@
   "requester_email_notice_kicker": "The email address you give",
   "requester_email_warning": "The email address you give is where the extract link is sent, and nowhere else. It is never checked for typos — a mistyped address means the extract goes nowhere and you will not be told.",
   "requester_retention_notice_kicker": "What is kept, and for how long",
-  "requester_retention_notice": "Your contact details and the record of this request are kept indefinitely, to keep every data release traceable to who asked and who approved it. You may ask by phone to have your contact details removed once this request is finished.",
+  "requester_retention_notice": "Your contact details and the record of this request are kept indefinitely, to keep every data release traceable to who asked and who approved it.",
 
   "requester_section_disease_group_heading": "01 · Disease group",
   "requester_section_disease_group_required_note": "Exactly one, required",

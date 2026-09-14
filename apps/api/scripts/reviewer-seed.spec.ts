@@ -29,7 +29,6 @@ describe.skipIf(!adminUrl)("seedReviewer (spec §17.5: the seeding ceremony)", (
     const result = await seedReviewer(admin.db, {
       username: "pat",
       displayName: "Pat Reviewer",
-      operator: "ci-operator",
     });
 
     expect(checkPasswordPolicy(result.password)).toEqual([]);
@@ -49,20 +48,19 @@ describe.skipIf(!adminUrl)("seedReviewer (spec §17.5: the seeding ceremony)", (
     const result = await seedReviewer(admin.db, {
       username: "quinn",
       displayName: "Dr. Quinn Somsak",
-      operator: "ci-operator",
     });
     expect(result.displayName).toBe("Dr. Quinn Somsak");
     expect(result.displayName).not.toBe(result.username);
   });
 
-  it("records the seeded event naming the operator", async () => {
-    await seedReviewer(admin.db, { username: "riley", displayName: "Riley Reviewer", operator: "ops-alice" });
+  it("records the seeded event with an empty payload", async () => {
+    await seedReviewer(admin.db, { username: "riley", displayName: "Riley Reviewer" });
     const events = await admin.pool.query(`SELECT type, payload FROM reviewer_event`);
-    expect(events.rows).toEqual([{ type: "seeded", payload: { operator: "ops-alice" } }]);
+    expect(events.rows).toEqual([{ type: "seeded", payload: {} }]);
   });
 
   it("never records the generated password anywhere", async () => {
-    const result = await seedReviewer(admin.db, { username: "sam", displayName: "Sam Reviewer", operator: "ci-operator" });
+    const result = await seedReviewer(admin.db, { username: "sam", displayName: "Sam Reviewer" });
     const events = await admin.pool.query(`SELECT payload::text AS payload FROM reviewer_event`);
     for (const row of events.rows) {
       expect(row.payload).not.toContain(result.password);
