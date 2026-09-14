@@ -24,7 +24,9 @@
     "test:e2e": "vitest run --config ./vitest.config.e2e.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/db/migrate.ts",
-    "db:seed:generate": "tsx scripts/generate-province-seed.ts"
+    "db:seed:generate": "tsx scripts/generate-province-seed.ts",
+    "reviewer:seed": "tsx scripts/reviewer-seed.ts",
+    "reviewer:deactivate": "tsx scripts/reviewer-deactivate.ts"
   },
   "dependencies": {
     "@nestjs/common": "^12.0.1",
@@ -32,8 +34,12 @@
     "@nestjs/core": "^12.0.1",
     "@nestjs/platform-express": "^12.0.1",
     "@nestjs/serve-static": "^12.0.0",
+    "argon2": "^0.45.1",
+    "cookie-parser": "^1.4.7",
     "drizzle-orm": "^0.45.2",
+    "otpauth": "^9.5.2",
     "pg": "^8.23.0",
+    "qrcode": "^1.5.4",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1"
   },
@@ -41,9 +47,11 @@
     "@nestjs/cli": "^12.0.0",
     "@nestjs/schematics": "^12.0.0",
     "@nestjs/testing": "^12.0.1",
+    "@types/cookie-parser": "^1.4.10",
     "@types/express": "^5.0.0",
     "@types/node": "^24.0.0",
     "@types/pg": "^8.23.1",
+    "@types/qrcode": "^1.5.6",
     "@vitest/coverage-v8": "^4.1.2",
     "drizzle-kit": "^0.31.10",
     "prettier": "^3.4.2",

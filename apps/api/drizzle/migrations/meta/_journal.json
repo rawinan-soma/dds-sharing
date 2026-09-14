@@ -50,6 +50,20 @@
       "when": 1789227301072,
       "tag": "0006_grant_app_role_requests",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1789357238717,
+      "tag": "0007_huge_ser_duncan",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1789357252999,
+      "tag": "0008_grant_app_role_reviewer",
+      "breakpoints": true
     }
   ]
 }
