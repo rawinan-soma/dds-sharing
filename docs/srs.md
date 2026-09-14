@@ -3157,7 +3157,7 @@ time-based one-time password. ICT — Indochina Time (Asia/Bangkok, UTC+7).
 | FR-25 | Raise, route and clear Alerts | §10.6, §11.3, §11.4, §12.4, §14.2 | #19, #27 | 0001 |
 | FR-26 | Re-run an extraction | §8.3, §10.7, §12.4 | #27, #29 | — |
 | FR-27 | Resend the Delivery | §10.8, §12.4 | #19 | — |
-| FR-28 | Removed — see ADR 0019 | §12.8 | #10, #28, #87 | — |
+| FR-28 | Removed — see ADR 0019 | §12.8 | #10, #28, #87 | 0019 |
 | FR-29 | Reviewer account lifecycle | §12.4, §12.9, §17.5 | #18, #28 | — |
 | FR-30 | Verify an Extract fingerprint | §8.4, §12.1 | #29 | 0005 |
 | FR-31 | Report upstream traffic | §12.4, §13.6 | #27 | — |
