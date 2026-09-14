@@ -71,7 +71,13 @@ export interface ProbeDiseaseGroupParams {
 export interface ProbeDiseaseGroupResult {
   /** Page 1's `meta.total_items` — the whole point of the call (§5.4). */
   totalItems: number;
-  requestId?: string;
+  /**
+   * One entry per physical call this code's probe made, in attempt order —
+   * failed retries' ids included, not just the eventual success's (§5.4,
+   * §12.4: `probe_performed` carries "every `x-request-id`"). `null` where a
+   * failed attempt never got a response to read one from.
+   */
+  requestIds: Array<string | null>;
   /** Every physical call this code's probe made, including failed retries before the eventual success — accountability (§5.4), not just the successful one. */
   callsMade: number;
 }

@@ -74,7 +74,7 @@ describe.skipIf(!adminUrl || !appUrl)("ProbeService (§5.4)", () => {
         groupCode: string;
         calls: number;
         totalItems: number;
-        xRequestId: string;
+        xRequestIds: Array<string | null>;
       }>;
       totalItems: number;
     };
@@ -85,7 +85,8 @@ describe.skipIf(!adminUrl || !appUrl)("ProbeService (§5.4)", () => {
       expect(["202", "203"]).toContain(code.groupCode);
       expect(code.totalItems).toBe(2);
       expect(code.calls).toBe(1);
-      expect(code.xRequestId).not.toBe("");
+      expect(code.xRequestIds).toHaveLength(1);
+      expect(code.xRequestIds[0]).not.toBeNull();
     }
     expect(payload.totalItems).toBe(4);
   });

@@ -93,7 +93,7 @@ export class ProbeService {
         groupCode: reportCode,
         calls: result.callsMade,
         totalItems: result.totalItems,
-        xRequestId: result.requestId ?? "",
+        xRequestIds: result.requestIds,
       });
       totalItems += result.totalItems;
     }

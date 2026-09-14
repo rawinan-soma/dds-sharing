@@ -202,7 +202,10 @@ export class UpstreamClient {
 
         return {
           totalItems: envelope.meta.total_items,
-          requestId,
+          requestIds: [
+            ...attempts.map((a) => a.requestId ?? null),
+            requestId ?? null,
+          ],
           callsMade: attempt,
         };
       } catch (error) {

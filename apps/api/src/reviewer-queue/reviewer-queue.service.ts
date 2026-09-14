@@ -13,6 +13,7 @@ import { validateSpan } from "../requests/span.js";
 import { addBusinessHours, decisionWindowView } from "./business-hours.js";
 import type {
   AreaView,
+  ProbeRowCount,
   QueueRow,
   RequestDetail,
 } from "./reviewer-queue.types.js";
@@ -143,9 +144,7 @@ export class ReviewerQueueService {
    * no UPDATE grant on that table (§12.3), so nothing but an insert-only
    * event stream could carry this forward.
    */
-  private async probeRowCountOf(
-    id: string,
-  ): Promise<number | "pending" | "failed"> {
+  private async probeRowCountOf(id: string): Promise<ProbeRowCount> {
     const { db } = this.appDb;
     const [event] = await db
       .select({ type: requestEvent.type, payload: requestEvent.payload })

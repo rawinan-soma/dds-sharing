@@ -134,10 +134,11 @@ describe("UpstreamClient against the fake upstream harness", () => {
 
       expect(result.totalItems).toBe(2);
       expect(result.callsMade).toBe(1);
-      expect(result.requestId).toBeDefined();
+      expect(result.requestIds).toHaveLength(1);
+      expect(result.requestIds[0]).toBeDefined();
     });
 
-    it("retries a 500 on page 1 once, then succeeds", async () => {
+    it("retries a 500 on page 1 once, then succeeds, keeping both calls' x-request-ids", async () => {
       const result = await client().probeDiseaseGroup({
         groupCode: FAKE_UPSTREAM_SCENARIOS.probeRetryThenSucceed,
         startDate: "2026-01-01",
@@ -146,6 +147,13 @@ describe("UpstreamClient against the fake upstream harness", () => {
 
       expect(result.totalItems).toBe(3);
       expect(result.callsMade).toBe(2);
+      // The failed first attempt's id must survive alongside the successful
+      // retry's — accountability (§5.4) covers every call spent, not just
+      // the one that ended it.
+      expect(result.requestIds).toHaveLength(2);
+      expect(result.requestIds[0]).toBeDefined();
+      expect(result.requestIds[1]).toBeDefined();
+      expect(new Set(result.requestIds).size).toBe(2);
     });
 
     it("abandons after 3 attempts against a page that always truncates", async () => {

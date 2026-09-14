@@ -15,6 +15,13 @@ export interface QueueListResult {
   refreshedAt: string;
 }
 
+/**
+ * The Probe's single summed number (§5.4, §10.2) — or `"pending"` while it is
+ * still running, or `"failed"` if it was abandoned. A Decision waits on none
+ * of the three: approve is fully usable in every state.
+ */
+export type ProbeRowCount = number | "pending" | "failed";
+
 export type AreaView =
   | { kind: "national"; label: string }
   | { kind: "province"; label: string }
@@ -44,10 +51,5 @@ export interface RequestDetail {
   timeRemainingLabel: string;
   isActionable: boolean;
   requestsAhead: number;
-  /**
-   * The Probe's single summed number (§5.4, §10.2) — or `"pending"` while it
-   * is still running, or `"failed"` if it was abandoned. A Decision waits on
-   * none of the three: approve is fully usable in every state.
-   */
-  probeRowCount: number | "pending" | "failed";
+  probeRowCount: ProbeRowCount;
 }

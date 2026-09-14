@@ -67,7 +67,8 @@ export interface ProbePerformedPayload {
     groupCode: string;
     calls: number;
     totalItems: number;
-    xRequestId: string;
+    /** One entry per call made for this code, in attempt order — failed retries' ids included. */
+    xRequestIds: Array<string | null>;
   }>;
   totalItems: number;
 }

@@ -457,7 +457,7 @@ describe("UpstreamClient.probeDiseaseGroup", () => {
     expect(url.searchParams.get("page_size")).toBe(String(MIN_PAGE_SIZE));
     expect(result).toEqual({
       totalItems: 42,
-      requestId: "probe-req-1",
+      requestIds: ["probe-req-1"],
       callsMade: 1,
     });
   });
@@ -514,7 +514,7 @@ describe("UpstreamClient.probeDiseaseGroup", () => {
     ]);
   });
 
-  it("retries a retryable failure then succeeds, and callsMade counts every physical call", async () => {
+  it("retries a retryable failure then succeeds, and callsMade counts every physical call, keeping both x-request-ids", async () => {
     const fetchFn = vi
       .fn()
       .mockResolvedValueOnce(
@@ -540,7 +540,9 @@ describe("UpstreamClient.probeDiseaseGroup", () => {
     expect(fetchFn).toHaveBeenCalledTimes(2);
     expect(result).toEqual({
       totalItems: 7,
-      requestId: "probe-req-succeed",
+      // The failed first attempt's id survives alongside the successful
+      // retry's — accountability (§5.4) covers every call spent.
+      requestIds: ["probe-req-fail", "probe-req-succeed"],
       callsMade: 2,
     });
   });
