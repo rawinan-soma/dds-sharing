@@ -1,5 +1,4 @@
 import { pathToFileURL } from "node:url";
-import { userInfo } from "node:os";
 import { stdin, stdout } from "node:process";
 import { createInterface } from "node:readline/promises";
 import QRCode from "qrcode";
@@ -18,7 +17,6 @@ export interface SeedReviewerInput {
   username: string;
   displayName: string;
   email?: string;
-  operator: string;
 }
 
 export interface SeedReviewerResult {
@@ -52,7 +50,7 @@ export async function seedReviewer(
     totpSecret: secret.base32,
   });
 
-  await recordReviewerEvent(db, reviewer.id, { type: "seeded", payload: { operator: input.operator } });
+  await recordReviewerEvent(db, reviewer.id, { type: "seeded", payload: {} });
 
   return {
     reviewerId: reviewer.id,
@@ -70,12 +68,6 @@ async function main() {
     const displayName =
       process.argv[3] || (await rl.question("Display name (the Reviewer's real name — never derived from the username): "));
     const emailAnswer = process.argv[4] ?? (await rl.question("Email (optional, queue notification only — press enter to skip): "));
-    // REVIEWER_CLI_OPERATOR is removed with no replacement — the Operator
-    // concept itself is being removed (ADR 0020, #87); ticket #85's
-    // amendment drops the env-var override that used to let it stand in for
-    // the OS login. `seeded`'s `operator` field stays for now (removing it
-    // is #88's job).
-    const operator = userInfo().username;
 
     const { DATABASE_URL } = validateEnv<{ DATABASE_URL: string }>(hostCliEnvSchema(), process.env);
     const { db, pool } = createDb(DATABASE_URL);
@@ -84,7 +76,6 @@ async function main() {
         username,
         displayName,
         email: emailAnswer || undefined,
-        operator,
       });
 
       console.log(`\nReviewer "${result.username}" (${result.displayName}) seeded.\n`);

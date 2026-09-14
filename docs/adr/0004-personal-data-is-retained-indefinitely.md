@@ -8,6 +8,12 @@ Accepted. Completes the half of the PDPA position that ADR-adjacent issue #22
 does not reach: #22 argues the *Extract* is non-personal data, which says
 nothing about the people who ask for it or approve it.
 
+Amended by
+[ADR 0019](0019-a-requesters-contact-details-are-never-removed.md), which
+removed Redaction: the Consequence below that keeps it as a bounded courtesy no
+longer holds, and the Requester's notice no longer says removal can be
+requested. The decision below stands, now without that exception.
+
 ## Context
 
 This service destroys the patient-derived Extract 72 hours after it is produced

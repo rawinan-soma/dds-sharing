@@ -35,9 +35,6 @@
     <mxCell id="u4" value="FR-20 See the expiry page" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
       <mxGeometry x="360" y="360" width="220" height="60" as="geometry"/>
     </mxCell>
-    <mxCell id="u5" value="FR-28 Ask for Redaction&#10;(by telephone)" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
-      <mxGeometry x="360" y="460" width="220" height="60" as="geometry"/>
-    </mxCell>
     <mxCell id="u6" value="FR-03 Run the Probe&#10;(off the submit path)" style="ellipse;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
       <mxGeometry x="360" y="560" width="220" height="60" as="geometry"/>
     </mxCell>
@@ -93,7 +90,6 @@
     <mxCell id="e2" style="endArrow=none;html=1;" edge="1" parent="1" source="aReq" target="u2"><mxGeometry relative="1" as="geometry"/></mxCell>
     <mxCell id="e3" style="endArrow=none;html=1;" edge="1" parent="1" source="aReq" target="u3"><mxGeometry relative="1" as="geometry"/></mxCell>
     <mxCell id="e4" style="endArrow=none;html=1;" edge="1" parent="1" source="aReq" target="u4"><mxGeometry relative="1" as="geometry"/></mxCell>
-    <mxCell id="e5" style="endArrow=none;html=1;" edge="1" parent="1" source="aReq" target="u5"><mxGeometry relative="1" as="geometry"/></mxCell>
     <mxCell id="e6" style="endArrow=none;html=1;" edge="1" parent="1" source="aSys" target="u6"><mxGeometry relative="1" as="geometry"/></mxCell>
     <mxCell id="e7" style="endArrow=none;html=1;" edge="1" parent="1" source="aSys" target="u7"><mxGeometry relative="1" as="geometry"/></mxCell>
     <mxCell id="e8" style="endArrow=none;html=1;" edge="1" parent="1" source="aSys" target="u8"><mxGeometry relative="1" as="geometry"/></mxCell>
@@ -111,7 +107,6 @@
     <mxCell id="g1" style="endArrow=none;html=1;" edge="1" parent="1" source="aOps" target="v9"><mxGeometry relative="1" as="geometry"/></mxCell>
     <mxCell id="g2" style="endArrow=none;html=1;" edge="1" parent="1" source="aOps" target="v10"><mxGeometry relative="1" as="geometry"/></mxCell>
     <mxCell id="g3" style="endArrow=none;html=1;" edge="1" parent="1" source="aOps" target="v11"><mxGeometry relative="1" as="geometry"/></mxCell>
-    <mxCell id="g4" value="FR-28 Redaction" style="endArrow=none;html=1;dashed=1;" edge="1" parent="1" source="aOps" target="u5"><mxGeometry relative="1" as="geometry"/></mxCell>
     <mxCell id="h1" style="endArrow=none;html=1;dashed=1;strokeColor=#6c8ebf;" edge="1" parent="1" source="aUp" target="u6"><mxGeometry relative="1" as="geometry"/></mxCell>
     <mxCell id="h2" style="endArrow=none;html=1;dashed=1;strokeColor=#6c8ebf;" edge="1" parent="1" source="aUp" target="u7"><mxGeometry relative="1" as="geometry"/></mxCell>
     <mxCell id="h3" style="endArrow=none;html=1;dashed=1;strokeColor=#6c8ebf;" edge="1" parent="1" source="aMail" target="u8"><mxGeometry relative="1" as="geometry"/></mxCell>

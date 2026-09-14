@@ -17,7 +17,6 @@ export const REQUEST_EVENT_TYPES = [
   "rejected",
   "note_amended",
   "expired",
-  "contact_redacted",
   // Extraction lifecycle
   "job_queued",
   "job_deferred_low_disk",
@@ -107,10 +106,6 @@ interface ExpiredPayload {
   businessHoursElapsed: number;
   reviewerAccountsActive: number;
   decisionAttemptedAndRefused: boolean;
-}
-
-interface ContactRedactedPayload {
-  operator: string;
 }
 
 interface JobQueuedPayload {
@@ -237,7 +232,6 @@ export type RequestEventPayload =
   | { type: "rejected"; payload: RejectedPayload }
   | { type: "note_amended"; payload: NoteAmendedPayload }
   | { type: "expired"; payload: ExpiredPayload }
-  | { type: "contact_redacted"; payload: ContactRedactedPayload }
   | { type: "job_queued"; payload: JobQueuedPayload }
   | { type: "job_deferred_low_disk"; payload: JobDeferredLowDiskPayload }
   | { type: "job_started"; payload: JobStartedPayload }
@@ -277,14 +271,11 @@ interface SessionExpiredPayload {
 
 type PasswordChangedPayload = Record<string, never>;
 
-interface SeededPayload {
-  operator: string;
-}
+type SeededPayload = Record<string, never>;
 
 type TotpEnrolledPayload = Record<string, never>;
 
 interface DeactivatedPayload {
-  operator: string;
   force: boolean;
 }
 

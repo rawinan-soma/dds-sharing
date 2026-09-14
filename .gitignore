@@ -39,4 +39,7 @@ docs/*.png
 # Claude Code local state
 .claude/
 .angular/
-worktree/
+
+# Quarkdown previews and editor settings
+output/
+.vscode/

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import { Pool } from "pg";
 import { runMigrations } from "./migrate.js";
-import { APP_ROLE, ADMIN_ROLE, connectAs } from "./roles.js";
+import { APP_ROLE, connectAs } from "./roles.js";
 
 const connectionString = process.env.DATABASE_URL;
 
@@ -22,6 +22,35 @@ describe.skipIf(!connectionString)("runMigrations", () => {
   });
 });
 
+// ADR 0019/0020: there is no Redaction and no role for it.
+describe.skipIf(!connectionString)("Redaction removal (ADR 0019, ADR 0020)", () => {
+  beforeAll(async () => {
+    await runMigrations(connectionString);
+  });
+
+  it("request_event_type has no contact_redacted value", async () => {
+    const pool = new Pool({ connectionString });
+    try {
+      const result = await pool.query(
+        `SELECT enumlabel FROM pg_enum WHERE enumtypid = 'request_event_type'::regtype`,
+      );
+      expect(result.rows.map((row) => row.enumlabel)).not.toContain("contact_redacted");
+    } finally {
+      await pool.end();
+    }
+  });
+
+  it("admin_role no longer exists", async () => {
+    const pool = new Pool({ connectionString });
+    try {
+      const result = await pool.query(`SELECT 1 FROM pg_roles WHERE rolname = 'admin_role'`);
+      expect(result.rows).toEqual([]);
+    } finally {
+      await pool.end();
+    }
+  });
+});
+
 // §12.2: "enforced by database roles, not by convention" — this must be
 // checked at the database, as a different role, not by asserting the
 // application never issues the query.
@@ -30,11 +59,8 @@ describe.skipIf(!connectionString)("event table role enforcement (§12.2)", () =
     await runMigrations(connectionString);
   });
 
-  it.each([
-    ["app_role", APP_ROLE],
-    ["admin_role", ADMIN_ROLE],
-  ])("%s can INSERT and SELECT on the event tables, but not UPDATE or DELETE", async (_name, role) => {
-    const pool = new Pool({ connectionString: connectAs(connectionString!, role) });
+  it("app_role can INSERT and SELECT on the event tables, but not UPDATE or DELETE", async () => {
+    const pool = new Pool({ connectionString: connectAs(connectionString!, APP_ROLE) });
     try {
       await expect(
         pool.query(
