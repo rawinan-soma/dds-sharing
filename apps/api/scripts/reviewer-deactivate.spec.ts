@@ -30,7 +30,7 @@ describe.skipIf(!adminUrl)("deactivateReviewerCli (spec §17.5: the two-active-r
   });
 
   it("reports not_found for an unknown username", async () => {
-    const result = await deactivateReviewerCli(admin.db, { username: "nobody", operator: "ops", force: false });
+    const result = await deactivateReviewerCli(admin.db, { username: "nobody", force: false });
     expect(result).toEqual({ outcome: "not_found" });
   });
 
@@ -38,7 +38,7 @@ describe.skipIf(!adminUrl)("deactivateReviewerCli (spec §17.5: the two-active-r
     const a = await seed(admin.db, "alpha");
     await seed(admin.db, "bravo"); // exactly two active
 
-    const result = await deactivateReviewerCli(admin.db, { username: a.username, operator: "ops", force: false });
+    const result = await deactivateReviewerCli(admin.db, { username: a.username, force: false });
     expect(result).toEqual({ outcome: "refused_below_minimum", remainingActive: 1 });
 
     const stillActive = await findReviewerByUsername(admin.db, "alpha");
@@ -50,7 +50,7 @@ describe.skipIf(!adminUrl)("deactivateReviewerCli (spec §17.5: the two-active-r
     await seed(admin.db, "delta");
     await seed(admin.db, "echo");
 
-    const result = await deactivateReviewerCli(admin.db, { username: a.username, operator: "ops", force: false });
+    const result = await deactivateReviewerCli(admin.db, { username: a.username, force: false });
     expect(result).toEqual({ outcome: "deactivated" });
   });
 
@@ -58,11 +58,11 @@ describe.skipIf(!adminUrl)("deactivateReviewerCli (spec §17.5: the two-active-r
     const a = await seed(admin.db, "foxtrot");
     await seed(admin.db, "golf");
 
-    const result = await deactivateReviewerCli(admin.db, { username: a.username, operator: "ops-bob", force: true });
+    const result = await deactivateReviewerCli(admin.db, { username: a.username, force: true });
     expect(result).toEqual({ outcome: "deactivated" });
 
     const events = await admin.pool.query(`SELECT type, payload FROM reviewer_event WHERE reviewer_id = $1`, [a.id]);
-    expect(events.rows).toEqual([{ type: "deactivated", payload: { operator: "ops-bob", force: true } }]);
+    expect(events.rows).toEqual([{ type: "deactivated", payload: { force: true } }]);
   });
 
   it("sets deactivated_at and never deletes the row", async () => {
@@ -70,7 +70,7 @@ describe.skipIf(!adminUrl)("deactivateReviewerCli (spec §17.5: the two-active-r
     await seed(admin.db, "india");
     await seed(admin.db, "juliet");
 
-    await deactivateReviewerCli(admin.db, { username: a.username, operator: "ops", force: false });
+    await deactivateReviewerCli(admin.db, { username: a.username, force: false });
     const after = await findReviewerByUsername(admin.db, "hotel");
     expect(after).toBeDefined();
     expect(after!.deactivatedAt).not.toBeNull();
@@ -82,7 +82,7 @@ describe.skipIf(!adminUrl)("deactivateReviewerCli (spec §17.5: the two-active-r
     await seed(admin.db, "mike");
     const session = await createSession(admin.db, a.id);
 
-    await deactivateReviewerCli(admin.db, { username: a.username, operator: "ops", force: false });
+    await deactivateReviewerCli(admin.db, { username: a.username, force: false });
 
     expect(await validateAndTouchSession(admin.db, session.token)).toEqual({ outcome: "not_found" });
   });
@@ -91,9 +91,9 @@ describe.skipIf(!adminUrl)("deactivateReviewerCli (spec §17.5: the two-active-r
     const a = await seed(admin.db, "november");
     await seed(admin.db, "oscar");
     await seed(admin.db, "papa");
-    await deactivateReviewerCli(admin.db, { username: a.username, operator: "ops", force: false });
+    await deactivateReviewerCli(admin.db, { username: a.username, force: false });
 
-    const second = await deactivateReviewerCli(admin.db, { username: a.username, operator: "ops", force: false });
+    const second = await deactivateReviewerCli(admin.db, { username: a.username, force: false });
     expect(second).toEqual({ outcome: "already_deactivated" });
   });
 });
