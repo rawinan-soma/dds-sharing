@@ -14,10 +14,6 @@ _Avoid_: User, client, applicant
 The person in the operating organisation who checks a Requester's identity and approves or rejects their Request. Authenticated, named, and accountable for each release. A Reviewer is never removed — only deactivated — because their name stays on every Decision they made. At least two must be **reachable** at any time: one Reviewer is the other's only recovery path.
 _Avoid_: Admin, approver, moderator
 
-**Operator**:
-The named person running a command on the host — seeding or deactivating a Reviewer, a Redaction. Named by the person themselves each time a command is run, never inferred from a login or carried over from a setting, because a shared login or a left-behind name would put the wrong person on a permanent record.
-_Avoid_: Admin, root, sysadmin
-
 ### The request
 
 **Request**:
@@ -29,7 +25,7 @@ A Reviewer's approve-or-reject act on a Request, carrying the Reviewer's identit
 _Avoid_: Approval, review, verdict
 
 **In flight**:
-A Request that has been approved and has not yet reached a terminal end — its Extract collected, its Download token expired uncollected, or its failure abandoned by a Reviewer. It names the span in which a Reviewer's work on a Request is not finished: the Extract can still be re-made or re-sent, the contact details are still readable on screen, and Redaction is unavailable. A rejected or expired Request is never in flight, because nothing remains to be done to it. Being in flight is derived from what has happened to a Request, never stored as a state of its own.
+A Request that has been approved and has not yet reached a terminal end — its Extract collected, its Download token expired uncollected, or its failure abandoned by a Reviewer. It names the span in which a Reviewer's work on a Request is not finished: the Extract can still be re-made or re-sent, and the contact details are still readable on screen. A rejected or expired Request is never in flight, because nothing remains to be done to it. Being in flight is derived from what has happened to a Request, never stored as a state of its own.
 _Avoid_: Open, active, live, in progress
 
 **Workplace**:
@@ -135,7 +131,3 @@ The copy of what a Reviewer had on screen, carried by their Decision — the Dis
 **Extract fingerprint**:
 The description of a released Extract that outlives the Extract itself — row count, column count, the size of the Extract, the size of its Extract archive, and a SHA-256 of the Extract's bytes as written. It answers what was released, where the record alone would only say that a release happened. The rows are never kept. It attests **content, not provenance**: two Requests asking the same question of the same data release identical bytes and so share a fingerprint, and every empty Extract shares one — so a match narrows to a set of Requests, never to one. The checksums of the reference data that produced the Extract are recorded beside it, never inside it: they describe what made the Extract, not what was released.
 _Avoid_: Manifest, receipt
-
-**Redaction**:
-The manual removal of one Requester's contact details, performed on the host by a named operator. It is a courtesy to someone who asks, never an automatic expiry, and it is itself recorded as a Request event. It reaches the contact details and nothing else — never a Decision, never a Snapshot, never a Reviewer — and it is unavailable while the Request is still in flight. Nothing else in the record is ever removed.
-_Avoid_: Erasure, purge, deletion
