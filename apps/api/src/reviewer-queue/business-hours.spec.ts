@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   addBusinessHours,
   businessHoursBetween,
+  decisionWindowView,
   formatBusinessHoursRemaining,
 } from "./business-hours.js";
 
@@ -69,6 +70,17 @@ describe("businessHoursBetween", () => {
     expect(businessHoursBetween(a, b)).toBe(0);
     expect(businessHoursBetween(a, a)).toBe(0);
   });
+
+  it("treats a year the holiday list has never reviewed as not yet open, not as holiday-free", () => {
+    // 2027 has no entries in THAI_PUBLIC_HOLIDAYS — a lapsed annual review,
+    // not evidence the year has no holidays (spec §10's safe direction).
+    expect(
+      businessHoursBetween(
+        ict("2027-03-02T08:00:00"), // a Tuesday
+        ict("2027-03-05T18:00:00"), // Friday
+      ),
+    ).toBe(0);
+  });
 });
 
 describe("addBusinessHours", () => {
@@ -91,6 +103,22 @@ describe("addBusinessHours", () => {
     const submittedAt = ict("2026-09-08T10:20:00"); // a Tuesday
     const dueAt = addBusinessHours(submittedAt, 24);
     expect(businessHoursBetween(submittedAt, dueAt)).toBeCloseTo(24, 5);
+  });
+
+  it("never hangs when the holiday list runs out of reviewed years — it gives up after a bounded lookahead instead", () => {
+    // Deep in 2027, past every reviewed year: isBusinessDay is false for
+    // every remaining day, which without a search bound would loop forever
+    // looking for one that isn't.
+    const submittedAt = ict("2027-06-01T10:00:00");
+    const due = addBusinessHours(submittedAt, 24);
+    expect(due.getTime()).toBeGreaterThan(submittedAt.getTime());
+    expect(due.getTime() - submittedAt.getTime()).toBeLessThanOrEqual(366 * 24 * 60 * 60 * 1000);
+  });
+
+  it("keeps a Request past every reviewed year actionable rather than expiring it", () => {
+    const submittedAt = ict("2027-06-01T10:00:00");
+    const view = decisionWindowView(submittedAt, ict("2027-06-08T10:00:00"), 24);
+    expect(view.isActionable).toBe(true);
   });
 });
 

@@ -14,6 +14,16 @@ const BUSINESS_CLOSE_MIN = 16 * 60 + 30;
 
 const HOLIDAYS = new Set(THAI_PUBLIC_HOLIDAYS);
 
+// The furthest year the list has been reviewed through — a year beyond this
+// is a lapsed annual review, not evidence that year has no holidays (spec
+// §10: "a stale holiday list can only make expiry more generous, never
+// less"). Treating it as an ordinary business year would invert that — the
+// clock would silently start expiring Requests *sooner* the moment the list
+// ran out, exactly backwards from the safe direction. Only the far edge is
+// guarded, not the near one: a date before the list's own earliest entry
+// (arithmetic fixtures included) is out of scope for review, not a lapse.
+const LATEST_REVIEWED_YEAR = Math.max(...THAI_PUBLIC_HOLIDAYS.map((date) => Number(date.slice(0, 4))));
+
 function toIct(ms: number): number {
   return ms + ICT_OFFSET_MS;
 }
@@ -30,7 +40,9 @@ function ictIsoDate(ms: number): string {
 function isBusinessDay(ms: number): boolean {
   const weekday = new Date(toIct(ms)).getUTCDay();
   if (weekday === 0 || weekday === 6) return false;
-  return !HOLIDAYS.has(ictIsoDate(ms));
+  const isoDate = ictIsoDate(ms);
+  if (Number(isoDate.slice(0, 4)) > LATEST_REVIEWED_YEAR) return false;
+  return !HOLIDAYS.has(isoDate);
 }
 
 /**
@@ -60,12 +72,23 @@ function nextBusinessOpen(t: number): number {
   return ictDayStart(t) + DAY_MS + BUSINESS_OPEN_MIN * MIN_MS;
 }
 
+// How far past `from` this will search for open business hours before
+// giving up. The unreviewed-year guard above can make every remaining day
+// non-business indefinitely (a review that never lands), which without a
+// bound would spin forever walking day by day; a year comfortably covers
+// "annually reviewed" running late without masking a real infinite loop
+// elsewhere. Past the bound, the Request just reads as not yet due — the
+// safe direction (spec §10) — rather than the read hanging on it.
+const MAX_LOOKAHEAD_MS = 366 * DAY_MS;
+
 /** The instant `hours` business hours after `from` — used for the 24-hour decision deadline. */
 export function addBusinessHours(from: Date, hours: number): Date {
   let t = from.getTime();
   let remainingMinutes = hours * 60;
+  const searchLimit = t + MAX_LOOKAHEAD_MS;
 
   while (remainingMinutes > 0) {
+    if (t > searchLimit) return new Date(searchLimit);
     if (!isBusinessDay(t)) {
       t = nextBusinessOpen(t);
       continue;

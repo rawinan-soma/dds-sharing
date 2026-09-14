@@ -2,13 +2,17 @@
 // (spec §10, docs/design_handoff_dds_sharing/README.md's business-hours
 // arithmetic). Checked in and reviewed annually — cabinet resolutions add
 // ad-hoc "special holidays" (and shift a holiday that falls on a weekend to
-// the following Monday) well after this list is last reviewed, so treat a
-// missing year as a signal to update it, not as "no holidays that year".
+// the following Monday) well after this list is last reviewed, so a missing
+// individual date is an accepted residual risk of review lag: nothing can
+// tell it apart from an ordinary weekday until the list is updated.
 //
-// A stale list only ever *understates* holidays, never invents one — the
-// safe direction (spec §10): understating a holiday makes the 24-business-
-// hour clock advance on a day that should not count, so review adds dates,
-// and this file must never be "fixed" by inferring extra ones algorithmically.
+// Running past the list's latest year entirely is different, and is guarded
+// in business-hours.ts's isBusinessDay — a year beyond the last one entered
+// here is treated as not yet reviewed, not as "no holidays that year", so it
+// cannot silently start expiring Requests sooner the moment the list runs
+// out (spec §10: "a stale holiday list can only make expiry more generous,
+// never less"). This file must still never be "fixed" by inferring extra
+// dates algorithmically — only a real annual review adds them.
 export const THAI_PUBLIC_HOLIDAYS: readonly string[] = [
   // 2026
   "2026-01-01", // New Year's Day
