@@ -20,7 +20,7 @@ describe.skipIf(!adminUrl || !appUrl)("ProvinceIntegrityService", () => {
 
   it("resolves when the seeded table matches docs/provinces.csv", async () => {
     await expect(
-      new ProvinceIntegrityService().onApplicationBootstrap(),
+      new ProvinceIntegrityService({ appDatabaseUrl: appUrl! }).onApplicationBootstrap(),
     ).resolves.not.toThrow();
   });
 
@@ -30,7 +30,7 @@ describe.skipIf(!adminUrl || !appUrl)("ProvinceIntegrityService", () => {
     );
     try {
       await expect(
-        new ProvinceIntegrityService().onApplicationBootstrap(),
+        new ProvinceIntegrityService({ appDatabaseUrl: appUrl! }).onApplicationBootstrap(),
       ).rejects.toThrow(/checksum mismatch/);
     } finally {
       await adminPool.query(

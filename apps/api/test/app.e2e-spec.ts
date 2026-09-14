@@ -74,4 +74,10 @@ describe("App (e2e)", () => {
     ]);
     expect(alias).toEqual(health);
   });
+
+  it("reports SMTP_ALLOW_PLAINTEXT as an active insecure flag (.env.test's dev-shaped mail settings, ADR 0018)", async () => {
+    const res = await fetch(`${baseUrl}/health`);
+    const body = await res.json();
+    expect(body.insecureFlags).toEqual(["SMTP_ALLOW_PLAINTEXT"]);
+  });
 });

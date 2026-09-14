@@ -6,6 +6,7 @@ import { createDb } from "../src/db/client.js";
 import { findReviewerByUsername, deactivateReviewer, countOtherActiveReviewers, isActive } from "../src/auth/reviewer.repository.js";
 import { deleteAllSessionsForReviewer } from "../src/auth/session.repository.js";
 import { recordReviewerEvent } from "../src/auth/reviewer-event-writer.js";
+import { hostCliEnvSchema, validateEnv } from "../src/config/env-schema.js";
 
 // The minimum is two *reachable* Reviewers, not two rows in a table (spec
 // §17.5) — the second Reviewer is the entire recovery story for a lost TOTP
@@ -49,7 +50,9 @@ async function main() {
   const args = process.argv.slice(2);
   const force = args.includes("--force");
   const username = args.find((arg) => !arg.startsWith("--"));
-  const operator = process.env.REVIEWER_CLI_OPERATOR || userInfo().username;
+  // REVIEWER_CLI_OPERATOR is removed with no replacement — see the matching
+  // comment in reviewer-seed.ts.
+  const operator = userInfo().username;
 
   if (!username) {
     console.error("Usage: reviewer-deactivate <username> [--force]");
@@ -57,7 +60,8 @@ async function main() {
     return;
   }
 
-  const { db, pool } = createDb(process.env.DATABASE_URL);
+  const { DATABASE_URL } = validateEnv<{ DATABASE_URL: string }>(hostCliEnvSchema(), process.env);
+  const { db, pool } = createDb(DATABASE_URL);
   try {
     const result = await deactivateReviewerCli(db, { username, operator, force });
 

@@ -1,0 +1,49 @@
+# Dev overlay (ADR 0018) — deliberately not compose.override.yml, which
+# Compose would load automatically and a VM checkout would then pick up
+# silently. Run with:
+#   docker compose -f docker-compose.yml -f compose.dev.yml up
+services:
+  app:
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/dds_sharing
+      APP_DATABASE_URL: postgres://app_role:app_role@postgres:5432/dds_sharing
+      REDIS_URL: redis://redis:6379
+      MINIO_ENDPOINT: minio
+      MINIO_PORT: "9000"
+      MINIO_USE_SSL: "false"
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
+      MINIO_BUCKET: dds-sharing
+      SMTP_HOST: mailpit
+      SMTP_PORT: "1025"
+      SMTP_STARTTLS: "false"
+      SMTP_SECURE: "false"
+      SMTP_USER: dev-smtp-user
+      SMTP_PASS: dev-smtp-pass
+      SMTP_FROM: noreply@dds-sharing.local
+      # No TLS in dev at all — Mailpit is plaintext SMTP, and there is no
+      # certificate for FRONTEND_URL/UPSTREAM_BASE_URL either.
+      SMTP_ALLOW_PLAINTEXT: "true"
+      UPSTREAM_TOKEN: dev-upstream-token
+      UPSTREAM_BASE_URL: http://fake-upstream:4010
+      FRONTEND_URL: http://localhost:3000
+      ALLOW_INSECURE_TRANSPORT: "true"
+    depends_on:
+      mailpit:
+        condition: service_started
+      fake-upstream:
+        condition: service_started
+
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
+  fake-upstream:
+    build: .
+    command: ["node", "apps/api/dist/upstream/fake-harness/main.js"]
+    environment:
+      FAKE_UPSTREAM_PORT: "4010"
+    ports:
+      - "4010:4010"

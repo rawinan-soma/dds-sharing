@@ -2,6 +2,7 @@ import { pathToFileURL } from "node:url";
 import { Client } from "pg";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { createDb } from "./client.js";
+import { databaseUrlSchema, validateEnv } from "../config/env-schema.js";
 
 // drizzle-orm's migrator has no locking of its own: it reads the last
 // applied migration and then applies pending ones in a transaction, with no
@@ -13,11 +14,9 @@ import { createDb } from "./client.js";
 // number of concurrent runMigrations() callers against one database.
 const MIGRATION_ADVISORY_LOCK_KEY = 847_362_910_123n;
 
-export async function runMigrations(connectionString?: string) {
+export async function runMigrations(connectionString: string) {
   const { pool, db } = createDb(connectionString);
-  const lockClient = new Client({
-    connectionString: connectionString ?? process.env.DATABASE_URL,
-  });
+  const lockClient = new Client({ connectionString });
   await lockClient.connect();
   try {
     await lockClient.query("SELECT pg_advisory_lock($1)", [
@@ -37,5 +36,6 @@ export async function runMigrations(connectionString?: string) {
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1] ?? "").href) {
-  await runMigrations();
+  const { DATABASE_URL } = validateEnv<{ DATABASE_URL: string }>(databaseUrlSchema(), process.env);
+  await runMigrations(DATABASE_URL);
 }

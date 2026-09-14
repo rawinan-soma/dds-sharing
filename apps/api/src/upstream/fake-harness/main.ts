@@ -2,11 +2,13 @@ import {
   FAKE_UPSTREAM_SCENARIOS,
   startFakeUpstreamServer,
 } from "./fake-upstream-server.js";
+import { fakeUpstreamEnvSchema, validateEnv } from "../../config/env-schema.js";
 
-const port = process.env.FAKE_UPSTREAM_PORT
-  ? Number(process.env.FAKE_UPSTREAM_PORT)
-  : 4010;
-const handle = await startFakeUpstreamServer({ port });
+const { FAKE_UPSTREAM_PORT } = validateEnv<{ FAKE_UPSTREAM_PORT: number }>(
+  fakeUpstreamEnvSchema(),
+  process.env,
+);
+const handle = await startFakeUpstreamServer({ port: FAKE_UPSTREAM_PORT });
 
 console.log(`Fake upstream harness listening on ${handle.url}`);
 console.log(

@@ -12,6 +12,7 @@ import { generateTotpSecret, totpProvisioningUri } from "../src/auth/totp.js";
 import { insertReviewer } from "../src/auth/reviewer.repository.js";
 import { recordReviewerEvent } from "../src/auth/reviewer-event-writer.js";
 import { REVIEWER_RETENTION_NOTICE } from "../src/auth/retention-notice.js";
+import { hostCliEnvSchema, validateEnv } from "../src/config/env-schema.js";
 
 export interface SeedReviewerInput {
   username: string;
@@ -69,9 +70,15 @@ async function main() {
     const displayName =
       process.argv[3] || (await rl.question("Display name (the Reviewer's real name — never derived from the username): "));
     const emailAnswer = process.argv[4] ?? (await rl.question("Email (optional, queue notification only — press enter to skip): "));
-    const operator = process.env.REVIEWER_CLI_OPERATOR || userInfo().username;
+    // REVIEWER_CLI_OPERATOR is removed with no replacement — the Operator
+    // concept itself is being removed (ADR 0020, #87); ticket #85's
+    // amendment drops the env-var override that used to let it stand in for
+    // the OS login. `seeded`'s `operator` field stays for now (removing it
+    // is #88's job).
+    const operator = userInfo().username;
 
-    const { db, pool } = createDb(process.env.DATABASE_URL);
+    const { DATABASE_URL } = validateEnv<{ DATABASE_URL: string }>(hostCliEnvSchema(), process.env);
+    const { db, pool } = createDb(DATABASE_URL);
     try {
       const result = await seedReviewer(db, {
         username,

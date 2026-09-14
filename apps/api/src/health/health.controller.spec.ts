@@ -2,6 +2,8 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { Test } from "@nestjs/testing";
 import { HealthController } from "./health.controller.js";
 import { HealthService } from "./health.service.js";
+import transportConfig from "../config/transport.config.js";
+import smtpConfig from "../config/smtp.config.js";
 
 describe("HealthController", () => {
   let controller: HealthController;
@@ -9,7 +11,11 @@ describe("HealthController", () => {
   beforeEach(async () => {
     const moduleRef = await Test.createTestingModule({
       controllers: [HealthController],
-      providers: [HealthService],
+      providers: [
+        HealthService,
+        { provide: transportConfig.KEY, useValue: { allowInsecureTransport: false } },
+        { provide: smtpConfig.KEY, useValue: { allowPlaintext: false } },
+      ],
     }).compile();
 
     controller = moduleRef.get(HealthController);
