@@ -20,7 +20,7 @@ services:
       SMTP_SECURE: "false"
       SMTP_USER: dev-smtp-user
       SMTP_PASS: dev-smtp-pass
-      SMTP_FROM: noreply@dds-sharing.local
+      SMTP_FROM: noreply@dds-sharing.dev
       # No TLS in dev at all — Mailpit is plaintext SMTP, and there is no
       # certificate for FRONTEND_URL/UPSTREAM_BASE_URL either.
       SMTP_ALLOW_PLAINTEXT: "true"
