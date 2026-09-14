@@ -1,0 +1,131 @@
+import { Component, EventEmitter, Input, OnDestroy, OnInit, Output, inject, signal } from '@angular/core';
+import { ReviewerQueueApiService } from './reviewer-queue-api.service.js';
+import type { QueueRow, RequestDetail } from './reviewer-queue-api.types.js';
+
+type QueueLoadState = 'loading' | 'loaded' | 'error';
+type DetailLoadState = 'idle' | 'loading' | 'loaded' | 'not_found' | 'error';
+
+const REFRESHED_AGO_TICK_MS = 30_000;
+
+/**
+ * The split queue and dossier (spec §10.1, §10.2 — design handoff screen
+ * 7b's Queue zone and read-only dossier). Read-only: approve/reject are
+ * #66's action strip. Nothing here polls — every fetch is a direct result of
+ * a Reviewer loading this screen, pressing Refresh, or picking a row
+ * (spec §10.5), which is what lets each one extend the session.
+ */
+@Component({
+  selector: 'app-reviewer-queue',
+  imports: [],
+  templateUrl: './reviewer-queue.page.html',
+  styleUrl: './reviewer-queue.page.scss',
+})
+export class ReviewerQueuePage implements OnInit, OnDestroy {
+  private readonly api = inject(ReviewerQueueApiService);
+  private agoTimer?: ReturnType<typeof setInterval>;
+
+  @Input({ required: true }) displayName!: string;
+  /** Fires on a deliberate sign-out click — the parent owns the actual API call and session-ceiling teardown. */
+  @Output() readonly signOutRequested = new EventEmitter<void>();
+  /**
+   * Fires when a fetch here comes back 401 — the only signal available for
+   * the *idle* timeout, which (unlike the absolute ceiling) has no
+   * client-side timer of its own (session-ceiling.service.ts).
+   */
+  @Output() readonly sessionExpired = new EventEmitter<void>();
+
+  protected readonly queueState = signal<QueueLoadState>('loading');
+  protected readonly rows = signal<QueueRow[]>([]);
+  protected readonly refreshedAt = signal<string | null>(null);
+  protected readonly agoTick = signal(Date.now());
+
+  protected readonly selectedId = signal<string | null>(null);
+  protected readonly detailState = signal<DetailLoadState>('idle');
+  protected readonly detail = signal<RequestDetail | null>(null);
+
+  ngOnInit(): void {
+    void this.load();
+    this.agoTimer = setInterval(() => this.agoTick.set(Date.now()), REFRESHED_AGO_TICK_MS);
+  }
+
+  ngOnDestroy(): void {
+    clearInterval(this.agoTimer);
+  }
+
+  async load(): Promise<void> {
+    this.queueState.set('loading');
+    const outcome = await this.api.listPending();
+    if (outcome.outcome === 'unauthenticated') {
+      this.sessionExpired.emit();
+      return;
+    }
+    if (outcome.outcome === 'unexpected') {
+      this.queueState.set('error');
+      return;
+    }
+    this.rows.set(outcome.result.requests);
+    this.refreshedAt.set(outcome.result.refreshedAt);
+    this.agoTick.set(Date.now());
+    this.queueState.set('loaded');
+
+    // A row that dropped out of the list (only reachable today by another
+    // Reviewer's session, since this ticket writes no decision) can no
+    // longer be shown as selected.
+    const stillPending = outcome.result.requests.some((row) => row.id === this.selectedId());
+    if (this.selectedId() && !stillPending) {
+      this.selectedId.set(null);
+      this.detailState.set('idle');
+      this.detail.set(null);
+    } else if (this.selectedId()) {
+      void this.loadDetail(this.selectedId()!);
+    }
+  }
+
+  async refresh(): Promise<void> {
+    await this.load();
+  }
+
+  async select(id: string): Promise<void> {
+    this.selectedId.set(id);
+    await this.loadDetail(id);
+  }
+
+  private async loadDetail(id: string): Promise<void> {
+    this.detailState.set('loading');
+    const outcome = await this.api.getDetail(id);
+    if (outcome.outcome === 'unauthenticated') {
+      this.sessionExpired.emit();
+      return;
+    }
+    if (outcome.outcome === 'not_found') {
+      this.detailState.set('not_found');
+      this.detail.set(null);
+      return;
+    }
+    if (outcome.outcome === 'unexpected') {
+      this.detailState.set('error');
+      this.detail.set(null);
+      return;
+    }
+    this.detail.set(outcome.result);
+    this.detailState.set('loaded');
+  }
+
+  protected formatDateTime(iso: string): string {
+    return new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(iso));
+  }
+
+  /** `fromDate`/`toDate` are date-only (`YYYY-MM-DD`) — rendered in UTC so the calendar day never shifts with the viewer's zone. */
+  protected formatIsoDate(iso: string): string {
+    return new Intl.DateTimeFormat('en-GB', { dateStyle: 'medium', timeZone: 'UTC' }).format(new Date(`${iso}T00:00:00Z`));
+  }
+
+  protected refreshedAgoLabel(): string {
+    const refreshedAt = this.refreshedAt();
+    if (!refreshedAt) return '';
+    const minutes = Math.max(0, Math.round((this.agoTick() - new Date(refreshedAt).getTime()) / 60_000));
+    if (minutes < 1) return 'Refreshed just now';
+    if (minutes === 1) return 'Refreshed 1 min ago';
+    return `Refreshed ${minutes} min ago`;
+  }
+}

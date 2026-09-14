@@ -8,6 +8,7 @@ import { ReferenceDataModule } from "./reference-data/reference-data.module.js";
 import { AppDbModule } from "./db/app-db.module.js";
 import { RequestsModule } from "./requests/requests.module.js";
 import { ReviewerModule } from "./auth/reviewer.module.js";
+import { ReviewerQueueModule } from "./reviewer-queue/reviewer-queue.module.js";
 import { WEB_DIST_PATH } from "./web-dist-path.js";
 
 const staticExclude = new RegExp(
@@ -26,6 +27,7 @@ const staticExclude = new RegExp(
     AppDbModule,
     RequestsModule,
     ReviewerModule,
+    ReviewerQueueModule,
     // Last, deliberately (see api-not-found.module.ts): its catch-all must
     // register after every feature module's routes, or it swallows them.
     ApiNotFoundModule,

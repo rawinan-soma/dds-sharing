@@ -4,6 +4,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ReviewerApiService, type PasswordPolicyViolation, type SignInResponse } from '../reviewer-api.service';
 import { SessionCeilingService } from '../session-ceiling.service';
+import { ReviewerQueuePage } from '../queue/reviewer-queue.page';
 
 // Spec §17.5 / §17.4: this surface is not linked from the public app and is
 // kept out of search results. robots.txt already disallows the path and the
@@ -23,7 +24,7 @@ type Phase = 'sign-in' | 'password-gate' | 'signed-in';
 
 @Component({
   selector: 'app-reviewer-sign-in',
-  imports: [ReactiveFormsModule],
+  imports: [ReactiveFormsModule, ReviewerQueuePage],
   templateUrl: './sign-in.html',
   styleUrl: './sign-in.scss',
 })
@@ -149,7 +150,9 @@ export class ReviewerSignIn implements OnInit, OnDestroy {
     }
   }
 
-  private onSessionExpired(): void {
+  /** Bound from the template for both the session-ceiling timer and a 401 the queue page surfaces (idle timeout has no client-side timer of its own). */
+  protected onSessionExpired(): void {
+    this.sessionCeiling.stop();
     const returnTo = this.router.url;
     this.phase.set('sign-in');
     this.session.set(null);
