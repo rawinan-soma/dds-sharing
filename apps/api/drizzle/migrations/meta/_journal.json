@@ -36,6 +36,20 @@
       "when": 1788858650656,
       "tag": "0004_grant_app_role_events",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1789227267709,
+      "tag": "0005_request_and_contact",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1789227301072,
+      "tag": "0006_grant_app_role_requests",
+      "breakpoints": true
     }
   ]
 }

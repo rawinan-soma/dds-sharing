@@ -1,1 +1,45 @@
 /* You can add global styles to this file, and also import other style files */
+
+:root {
+  --color-bg: #f2f2f3;
+  --color-surface: #ffffff;
+  --color-text: #1d1f20;
+  --color-accent: #5980a6;
+  --color-accent-700: #416180;
+  --color-accent-100: #eef6ff;
+  --color-divider: rgba(29, 31, 32, 0.16);
+  --color-neutral-100: #f5f5f8;
+  --color-neutral-600: #5d5d60;
+  --color-neutral-700: #424244;
+  --color-error-ink: #8c2b21;
+  --color-error-bg: #f7e7e4;
+  --font-heading: "Barlow Condensed", "Segoe UI", sans-serif;
+  --font-body: "Barlow", "Segoe UI", sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  margin: 0;
+}
+
+button {
+  font-family: inherit;
+}

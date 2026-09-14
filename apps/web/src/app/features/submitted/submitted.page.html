@@ -1,0 +1,52 @@
+@if (acknowledged; as request) {
+<main class="page">
+  <span class="tag tag--ok">{{ m.requester_confirmation_heading() }}</span>
+  <h1>{{ m.requester_confirmation_subheading() }}</h1>
+  <p>{{ m.requester_confirmation_service_promise() }}</p>
+
+  <section class="panel">
+    <div class="panel__row">
+      <span class="panel__label"
+        >{{ m.requester_confirmation_reference_label() }}</span
+      >
+      <span class="panel__value">{{ request.referenceNumber }}</span>
+    </div>
+    <div class="panel__row">
+      <span class="panel__label"
+        >{{ m.requester_confirmation_restatement_label() }}</span
+      >
+      <span class="panel__value">
+        {{ request.diseaseGroupNameTh }} · {{ request.from }} – {{ request.to }}
+        ({{ request.days }}) · {{ areaSummary(request.area) }}
+      </span>
+    </div>
+  </section>
+
+  <p>{{ m.requester_confirmation_telephone_line({ telephone }) }}</p>
+</main>
+} @else if (duplicate; as existing) {
+<main class="page">
+  <h1>{{ m.requester_duplicate_heading() }}</h1>
+  <p>
+    {{ m.requester_duplicate_body({ state:
+    duplicateStateLabel(existing.existingState), submittedAt:
+    formatDateTime(existing.existingSubmittedAt), }) }}
+  </p>
+
+  <section class="panel">
+    <div class="panel__row">
+      <span class="panel__label"
+        >{{ m.requester_duplicate_reference_label() }}</span
+      >
+      <span class="panel__value">{{ existing.existingReferenceNumber }}</span>
+    </div>
+  </section>
+
+  <p>{{ m.requester_duplicate_reassurance() }}</p>
+</main>
+} @else {
+<main class="page">
+  <h1>{{ m.requester_confirmation_heading() }}</h1>
+  <p>{{ m.requester_confirmation_service_promise() }}</p>
+</main>
+}
