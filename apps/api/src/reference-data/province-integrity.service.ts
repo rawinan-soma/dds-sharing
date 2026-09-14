@@ -1,6 +1,8 @@
-import { Injectable, Logger, OnApplicationBootstrap } from "@nestjs/common";
+import { Inject, Injectable, Logger, OnApplicationBootstrap } from "@nestjs/common";
+import type { ConfigType } from "@nestjs/config";
 import { createDb } from "../db/client.js";
 import { province } from "../db/schema.js";
+import dbConfigFactory from "../config/db.config.js";
 import { assertProvinceSeedIntegrity } from "./province-integrity.js";
 import { PROVINCE_SEED_META } from "./province-seed.generated.js";
 
@@ -15,16 +17,12 @@ import { PROVINCE_SEED_META } from "./province-seed.generated.js";
 export class ProvinceIntegrityService implements OnApplicationBootstrap {
   private readonly logger = new Logger(ProvinceIntegrityService.name);
 
-  async onApplicationBootstrap(): Promise<void> {
-    const connectionString = process.env.APP_DATABASE_URL;
-    if (!connectionString) {
-      throw new Error(
-        "APP_DATABASE_URL is not set. The province seed integrity check must run as the " +
-          "read-only application role, never the migration admin role (spec §6.4).",
-      );
-    }
+  constructor(
+    @Inject(dbConfigFactory.KEY) private readonly dbConfig: ConfigType<typeof dbConfigFactory>,
+  ) {}
 
-    const { pool, db } = createDb(connectionString);
+  async onApplicationBootstrap(): Promise<void> {
+    const { pool, db } = createDb(this.dbConfig.appDatabaseUrl);
     try {
       const rows = await db
         .select()

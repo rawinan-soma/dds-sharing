@@ -1,4 +1,8 @@
-import { Injectable } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
+import type { ConfigType } from "@nestjs/config";
+import transportConfig from "../config/transport.config.js";
+import smtpConfig from "../config/smtp.config.js";
+import { activeInsecureFlags } from "../config/insecure-flags.js";
 
 export type HealthComponentStatus = "ok" | "unknown" | "degraded" | "down";
 
@@ -14,6 +18,8 @@ export interface HealthDocument {
     disk: HealthComponent;
     mail: HealthComponent;
   };
+  /** Insecure opt-in flags currently on (ADR 0018) — empty when none are. */
+  insecureFlags: string[];
 }
 
 const STATUS_SEVERITY: Record<HealthComponentStatus, number> = {
@@ -31,6 +37,11 @@ function worstOf(statuses: HealthComponentStatus[]): HealthComponentStatus {
 
 @Injectable()
 export class HealthService {
+  constructor(
+    @Inject(transportConfig.KEY) private readonly transport: ConfigType<typeof transportConfig>,
+    @Inject(smtpConfig.KEY) private readonly smtp: ConfigType<typeof smtpConfig>,
+  ) {}
+
   check(): HealthDocument {
     const components: HealthDocument["components"] = {
       scheduler: { status: "unknown" },
@@ -42,6 +53,7 @@ export class HealthService {
     return {
       status: worstOf(Object.values(components).map((component) => component.status)),
       components,
+      insecureFlags: activeInsecureFlags(this.transport, this.smtp),
     };
   }
 }

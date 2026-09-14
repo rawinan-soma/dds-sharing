@@ -3,25 +3,43 @@ services:
     build: .
     ports:
       - "3000:3000"
+    # A bare name passes the variable through from the host/`.env` (never a
+    # baked-in value here — ADR 0018). Compose does not enforce "required"
+    # across an overlay file (a later file's literal value cannot satisfy an
+    # earlier file's `${VAR:?}`, since interpolation reads only the
+    # shell/`.env` pool, never another file's config) — the app's own boot
+    # validation is the single enforcer, and it is what actually "refuses to
+    # start, naming the unset variables" for `docker compose up` run here
+    # alone, without compose.dev.yml and without a `.env`.
     environment:
-      PORT: 3000
-      DATABASE_URL: postgres://postgres:postgres@postgres:5432/dds_sharing
-      APP_DATABASE_URL: postgres://app_role:app_role@postgres:5432/dds_sharing
-      REDIS_URL: redis://redis:6379
-      MINIO_ENDPOINT: minio
-      MINIO_PORT: 9000
-      MINIO_ACCESS_KEY: minioadmin
-      MINIO_SECRET_KEY: minioadmin
-      SMTP_HOST: mailpit
-      SMTP_PORT: 1025
+      - PORT
+      - DATABASE_URL
+      - APP_DATABASE_URL
+      - REDIS_URL
+      - MINIO_ENDPOINT
+      - MINIO_PORT
+      - MINIO_USE_SSL
+      - MINIO_ACCESS_KEY
+      - MINIO_SECRET_KEY
+      - MINIO_BUCKET
+      - SMTP_HOST
+      - SMTP_PORT
+      - SMTP_STARTTLS
+      - SMTP_SECURE
+      - SMTP_USER
+      - SMTP_PASS
+      - SMTP_FROM
+      - SMTP_ALLOW_PLAINTEXT
+      - UPSTREAM_TOKEN
+      - UPSTREAM_BASE_URL
+      - FRONTEND_URL
+      - ALLOW_INSECURE_TRANSPORT
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_started
       minio:
-        condition: service_started
-      mailpit:
         condition: service_started
 
   postgres:
@@ -56,12 +74,6 @@ services:
       - "9001:9001"
     volumes:
       - minio-data:/data
-
-  mailpit:
-    image: axllent/mailpit:latest
-    ports:
-      - "1025:1025"
-      - "8025:8025"
 
 volumes:
   postgres-data:
