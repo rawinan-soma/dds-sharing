@@ -43,6 +43,14 @@ export class ReviewerQueuePage implements OnInit, OnDestroy {
   protected readonly detailState = signal<DetailLoadState>('idle');
   protected readonly detail = signal<RequestDetail | null>(null);
 
+  /**
+   * The design handoff (screen 7b) has the empty-queue copy branch on
+   * whether Alerts are open — "the desk is not clear" rather than "nothing
+   * to do" — but the Alerts zone itself is #73's. Pinned to `false` here so
+   * the branch exists for #73 to feed without this ticket building Alerts.
+   */
+  protected readonly hasOpenAlerts = signal(false);
+
   ngOnInit(): void {
     void this.load();
     this.agoTimer = setInterval(() => this.agoTick.set(Date.now()), REFRESHED_AGO_TICK_MS);

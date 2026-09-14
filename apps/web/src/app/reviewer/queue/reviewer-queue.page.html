@@ -31,6 +31,8 @@
           <li class="empty-state">Loading the queue…</li>
         } @else if (queueState() === 'error') {
           <li class="empty-state error">Could not load the queue. <button type="button" (click)="refresh()">Try again</button></li>
+        } @else if (rows().length === 0 && hasOpenAlerts()) {
+          <li class="empty-state">The desk isn't clear — open Alerts still need you.</li>
         } @else if (rows().length === 0) {
           <li class="empty-state">Nothing to decide right now.</li>
         } @else {
@@ -105,7 +107,7 @@
       <div class="strip">
         <div class="cell">
           <span class="label">Probe row count</span>
-          <span class="value">Not available yet</span>
+          <span class="value">{{ detail.probeRowCount ?? 'Not available yet' }}</span>
         </div>
         <div class="cell">
           <span class="label">Time remaining</span>
