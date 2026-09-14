@@ -1,4 +1,5 @@
-import { Body, Controller, Delete, Get, HttpCode, Patch, Post, Req, Res, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, HttpCode, Inject, Patch, Post, Req, Res, UseGuards } from "@nestjs/common";
+import type { ConfigType } from "@nestjs/config";
 import type { Request, Response } from "express";
 import { AuthService } from "./auth.service.js";
 import { CsrfGuard } from "./csrf.guard.js";
@@ -11,6 +12,7 @@ import {
   reviewerCsrfCookieOptions,
   reviewerSessionCookieOptions,
 } from "./cookie-options.js";
+import transportConfig from "../config/transport.config.js";
 interface SignInBody {
   username: string;
   password: string;
@@ -29,13 +31,16 @@ interface ChangePasswordBody {
 // generic failure regardless of which factor was wrong.
 @Controller("reviewer")
 export class ReviewerController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    @Inject(transportConfig.KEY) private readonly transport: ConfigType<typeof transportConfig>,
+  ) {}
 
   /** Issues the CSRF cookie the sign-in form must echo back as a header. */
   @Get("csrf")
   issueCsrfToken(@Res({ passthrough: true }) res: Response) {
     const token = generateCsrfToken();
-    res.cookie(REVIEWER_CSRF_COOKIE, token, reviewerCsrfCookieOptions());
+    res.cookie(REVIEWER_CSRF_COOKIE, token, reviewerCsrfCookieOptions(this.transport.allowInsecureTransport));
     return { csrfToken: token };
   }
 
@@ -57,7 +62,11 @@ export class ReviewerController {
       return { error: result.outcome };
     }
 
-    res.cookie(REVIEWER_SESSION_COOKIE, result.token, reviewerSessionCookieOptions(result.absoluteExpiresAt));
+    res.cookie(
+      REVIEWER_SESSION_COOKIE,
+      result.token,
+      reviewerSessionCookieOptions(result.absoluteExpiresAt, this.transport.allowInsecureTransport),
+    );
     return {
       displayName: result.displayName,
       mustChangePassword: result.mustChangePassword,

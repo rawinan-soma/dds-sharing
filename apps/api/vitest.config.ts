@@ -9,6 +9,7 @@ export default defineConfig({
     globals: true,
     root: './',
     include: ['**/*.spec.ts'],
+    setupFiles: ['./test/setup-env.ts'],
     // Reviewer auth specs (ticket #64) TRUNCATE shared tables — reviewer,
     // reviewer_event, reviewer_session, reviewer_login_throttle — between
     // tests, and several assert *global* invariants (the two-active-reviewer
