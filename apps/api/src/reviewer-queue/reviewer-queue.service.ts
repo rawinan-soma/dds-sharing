@@ -5,6 +5,7 @@ import { province, request, requestContact, requestEvent } from "../db/schema.js
 import { countActiveReviewers } from "../auth/reviewer.repository.js";
 import { MailService } from "../mail/mail.service.js";
 import { buildRejectionEmail } from "../mail/rejection-email.js";
+import { ExtractionQueueService } from "../extraction/extraction-queue.service.js";
 import { m } from "../paraglide/messages.js";
 import type { ProbePerformedPayload, Snapshot } from "../db/events.js";
 import type { AreaKind } from "../requests/request-state.js";
@@ -37,6 +38,7 @@ export class ReviewerQueueService {
   constructor(
     @Inject(APP_DB) private readonly appDb: AppDb,
     private readonly mailService: MailService,
+    private readonly extractionQueueService: ExtractionQueueService,
   ) {}
 
   /**
@@ -199,9 +201,16 @@ export class ReviewerQueueService {
     };
   }
 
-  /** The Decision (spec §10.3): approve releases the Request from `pending` to `queued`, and carries a Snapshot. */
+  /**
+   * The Decision (spec §10.3): approve releases the Request from `pending`
+   * to `queued`, and carries a Snapshot. Once the Decision itself is
+   * committed, this enqueues the extraction job (§7.7) — outside the
+   * transaction, same reasoning as `reject`'s email: a BullMQ enqueue is an
+   * external side effect that must never run inside a transaction that
+   * might yet roll back.
+   */
   async approve(id: string, reviewerId: string, now: Date): Promise<DecisionOutcome> {
-    return this.decide(id, now, async (tx, row, snapshot) => {
+    const outcome = await this.decide(id, now, async (tx, row, snapshot) => {
       await tx.update(request).set({ state: "queued" }).where(eq(request.id, id));
       await tx.insert(requestEvent).values({
         requestId: id,
@@ -213,6 +222,12 @@ export class ReviewerQueueService {
       });
       return { kind: "approved" as const, decidedAt: now.toISOString() };
     });
+
+    if (outcome.kind === "approved") {
+      await this.extractionQueueService.enqueue(id, now);
+    }
+
+    return outcome;
   }
 
   /**

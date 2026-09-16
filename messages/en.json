@@ -86,5 +86,10 @@
   "requester_rejection_email_subject": "Your DDS Sharing request {referenceNumber} was not approved",
   "requester_rejection_email_greeting": "Dear applicant,",
   "requester_rejection_email_body": "Your request {referenceNumber} was not approved. No reason is given for this decision — this was stated on the request form when you submitted it.",
-  "requester_rejection_email_contact": "If you believe this was a mistake, call {telephone} and quote your reference number."
+  "requester_rejection_email_contact": "If you believe this was a mistake, call {telephone} and quote your reference number.",
+
+  "requester_extraction_failure_email_subject": "Your DDS Sharing request {referenceNumber} could not be completed",
+  "requester_extraction_failure_email_greeting": "Dear applicant,",
+  "requester_extraction_failure_email_body": "Your request {referenceNumber} was approved, but the extract could not be produced this time.",
+  "requester_extraction_failure_email_contact": "Call {telephone} and quote your reference number, and we will follow up."
 }

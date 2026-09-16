@@ -34,6 +34,14 @@ services:
       - UPSTREAM_BASE_URL
       - FRONTEND_URL
       - ALLOW_INSECURE_TRANSPORT
+    # Extraction scratch checkpoints (§7.6, §7.8, ticket #69): the app
+    # image is node:24-alpine, so `os.tmpdir()` resolves to `/tmp` and
+    # ScratchStore's default root is `/tmp/dds-sharing-extraction-scratch`.
+    # Without this volume, "a job resuming after a worker restart redoes at
+    # most one code" only holds for an in-process crash, not a real
+    # container restart or redeploy.
+    volumes:
+      - scratch-data:/tmp/dds-sharing-extraction-scratch
     depends_on:
       postgres:
         condition: service_healthy
@@ -60,8 +68,15 @@ services:
 
   redis:
     image: redis:7-alpine
+    # AOF persistence (spec §7.7, ticket #69): Redis is not durable by
+    # default, and a restart on the wrong persistence config drops queued
+    # jobs while Postgres still says those Requests exist — a Requester left
+    # waiting forever on a job in no queue.
+    command: ["redis-server", "--appendonly", "yes"]
     ports:
       - "6379:6379"
+    volumes:
+      - redis-data:/data
 
   minio:
     image: minio/minio:latest
@@ -77,4 +92,6 @@ services:
 
 volumes:
   postgres-data:
+  redis-data:
   minio-data:
+  scratch-data:
