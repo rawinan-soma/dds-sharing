@@ -86,5 +86,10 @@
   "requester_rejection_email_subject": "คำขอ {referenceNumber} ของท่านไม่ได้รับการอนุมัติ",
   "requester_rejection_email_greeting": "เรียน ผู้ยื่นคำขอ",
   "requester_rejection_email_body": "คำขอ {referenceNumber} ของท่านไม่ได้รับการอนุมัติ โดยไม่มีการแจ้งเหตุผล ตามที่ได้ระบุไว้ในแบบฟอร์มคำขอแล้ว",
-  "requester_rejection_email_contact": "หากท่านเห็นว่าเป็นความผิดพลาด กรุณาโทรศัพท์ {telephone} พร้อมแจ้งหมายเลขอ้างอิงของท่าน"
+  "requester_rejection_email_contact": "หากท่านเห็นว่าเป็นความผิดพลาด กรุณาโทรศัพท์ {telephone} พร้อมแจ้งหมายเลขอ้างอิงของท่าน",
+
+  "requester_extraction_failure_email_subject": "คำขอ {referenceNumber} ของท่านไม่สามารถดำเนินการให้เสร็จสมบูรณ์ได้",
+  "requester_extraction_failure_email_greeting": "เรียน ผู้ยื่นคำขอ",
+  "requester_extraction_failure_email_body": "คำขอ {referenceNumber} ของท่านได้รับการอนุมัติแล้ว แต่ไม่สามารถจัดทำไฟล์ข้อมูลได้ในครั้งนี้",
+  "requester_extraction_failure_email_contact": "กรุณาโทรศัพท์ {telephone} พร้อมแจ้งหมายเลขอ้างอิงของท่าน เราจะติดตามเรื่องนี้ให้"
 }

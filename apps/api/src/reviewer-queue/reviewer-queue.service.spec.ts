@@ -14,6 +14,7 @@ import {
   type FakeUpstreamServerHandle,
 } from "../upstream/fake-harness/fake-upstream-server.js";
 import type { MailService } from "../mail/mail.service.js";
+import type { ExtractionQueueService } from "../extraction/extraction-queue.service.js";
 import { ReviewerQueueService } from "./reviewer-queue.service.js";
 
 const adminUrl = process.env.DATABASE_URL;
@@ -24,6 +25,13 @@ const appUrl = process.env.APP_DATABASE_URL;
 // This suite is about the Decision, not the network.
 function stubMailService(): MailService {
   return { send: vi.fn().mockResolvedValue({ outcome: "sent", relayResponse: "250 OK" }) } as unknown as MailService;
+}
+
+// The extraction pipeline's own behaviour is this ticket's (#69) unit —
+// extraction-queue.service.spec.ts and extraction-runner.spec.ts. This
+// suite is about the Decision, so enqueuing is stubbed, not exercised.
+function stubExtractionQueueService(): ExtractionQueueService {
+  return { enqueue: vi.fn().mockResolvedValue(undefined) } as unknown as ExtractionQueueService;
 }
 
 function validInput(overrides: Partial<SubmitRequestInput> = {}): SubmitRequestInput {
@@ -62,7 +70,7 @@ describe.skipIf(!adminUrl || !appUrl)("ReviewerQueueService", () => {
     });
     probeService = new ProbeService(appDb, upstreamClient);
     requestsService = new RequestsService(appDb, probeService);
-    queueService = new ReviewerQueueService(appDb, stubMailService());
+    queueService = new ReviewerQueueService(appDb, stubMailService(), stubExtractionQueueService());
   });
 
   afterAll(async () => {
@@ -345,12 +353,15 @@ describe.skipIf(!adminUrl || !appUrl)("ReviewerQueueService", () => {
   }
 
   describe("approve", () => {
-    it("moves a pending Request to queued and writes an approved event carrying the Snapshot", async () => {
+    it("moves a pending Request to queued, enqueues extraction, and writes an approved event carrying the Snapshot", async () => {
       const now = new Date("2026-09-08T10:20:00+07:00");
       const id = await submitAt(validInput(), "198.51.101.1", now);
+      const extractionQueueService = stubExtractionQueueService();
+      const service = new ReviewerQueueService(appDb, stubMailService(), extractionQueueService);
 
-      const outcome = await queueService.approve(id, reviewerId, now);
+      const outcome = await service.approve(id, reviewerId, now);
       expect(outcome).toEqual({ kind: "approved", decidedAt: now.toISOString() });
+      expect(vi.mocked(extractionQueueService.enqueue)).toHaveBeenCalledWith(id, now);
 
       const { rows } = await adminPool.query(`SELECT state FROM request WHERE id = $1`, [id]);
       expect(rows[0].state).toBe("queued");
@@ -406,7 +417,7 @@ describe.skipIf(!adminUrl || !appUrl)("ReviewerQueueService", () => {
       const now = new Date("2026-09-08T10:20:00+07:00");
       const id = await submitAt(validInput(), "198.51.101.4", now);
       const mail = stubMailService();
-      const service = new ReviewerQueueService(appDb, mail);
+      const service = new ReviewerQueueService(appDb, mail, stubExtractionQueueService());
 
       const outcome = await service.reject(id, reviewerId, "Contact number does not answer, three attempts made.", now);
       expect(outcome).toEqual({ kind: "rejected", decidedAt: now.toISOString() });
@@ -432,7 +443,7 @@ describe.skipIf(!adminUrl || !appUrl)("ReviewerQueueService", () => {
       const now = new Date("2026-09-08T10:20:00+07:00");
       const id = await submitAt(validInput(), "198.51.101.5", now);
       const failingMail = { send: vi.fn().mockResolvedValue({ outcome: "failed", error: "connection refused" }) } as unknown as MailService;
-      const service = new ReviewerQueueService(appDb, failingMail);
+      const service = new ReviewerQueueService(appDb, failingMail, stubExtractionQueueService());
 
       const outcome = await service.reject(id, reviewerId, "Ten characters, easily.", now);
       expect(outcome).toEqual({ kind: "rejected", decidedAt: now.toISOString() });

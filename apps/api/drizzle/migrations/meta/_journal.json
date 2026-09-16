@@ -85,6 +85,20 @@
       "when": 1789400639953,
       "tag": "0011_grant_app_role_request_state",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1789567103286,
+      "tag": "0012_add_request_bull_job_id",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1789567198457,
+      "tag": "0013_grant_app_role_bull_job_id",
+      "breakpoints": true
     }
   ]
 }

@@ -109,20 +109,20 @@ interface ExpiredPayload {
   decisionAttemptedAndRefused: boolean;
 }
 
-interface JobQueuedPayload {
+export interface JobQueuedPayload {
   requestId: string;
 }
 
-interface JobDeferredLowDiskPayload {
+export interface JobDeferredLowDiskPayload {
   freeBytes: number;
   floorBytes: number;
 }
 
-interface JobStartedPayload {
+export interface JobStartedPayload {
   attempt: number;
 }
 
-interface CodeFetchedPayload {
+export interface CodeFetchedPayload {
   groupCode: string;
   startDate: string;
   endDate: string;
@@ -149,12 +149,12 @@ interface JobCompletedPayload {
   probeVsRunDrift: Array<{ groupCode: string; probeTotal: number | null; runTotal: number }>;
 }
 
-interface JobFailedPayload {
+export interface JobFailedPayload {
   cause: "upstream_5xx" | "auth_expiry" | "completeness_mismatch" | "stall" | "internal";
   xRequestId: string | null;
 }
 
-interface ExtractionAlertRaisedPayload {
+export interface ExtractionAlertRaisedPayload {
   reason: string;
 }
 
@@ -169,13 +169,13 @@ interface ExtractionRerunQueuedPayload {
   originalDecisionEventId: number;
 }
 
-interface MailSentPayload {
+export interface MailSentPayload {
   kind: "delivery" | "queue_notification" | "rejection" | "extraction_failure";
   to: string;
   relayResponse: string;
 }
 
-interface MailSendFailedPayload {
+export interface MailSendFailedPayload {
   tryNumber: number;
   relayError: string;
 }

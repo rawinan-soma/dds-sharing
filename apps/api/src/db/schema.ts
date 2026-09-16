@@ -154,6 +154,13 @@ export const request = pgTable(
     submittedAt: timestamp("submitted_at", { withTimezone: true, mode: "date" })
       .notNull()
       .defaultNow(),
+
+    // The BullMQ job's own id (§7.7) — never authoritative state, only a
+    // reference. Null until approval enqueues a job, and rewritten if
+    // reconcile ever re-enqueues one behind a dead reference. Postgres
+    // (this row's `state`) is the system of record; this column is how the
+    // worker finds the queue entry that is supposed to be doing the work.
+    bullJobId: text("bull_job_id"),
   },
 );
 
