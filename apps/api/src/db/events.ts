@@ -17,7 +17,6 @@ export const REQUEST_EVENT_TYPES = [
   "rejected",
   "note_amended",
   "expired",
-  "contact_redacted",
   // Extraction lifecycle
   "job_queued",
   "job_deferred_low_disk",
@@ -62,23 +61,24 @@ export type ReviewerEventType = (typeof REVIEWER_EVENT_TYPES)[number];
 // could disagree with itself.
 type SubmittedPayload = Record<string, never>;
 
-interface ProbePerformedPayload {
+export interface ProbePerformedPayload {
   span: { start: string; end: string };
   codes: Array<{
     groupCode: string;
     calls: number;
     totalItems: number;
-    xRequestId: string;
+    /** One entry per call made for this code, in attempt order — failed retries' ids included. */
+    xRequestIds: Array<string | null>;
   }>;
   totalItems: number;
 }
 
-interface ProbeFailedPayload {
+export interface ProbeFailedPayload {
   groupCode: string;
   errors: Array<{ message: string; xRequestId: string | null }>;
 }
 
-interface Snapshot {
+export interface Snapshot {
   diseaseGroupName: string;
   reportCodes: string[];
   startDate: string;
@@ -107,10 +107,6 @@ interface ExpiredPayload {
   businessHoursElapsed: number;
   reviewerAccountsActive: number;
   decisionAttemptedAndRefused: boolean;
-}
-
-interface ContactRedactedPayload {
-  operator: string;
 }
 
 interface JobQueuedPayload {
@@ -237,7 +233,6 @@ export type RequestEventPayload =
   | { type: "rejected"; payload: RejectedPayload }
   | { type: "note_amended"; payload: NoteAmendedPayload }
   | { type: "expired"; payload: ExpiredPayload }
-  | { type: "contact_redacted"; payload: ContactRedactedPayload }
   | { type: "job_queued"; payload: JobQueuedPayload }
   | { type: "job_deferred_low_disk"; payload: JobDeferredLowDiskPayload }
   | { type: "job_started"; payload: JobStartedPayload }
@@ -277,14 +272,11 @@ interface SessionExpiredPayload {
 
 type PasswordChangedPayload = Record<string, never>;
 
-interface SeededPayload {
-  operator: string;
-}
+type SeededPayload = Record<string, never>;
 
 type TotpEnrolledPayload = Record<string, never>;
 
 interface DeactivatedPayload {
-  operator: string;
   force: boolean;
 }
 

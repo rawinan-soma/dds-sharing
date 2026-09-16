@@ -5,6 +5,7 @@ import {
   UpstreamMalformedResponseError,
   UpstreamMetaMismatchError,
   UpstreamPageTooLargeError,
+  UpstreamProbeExhaustedError,
   UpstreamRangeError,
   UpstreamRetriesExhaustedError,
   UpstreamServerError,
@@ -16,6 +17,9 @@ import {
   NOOP_UPSTREAM_LOGGER,
   type FetchDiseaseGroupParams,
   type FetchDiseaseGroupResult,
+  type ProbeAttempt,
+  type ProbeDiseaseGroupParams,
+  type ProbeDiseaseGroupResult,
   type UpstreamCallRecord,
   type UpstreamEnvelope,
   type UpstreamErrorBody,
@@ -154,6 +158,71 @@ export class UpstreamClient {
     throw new UpstreamRetriesExhaustedError(lastRetryableError!);
   }
 
+  /**
+   * The Probe's call (§5.4): page 1 only, read purely for `meta.total_items`
+   * — `data` is discarded and later pages are never requested, no matter how
+   * many `has_next` claims exist. Same retry discipline as {@link fetchDiseaseGroup}
+   * (3 attempts, exponential backoff), but every attempt is kept, not just the
+   * last, because `probe_failed` (§12.4) is an account of the calls actually
+   * spent, not just of how it ended.
+   */
+  async probeDiseaseGroup(
+    params: ProbeDiseaseGroupParams,
+  ): Promise<ProbeDiseaseGroupResult> {
+    const pageSize = params.pageSize ?? MIN_PAGE_SIZE;
+    if (pageSize < MIN_PAGE_SIZE) {
+      throw new RangeError(
+        `page_size must never be below ${MIN_PAGE_SIZE}, got ${pageSize}`,
+      );
+    }
+
+    const attempts: ProbeAttempt[] = [];
+
+    for (let attempt = 1; attempt <= this.maxAttempts; attempt++) {
+      try {
+        const { envelope, requestId, processTimeMs } = await this.getPage(
+          { ...params, pageSize },
+          1,
+        );
+
+        if (envelope.meta.page !== 1 || envelope.meta.page_size !== pageSize) {
+          this.logError(params.groupCode, 1, 200, "meta_mismatch");
+          attempts.push({ errorKind: "meta_mismatch", requestId });
+          throw new UpstreamProbeExhaustedError(attempts);
+        }
+
+        this.logger.logCall({
+          status: 200,
+          groupCode: params.groupCode,
+          page: 1,
+          totalItems: envelope.meta.total_items,
+          requestId,
+          processTimeMs,
+        });
+
+        return {
+          totalItems: envelope.meta.total_items,
+          requestIds: [
+            ...attempts.map((a) => a.requestId ?? null),
+            requestId ?? null,
+          ],
+          callsMade: attempt,
+        };
+      } catch (error) {
+        if (error instanceof UpstreamProbeExhaustedError) throw error;
+        if (!(error instanceof UpstreamClientError)) throw error;
+
+        attempts.push({ errorKind: error.kind, requestId: error.requestId });
+        if (!error.retryable || attempt >= this.maxAttempts) {
+          throw new UpstreamProbeExhaustedError(attempts);
+        }
+        await sleep(this.retryBaseDelayMs * 2 ** (attempt - 1));
+      }
+    }
+
+    throw new UpstreamProbeExhaustedError(attempts);
+  }
+
   /** One attempt: walks page 1..N from scratch. No mid-code resume (§7.6). */
   private async walkPages(
     params: Required<
@@ -269,6 +338,7 @@ export class UpstreamClient {
         body = undefined;
       }
       const error = classifyErrorStatus(response.status, body);
+      error.requestId = requestId;
       this.logError(params.groupCode, page, response.status, error.kind, {
         requestId,
         processTimeMs,
@@ -294,7 +364,9 @@ export class UpstreamClient {
         "malformed_response",
         { requestId, processTimeMs },
       );
-      throw new UpstreamMalformedResponseError(error);
+      const wrapped = new UpstreamMalformedResponseError(error);
+      wrapped.requestId = requestId;
+      throw wrapped;
     }
 
     return { envelope, requestId, processTimeMs };

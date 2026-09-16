@@ -119,6 +119,9 @@ describe.skipIf(!adminUrl || !appUrl)("Reviewer sign-in (e2e, spec §17.5)", () 
     const sessionCookieLine = setCookieHeader.find((c) => c.startsWith("reviewer_session="))!;
     expect(sessionCookieLine).toContain("HttpOnly");
     expect(sessionCookieLine).toContain("SameSite=Lax");
+    // ALLOW_INSECURE_TRANSPORT is unset here (.env.test defaults it to
+    // "false") — the session cookie must carry Secure (ADR 0018).
+    expect(sessionCookieLine).toContain("Secure");
 
     const sessionCookie = extractCookie(res, "reviewer_session")!;
 

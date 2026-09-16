@@ -94,7 +94,7 @@ Decision, Workplace, DDS, Disease group, Report code, Extract, Extract archive,
 Data dictionary, Derived column, Span builder, Probe, Download token, Attempt,
 Delivery, Send failure, Collection lapse, Extraction failure, Alert, Re-run, Area
 selection, Duplicate suppression, Request event, Reviewer event, Actor, Snapshot,
-Extract fingerprint, Redaction** — mean exactly what
+Extract fingerprint** — mean exactly what
 .link {`CONTEXT.md`} url:{https://github.com/rawinan-soma/dds-sharing/blob/main/CONTEXT.md} says they mean, including the words it rules out.
 They are not redefined here; [§6.1](#_61-glossary) is an index back to it.
 
@@ -148,7 +148,7 @@ clock is defined in ICT. The reference number renders a Buddhist-era year.
 | S8 | **Reviewer account management** — username + password + TOTP, minimum two reachable named Reviewers, CLI-seeded on the host | §17.5, [#18](https://github.com/rawinan-soma/dds-sharing/issues/18) |
 | S9 | **Health endpoints and operational alerting** to two distinct watchers — the operator via `/health`, the approving Reviewer via must-clear Alerts | §14, [#27](https://github.com/rawinan-soma/dds-sharing/issues/27) |
 | S10 | **Scheduled work** — one 60-second tick, the business-hours clock, object deletion, stall detection, derived expiry materialisation | §15, [#20](https://github.com/rawinan-soma/dds-sharing/issues/20) |
-| S11 | **Host CLI commands** — Reviewer seeding / password reset / TOTP re-enrolment / deactivation, Redaction, fingerprint verification, upstream traffic report | §17.3, §17.5, §12.8, §8.4, §13.6 |
+| S11 | **Host CLI commands** — Reviewer seeding / password reset / TOTP re-enrolment / deactivation, fingerprint verification, upstream traffic report | §17.3, §17.5, §8.4, §13.6 |
 | S12 | **Build artefacts** — the static Thai/English Data dictionary CSV, the province seed migration, the Thai holiday config, a fake upstream dev harness | §17.3 |
 | S13 | **Everything from the TCP connection inward** on the VM | §17.4 |
 
@@ -280,7 +280,7 @@ Each maps to the numbered functional requirements in §4.
 | **Deliver it** — one email carrying an unguessable, time-limited, attempt-capped Download token to a `/d/<token>` endpoint that bypasses the SPA entirely | FR-18, FR-19, FR-21 |
 | **Destroy it** — 72 hours from job completion, by an application job that writes a deletion record, with the bucket lifecycle as a silent backstop only | FR-20, FR-22 |
 | **Notice what went wrong** — `/health` for the operator, must-clear Alerts for the approving Reviewer, one undifferentiated failure email for the Requester, and a terminal `expired_uncollected` state so silence is measurable | FR-23, FR-24, FR-25 |
-| **Repair it by hand** — Re-run, Resend, Redaction, Reviewer account lifecycle, fingerprint verification, upstream traffic accounting — each a deliberate human act, several of them gated behind shell access | FR-26, FR-27, FR-28, FR-29, FR-30, FR-31 |
+| **Repair it by hand** — Re-run, Resend, Reviewer account lifecycle, fingerprint verification, upstream traffic accounting — each a deliberate human act, several of them gated behind shell access | FR-26, FR-27, FR-29, FR-30, FR-31 |
 
 **Two functions the product deliberately does not have**, restated here because
 their absence is a decision: it does not tell a Requester how many rows they will
@@ -598,11 +598,11 @@ load-bearing; the table names **keys**, and the catalogues hold the prose:
 | `requester_span_cap_notice` | the 365-day cap attributed to **upstream**, not to us |
 | `requester_epidem_area_label` | the `epidem_chw_code` vs `chw_code` trap, made visible at the point of choosing |
 | `requester_email_warning` | the only place a Requester is told a typo will not be caught |
-| `requester_retention_notice` | what is kept, that it is indefinite, why, and that Redaction can be requested by phone |
+| `requester_retention_notice` | what is kept, that it is indefinite, and why |
 
 **CLI interfaces** (§17.3) — all on the Docker host, all requiring shell access,
 which is the deliberate bar for privileged operations: Reviewer seeding /
-password reset / TOTP re-enrolment / deactivation, Redaction, Extract fingerprint
+password reset / TOTP re-enrolment / deactivation, Extract fingerprint
 verification, and the upstream traffic report. **Bull Board** is bound to
 localhost and reached by SSH port-forward.
 
@@ -629,7 +629,7 @@ Two host-level facts are nevertheless requirements on the machine (§17.4):
 | Interface | Direction | Contract |
 |---|---|---|
 | **Upstream DDC DDS API** | Outbound | `GET https://exchange.ddc.moph.go.th/api/d506/v1/disease-groups`, `Authorization: Bearer <token>`. Parameters: `group_code`, `start_date`, `end_date` (**exclusive**), `page`, `page_size`. Response: `{status, message, data[], meta{page, page_size, total_items, total_pages, has_next, has_previous}}`. Capture `x-request-id` (**the one field here with no substitute** for a DDC support conversation) and `x-process-time-ms`. Handle **both** error-body shapes. **The published field dictionary is unreliable — four documented errors; verified behaviour supersedes it** (§5) |
-| **PostgreSQL** | Outbound | The system of record. Application role: `INSERT`/`SELECT` on event tables, `DELETE` **nowhere** except `reviewer_session` and the login-throttle table; read-only on `province`. The Redaction command connects as a **separate admin role** (§12.2, §15.4) |
+| **PostgreSQL** | Outbound | The system of record. Application role: `INSERT`/`SELECT` on event tables, `DELETE` **nowhere** except `reviewer_session` and the login-throttle table; read-only on `province`. No role holds `UPDATE` on `request` or `request_contact` (§12.2, §15.4) |
 | **Redis + BullMQ** | Outbound | Executor only. **AOF persistence required.** The BullMQ job carries a reference; Postgres carries the authoritative state. BullMQ repeatable jobs are rejected — a schedule living only in Redis is a schedule a Redis loss silently cancels (§7.7, §15.3) |
 | **MinIO (S3-compatible)** | Outbound | One object per completed job, uploaded in **one** operation, so *"an object exists in the bucket"* means exactly *"a complete, publishable Extract"*. Bucket lifecycle 72 h as a **backstop only** (§7.8, §9.5) |
 | **SMTP relay** | Outbound | `SMTP_HOST=mailrelay.uc-workd.com`, `SMTP_STARTTLS=true`, `SMTP_SECURE=false`, `SMTP_USER=envocc@ddc.mail.go.th`. `SMTP_PORT` and `SMTP_PASS` supplied at dev cycle. Four message kinds: `delivery`, `queue_notification`, `rejection`, `extraction_failure`. **No inbound mail interface exists and none may be added without reopening .link {ADR 0001} url:{adr/0001-email-delivery-is-unobservable.md}** |
@@ -2304,45 +2304,7 @@ with a fresh 72 hours**; the old token is dead.
 **Source:** §10.8, §12.4 ·
 [#19](https://github.com/rawinan-soma/dds-sharing/issues/19)
 
-### 4.28 FR-28 — Redact a Requester's contact details
-
-**Actor:** Operator, on the host, at a Requester's request (normally by
-telephone).
-
-**Purpose:** Honour a courtesy to a colleague who asks, and record that the trace
-was **deliberately** broken.
-
-**Pre-conditions:**
-- A Requester asked.
-- ⚠️ **The Request is NOT in flight.** The contact fields are how the Extract is
-  delivered and how a lapse is chased.
-- The operator has shell access.
-
-**Post-conditions:** One `request_contact` row is cleared, and a
-`contact_redacted` event exists showing **that** the trace was broken, **when**,
-and **by whom**.
-
-**Exception conditions:**
-- **The Request is still in flight** → refuse.
-- **Anything other than `request_contact` is asked for** → refuse. Redaction
-  reaches the contact details and nothing else: **never a Decision, never a
-  Snapshot, never a Reviewer event.**
-- **A Reviewer asks to be redacted** → **refuse absolutely.** Their name on a
-  release *is* the accountability record.
-
-**Alternate conditions:** None. **It has no automatic trigger, and the
-specification must never describe it as a retention rule.**
-
-**Workflow:**
-1. Run the command on the Docker host, on the same route as Reviewer seeding.
-2. It connects as the **separate admin role** — the application role holds
-   `DELETE` nowhere.
-3. It clears the contact row and writes `contact_redacted`.
-
-**Source:** §12.8, §12.2, §12.7 ·
-[#10](https://github.com/rawinan-soma/dds-sharing/issues/10),
-[#28](https://github.com/rawinan-soma/dds-sharing/issues/28) ·
-.link {ADR 0004} url:{adr/0004-personal-data-is-retained-indefinitely.md}
+### 4.28 FR-28 — Removed — see .link {ADR 0019} url:{adr/0019-a-requesters-contact-details-are-never-removed.md}
 
 ### 4.29 FR-29 — Manage the Reviewer account lifecycle
 
@@ -2364,10 +2326,12 @@ present or on a call.
   change at first login. **Until both, the account is inert and can approve
   nothing.**
 - Deactivation: `deactivated_at` set — **never a row deletion** — live sessions
-  invalidated immediately by a Postgres query, and a `deactivated` event naming
-  the operator who ran it. **Their open Alerts become clearable by any active
-  Reviewer from that moment** (FR-25, ADR 0013); the assignment is not rewritten,
-  and nothing about the Request stream is touched.
+  invalidated immediately by a Postgres query, and a `deactivated` event recording
+  what happened to the Reviewer, never who ran the command
+  (.link {ADR 0020} url:{adr/0020-a-host-command-does-not-record-who-ran-it.md}).
+  **Their open Alerts become clearable by any active Reviewer from that moment**
+  (FR-25, ADR 0013); the assignment is not rewritten, and nothing about the
+  Request stream is touched.
 
 **Exception conditions:**
 - ⚠️ **Deactivating below two active Reviewers** → the CLI **refuses**, overridable
@@ -2765,10 +2729,10 @@ Both populations are told on a surface they actually see:
 
 - **Requester — at submit.** One Thai sentence — `requester_retention_notice`
   (§16.3) — beside the email-typo warning, **above the form and not in a footer**,
-  carrying four
-  things: **what** is kept, that it is kept **indefinitely**, **why** (audit and
-  traceability of data releases), and that **Redaction can be requested by
-  phone**. Naming the reason is what makes it read as a policy rather than a leak.
+  carrying three
+  things: **what** is kept, that it is kept **indefinitely**, and **why** (audit
+  and traceability of data releases). Naming the reason is what makes it read as
+  a policy rather than a leak.
 - ⚠️ **Reviewer — at seeding and at first login, NOT in the specification.** The
   spec is read by implementers, not by Reviewers, who never see a submit form and
   so have no surface where the telling would happen — while holding the *most*
@@ -2882,10 +2846,10 @@ mysterious.
 **Requirement.** A **permanent, append-only event record**, with the Request row
 as its **projection** — a cache of the stream, not an independent truth.
 Enforcement is **by database roles, not by convention**: the application role
-holds `INSERT`/`SELECT` on the event tables and **`DELETE` nowhere**; the Redaction
-command connects as a separate admin role; only `reviewer_session` and the
-login-throttle table are prunable, and the pruning job needs `DELETE` on **exactly
-those two tables and on nothing else**.
+holds `INSERT`/`SELECT` on the event tables and **`DELETE` nowhere**, and no role
+holds `UPDATE`; only `reviewer_session` and the login-throttle table are
+prunable, and the pruning job needs `DELETE` on **exactly those two tables and on
+nothing else**.
 
 Further mandatory properties:
 
@@ -3166,7 +3130,6 @@ of this SRS can tell whether a term is a domain term or ordinary prose.
 | **Actor** | Whoever caused an event: `requester`, `reviewer`, `system` or `anonymous`. | — |
 | **Snapshot** | What a Reviewer had on screen, carried by their Decision. **Never the contact details.** | — |
 | **Extract fingerprint** | Row count, column count, both sizes, and a SHA-256 of the Extract's bytes. **Attests content, not provenance.** | Manifest, receipt |
-| **Redaction** | Manual removal of one Requester's contact details by a named operator. A courtesy, never an expiry, never a retention rule. | Erasure, purge, deletion |
 
 **Abbreviations.** DDC — กรมควบคุมโรค, Department of Disease Control. EnvOcc —
 กองโรคจากการประกอบอาชีพและสิ่งแวดล้อม. สคร. — DDC's regional disease-control offices.
@@ -3208,7 +3171,7 @@ time-based one-time password. ICT — Indochina Time (Asia/Bangkok, UTC+7).
 | FR-25 | Raise, route and clear Alerts | §10.6, §11.3, §11.4, §12.4, §14.2 | #19, #27 | 0001 |
 | FR-26 | Re-run an extraction | §8.3, §10.7, §12.4 | #27, #29 | — |
 | FR-27 | Resend the Delivery | §10.8, §12.4 | #19 | — |
-| FR-28 | Redact contact details | §12.2, §12.7, §12.8 | #10, #28 | 0004 |
+| FR-28 | Removed — see ADR 0019 | §12.8 | #10, #28, #87 | 0019 |
 | FR-29 | Reviewer account lifecycle | §12.4, §12.9, §17.5 | #18, #28 | — |
 | FR-30 | Verify an Extract fingerprint | §8.4, §12.1 | #29 | 0005 |
 | FR-31 | Report upstream traffic | §12.4, §13.6 | #27 | — |
@@ -3305,7 +3268,7 @@ statements are in `spec.md` §18 and in `project-charter.md`.
 | **R4** | **Upstream is authenticated; this service is not.** Every documented path into the upstream DDC system is MoPH account / Provider ID RBAC. This service is a **weaker door onto records derived from the same source**, with a human gate in front of it rather than a credential. | High, accepted | The gate, the allowlist, and the kill switch. §18.4 |
 | **R5** | **Excel silently corrupts a leading-zero `hospital_code`.** ⚠️ **Narrowed 2026-09-04 — the risk was stated far too widely and its headline example does not exist.** It named the four geography columns and offered `01` → `1`; **there is no province `01`.** The domain runs **10–96**, prefix-nested at 2/4/6 digits, re-verified against 77 provinces, 929 districts and 7,451 subdistricts: **zero codes begin with `0`.** §4.6 always said so. | **Reduced to low.** Only `hospital_code` can carry the risk, and it is **not verifiable from this repo** — X14 keeps no facility list | `="01"` escaping and `.xlsx` were both rejected and stay rejected. **This is the second Excel risk found to rest on an unmeasured premise (§18.6 was the first) — distrust the reasoning, not just the claim.** §18.5 |
 | **R6** | **Email delivery is unobservable.** The sharpest instance: a failed **Reviewer queue notification** means the approval gate has no trigger and a Request expires at 24 business hours **through nobody's fault**. | Medium, by design | Operator banner on the **first** queue-notification failure; Collection lapse Alert at 24 business hours; `expired_uncollected` as a distinct terminal state. §18.8, .link {ADR 0001} url:{adr/0001-email-delivery-is-unobservable.md} |
-| **R7** | **The audit record is permanent personal data, including about people who never used the service** — `token_lookup` rows matching no Request are IP addresses of anonymous strangers. | Medium, accepted | Kept deliberately: a token-guessing sweep is only visible in hindsight. Redaction is a bounded courtesy, not a retention rule. §18.9, NFR-16 |
+| **R7** | **The audit record is permanent personal data, including about people who never used the service** — `token_lookup` rows matching no Request are IP addresses of anonymous strangers. | Medium, accepted | Kept deliberately: a token-guessing sweep is only visible in hindsight. §18.9, NFR-16 |
 | **R8** | **The record measures named staff, permanently** — expiry timings, the login and failed-login stream, `collection_lapse_cleared` (a permanent record that a named Reviewer did *not* chase a lapse), `extraction_alert_cleared`. | Medium, accepted | **They are told, at seeding and first login** — not in a document they will never read. §18.10, NFR-17 |
 | **R9** | **The record cannot say which Request produced an Extract.** A content hash narrows to a *set*. | Low, accepted | **No identifying mark is added.** The verification command prints the asymmetry. §18.7, FR-30 |
 | **R10** | **Upstream token revocation.** The failure mode to fear is not a throttle but **DDC noticing our traffic and revoking the token**, which no retry recovers from. | High, operational | `N = 1`; one call per Report code; the traffic report (FR-31). Needs a **named upstream owner** ([OQ-05](#_64-open-questions)). §5.5, §13.6 |

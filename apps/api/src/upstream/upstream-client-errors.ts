@@ -1,3 +1,5 @@
+import type { ProbeAttempt } from "./upstream-client.types.js";
+
 /**
  * The distinct handled outcomes of §5.5's failure taxonomy, plus the client's
  * own structural checks. `retryable` decides whether the code-level retry
@@ -9,6 +11,8 @@
 export abstract class UpstreamClientError extends Error {
   abstract readonly kind: string;
   abstract readonly retryable: boolean;
+  /** The failed call's `x-request-id`, when a response was received at all — unset for a network-level failure. */
+  requestId?: string;
 }
 
 /** 401 — bad token. Never retried: DDC revoking the token is what no retry recovers from. */
@@ -115,5 +119,21 @@ export class UpstreamRetriesExhaustedError extends UpstreamClientError {
   constructor(readonly lastError: UpstreamClientError) {
     super(`upstream call failed after 3 attempts: ${lastError.kind}`);
     this.cause = lastError;
+  }
+}
+
+/**
+ * A Probe call (§5.4) could not be completed for its Report code — either it
+ * was rejected outright (never retried) or its retries were exhausted.
+ * Carries every attempt made, in order, for `probe_failed`'s per-attempt
+ * accounting (§12.4) — unlike {@link UpstreamRetriesExhaustedError}, which
+ * keeps only the last one, because a fetch has no equivalent per-attempt
+ * audit requirement.
+ */
+export class UpstreamProbeExhaustedError extends UpstreamClientError {
+  readonly kind = "probe_exhausted";
+  readonly retryable = false;
+  constructor(readonly attempts: ReadonlyArray<ProbeAttempt>) {
+    super(`probe call failed after ${attempts.length} attempt(s)`);
   }
 }

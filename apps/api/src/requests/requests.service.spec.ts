@@ -4,6 +4,8 @@ import { Pool } from "pg";
 import { createDb } from "../db/client.js";
 import { runMigrations } from "../db/migrate.js";
 import { requestContact, requestEvent } from "../db/schema.js";
+import { ProbeService } from "../probe/probe.service.js";
+import { UpstreamClient } from "../upstream/upstream-client.js";
 import { RequestsService } from "./requests.service.js";
 import type { SubmitRequestInput } from "./submit-request.types.js";
 
@@ -37,7 +39,22 @@ describe.skipIf(!adminUrl || !appUrl)("RequestsService", () => {
     await runMigrations(adminUrl);
     adminPool = new Pool({ connectionString: adminUrl });
     appDb = createDb(appUrl);
-    service = new RequestsService(appDb);
+    // This suite exercises submit(), not the Probe (§5.4) — a ProbeService
+    // wired to an unroutable client, failing fast and locally rather than
+    // over the network, so its background probe_failed writes settle well
+    // before any test's assertions or the suite's own teardown.
+    const upstreamClient = new UpstreamClient({
+      baseUrl: "http://127.0.0.1:1",
+      token: "unused-in-this-suite",
+      retryBaseDelayMs: 1,
+      fetchFn: (async () => {
+        throw new Error("network disabled for this suite");
+      }) as unknown as typeof fetch,
+    });
+    service = new RequestsService(
+      appDb,
+      new ProbeService(appDb, upstreamClient),
+    );
   });
 
   afterAll(async () => {

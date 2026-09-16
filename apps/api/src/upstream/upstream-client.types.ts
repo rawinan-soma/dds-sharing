@@ -56,6 +56,38 @@ export interface FetchDiseaseGroupResult {
   calls: UpstreamCallRecord[];
 }
 
+/** The Probe's one-page-only call (§5.4) — same span as a fetch, `page_size=20` and page 1 only. */
+export interface ProbeDiseaseGroupParams {
+  /** Upstream's `group_code` — a bare integer, sent as-is. */
+  groupCode: number;
+  /** Half-open span from the span builder — inclusive `start_date`. */
+  startDate: string;
+  /** Half-open span from the span builder — exclusive `end_date`. */
+  endDate: string;
+  /** Defaults to {@link MIN_PAGE_SIZE} (20) — the Probe never has a reason to ask for more. */
+  pageSize?: number;
+}
+
+export interface ProbeDiseaseGroupResult {
+  /** Page 1's `meta.total_items` — the whole point of the call (§5.4). */
+  totalItems: number;
+  /**
+   * One entry per physical call this code's probe made, in attempt order —
+   * failed retries' ids included, not just the eventual success's (§5.4,
+   * §12.4: `probe_performed` carries "every `x-request-id`"). `null` where a
+   * failed attempt never got a response to read one from.
+   */
+  requestIds: Array<string | null>;
+  /** Every physical call this code's probe made, including failed retries before the eventual success — accountability (§5.4), not just the successful one. */
+  callsMade: number;
+}
+
+/** One failed attempt of a Probe call — its classification and the response's `x-request-id`, when one arrived. Named so it appears once, not as an inline shape repeated across the error, the client, and `probe_failed`'s payload builder. */
+export interface ProbeAttempt {
+  errorKind: string;
+  requestId?: string;
+}
+
 /**
  * Never logs a response body — only these fields (§14.5). An error carrying a
  * body is logged with the body removed, not truncated.
