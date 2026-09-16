@@ -1,27 +1,67 @@
-import { describe, expect, it } from "vitest";
-import { buildSpan } from "../upstream/span-builder.js";
+import { describe, expect, it, vi } from "vitest";
+import * as spanBuilder from "../upstream/span-builder.js";
+import type { AppDb } from "../db/app-db.module.js";
+import { ProbeService } from "../probe/probe.service.js";
+import type { UpstreamClient } from "../upstream/upstream-client.js";
+import { ExtractionRunner } from "./extraction-runner.js";
+import type { ScratchStore } from "./scratch-store.js";
+
+const RANGE = { from: "2026-01-01", to: "2026-12-31" };
+const EXPECTED_SPAN = { startDate: "2026-01-01", endDate: "2027-01-01" };
+
+function stubUpstreamClient(rejectWith: Error): UpstreamClient {
+  return {
+    probeDiseaseGroup: vi.fn().mockRejectedValue(rejectWith),
+    fetchDiseaseGroup: vi.fn().mockRejectedValue(rejectWith),
+  } as unknown as UpstreamClient;
+}
 
 /**
  * §17.1: "Assert that the Probe and the extraction job, given the same
- * Request, produce byte-identical start_date and end_date." Both
- * `ProbeService.runOrThrow` (probe.service.ts) and `ExtractionRunner.run`
- * (extraction-runner.ts) call `buildSpan({ from, to })` directly and hold no
- * date arithmetic of their own — this pins that architectural guarantee
- * against a second, disagreeing copy of the `+1 day` conversion ever being
- * introduced in either caller (§7.2 — the 3,196-row loss this design keeps
- * naming).
+ * Request, produce byte-identical start_date and end_date." Rather than
+ * calling `buildSpan` directly (which only pins the function itself — see
+ * `span-builder.spec.ts`'s own purity test), this drives each real caller —
+ * `ProbeService.run` and `ExtractionRunner.run` — through a spy on the
+ * shared module, so a second, disagreeing copy of the `+1 day` conversion
+ * introduced in either caller would fail this test (§7.2 — the 3,196-row
+ * loss this design keeps naming).
  */
 describe("§17.1: span builder parity between the Probe and the extraction job", () => {
-  it("produces byte-identical spans for the same Request, however many times it is called", () => {
-    const range = { from: "2026-01-01", to: "2026-12-31" };
+  it("both real callers invoke the one shared buildSpan with byte-identical results", async () => {
+    const spy = vi.spyOn(spanBuilder, "buildSpan");
 
-    const probeSpan = buildSpan(range);
-    const extractionSpan = buildSpan(range);
-
-    expect(extractionSpan).toEqual(probeSpan);
-    expect(extractionSpan).toEqual({
-      startDate: "2026-01-01",
-      endDate: "2027-01-01",
+    const probeService = new ProbeService(
+      { db: {} } as unknown as AppDb,
+      stubUpstreamClient(new Error("stub: never reaches the network")),
+    );
+    // ProbeService.run never rejects (§5.4) — it swallows every failure.
+    await probeService.run({
+      requestId: "req-parity-probe",
+      reportCodes: ["202"],
+      ...RANGE,
     });
+
+    const extractionRunner = new ExtractionRunner(
+      stubUpstreamClient(new Error("stub: never reaches the network")),
+      { hasCheckpoint: async () => false } as unknown as ScratchStore,
+      new Map(),
+    );
+    await extractionRunner
+      .run(
+        {
+          requestId: "req-parity-extraction",
+          reportCodes: ["202"],
+          areaProvinces: [],
+          fromDate: RANGE.from,
+          toDate: RANGE.to,
+        },
+        { onCodeFetched: () => {} },
+      )
+      .catch(() => {}); // the stub upstream client always rejects — only the span call matters here
+
+    expect(spy).toHaveBeenCalledTimes(2);
+    for (const call of spy.mock.results) {
+      expect(call.value).toEqual(EXPECTED_SPAN);
+    }
   });
 });

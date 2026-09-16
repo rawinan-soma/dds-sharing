@@ -92,6 +92,10 @@ export class ExtractionProcessor implements OnModuleInit, OnModuleDestroy {
       payload: { attempt } satisfies JobStartedPayload,
       occurredAt: new Date(),
     });
+    await db
+      .update(request)
+      .set({ state: "running" })
+      .where(eq(request.id, requestId));
 
     try {
       const result = await this.runPipeline(requestId);

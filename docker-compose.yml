@@ -34,6 +34,14 @@ services:
       - UPSTREAM_BASE_URL
       - FRONTEND_URL
       - ALLOW_INSECURE_TRANSPORT
+    # Extraction scratch checkpoints (§7.6, §7.8, ticket #69): the app
+    # image is node:24-alpine, so `os.tmpdir()` resolves to `/tmp` and
+    # ScratchStore's default root is `/tmp/dds-sharing-extraction-scratch`.
+    # Without this volume, "a job resuming after a worker restart redoes at
+    # most one code" only holds for an in-process crash, not a real
+    # container restart or redeploy.
+    volumes:
+      - scratch-data:/tmp/dds-sharing-extraction-scratch
     depends_on:
       postgres:
         condition: service_healthy
@@ -86,3 +94,4 @@ volumes:
   postgres-data:
   redis-data:
   minio-data:
+  scratch-data:

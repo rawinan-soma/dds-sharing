@@ -112,6 +112,12 @@ describe.skipIf(!adminUrl || !appUrl)(
       expect(types).toContain("job_started");
       expect(types).toContain("code_fetched");
       expect(types).not.toContain("job_failed");
+
+      const stateRow = await adminPool.query(
+        "SELECT state FROM request WHERE id = $1",
+        [id],
+      );
+      expect(stateRow.rows[0].state).toBe("running");
     });
 
     it("§7.5/§14.5: a completeness mismatch fails the job, recording the cause and never a case field", async () => {
@@ -156,11 +162,16 @@ describe.skipIf(!adminUrl || !appUrl)(
       );
     });
 
-    it("§7.7: reconcile re-enqueues a queued Request with no live BullMQ job, and leaves pending alone", async () => {
-      const orphan = await insertRawRequest(adminPool, {
+    it("§7.7: reconcile re-enqueues a queued or running Request with no live BullMQ job, and leaves pending alone", async () => {
+      const orphanQueued = await insertRawRequest(adminPool, {
         state: "queued",
         reportCodes: ["202"],
         bullJobId: "this-job-id-was-never-actually-enqueued",
+      });
+      const orphanRunning = await insertRawRequest(adminPool, {
+        state: "running",
+        reportCodes: ["202"],
+        bullJobId: "this-job-id-crashed-mid-run",
       });
       const pending = await insertRawRequest(adminPool, {
         state: "pending",
@@ -170,23 +181,26 @@ describe.skipIf(!adminUrl || !appUrl)(
 
       await app.get(ExtractionReconcileService).onApplicationBootstrap();
 
-      const orphanRow = await pollUntil(
-        () =>
-          adminPool.query("SELECT bull_job_id FROM request WHERE id = $1", [
-            orphan,
-          ]),
-        (result) =>
-          result.rows[0].bull_job_id !==
-          "this-job-id-was-never-actually-enqueued",
-      );
-      expect(orphanRow.rows[0].bull_job_id).not.toBe(
-        "this-job-id-was-never-actually-enqueued",
-      );
-      const orphanEvents = await adminPool.query(
-        "SELECT type FROM request_event WHERE request_id = $1",
-        [orphan],
-      );
-      expect(orphanEvents.rows.map((r) => r.type)).toContain("job_queued");
+      for (const [label, id, staleJobId] of [
+        ["queued", orphanQueued, "this-job-id-was-never-actually-enqueued"],
+        ["running", orphanRunning, "this-job-id-crashed-mid-run"],
+      ] as const) {
+        const row = await pollUntil(
+          () =>
+            adminPool.query("SELECT bull_job_id FROM request WHERE id = $1", [
+              id,
+            ]),
+          (result) => result.rows[0].bull_job_id !== staleJobId,
+        );
+        expect(row.rows[0].bull_job_id, `${label} orphan`).not.toBe(staleJobId);
+        const events = await adminPool.query(
+          "SELECT type FROM request_event WHERE request_id = $1",
+          [id],
+        );
+        expect(events.rows.map((r) => r.type), `${label} orphan events`).toContain(
+          "job_queued",
+        );
+      }
 
       const pendingRow = await adminPool.query(
         "SELECT bull_job_id FROM request WHERE id = $1",
