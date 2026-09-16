@@ -241,15 +241,14 @@ export class ExtractionProcessor implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * Rule 1 (§6.1) names two alerts and §6.3 names a third — each is its own
-   * `extraction_alert_raised` event, raised only when its count is
-   * non-zero, never for an absent field on its own (§6.1: "An absent field
-   * is normal and must never alert").
+   * Rule 1 (§6.1) names two alerts and §6.3 names a third and a fourth —
+   * each is its own `extraction_alert_raised` event, raised only when its
+   * count is non-zero, never for an absent field on its own (§6.1: "An
+   * absent field is normal and must never alert").
    *
-   * `impossibleDerivationInputs` is logged here rather than alerted: §6.3
-   * puts that count on the permanent record via `job_completed`'s payload,
-   * which this ticket does not emit (writing the file is #70's job) — it
-   * is not dropped, only not yet durable beyond this log line.
+   * `impossibleDerivationInputs` also reaches the record this way, ahead of
+   * `job_completed` (§70's job): the count must reach the record the moment
+   * it is known, not wait on a later ticket's payload to carry it.
    */
   private async raiseDataQualityAlerts(
     requestId: string,
@@ -295,9 +294,15 @@ export class ExtractionProcessor implements OnModuleInit, OnModuleDestroy {
     }
 
     if (result.counters.impossibleDerivationInputs > 0) {
-      this.logger.warn(
-        `request ${requestId}: ${result.counters.impossibleDerivationInputs} impossible onset_age derivation input(s)`,
-      );
+      await db.insert(requestEvent).values({
+        requestId,
+        type: "extraction_alert_raised",
+        actorType: "system",
+        payload: {
+          reason: `${result.counters.impossibleDerivationInputs} impossible onset_age derivation input(s)`,
+        } satisfies ExtractionAlertRaisedPayload,
+        occurredAt: now,
+      });
     }
   }
 }
