@@ -58,11 +58,12 @@ export class ScratchStore {
   }
 
   /**
-   * Every checkpoint for one Request's job. Not called by this ticket's own
-   * pipeline — write-stage deletion on successful upload is the next
-   * slice's job (§7.8) — but a failed job's own next attempt (or a
-   * Re-run, #74) needs a clean slate rather than a stale prior attempt's
-   * partial checkpoints.
+   * Every checkpoint for one Request's job. Called by `ExtractionProcessor`
+   * once the archive has uploaded successfully (§7.8: "exactly one copy
+   * exists after completion"). A Re-run (#74) will need the same clean
+   * slate rather than a stale prior attempt's partial checkpoints — a
+   * failed job is never auto-retried (FR-13), so that call site does not
+   * exist yet.
    */
   async clear(requestId: string): Promise<void> {
     await rm(join(this.root, requestId), { recursive: true, force: true });

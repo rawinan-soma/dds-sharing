@@ -146,4 +146,15 @@ describe("writeExtractCsv (spec §8.2, ADR 0009)", () => {
     expect(result.rowCount).toBe(3);
     expect(result.columnCount).toBe(EXTRACT_COLUMNS.length);
   });
+
+  it("rowCount is counted from the emitted bytes, not echoed from the input length (spec §7.9 step 6)", () => {
+    // A value carrying an embedded CR/LF is legal under rule 5 (it forces
+    // quoting) — a naive byte scan for "\r\n" would miscount this as an
+    // extra record separator and inflate rowCount past the true row total.
+    const result = writeExtractCsv([
+      row({ epidem_report_guid: "g1", prefix: "line one\r\nline two" }),
+      row({ epidem_report_guid: "g2" }),
+    ]);
+    expect(result.rowCount).toBe(2);
+  });
 });

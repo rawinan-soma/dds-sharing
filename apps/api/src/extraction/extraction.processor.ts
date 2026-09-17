@@ -1,6 +1,6 @@
 import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit } from "@nestjs/common";
 import type { ConfigType } from "@nestjs/config";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { UnrecoverableError, Worker, type Job } from "bullmq";
 import redisConfig from "../config/redis.config.js";
 import { APP_DB, type AppDb } from "../db/app-db.module.js";
@@ -14,7 +14,6 @@ import type {
   JobStartedPayload,
   MailSentPayload,
   MailSendFailedPayload,
-  ProbePerformedPayload,
 } from "../db/events.js";
 import { UPSTREAM_CLIENT } from "../upstream/upstream.module.js";
 import type { UpstreamClient } from "../upstream/upstream-client.js";
@@ -31,6 +30,7 @@ import { ExtractionRunner, type ExtractionRunResult } from "./extraction-runner.
 import type { ExtractionJobPayload } from "./extraction-queue.service.js";
 import { classifyExtractionFailure } from "./job-failure.js";
 import { ObjectStorageService } from "./object-storage.service.js";
+import { latestProbeEvent } from "../probe/latest-probe-event.js";
 import { computeProvinceChecksum, type ProvinceRow } from "../reference-data/province-integrity.js";
 import { EXTRACTION_CONCURRENCY, EXTRACTION_QUEUE_NAME } from "./queue-constants.js";
 import { createExtractionRedisConnection } from "./redis-connection.js";
@@ -271,29 +271,14 @@ export class ExtractionProcessor implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * The Probe's own per-code totals (spec §5.4), read from the audit spine
-   * the same way `ReviewerQueueService.probeRowCountOf` does — `null` when
-   * the Probe never completed, so the drift comparison can say *"pending"*
-   * honestly rather than guessing zero.
+   * The Probe's own per-code totals (spec §5.4) — `null` when the Probe
+   * never completed, so the drift comparison can say *"pending"* honestly
+   * rather than guessing zero.
    */
   private async probeTotalsByCode(requestId: string): Promise<Map<string, number> | null> {
-    const { db } = this.appDb;
-    const [event] = await db
-      .select({ type: requestEvent.type, payload: requestEvent.payload })
-      .from(requestEvent)
-      .where(
-        and(
-          eq(requestEvent.requestId, requestId),
-          inArray(requestEvent.type, ["probe_performed", "probe_failed"]),
-        ),
-      )
-      .orderBy(desc(requestEvent.id))
-      .limit(1);
-
+    const event = await latestProbeEvent(this.appDb.db, requestId);
     if (!event || event.type === "probe_failed") return null;
-
-    const payload = event.payload as ProbePerformedPayload;
-    return new Map(payload.codes.map((code) => [code.groupCode, code.totalItems]));
+    return new Map(event.payload.codes.map((code) => [code.groupCode, code.totalItems]));
   }
 
   /**
@@ -333,7 +318,7 @@ export class ExtractionProcessor implements OnModuleInit, OnModuleDestroy {
     ]);
 
     // spec §7.9 step 7: one upload operation, so "an object exists in the
-    // bucket" means exactly "a complete, publishable Extract."
+    // bucket" means exactly "a complete, publishable Extract archive."
     await this.objectStorage.uploadArchive(archiveFilename, archive);
 
     // spec §7.9 step 8: scratch is deleted only after a successful upload —

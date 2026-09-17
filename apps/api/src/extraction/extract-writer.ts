@@ -55,10 +55,43 @@ export function writeExtractCsv(rows: readonly ProjectedRow[]): ExtractWriteResu
     emit(Buffer.from(line + CRLF, "utf8"));
   }
 
+  const csv = Buffer.concat(chunks);
+
   return {
-    csv: Buffer.concat(chunks),
+    csv,
     sha256: hash.digest("hex"),
-    rowCount: rows.length,
+    // Counted from the bytes actually emitted, never echoed back from
+    // `rows.length` — a `for...of` over `rows` always iterates exactly
+    // `rows.length` times, so trusting that count here would make FR-13
+    // step 6's line-count assert (`extraction.processor.ts`) compare a
+    // value to itself and never catch a bug in the emit loop above.
+    rowCount: countCsvDataLines(csv),
     columnCount: EXTRACT_COLUMNS.length,
   };
+}
+
+/**
+ * CRLF-terminated lines in `csv`, minus the header (spec §7.9 step 6,
+ * §8.1). Quote-aware: rule 5 allows a value to carry an embedded CR/LF
+ * inside a quoted field, and a naive byte scan for `\r\n` would count that
+ * as a record separator too.
+ */
+function countCsvDataLines(csv: Buffer): number {
+  const text = csv.toString("utf8");
+  let inQuotes = false;
+  let lines = 0;
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    if (char === '"') {
+      if (inQuotes && text[i + 1] === '"') {
+        i++; // an escaped quote, not a close-then-reopen
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (!inQuotes && char === "\r" && text[i + 1] === "\n") {
+      lines++;
+      i++; // skip the \n half of the pair
+    }
+  }
+  return Math.max(lines - 1, 0);
 }

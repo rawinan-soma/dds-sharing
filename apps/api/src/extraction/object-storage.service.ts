@@ -30,8 +30,8 @@ export class ObjectStorageService implements OnModuleInit {
   /**
    * spec §7.9 step 7: the finished archive lands in MinIO in exactly **one**
    * operation, so *"an object exists in the bucket"* means exactly *"a
-   * complete, publishable Extract"*. No checksum covers this upload (spec
-   * §8.4) — that is an accepted, recorded gap, not an oversight.
+   * complete, publishable Extract archive"*. No checksum covers this upload
+   * (spec §8.4) — that is an accepted, recorded gap, not an oversight.
    */
   async uploadArchive(objectKey: string, data: Buffer): Promise<void> {
     await this.client.putObject(this.config.bucket, objectKey, data, data.length);

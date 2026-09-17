@@ -7,7 +7,8 @@ import { MailService } from "../mail/mail.service.js";
 import { buildRejectionEmail } from "../mail/rejection-email.js";
 import { ExtractionQueueService } from "../extraction/extraction-queue.service.js";
 import { m } from "../paraglide/messages.js";
-import type { ProbePerformedPayload, Snapshot } from "../db/events.js";
+import { latestProbeEvent } from "../probe/latest-probe-event.js";
+import type { Snapshot } from "../db/events.js";
 import type { AreaKind } from "../requests/request-state.js";
 import { validateSpan } from "../requests/span.js";
 import { addBusinessHours, businessHoursBetween, decisionWindowView } from "./business-hours.js";
@@ -151,29 +152,13 @@ export class ReviewerQueueService {
 
   /**
    * `"pending"` before the Probe has recorded anything, `"failed"` once it
-   * was abandoned, or its summed total once it landed (§5.4) — read from the
-   * audit spine, never from a column on `request` itself: `app_role` holds
-   * no UPDATE grant on that table (§12.3), so nothing but an insert-only
-   * event stream could carry this forward.
+   * was abandoned, or its summed total once it landed (§5.4).
    */
   private async probeRowCountOf(id: string): Promise<ProbeRowCount> {
-    const { db } = this.appDb;
-    const [event] = await db
-      .select({ type: requestEvent.type, payload: requestEvent.payload })
-      .from(requestEvent)
-      .where(
-        and(
-          eq(requestEvent.requestId, id),
-          inArray(requestEvent.type, ["probe_performed", "probe_failed"]),
-        ),
-      )
-      .orderBy(desc(requestEvent.id))
-      .limit(1);
-
+    const event = await latestProbeEvent(this.appDb.db, id);
     if (!event) return "pending";
     if (event.type === "probe_failed") return "failed";
-
-    return (event.payload as ProbePerformedPayload).totalItems;
+    return event.payload.totalItems;
   }
 
   // Never the bare region (§4.4, §12.3): a region Request stores the
