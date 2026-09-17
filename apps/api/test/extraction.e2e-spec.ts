@@ -121,7 +121,11 @@ describe.skipIf(!adminUrl || !appUrl)(
         "SELECT state FROM request WHERE id = $1",
         [id],
       );
-      expect(stateRow.rows[0].state).toBe("running");
+      // Since ticket #70, a one-code happy path can complete (and reach
+      // "ready") between the code_fetched poll above and this query — the
+      // event-type assertions already prove the job started and didn't
+      // fail, so this only needs to rule out it never left "queued".
+      expect(stateRow.rows[0].state).not.toBe("queued");
     });
 
     it("§7.5/§14.5: a completeness mismatch fails the job, recording the cause and never a case field", async () => {
