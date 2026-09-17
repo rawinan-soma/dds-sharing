@@ -31,7 +31,10 @@ jobs:
           --health-timeout 5s
           --health-retries 10
       minio:
-        image: minio/minio:latest
+        # Docker Hub's minio/minio repo now denies anonymous pulls ("pull
+        # access denied ... repository does not exist") — quay.io is
+        # MinIO's own supported registry.
+        image: quay.io/minio/minio:latest
         env:
           MINIO_ROOT_USER: minioadmin
           MINIO_ROOT_PASSWORD: minioadmin
