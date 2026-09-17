@@ -1,0 +1,108 @@
+/*
+  DDS Sharing — the surveillance map.
+
+  Copied from the Lunagraph project `dds-sharing`, where the design was made.
+  This is the source of the design's colour, type and geometry, and it is what
+  the Angular build should be written against. Tailwind v4 `@theme`, so every
+  token below generates its own utilities (`bg-land`, `text-on-dark-muted`).
+
+  The page is map ground, inert things are land, and the single saturated
+  colour appears only where a person has chosen something or where the primary
+  action is. Figures carry this UI, so every figure is tabular.
+
+  See docs/design/system.md for what each token is for.
+*/
+
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap");
+@import "tailwindcss";
+
+@theme {
+  --color-background: #eef1ee;
+  --color-card: #f7f9f7;
+  --color-foreground: #16241e;
+  --color-muted-foreground: #556159;
+  --color-border: #c8d0c9;
+  --color-border-strong: #16241e;
+
+  /* On the one dark field in the system: the Reviewer header. */
+  --color-on-dark: #eef1ee;
+  --color-on-dark-muted: #a8b5ac;
+
+  --color-land: #d9e0da;
+  --color-land-strong: #c2ccc4;
+
+  --color-primary: #0c6b63;
+  --color-primary-foreground: #f7f9f7;
+  --color-primary-wash: #dceceb;
+  --color-primary-hover: #0a5751;
+
+  /*
+    No state is green. Green is selection and the primary action, nowhere else,
+    so a Reviewer can never confuse "this row is ready" with "this row is the
+    one I clicked".
+
+    amber  a person is being waited on
+    blue   there is something here you can act on
+    red    broken
+    grey   nothing to do, whether queued, running or finished
+  */
+  --color-pending: #7f5300;
+  --color-pending-wash: #f6eedc;
+  --color-ready: #2b5b86;
+  --color-ready-wash: #e4edf4;
+  --color-failed: #8c2b20;
+  --color-failed-wash: #f6e6e3;
+  --color-inert: #5a6862;
+  --color-inert-wash: #e6e9e6;
+  --color-running: #5a6862;
+  --color-running-wash: #e6e9e6;
+
+  --font-sans: "IBM Plex Sans Thai", "IBM Plex Sans", system-ui, sans-serif;
+
+  /*
+    No radius tokens. This system is square, everywhere, deliberately: the
+    surfaces are map ground and field rules, not cards. If a rounded corner is
+    ever needed, it is a decision to take here rather than a token to reach for.
+  */
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+  }
+
+  body {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+    font-size: 15px;
+    line-height: 1.65;
+  }
+
+  /* Thai sets taller than Latin. Headings need the room back. */
+  h1,
+  h2,
+  h3 {
+    line-height: 1.35;
+  }
+
+  /* Every figure in this service is read against another figure. */
+  time,
+  data,
+  .figure {
+    font-variant-numeric: tabular-nums;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
