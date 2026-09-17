@@ -1,12 +1,16 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { randomUUID } from "node:crypto";
+import type { ConfigType } from "@nestjs/config";
+import { Client as MinioClient } from "minio";
 import { Pool } from "pg";
 import { INestApplication } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import { AppModule } from "../src/app.module.js";
 import { configureApp } from "../src/configure-app.js";
+import minioConfig from "../src/config/minio.config.js";
 import { ExtractionQueueService } from "../src/extraction/extraction-queue.service.js";
 import { ExtractionReconcileService } from "../src/extraction/extraction-reconcile.service.js";
+import { MINIO_CLIENT } from "../src/extraction/object-storage.tokens.js";
 import {
   FAKE_UPSTREAM_SCENARIOS,
   startFakeUpstreamServer,
@@ -212,6 +216,68 @@ describe.skipIf(!adminUrl || !appUrl)(
         [pending],
       );
       expect(pendingEvents.rows).toHaveLength(0);
+    });
+
+    it("ticket #70: a clean run writes, zips, uploads and records job_completed, and the Request is ready", async () => {
+      const id = await insertRawRequest(adminPool, {
+        state: "queued",
+        reportCodes: ["202"],
+      });
+
+      await app.get(ExtractionQueueService).enqueue(id);
+
+      const events = await pollUntil(
+        () =>
+          adminPool.query(
+            "SELECT type, payload FROM request_event WHERE request_id = $1 ORDER BY id",
+            [id],
+          ),
+        (result) => result.rows.some((r) => r.type === "job_completed"),
+      );
+      const types = events.rows.map((r) => r.type as string);
+      expect(types).not.toContain("job_failed");
+      expect(types).toContain("job_completed");
+
+      const completed = events.rows.find((r) => r.type === "job_completed")!;
+      const payload = completed.payload as {
+        fingerprint: {
+          rowCount: number;
+          columnCount: number;
+          csvBytes: number;
+          zipBytes: number;
+          csvSha256: string;
+        };
+        referenceData: { provincesChecksum: string; dataDictionaryChecksum: string };
+        archiveFilename: string;
+        impossibleDerivationInputs: number;
+        probeVsRunDrift: Array<{ groupCode: string; probeTotal: number | null; runTotal: number }>;
+      };
+
+      expect(payload.fingerprint.columnCount).toBe(23);
+      expect(payload.fingerprint.rowCount).toBeGreaterThan(0);
+      expect(payload.fingerprint.csvSha256).toMatch(/^[0-9a-f]{64}$/);
+      expect(payload.fingerprint.csvBytes).toBeGreaterThan(0);
+      expect(payload.fingerprint.zipBytes).toBeGreaterThan(0);
+      expect(payload.referenceData.provincesChecksum).toMatch(/^[0-9a-f]{64}$/);
+      expect(payload.referenceData.dataDictionaryChecksum).toMatch(/^[0-9a-f]{64}$/);
+      expect(payload.archiveFilename).toMatch(/^dds-envocc-sharing-\d{8}-\d{6}\.zip$/);
+      // No Probe ran for this Request (submitted with a raw insert, never
+      // through ProbeService), so the drift is honest about that.
+      expect(payload.probeVsRunDrift).toEqual([
+        { groupCode: "202", probeTotal: null, runTotal: expect.any(Number) },
+      ]);
+
+      const stateRow = await adminPool.query(
+        "SELECT state FROM request WHERE id = $1",
+        [id],
+      );
+      expect(stateRow.rows[0].state).toBe("ready");
+
+      // spec §7.9 step 7: the object actually landed in MinIO.
+      const minioClient = app.get<MinioClient>(MINIO_CLIENT);
+      const bucket = app.get<ConfigType<typeof minioConfig>>(minioConfig.KEY).bucket;
+      const stat = await minioClient.statObject(bucket, payload.archiveFilename);
+      expect(stat.size).toBe(payload.fingerprint.zipBytes);
     });
   },
 );

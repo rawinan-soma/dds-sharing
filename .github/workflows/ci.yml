@@ -30,10 +30,28 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
+      minio:
+        image: minio/minio:latest
+        env:
+          MINIO_ROOT_USER: minioadmin
+          MINIO_ROOT_PASSWORD: minioadmin
+        ports:
+          - 9000:9000
+        options: >-
+          --health-cmd "curl -f http://localhost:9000/minio/health/live"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
     env:
       DATABASE_URL: postgres://postgres:postgres@localhost:5432/dds_sharing
       APP_DATABASE_URL: postgres://app_role:app_role@localhost:5432/dds_sharing
       REDIS_URL: redis://localhost:6379
+      # .env.test's MINIO_ACCESS_KEY/MINIO_SECRET_KEY are sentinels that
+      # never authenticate against a real server — overridden here the same
+      # way the two Postgres URLs above are, to match this job's real minio
+      # service container.
+      MINIO_ACCESS_KEY: minioadmin
+      MINIO_SECRET_KEY: minioadmin
     steps:
       - uses: actions/checkout@v4
 

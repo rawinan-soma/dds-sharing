@@ -132,7 +132,7 @@ export interface CodeFetchedPayload {
   totalItems: number;
 }
 
-interface JobCompletedPayload {
+export interface JobCompletedPayload {
   fingerprint: {
     rowCount: number;
     columnCount: number;

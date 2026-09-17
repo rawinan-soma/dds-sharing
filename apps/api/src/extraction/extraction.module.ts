@@ -5,9 +5,10 @@ import { ExtractionQueueModule } from "./extraction-queue.module.js";
 import { ExtractionQueueService } from "./extraction-queue.service.js";
 import { ExtractionProcessor } from "./extraction.processor.js";
 import { ExtractionReconcileService } from "./extraction-reconcile.service.js";
+import { ObjectStorageModule } from "./object-storage.module.js";
 
 @Module({
-  imports: [UpstreamModule, ExtractionQueueModule, MailModule],
+  imports: [UpstreamModule, ExtractionQueueModule, MailModule, ObjectStorageModule],
   providers: [ExtractionQueueService, ExtractionProcessor, ExtractionReconcileService],
   exports: [ExtractionQueueService],
 })
