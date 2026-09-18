@@ -71,7 +71,7 @@
     <mxCell id="v6" value="FR-26 Re-run an extraction" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
       <mxGeometry x="600" y="560" width="220" height="60" as="geometry"/>
     </mxCell>
-    <mxCell id="v7" value="FR-27 Resend the Delivery&#10;(same or corrected address)" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+    <mxCell id="v7" value="FR-27 Resend the Delivery&#10;(same address only)" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
       <mxGeometry x="600" y="660" width="220" height="60" as="geometry"/>
     </mxCell>
     <mxCell id="v8" value="FR-25 Clear an Alert&#10;(closed outcome set)" style="ellipse;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
