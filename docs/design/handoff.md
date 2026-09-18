@@ -258,14 +258,21 @@ person** — that is the prior-Request history §10.2 declined.
 
 ## 7–8. Collection and expiry (#71)
 
-### Collection, served by NestJS
+### Collection, a server-rendered page (ADR 0018)
 
-680 column. Reference, file name, size, attempts used, `Button primary lg`, with
-time left beside it in `ready` and the deletion note beneath. Three notes below:
-what is in the zip, that the link is the only credential and must not be
-forwarded, and that every presentation is logged and never extends the clock.
+`GET /d/<token>` renders this page from a NestJS template, with catalogue
+strings and **no Angular bundle and no required script**. Opening it is a lookup,
+audited but **not an Attempt**. The button is a link to `GET /d/<token>/archive`,
+which counts the Attempt and streams with range support.
 
-Supports range requests: a dropped สคร. connection resumes rather than restarts.
+680 column. Reference, file name, size, **ดาวน์โหลดแล้ว** (downloads used of 10),
+`Button primary lg`, with time left beside it in `ready` and the deletion note
+beneath. Three notes below: what is in the zip, that the link is the only
+credential and must not be forwarded, and that every download is recorded, that
+**opening the page does not count**, and that nothing extends the 72 hours.
+
+There is **no loading state** on the download button: the browser shows the
+download itself, and a server-rendered page has no script to show one with.
 
 ### Expiry
 
@@ -294,6 +301,30 @@ wording comes from the catalogue.
 
 Email HTML: single column, no CSS grid, no web fonts, inline styles, 600–680px
 table. The canvas shows them two-up for review only.
+
+---
+
+## Loading states (screen 14)
+
+Every button that waits on the server uses Button's `loading`: the label becomes
+its in-progress form, the button keeps its size, and a second press is ignored.
+
+| Where | Loading label | While loading |
+|---|---|---|
+| Check page, ส่งคำขอ | กำลังส่ง… | แก้ไข disabled: the Request may already be stored |
+| Queue, โหลดรายการใหม่ | กำลังโหลดรายการ… | **the old list stays visible**; the line under the button says how old it is |
+| Approve dialog | กำลังอนุมัติ… | ย้อนกลับ disabled: an approval that has gone cannot come back |
+| Reject dialog | กำลังบันทึก… | ย้อนกลับ disabled |
+| Resend, re-run | กำลังส่ง…, กำลังเริ่ม… | — |
+| Sign in | กำลังเข้าสู่ระบบ… | fields read-only |
+| Lookup | กำลังค้นหา… | — |
+
+**A failed refresh says how old the list is**, not only that something went wrong:
+*โหลดรายการไม่สำเร็จ · รายการด้านล่างเป็นของเมื่อ 8 นาทีที่แล้ว*. The Reviewer's real
+question is whether they can trust what they see.
+
+No skeletons and no spinners anywhere. Nothing in this service loads long enough
+to need one, and the queue never blanks.
 
 ---
 
@@ -380,6 +411,4 @@ Target is **WCAG 2.1 AA as a working standard, with no conformance claim made**
 ## What is not specified here
 
 - **The province select is not a component** — there is no Select yet.
-- **Loading states are undrawn.** The only genuinely async surfaces are the
-  queue refresh and the download start; neither has a spinner specified.
 - **No screen below 1120px exists.** See §Responsive.

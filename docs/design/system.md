@@ -99,6 +99,19 @@ answered with a layout change instead.
 > จนกว่าจะดึงข้อมูลเสร็จ"*. A disabled button without that sentence beside it is a
 > bug, because a Reviewer will read it as a broken screen.
 
+### Loading
+
+`loading` with a `loadingLabel` replaces the label with its in-progress form —
+ส่งคำขอ becomes **กำลังส่ง…**, โหลดรายการใหม่ becomes **กำลังโหลดรายการ…** — and makes
+the button inert while it waits. **No spinner**: the words say what is happening,
+and every round trip in this service is short. The button keeps its variant and
+width, so nothing around it moves. It is `aria-busy` and stays focusable; a
+second press is ignored, never sent twice.
+
+While a primary action is loading, **the escape beside it is disabled**: แก้ไข on
+the check page and ย้อนกลับ in the approve dialog. The action may already have
+been recorded, and offering a way back would be a lie.
+
 ### Do and don't
 
 | ✅ Do | ❌ Don't |

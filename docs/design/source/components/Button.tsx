@@ -19,6 +19,13 @@
   Disabled is not decoration here. On the in-flight list, resend and re-run are
   disabled while a job is queued or running, and the row states why in words.
   A disabled button without that sentence beside it is a bug.
+
+  loading replaces the label with its in-progress form, passed in loadingLabel
+  (ส่งคำขอ becomes กำลังส่ง…), and makes the button inert while it waits. No
+  spinner: the words say what is happening, and every round trip in this
+  service is short. The button keeps its variant and its width, so nothing
+  around it moves. It is aria-busy, and stays focusable so focus is not lost
+  mid-press; the second press is ignored rather than sent twice.
 */
 
 type Variant = "primary" | "secondary" | "quiet";
@@ -47,6 +54,12 @@ const variants: Record<Variant, string> = {
     "disabled:hover:bg-transparent",
 };
 
+const loadingVariants: Record<Variant, string> = {
+  primary: "bg-primary-hover text-primary-foreground font-semibold cursor-progress",
+  secondary: "border border-border-strong bg-land text-foreground cursor-progress",
+  quiet: "border border-muted-foreground bg-land text-foreground cursor-progress",
+};
+
 const sizes: Record<Size, string> = {
   md: "px-5 py-2 text-sm",
   lg: "px-8 py-3 text-base",
@@ -57,6 +70,8 @@ export function Button({
   size = "md",
   fullWidth = false,
   disabled = false,
+  loading = false,
+  loadingLabel,
   children,
   ...rest
 }: {
@@ -64,16 +79,24 @@ export function Button({
   size?: Size;
   fullWidth?: boolean;
   disabled?: boolean;
+  loading?: boolean;
+  loadingLabel?: string;
   children: React.ReactNode;
 } & React.ButtonHTMLAttributes<HTMLButtonElement>) {
   return (
     <button
       type="button"
       disabled={disabled}
-      className={[base, variants[variant], sizes[size], fullWidth ? "w-full" : ""].join(" ")}
+      aria-busy={loading || undefined}
+      className={[
+        base,
+        loading ? loadingVariants[variant] : variants[variant],
+        sizes[size],
+        fullWidth ? "w-full" : "",
+      ].join(" ")}
       {...rest}
     >
-      {children}
+      {loading && loadingLabel ? loadingLabel : children}
     </button>
   );
 }

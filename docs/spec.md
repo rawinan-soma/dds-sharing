@@ -1192,8 +1192,16 @@ the stronger one is that an attachment has no expiry and no revocation, while th
 whole delivery design rests on a bounded lifetime.
 
 The Delivery email points at **`GET /d/<token>` on NestJS**, not at an Angular
-route (§16.1). NestJS counts the Attempt, checks the token, then either streams
-the archive with range-request support or redirects to `/link-expired`.
+route (§16.1). **It renders a small server-side page, and the archive is a second
+request, `GET /d/<token>/archive`, made when a person presses the button**
+([ADR 0018](adr/0018-the-delivery-link-opens-a-page-and-the-archive-is-its-own-request.md)).
+The page view is a lookup, audited but **not an Attempt**; the archive request
+counts the Attempt, checks the token, and streams with range-request support. A
+dead token redirects to `/link-expired` from either route.
+
+*Until 2026-09-18 the emailed URL streamed the archive directly. That let any
+mail-security scanner that opened the link spend an Attempt and receive the
+case-level archive before the Requester ever clicked.*
 
 > ⚠️ **`/d/<token>` travels in email, so a live Download token outlives any
 > redeployment that moves it. Treat the path as fixed.**
@@ -1211,9 +1219,11 @@ the archive with range-request support or redirects to `/link-expired`.
   the legitimate Requester *on top of* the disclosure.
 - **Expiry: 72 hours from job completion, never extended by download, never
   extended by a same-address resend.**
-- **An Attempt is one presentation of the token, counted at presentation**, not at
-  completed transfer — counting completed transfers would not bind an attacker
-  who aborts at byte 1.
+- **An Attempt is one presentation of the token to the archive route**
+  (`/d/<token>/archive`), counted at presentation, not at completed transfer —
+  counting completed transfers would not bind an attacker who aborts at byte 1.
+  Opening the page at `/d/<token>` is audited as a lookup and is not an Attempt
+  (ADR 0018).
 - **Cap: 10 over the whole 72 h, no rolling window.** Deliberately loose. The cap
   cannot stop a leaked link (one successful download is the entire disclosure);
   its only job is bounding how long a link that reached somewhere public stays
@@ -2457,7 +2467,8 @@ becomes a rubber stamp.
 | `/link-expired` | Angular | §9.4's one sentence. Reached only by redirect |
 | `/reviewer/...` | Angular | sign-in, queue, one Request. Sign-in accepts a return-to address |
 | `/api/...` | NestJS | |
-| `/d/<token>` | NestJS | Download token presentation. **Fixed — travels in email** |
+| `/d/<token>` | NestJS | The collection page, server-rendered, no Angular. A lookup, not an Attempt. **Fixed — travels in email** |
+| `/d/<token>/archive` | NestJS | The archive, with range requests. **Counts the Attempt** (ADR 0018) |
 | `/health`, `/health/scheduler` | NestJS | unauthenticated |
 
 English words, lower case, **no language prefix** (§16.3 leaves nothing to

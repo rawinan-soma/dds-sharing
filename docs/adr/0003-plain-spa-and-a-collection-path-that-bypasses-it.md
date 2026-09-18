@@ -4,6 +4,10 @@ Date: 2026-09-02
 
 ## Status
 
+*Amended by [ADR 0018](0018-the-delivery-link-opens-a-page-and-the-archive-is-its-own-request.md):
+`/d/<token>` now renders a server-side page and the archive is its own request.
+The guarantee below is unchanged.*
+
 Accepted. Amends ADR-0001's surroundings only insofar as it fixes where the Delivery's link points.
 
 ## Context

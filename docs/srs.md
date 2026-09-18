@@ -318,7 +318,7 @@ reader looks for the reason.
 | **Typeface** | **Noto Sans Thai**, self-hosted | **Self-hosted, not loaded from a font CDN** — an internet-facing `moph.go.th` service should not make a third-party request on every page load, and a CDN reachable from the Requester's network is not a dependency this service needs. Subset it and set `font-display: swap`. ⚠️ Thai stacks vowels above and tone marks above those, so **DaisyUI's default line-heights will clip** — raising them is a correctness fix, not a taste one |
 | **Validation** | **`class-validator`, `class-transformer`** | FR-04, server-side. Depends on `emitDecoratorMetadata` — see the next row, where that becomes a trap |
 | **Tests** | **Vitest** + **`supertest`**, with **`unplugin-swc`** | Run in the local container. ⚠️ Vitest's esbuild transform **does not emit decorator metadata**, so without `unplugin-swc` every `class-validator` rule silently disappears **in tests only** — a green suite over unvalidated input. If that friction is unwanted, NestJS scaffolds Jest + `@swc/jest`, which handles decorators unaided |
-| **Browser E2E** | **None** | Five of NFR-30's six required tests are pure backend logic, and test 6 is an HTTP `GET /d/<token>` carrying a `Range` header against the real edge — a request, not a browser session. Playwright and Cypress were considered and are not needed |
+| **Browser E2E** | **None** | Five of NFR-30's six required tests are pure backend logic, and test 6 is an HTTP `GET /d/<token>/archive` carrying a `Range` header against the real edge — a request, not a browser session. Playwright and Cypress were considered and are not needed |
 | **TOTP** | **`otpauth`** + **`qrcode`** | FR-07, FR-29. Zero-dependency, RFC 6238/4226. **Defaults only — SHA-1, 6 digits, 30 s**: Google Authenticator *ignores* `algorithm` and `digits` in the enrolment URI, so a SHA-256 secret verifies on the server and fails on the phone with nothing on either side saying why. Accept **±1 step** and record the consumed step against replay — which is where NFR-23's NTP requirement stops being hygiene. `qrcode` renders the `otpauth://` URI as a terminal QR, because enrolment is a CLI ceremony over SSH and the alternative is typing a base32 secret by hand |
 | **Mail** | **`nodemailer`** | STARTTLS on the submission port; Mailpit in dev by configuration alone. ⚠️ A resolved `sendMail()` means **the relay accepted the message** and nothing more — [ADR 0001](adr/0001-email-delivery-is-unobservable.md) makes delivery unobservable, so it must never become a `delivery_confirmed` event |
 
@@ -530,7 +530,8 @@ prefix from the SPA fallback (§16.1, [ADR 0003](adr/0003-plain-spa-and-a-collec
 | `/link-expired` | Angular | The one-sentence expiry page. Reached only by redirect |
 | `/reviewer/...` | Angular | Sign-in, queue, one Request. Sign-in accepts a return-to address |
 | `/api/...` | NestJS | |
-| `/d/<token>` | NestJS | Download token presentation. ⚠️ **Fixed — it travels in email, so a live token outlives any redeployment that moves it** |
+| `/d/<token>` | NestJS | The collection page, server-rendered. A lookup, not an Attempt. ⚠️ **Fixed — it travels in email, so a live token outlives any redeployment that moves it** |
+| `/d/<token>/archive` | NestJS | The archive, with range requests. Counts the Attempt (ADR 0018) |
 | `/health`, `/health/scheduler` | NestJS | Unauthenticated; `/health/scheduler` is kept as an alias |
 
 **The Requester page** (§16.4) is a single scrolling page in this order: the
@@ -1856,14 +1857,21 @@ The presenter is redirected to `/link-expired` (FR-20).
 - **A late collection, after a Collection lapse Alert was raised** → the Alert is
   cleared with actor **`system`**, never `reviewer` (FR-25).
 
-**Workflow:**
-1. NestJS receives `GET /d/<token>`.
-2. **Count the Attempt at presentation** — not at completed transfer, which would
+**Workflow** (ADR 0018):
+1. NestJS receives `GET /d/<token>` and checks the token. It writes a
+   `token_lookup` row — **not** an Attempt, and not mirrored as
+   `download_attempted` — and renders the collection page from a server
+   template, or redirects to `/link-expired`.
+2. The person presses the button: NestJS receives `GET /d/<token>/archive`.
+3. **Count the Attempt at presentation** — not at completed transfer, which would
    not bind an attacker who aborts at byte 1 — and write both audit rows.
-3. Check the token: exists, not expired (`now > expires_at`, evaluated on every
+4. Check the token: exists, not expired (`now > expires_at`, evaluated on every
    request), attempts within cap, object present.
-4. Stream the archive with `Accept-Ranges: bytes`, honouring `Range`; or redirect
+5. Stream the archive with `Accept-Ranges: bytes`, honouring `Range`; or redirect
    to `/link-expired`.
+
+> A mail-security scanner that opens the emailed link reaches step 1 only: it
+> receives HTML, spends no Attempt, and moves no data.
 
 **Source:** §9.1, §9.2, §12.3, §13.4, §16.2 ·
 [#5](https://github.com/rawinan-soma/dds-sharing/issues/5),
