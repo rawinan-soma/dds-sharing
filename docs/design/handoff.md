@@ -304,6 +304,11 @@ wording comes from the catalogue.
 Email HTML: single column, no CSS grid, no web fonts, inline styles, 600–680px
 table. The canvas shows them two-up for review only.
 
+**The emails have never been rendered by a mail client.** They are canvas
+mockups. Testing them in Gmail web, the Gmail app, Outlook.com and Outlook desktop
+is an acceptance criterion of #71, because the real templates are built there and
+that is where email layout breaks.
+
 ---
 
 ## Loading states (screen 14)
