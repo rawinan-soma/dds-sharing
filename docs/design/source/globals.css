@@ -66,6 +66,28 @@
   */
 }
 
+/*
+  Border colours, stated explicitly and deliberately OUTSIDE any @layer.
+
+  On the design canvas, border- colour utilities never took effect: every
+  border rendered in a default grey while bg- and text- colours were correct.
+  Defining them inside @layer utilities did not help either, which points at an
+  unlayered reset on the canvas; unlayered CSS beats any layered rule. So these
+  are unlayered too.
+
+  In a real Tailwind v4 build they duplicate generated utilities with the same
+  values. The cost is that they would also beat a layered hover:/focus: border
+  colour; this system uses none, and anyone adding one must know this is here.
+  Remove the block if the Angular build proves it unnecessary.
+*/
+.border-border { border-color: var(--color-border); }
+.border-border-strong { border-color: var(--color-border-strong); }
+.border-primary { border-color: var(--color-primary); }
+.border-pending { border-color: var(--color-pending); }
+.border-ready { border-color: var(--color-ready); }
+.border-failed { border-color: var(--color-failed); }
+.border-inert { border-color: var(--color-inert); }
+
 @layer base {
   html {
     font-family: var(--font-sans);
