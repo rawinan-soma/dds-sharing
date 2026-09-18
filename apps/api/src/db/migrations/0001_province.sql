@@ -15,6 +15,10 @@ BEGIN
 	IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'dds_app') THEN
 		CREATE ROLE "dds_app" NOLOGIN;
 	END IF;
+EXCEPTION
+	-- Roles are cluster-wide: a concurrent migration may create it between the
+	-- check and the CREATE.
+	WHEN duplicate_object OR unique_violation THEN NULL;
 END
 $$;
 --> statement-breakpoint
