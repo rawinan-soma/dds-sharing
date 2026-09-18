@@ -363,10 +363,7 @@ Target is **WCAG 2.1 AA as a working standard, with no conformance claim made**
 
 ## What is not specified here
 
-- **Field / input is not yet a component** — it is repeated markup. Extract it
-  before building, or the drift starts again on day one.
-- **The state tag and the province tag share one shape.** One reports system
-  state, the other lists a stored value. They should not look alike.
+- **The province select is not a component** — there is no Select yet.
 - **Loading states are undrawn.** The only genuinely async surfaces are the
   queue refresh and the download start; neither has a spinner specified.
 - **No screen below 1120px exists.** See §Responsive.

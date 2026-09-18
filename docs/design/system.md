@@ -122,14 +122,61 @@ that happen to touch.
 Accessibility: `role="radiogroup"` over `role="radio"` with `aria-checked`,
 arrow keys between segments, one tab stop for the group.
 
+## Component: Field
+
+A label, a value box, and **at most one line beneath it**. An error replaces the
+hint rather than stacking on it: a Requester reading two lines under one box
+reads neither.
+
+| Prop | Use |
+|---|---|
+| `hint` | the one line of guidance, when there is no error |
+| `error` | the message, which also turns the frame `failed` |
+| `invalid` | the `failed` frame with **no** message, for fields that fail together and share one message below them (the two dates of a range that is too long) |
+| `figure` | tabular figures, for dates and telephone numbers |
+| `code` | tabular and widely tracked, for the six-digit sign-in code |
+| `onCard` | swaps the fill so the box contrasts what it sits on: `card` on the page, `background` inside a card |
+
+The frame is `border-strong`, dark ink. It reads as a drafted field, not a
+floating card, and it is the heaviest line on a form screen on purpose: the
+fields are the work.
+
+## Component: Tag
+
+The state of a Request, and nothing else. Filled, ink on its own wash, always a
+word and never colour alone.
+
+| Tone | Means |
+|---|---|
+| `pending` | a person is being waited on |
+| `ready` | there is something here you can act on |
+| `failed` | broken |
+| `inert` | nothing to do, whether queued, running or finished |
+
+`sm` in list rows, `md` beside a heading.
+
+## Component: Chip
+
+A value that belongs to what the Requester chose: the provinces a region expands
+to. **Outlined in `primary`, never filled**, so it cannot be mistaken for a Tag. A
+Tag reports what the system is doing; a Chip lists part of what was asked for.
+The solid fill stays reserved for the choice itself. Not interactive.
+
+## A canvas rendering fault, and the fix in the token file
+
+Until 2026-09-18 **no border colour rendered on the design canvas**. Every border
+showed a default grey while fills and text were right, so every screenshot up to
+then showed grey where the design specified ink, amber, red or teal. The cause is
+an unlayered reset on the canvas beating Tailwind's layered utilities. The token
+file now states the seven border colours unlayered, with a comment saying why.
+
+In the Angular build this block is probably unnecessary. Check whether class
+borders render without it, and delete it if they do.
+
 ## Still undone
 
-- **Field / input is not a component.** It is repeated markup on every screen
-  and should be extracted next; it is the second-most duplicated pattern after
-  Button was fixed.
-- **The state tag and the province tag share one shape** — both are a wash with
-  `px-3 py-1 text-sm` — but one reports system state and the other lists a
-  stored value. They should not look alike.
+- **The province select on screen 10 is still hand-built.** It is a Select, not
+  a Field, and there is no Select component yet.
 - **The page header is copied five times** across the public and Reviewer roots.
 - **No accessibility pass has been run** on the composed screens; the focus
   order and the keyboard path through the split queue are unverified.
