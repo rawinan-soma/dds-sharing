@@ -3,3 +3,9 @@
 # Source material — not for public distribution
 docs/*.pdf
 docs/*.png
+
+# Node / build output
+node_modules
+dist
+coverage
+*.tsbuildinfo

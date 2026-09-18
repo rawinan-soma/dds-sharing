@@ -1,0 +1,22 @@
+import { join } from 'node:path';
+import { Module } from '@nestjs/common';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { HealthModule } from './health/health.module';
+
+// A request under the API prefix must never fall through to the SPA shell.
+const API_PREFIX_EXCLUDE = /^\/api(\/.*)?$/;
+
+@Module({
+  imports: [
+    ServeStaticModule.forRootAsync({
+      useFactory: () => [
+        {
+          rootPath: join(process.cwd(), process.env.STATIC_ROOT ?? 'public'),
+          exclude: API_PREFIX_EXCLUDE,
+        },
+      ],
+    }),
+    HealthModule,
+  ],
+})
+export class AppModule {}
