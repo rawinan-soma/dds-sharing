@@ -278,9 +278,11 @@ Each is the repo owner's call. Two are settled and struck through below.
    we define: tokens in the project's CSS entry, components as project files.
    Anything drawn must be renderable in Angular without pulling in the design
    tool's runtime.
-4. **Is there a "check your request before submitting" step?** §16.4 mandates
-   one scrolling page and a confirmation *after* submit; a review step between
-   them is neither required nor forbidden.
+4. ~~**Is there a "check your request before submitting" step?**~~ **Settled
+   2026-09-18 (repo owner): yes, a check page.** ADR 0017 made a mistyped email
+   unrecoverable after submit, which turned this from a neutral choice into the
+   only place a typo can be caught. Screen 1b. A typo discovered *after* submit
+   cannot be fixed, and the Request runs its course (spec §16.4).
 5. ~~**Accessibility target.**~~ **Settled 2026-09-17 (repo owner): design to
    WCAG 2.1 AA, claim nothing.** §18.12 stands unamended and no ADR is written —
    there is no conformance claim and no audit obligation. AA is a working

@@ -98,6 +98,20 @@ control.
 
 ---
 
+## 1b. Check before submit (#63)
+
+The form's button is **ตรวจสอบคำขอ** and goes here, not to the server. 720 column.
+The email address is the focal point: `text-3xl` on a `primary-wash` panel, with
+the sentence that it cannot be changed after sending. Then the ask and the contact
+details as field lists, then `Button primary lg` ส่งคำขอ beside `Button secondary lg`
+แก้ไข.
+
+- **Edit keeps everything typed.** Going back must not reset a single field.
+- **Nothing is stored until ส่งคำขอ.** No draft, no reference number, no event.
+- This is the only point a typo can be caught. After submit, nobody can fix one
+  (ADR 0017, spec §16.4) — so the email panel is the one thing on this page that
+  must not be made smaller or quieter.
+
 ## 2. Confirmation (#63)
 
 Reference number is the focal point: `text-4xl figure` on a `primary-wash`

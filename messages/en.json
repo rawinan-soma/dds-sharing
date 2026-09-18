@@ -62,8 +62,8 @@
   "requester_email": "Email",
   "requester_workplace": "Workplace",
   "requester_workplace_note": "Free text. There is no list to choose from and the system checks it against no register. Please write it clearly enough that the reviewing officer recognises your workplace.",
-  "requester_submit": "Send request",
-  "requester_submit_note": "Your request joins the queue for review immediately, and you will be given a reference number.",
+  "requester_submit": "Check the request",
+  "requester_submit_note": "Nothing is sent yet. You will check everything once more before sending.",
   "error_span_too_long_title": "That date range is longer than you can ask for",
   "error_span_too_long_detail": "The Department of Disease Control API limits one request to 365 days. The system will not split the range for you, because then you would not know whether you had received everything. Please send more than one request.",
   "error_incomplete_title": "Cannot send yet. {count} items are missing.",
@@ -229,5 +229,14 @@
   "email_failure_requester_unaware": "The requester has received nothing, and does not know about this.",
   "email_failure_action_note": "There is an item waiting on your queue page. You can either telephone the requester or ask the system to extract the data again.",
   "email_failure_not_your_job_heading": "You do not have to fix the technical fault",
-  "email_failure_not_your_job_detail": "The system operator has been told separately. What is waiting for you is the promise made to the person you vouched for, not the broken job."
+  "email_failure_not_your_job_detail": "The system operator has been told separately. What is waiting for you is the promise made to the person you vouched for, not the broken job.",
+  "requester_check_title": "Check your request before sending",
+  "requester_check_lead": "Nothing is sent yet. Please check every item, especially the email address, because it cannot be changed after sending.",
+  "requester_check_send_to": "The file will be sent to",
+  "requester_check_send_to_warning": "If this address is wrong, the file will not reach you, and once you send, neither you nor the reviewing officer can change it.",
+  "requester_check_ask_heading": "What you are asking for",
+  "requester_check_requester_heading": "Who is asking",
+  "requester_check_send": "Send request",
+  "requester_check_edit": "Edit",
+  "requester_check_edit_note": "Everything you have filled in is kept when you go back to edit."
 }

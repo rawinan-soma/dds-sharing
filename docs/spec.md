@@ -2485,6 +2485,20 @@ contact fields, submit.
 > it and files it as broken. *What you will and will not get is visible before any
 > field is filled in, without interaction.*
 
+**Submit goes to a check page first**, decided with the repo owner 2026-09-18. It
+restates the ask and the contact details, and shows the email address at the size
+of a headline with the warning that it cannot be changed after sending. The
+Requester sends from there or goes back to edit with everything kept. Since
+[ADR 0017](adr/0017-a-reviewer-never-corrects-a-requesters-email-address.md) no one
+can correct an address after submit, so this page is the last moment a typo can be
+caught — and it is the only one.
+
+> **A typo discovered after submit cannot be fixed.** The Requester cannot edit,
+> cannot resubmit while the first Request is unfinished (duplicate suppression,
+> §4.8), and a Reviewer cannot correct the address. The Request runs its course,
+> and if approved the Delivery goes to the address as typed. Accepted knowingly by
+> the repo owner, 2026-09-18.
+
 **The confirmation page** carries the reference number, a restatement of the ask,
 the 24-business-hour service promise, and the telephone number. It must read as
 *you are done*, not as *something went wrong*.
