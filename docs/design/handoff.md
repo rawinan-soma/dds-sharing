@@ -62,9 +62,11 @@ form, and needs no interaction to read.**
 
 ### The region map
 
-13 cells of 52×40 on a 2px lattice inside a 262×296 box, absolutely positioned.
-Region 13 is `land-strong` because Bangkok is a city inside another region's
-neighbourhood, not a peer area. **Schematic, not cartographic** — do not swap in
+13 cells of 52×40 on a 2px lattice inside a 262×324 box, absolutely positioned,
+with one caption beneath: **เขตสุขภาพที่ 13 คือกรุงเทพมหานคร**. Every cell has the same
+fill. Region 13 used to be a darker grey to mark Bangkok as a city rather than a
+peer area; removed 2026-09-18, because on a control a darker cell reads as
+*disabled*, and the caption says what the shading only hinted at. **Schematic, not cartographic** — do not swap in
 a geo file; a polygon map would put a geography dependency in the bundle for one
 control.
 
@@ -301,6 +303,11 @@ wording comes from the catalogue.
 
 Email HTML: single column, no CSS grid, no web fonts, inline styles, 600–680px
 table. The canvas shows them two-up for review only.
+
+**The emails have never been rendered by a mail client.** They are canvas
+mockups. Testing them in Gmail web, the Gmail app, Outlook.com and Outlook desktop
+is an acceptance criterion of #71, because the real templates are built there and
+that is where email layout breaks.
 
 ---
 
