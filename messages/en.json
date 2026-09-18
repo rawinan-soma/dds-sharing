@@ -257,8 +257,6 @@
   "reviewer_narrow_title": "Please open this page on a computer",
   "reviewer_narrow_detail": "Reviewing a request needs a screen at least 1024 pixels wide, so the queue and the request can be seen together.",
   "reviewer_narrow_desk": "An approval puts your name on the release permanently, so it belongs at a desk, with a telephone free to call the requester.",
-  "requester_region_not_odpc_heading": "Health region is not the same as a สคร. region",
-  "requester_region_not_odpc_detail": "The region numbers on this page are the Ministry of Public Health's health regions. They divide the country differently from the Office of Disease Prevention and Control's regions, even though there are 13 of both.",
   "requester_epidem_area_label": "Filtered on the province that investigated the case",
-  "requester_epidem_area_detail": "The filter uses the province where the investigation team worked. Not the province the patient lives in, and not the province of the treating hospital."
+  "requester_epidem_area_detail": "The filter uses the province the patient was living in when the case was surveyed. Not the registered address, and not the province of the treating hospital."
 }

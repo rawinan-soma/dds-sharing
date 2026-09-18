@@ -228,6 +228,14 @@ zero rows.
 
 **The filter matches `epidem_chw_code`. It never matches `chw_code`.**
 
+Upstream's own dictionary defines it as *ที่อยู่ รหัสจังหวัด ขณะสำรวจว่าเป็นโรค* — the
+province the patient was living in when the case was surveyed. It is neither the
+reporting unit's province (`hospital_code` is a facility code, not a province)
+nor the treating unit's (`isolate_chw_code`, dropped from the Extract). Confirmed
+against the dictionary with the repo owner 2026-09-18, after a copy edit briefly
+described it as *the province that reported the data*; that reading was
+considered and declined. The copy uses the dictionary's wording.
+
 Both columns ship in the Extract and both use the same province codes, so a
 filter written against the wrong one produces a plausible, well-formed,
 **silently wrong** Extract that no gate in this system would catch. This is the
@@ -257,9 +265,14 @@ the spec and the picker use.
 
 Two other 13-way vocabularies exist and neither is this one: สช.'s
 `เขตสุขภาพเพื่อประชาชน` (same groupings, different institution) and **สคร.**,
-DDC's own regional disease control offices. **State this plainly in the UI copy**,
-because a สคร. officer reading "เขต 8" will otherwise assume it means
-their office's catchment.
+DDC's own regional disease control offices.
+
+> **The UI does not state this.** An earlier version of this section required
+> the copy to warn that a สคร. officer reading "เขต 8" might assume it meant their
+> office's catchment. Removed by the repo owner 2026-09-18: the page names the
+> vocabulary (เขตสุขภาพ) and shows the provinces a region expands to, which is the
+> check a reader needs. This section, not the UI, is where the three vocabularies
+> are distinguished.
 
 ### 4.6 Geography codes
 
