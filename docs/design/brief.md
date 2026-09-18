@@ -348,9 +348,11 @@ repo owner to correct, except the Disease group names, province names and
 4. **There is no "check your request" step.** Submit goes straight to submit,
    which is the minimal reading of §16.4. Open decision 4 is settled by default,
    not by argument, so it is the cheapest one to reverse.
-5. **The confirmation restates the email address** the Extract will go to. The
-   form has already warned that a typo tells nobody, and this is the last moment
-   anyone can catch one.
+5. ~~**The confirmation restates the email address.**~~ **Reversed 2026-09-18
+   (repo owner).** The check page (1b) now shows the address before submit, when
+   a typo can still be fixed. After submit nothing can be done, so an echo on the
+   confirmation could only reveal an unrepairable mistake while putting the
+   address on a page anyone at the desk can read.
 
 ### Decisions taken in the state screens
 

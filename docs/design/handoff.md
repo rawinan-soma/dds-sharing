@@ -115,7 +115,7 @@ details as field lists, then `Button primary lg` ส่งคำขอ beside `B
 ## 2. Confirmation (#63)
 
 Reference number is the focal point: `text-4xl figure` on a `primary-wash`
-panel, 680 wide. Below it, the ask restated as a four-row field list, then two
+panel, 680 wide. Below it, the ask restated as a three-row field list — **no email address**; the check page (1b) already showed it when it could still be fixed, then two
 notes side by side, then the telephone line.
 
 - **Nothing in the address.** Client state only.
