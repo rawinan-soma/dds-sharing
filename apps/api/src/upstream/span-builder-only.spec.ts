@@ -8,7 +8,8 @@ import { join, relative } from 'node:path';
 // code outside the one file allowed to hold it, so a second copy has to be
 // argued for in review rather than slipping in.
 
-const SRC = join(__dirname, '..');
+// The API's source and the SPA's: a stray `+1` is likelier in the UI.
+const ROOTS = [join(__dirname, '..'), join(__dirname, '../../../web/src')];
 const ALLOWED = join(__dirname, 'span-builder.ts');
 
 const DATE_ARITHMETIC = [
@@ -31,13 +32,13 @@ function sourceFiles(dir: string): string[] {
 
 describe('the span builder is the only date arithmetic', () => {
   it('finds no day arithmetic in production code outside span-builder.ts', () => {
-    const offenders = sourceFiles(SRC)
+    const offenders = ROOTS.flatMap(sourceFiles)
       .filter((file) => file !== ALLOWED)
       .filter((file) => {
         const text = readFileSync(file, 'utf8');
         return DATE_ARITHMETIC.some((pattern) => pattern.test(text));
       })
-      .map((file) => relative(SRC, file));
+      .map((file) => relative(join(__dirname, '../../../..'), file));
 
     expect(offenders).toEqual([]);
   });

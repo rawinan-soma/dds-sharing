@@ -189,6 +189,36 @@ describe('asserting meta echoes what was asked', () => {
   });
 });
 
+describe('an inconsistent envelope', () => {
+  it('fails loudly when upstream says has_next on what it called the last page', async () => {
+    upstream = await createFakeUpstream({ rowsPerCode: 50 });
+    const spy = vi.spyOn(globalThis, 'fetch').mockImplementation(() =>
+      Promise.resolve(
+        Response.json({
+          status: true,
+          message: 'OK',
+          data: [],
+          meta: {
+            page: 1,
+            page_size: 10_000,
+            total_items: 5,
+            total_pages: 1,
+            has_next: true,
+            has_previous: false,
+          },
+        }),
+      ),
+    );
+    try {
+      const error = await kindOf(collect(makeClient()));
+      expect(error.kind).toBe('malformed_response');
+      expect(spy).toHaveBeenCalledTimes(1);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+});
+
 describe('the failure taxonomy', () => {
   beforeEach(async () => {
     upstream = await createFakeUpstream({ rowsPerCode: 50 });

@@ -274,7 +274,7 @@ export class UpstreamClient {
   ): Promise<UpstreamPage> {
     const { groupCode, page, pageSize } = query;
     const signal = AbortSignal.timeout(this.timeoutMs);
-    const fail = (
+    const makeError = (
       kind: UpstreamErrorKind,
       extra: Partial<ConstructorParameters<typeof UpstreamError>[0]> = {},
     ) => {
@@ -305,7 +305,7 @@ export class UpstreamClient {
       });
     } catch {
       // Nothing caught is chained or logged: it can quote what it choked on.
-      throw fail(signal.aborted ? 'timeout' : 'network');
+      throw makeError(signal.aborted ? 'timeout' : 'network');
     }
 
     const requestId = response.headers.get('x-request-id');
@@ -323,13 +323,13 @@ export class UpstreamClient {
     } catch {
       readable = false;
       if (signal.aborted) {
-        this.report(onResponse, { ...context, groupCode, page, attempt });
-        throw fail('timeout', context);
+        this.emitResponse(onResponse, { ...context, groupCode, page, attempt });
+        throw makeError('timeout', context);
       }
     }
 
     const envelope = response.ok && readable ? parseEnvelope(json) : null;
-    this.report(onResponse, {
+    this.emitResponse(onResponse, {
       ...context,
       groupCode,
       page,
@@ -342,11 +342,11 @@ export class UpstreamClient {
         response.status,
         readable ? json : null,
       );
-      throw fail(kind, { ...context, fields });
+      throw makeError(kind, { ...context, fields });
     }
-    if (!envelope) throw fail('malformed_response', context);
+    if (!envelope) throw makeError('malformed_response', context);
     if (envelope.meta.page !== page || envelope.meta.pageSize !== pageSize) {
-      throw fail('meta_mismatch', context);
+      throw makeError('meta_mismatch', context);
     }
 
     this.logger.log(
@@ -362,7 +362,7 @@ export class UpstreamClient {
     };
   }
 
-  private report(
+  private emitResponse(
     onResponse: OnResponse | undefined,
     info: Omit<ResponseInfo, 'totalItems'> & { totalItems?: number },
   ): void {

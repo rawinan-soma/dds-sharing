@@ -32,19 +32,16 @@ export const PROBE_PAGE_SIZE = 20;
 export const MIN_PAGE_SIZE = 20;
 export const MAX_PAGE_SIZE = 10_000;
 
-/**
- * Extraction is sequential, and the global concurrency budget is 1 (spec §13.2).
- * DO NOT raise this expecting throughput: it was measured, and concurrency buys
- * nothing. Eight concurrent calls all returned 200 but degraded from ~3.9 s to
- * ~14.3 s each, because upstream serializes them. A higher number only spends
- * more of the one bearer token's standing — and the failure to fear is not a
- * throttle (no rate-limit headers, no 429 was ever seen) but DDC noticing our
- * traffic and revoking the token, which no retry recovers from.
- *
- * Nothing in the client reads this; it exists so the reason is written next to
- * the number, where the next operator who wants to tune it will look.
+/*
+ * Why there is no concurrency setting: extraction is sequential, and the global
+ * concurrency budget is 1 (spec §13.2). Do not add one expecting throughput —
+ * concurrency was measured and buys nothing. Eight concurrent calls all returned
+ * 200 but degraded from ~3.9 s to ~14.3 s each, because upstream serializes
+ * them. More parallel calls only spend more of the one bearer token's standing,
+ * and the failure to fear is not a throttle (no rate-limit headers, no 429 was
+ * ever seen) but DDC noticing our traffic and revoking the token, which no
+ * retry recovers from.
  */
-export const UPSTREAM_CONCURRENCY = 1;
 
 export const UPSTREAM_DEFAULTS = {
   /** 3 attempts per request (spec §7.6). */
