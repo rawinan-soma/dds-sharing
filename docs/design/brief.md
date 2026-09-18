@@ -289,9 +289,11 @@ Each is the repo owner's call. Two are settled and struck through below.
    standard for the design: 4.5:1 on body text, visible focus, labelled
    controls, and a keyboard path through the split queue. **Do not write a
    conformance claim into any document.**
-6. **Does the Extract's column list need a screen of its own**, beyond the
-   de-identification block? The Data dictionary ships inside every archive, so
-   the answer may be no.
+6. ~~**Does the Extract's column list need a screen of its own?**~~ **Settled
+   2026-09-18 (repo owner): no.** The de-identification block describes the
+   columns in plain terms and the Data dictionary arrives inside the archive. The
+   accepted cost: a Requester who needed a detail the Extract does not carry
+   finds out after approval, not before.
 
 ## 8. Repo gaps a designer will hit
 
