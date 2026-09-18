@@ -347,9 +347,9 @@ repo owner to correct, except the Disease group names, province names and
 2. **The "ไม่ได้รับ" column is not styled as an error.** An Extract with no names
    in it is the correct outcome, and colouring it red teaches the opposite of
    what the block exists to say.
-3. **The map is 13 contiguous region cells, schematic.** Region 13 is toned
-   apart because Bangkok is a city inside another region's neighbourhood, not a
-   peer area. It still needs a legend.
+3. **The map is 13 contiguous region cells, schematic.** Every cell has the
+   same fill, and one caption names region 13 as Bangkok. It was once toned
+   darker; on a control that reads as disabled, so the caption replaced it.
 4. **There is no "check your request" step.** Submit goes straight to submit,
    which is the minimal reading of §16.4. Open decision 4 is settled by default,
    not by argument, so it is the cheapest one to reverse.
