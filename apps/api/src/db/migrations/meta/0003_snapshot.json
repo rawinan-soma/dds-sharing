@@ -1,6 +1,6 @@
 {
-  "id": "28e292a0-3618-4192-b115-9752c8247406",
-  "prevId": "fcf082f9-9810-40c6-b940-3cbfbccb9236",
+  "id": "79e5c4bf-a899-4750-8da6-f8bed821e819",
+  "prevId": "28e292a0-3618-4192-b115-9752c8247406",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -270,10 +270,10 @@
     }
   },
   "schemas": {},
+  "views": {},
   "sequences": {},
   "roles": {},
   "policies": {},
-  "views": {},
   "_meta": {
     "columns": {},
     "schemas": {},

@@ -3,7 +3,7 @@ import { checksumProvinces, type ProvinceRow } from './province-rows';
 // Relative to apps/api. The migration and the generated module below are both
 // derived from docs/provinces.csv, which stays canonical; never hand-edit them.
 export const PROVINCE_SEED_MIGRATION =
-  'src/db/migrations/0002_seed_province.sql';
+  'src/db/migrations/0003_seed_province.sql';
 export const PROVINCE_SEED_MODULE = 'src/reference/province-seed.generated.ts';
 
 const quote = (value: string) => `'${value.replaceAll("'", "''")}'`;
