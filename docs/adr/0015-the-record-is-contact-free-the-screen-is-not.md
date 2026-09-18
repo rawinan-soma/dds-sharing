@@ -4,6 +4,11 @@ Date: 2026-09-18
 
 ## Status
 
+*Amended by [ADR 0019](0019-a-requesters-contact-details-are-never-removed.md):
+contact details are never removed on request, so the first Consequence below now
+describes only when they leave the Reviewer's screen, and the removal request the
+alternatives mention can no longer be made. The decision below is unchanged.*
+
 Accepted. Clarifies §12.3 and §10.9. **Reconstructed**: an ADR of this number and
 title was written earlier and was lost when the repository was reverted to its
 initial state; this is written fresh from the rules the spec already carries, not

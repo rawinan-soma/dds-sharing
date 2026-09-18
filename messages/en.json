@@ -30,7 +30,7 @@
   "requester_email_warning_heading": "The email address you give",
   "requester_email_warning": "The download link goes to this address and nowhere else. The system does not check that the address is correct or that it exists. If you mistype it, nobody will know and the file will not reach you.",
   "requester_retention_heading": "What the system keeps",
-  "requester_retention_notice": "Your contact details and the record of your request are kept indefinitely, so that every data release stays traceable to who asked and who approved. Once your request is finished you may ask by telephone for your contact details to be removed.",
+  "requester_retention_notice": "Your contact details and the record of your request are kept indefinitely, so that every data release stays traceable to who asked and who approved.",
   "requester_params_heading": "Your request",
   "requester_group_heading": "Disease group",
   "requester_group_hint": "Choose one group",
@@ -273,5 +273,6 @@
   "reviewer_resend_loading": "Sending…",
   "reviewer_rerun_loading": "Starting…",
   "reviewer_signin_loading": "Signing in…",
-  "reviewer_lookup_loading": "Finding…"
+  "reviewer_lookup_loading": "Finding…",
+  "requester_area_region_13_caption": "Health region 13 is Bangkok"
 }

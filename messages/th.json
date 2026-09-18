@@ -30,7 +30,7 @@
   "requester_email_warning_heading": "อีเมลที่ท่านกรอก",
   "requester_email_warning": "ลิงก์ดาวน์โหลดจะส่งไปยังอีเมลนี้เท่านั้น ระบบไม่ตรวจสอบว่าอีเมลถูกต้องหรือมีอยู่จริง หากพิมพ์ผิด จะไม่มีใครรู้และไฟล์จะไม่ถึงท่าน",
   "requester_retention_heading": "ข้อมูลที่ระบบเก็บไว้",
-  "requester_retention_notice": "ข้อมูลติดต่อและประวัติคำขอถูกเก็บไว้ถาวร เพื่อให้ทุกการเผยแพร่ข้อมูลตรวจสอบย้อนกลับได้ว่าใครขอและใครอนุมัติ เมื่อคำขอเสร็จสิ้นแล้ว ท่านขอให้ลบข้อมูลติดต่อได้ทางโทรศัพท์",
+  "requester_retention_notice": "ข้อมูลติดต่อและประวัติคำขอถูกเก็บไว้ถาวร เพื่อให้ทุกการเผยแพร่ข้อมูลตรวจสอบย้อนกลับได้ว่าใครขอและใครอนุมัติ",
   "requester_params_heading": "คำขอของท่าน",
   "requester_group_heading": "กลุ่มโรค",
   "requester_group_hint": "เลือกหนึ่งกลุ่ม",
@@ -273,5 +273,6 @@
   "reviewer_resend_loading": "กำลังส่ง…",
   "reviewer_rerun_loading": "กำลังเริ่ม…",
   "reviewer_signin_loading": "กำลังเข้าสู่ระบบ…",
-  "reviewer_lookup_loading": "กำลังค้นหา…"
+  "reviewer_lookup_loading": "กำลังค้นหา…",
+  "requester_area_region_13_caption": "เขตสุขภาพที่ 13 คือกรุงเทพมหานคร"
 }

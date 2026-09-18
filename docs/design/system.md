@@ -18,7 +18,7 @@ disagree, the canvas is the newer of the two — check it.
 | `border` | `#c8d0c9` | hairline rules between rows |
 | `border-strong` | `#16241e` | the frame of an input, a panel or a control |
 | `on-dark` / `on-dark-muted` | `#eef1ee` / `#a8b5ac` | text on the Reviewer header, the only dark field |
-| `land` / `land-strong` | `#d9e0da` / `#c2ccc4` | inert map fill, and the hover/active tint of any control |
+| `land` / `land-strong` | `#d9e0da` / `#c2ccc4` | inert map fill; the hover and active tints of any control. `land-strong` is never a resting fill, because a darker resting control reads as disabled |
 | `primary` | `#0c6b63` | **selection, and the primary action. Nothing else.** |
 | `primary-hover` | `#0a5751` | hover and active on the primary action |
 | `primary-wash` | `#dceceb` | *context*, not choice: a tinted region, a selected row, a callout |
