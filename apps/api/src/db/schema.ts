@@ -15,6 +15,7 @@ import {
   ACTOR_TYPES,
   REQUEST_EVENT_TYPES,
   REVIEWER_EVENT_TYPES,
+  UNAUTHENTICATED_ACTOR_TYPES,
 } from '../audit/event-catalogue';
 
 // The audit spine (spec §12.2). Both tables are append-only. That is enforced
@@ -66,7 +67,7 @@ const actorChecks = (table: {
   ),
   check(
     'actor_ip_user_agent',
-    sql`${table.actorType} IN ('requester', 'anonymous')
+    sql`${table.actorType} IN (${sql.raw(UNAUTHENTICATED_ACTOR_TYPES.map((t) => `'${t}'`).join(', '))})
         OR (${table.ip} IS NULL AND ${table.userAgent} IS NULL)`,
   ),
 ];

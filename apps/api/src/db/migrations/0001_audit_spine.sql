@@ -44,9 +44,11 @@ BEGIN
 END
 $$;
 --> statement-breakpoint
--- The event tables are append-only: INSERT and SELECT, and no role holds UPDATE
--- or DELETE (or TRUNCATE) on them. Any grant added here later is what §12.2's
--- whole enforcement argument rests on not being made.
+-- The event tables are append-only: the application role holds INSERT and
+-- SELECT and nothing else on them. Any grant added here later is what §12.2's
+-- whole enforcement argument rests on not being made. (The migrating role owns
+-- the tables and so keeps its own privileges; the running application never
+-- connects as it.)
 REVOKE ALL ON "request_event", "reviewer_event" FROM PUBLIC;
 --> statement-breakpoint
 GRANT USAGE ON SCHEMA public TO dds_app;

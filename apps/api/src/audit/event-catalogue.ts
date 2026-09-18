@@ -190,11 +190,14 @@ export interface RequestEventPayloads {
   /** Mirrored from `token_lookup`. Token prefix only, never the full token. */
   download_attempted: { tokenPrefix: string; outcome: string };
   collection_lapse_raised: { wallClockHoursElapsed: number };
-  /** `system` = collected late. A `reviewer` carries the spec's closed
-   *  three-value outcome, which §12.4 does not yet name; the ticket that writes
-   *  this event narrows `outcome` to it. */
+  /** `system` = collected late (no outcome). A `reviewer` carries the closed
+   *  three-value outcome of §10.6. */
   collection_lapse_cleared: {
-    outcome: string | null;
+    outcome:
+      | 'reached_requester'
+      | 'could_not_reach_requester'
+      | 'no_action_needed'
+      | null;
     assignedReviewerId: string | null;
     clearingReviewerId: string | null;
   };
