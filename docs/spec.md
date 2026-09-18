@@ -228,6 +228,14 @@ zero rows.
 
 **The filter matches `epidem_chw_code`. It never matches `chw_code`.**
 
+Upstream's own dictionary defines it as *ที่อยู่ รหัสจังหวัด ขณะสำรวจว่าเป็นโรค* — the
+province the patient was living in when the case was surveyed. It is neither the
+reporting unit's province (`hospital_code` is a facility code, not a province)
+nor the treating unit's (`isolate_chw_code`, dropped from the Extract). Confirmed
+against the dictionary with the repo owner 2026-09-18, after a copy edit briefly
+described it as *the province that reported the data*; that reading was
+considered and declined. The copy uses the dictionary's wording.
+
 Both columns ship in the Extract and both use the same province codes, so a
 filter written against the wrong one produces a plausible, well-formed,
 **silently wrong** Extract that no gate in this system would catch. This is the
@@ -257,9 +265,14 @@ the spec and the picker use.
 
 Two other 13-way vocabularies exist and neither is this one: สช.'s
 `เขตสุขภาพเพื่อประชาชน` (same groupings, different institution) and **สคร.**,
-DDC's own regional disease control offices. **State this plainly in the UI copy**,
-because a สคร. officer reading "เขต 8" will otherwise assume it means
-their office's catchment.
+DDC's own regional disease control offices.
+
+> **The UI does not state this.** An earlier version of this section required
+> the copy to warn that a สคร. officer reading "เขต 8" might assume it meant their
+> office's catchment. Removed by the repo owner 2026-09-18: the page names the
+> vocabulary (เขตสุขภาพ) and shows the provinces a region expands to, which is the
+> check a reader needs. This section, not the UI, is where the three vocabularies
+> are distinguished.
 
 ### 4.6 Geography codes
 
@@ -1179,8 +1192,16 @@ the stronger one is that an attachment has no expiry and no revocation, while th
 whole delivery design rests on a bounded lifetime.
 
 The Delivery email points at **`GET /d/<token>` on NestJS**, not at an Angular
-route (§16.1). NestJS counts the Attempt, checks the token, then either streams
-the archive with range-request support or redirects to `/link-expired`.
+route (§16.1). **It renders a small server-side page, and the archive is a second
+request, `GET /d/<token>/archive`, made when a person presses the button**
+([ADR 0018](adr/0018-the-delivery-link-opens-a-page-and-the-archive-is-its-own-request.md)).
+The page view is a lookup, audited but **not an Attempt**; the archive request
+counts the Attempt, checks the token, and streams with range-request support. A
+dead token redirects to `/link-expired` from either route.
+
+*Until 2026-09-18 the emailed URL streamed the archive directly. That let any
+mail-security scanner that opened the link spend an Attempt and receive the
+case-level archive before the Requester ever clicked.*
 
 > ⚠️ **`/d/<token>` travels in email, so a live Download token outlives any
 > redeployment that moves it. Treat the path as fixed.**
@@ -1198,9 +1219,11 @@ the archive with range-request support or redirects to `/link-expired`.
   the legitimate Requester *on top of* the disclosure.
 - **Expiry: 72 hours from job completion, never extended by download, never
   extended by a same-address resend.**
-- **An Attempt is one presentation of the token, counted at presentation**, not at
-  completed transfer — counting completed transfers would not bind an attacker
-  who aborts at byte 1.
+- **An Attempt is one presentation of the token to the archive route**
+  (`/d/<token>/archive`), counted at presentation, not at completed transfer —
+  counting completed transfers would not bind an attacker who aborts at byte 1.
+  Opening the page at `/d/<token>` is audited as a lookup and is not an Attempt
+  (ADR 0018).
 - **Cap: 10 over the whole 72 h, no rolling window.** Deliberately loose. The cap
   cannot stop a leaked link (one successful download is the entire disclosure);
   its only job is bounding how long a link that reached somewhere public stays
@@ -1410,6 +1433,12 @@ the screen does not need to be live.
   the Request they were on. Re-login lands them on the same screen with the
   Request still pending: ~15 seconds lost.
 - **Warning at T-5 minutes** — a bottom-left toast, not a modal or a banner.
+- **The idle timeout warns too**, at 55 minutes idle, with one action,
+  **ยังใช้งานอยู่**. Pressing it is a user-initiated request, so it extends the
+  idle window exactly as any other request does; nothing about the ceiling
+  changes. Without it a Reviewer reading a long dossier is signed out without
+  notice and loses a half-typed internal note (WCAG 2.2.1; added 2026-09-18).
+- Both warnings are `role="alert"` so a screen reader hears them.
 - **The mandatory internal note is never persisted client-side.** It is retyped,
   because a shared สคร. desktop is the wrong place for internal notes to linger.
 
@@ -1536,7 +1565,9 @@ likely to click was the one most likely to be dead. Revoking at **ready** rather
 than at **queued** is what makes the button free: a failed re-run leaves the
 original still collectable, so nothing is destroyed until something better exists.
 The revocation is written by the job, so `download_token_revoked` carries a
-`system` actor here and a `reviewer` actor in §10.8's corrected-address case.
+`system` actor — and since
+[ADR 0017](adr/0017-a-reviewer-never-corrects-a-requesters-email-address.md) that
+is the **only** actor it ever carries: a Reviewer cannot revoke a token.
 
 **It is a button, never automatic.** Chunk-atomic retry is already exhausted by
 the time a job is `failed`, so a self-retry mostly burns another ~25 minutes
@@ -1555,15 +1586,89 @@ exists to hold.
 
 - **Resend to the same address**: free, audited, and **never moves the 72 h
   clock**. The token is never extended by use, and a resend is not use.
-- **Resend to a corrected address is a NEW Decision, not a clerical fix.** It
-  releases the Extract to an address no Decision covered. It therefore **issues a
-  fresh Download token with a fresh 72 hours and revokes the old one**, and its
-  audit entry names **both** addresses. Revocation matters: the first address may
-  be a stranger's mailbox.
+> ⚠️ **A Reviewer never corrects a Requester's email address. The resend control
+> takes no address field.**
+> [ADR 0017](adr/0017-a-reviewer-never-corrects-a-requesters-email-address.md)
+> reverses this section's former corrected-address branch, which issued a fresh
+> token to a new address and called itself a new Decision. That guard was a
+> formality performed by the person it was meant to check, and the address it
+> released to was never verified by this service in the first place (§16.4).
+> **A Reviewer decides who receives data, never where it goes.**
 
-*(Note the mirror with §10.7: a Re-run is not a new Decision because nothing
-changed but the clock; a corrected-address resend is, because the recipient
-changed.)*
+A Requester who mistyped their own address has **ended their Request**, exactly as
+one who missed their 72 hours has
+([ADR 0016](adr/0016-a-lapsed-download-token-ends-the-request.md)). They resubmit
+and are reviewed again. The remedy is `requester_email_warning` on the form, which
+is the only place a Requester is told that a typo tells nobody — that notice is now
+the entire remedy, and it is load-bearing.
+
+*(The mirror with §10.7 collapses, and reads better for it: neither a Re-run nor a
+resend is a new Decision, because neither can change anything a Decision was
+about.)*
+
+### 10.9 The in-flight list
+
+*Restored 2026-09-18 from #74, which states it in full. This section existed
+before the repository was reverted and was cited by #74, ADR 0015 and ADR 0016
+while absent from `main`.*
+
+**In flight = approved, and not yet terminal.** Terminal is `collected`,
+`expired_uncollected`, or an extraction failure a Reviewer cleared as `abandoned`.
+Rejected and expired-undecided Requests are never in flight: nothing remains to be
+done to them, and they leave the queue at the Decision.
+
+**Membership is derived at read time, never stored.** No `in_flight` column and no
+entering or leaving events; the catalogue stays closed. A Request is on the list
+because of what is true about it, not because something wrote it there. **The
+definition of *terminal* lives in exactly one place in the code.**
+
+**It is everyone's Requests.** The approving Reviewer's name is on each row as
+accountability, not permission; any active Reviewer may act on any of them
+([ADR 0013](adr/0013-deactivating-a-reviewer-widens-their-alerts.md)).
+
+**The screen shows the five live contact fields**, read from the Request and never
+from the Snapshot, for as long as the Request is in flight
+([ADR 0015](adr/0015-the-record-is-contact-free-the-screen-is-not.md)).
+
+**Actions are gated by what is physically possible, not by policy:**
+
+| Extraction state | Row reads | Available |
+|---|---|---|
+| `queued`, `running` | *extracting — nothing to do until it finishes* | nothing |
+| `ready` | time left on the Download token | Re-run, resend |
+| `failed` | *extraction failed* | Re-run, and the Alert's clearing outcomes |
+
+Each row shows the wall-clock time left on the Download token. **Sort by submit
+order and nothing more urgent**: the Alert section is the only part of this surface
+allowed to shout. The list does not auto-refresh (§10.5). **An open Alert
+suppresses its Request's in-flight row** (§10.6), so a Request appears exactly once
+on the surface.
+
+A lapsed Download token ends the Request, and no Reviewer action revives it
+([ADR 0016](adr/0016-a-lapsed-download-token-ends-the-request.md)).
+
+### 10.10 Looking up a Request by its reference
+
+*Decided with the repo owner 2026-09-18.*
+
+**A Reviewer can find any Request, finished or not, by its exact reference number,
+and read it.** The confirmation, the collection page, the rejection email and the
+expiry page all tell a Requester to telephone and quote their reference; before
+this, the Reviewer who answered could not find a finished Request, because
+finished Requests leave the surface.
+
+- **Exact reference only.** Not a search by name, email, workplace or telephone.
+  §10.2 declined prior-Request history on the review screen, and a search by person
+  is that history by another route.
+- **Read-only.** A lookup carries no actions. A Request that is still on the
+  surface opens in its zone as usual; a terminal one opens as a record.
+- **A terminal Request shows the record, never the contact fields**
+  ([ADR 0015](adr/0015-the-record-is-contact-free-the-screen-is-not.md)): the ask,
+  the Snapshot's `workplace` and row count, the Decision and its Reviewer, each
+  Extract and its link state, and the event trail. Contact details may already
+  have been removed on request, and the lookup must not become the way round that.
+- **A lookup writes no event.** It is a read, and no read is an event anywhere in
+  the catalogue. Decided with the repo owner 2026-09-18; §12.4 is unchanged.
 
 ---
 
@@ -1859,8 +1964,7 @@ reading the ticket record alone would find `job_queued` and nothing else.
 | `download_attempted` | `anonymous` | mirrored from `token_lookup` |
 | `collection_lapse_raised` | `system` | **24 wall-clock hours, zero Attempts**, raised at the next business-hours opening (§11.4). Carries the wall-clock hours elapsed, so a trip-wire that fired on time is distinguishable from one whose Alert waited for Monday |
 | `collection_lapse_cleared` | `system` \| `reviewer` | `system` = collected late; `reviewer` carries the closed three-value outcome, and **both** the assigned and the clearing Reviewer — they differ when the assigned Reviewer was deactivated (§10.6) |
-| `download_token_revoked` | `system` \| `reviewer` | `reviewer` = corrected-address resend (§10.8); **`system` = a Re-run whose new Extract is ready** (§10.7), naming the run that superseded it |
-| `download_token_reissued` | `reviewer` | corrected-address resend; names **both** addresses |
+| `download_token_revoked` | `system` | **A Re-run whose new Extract is ready** (§10.7), naming the run that superseded it. **The only cause** — a Reviewer cannot revoke a token (ADR 0017) |
 | `expired_uncollected` | `system` | **terminal state** |
 | `object_deleted` | `system` | actor, object key, timestamp, outcome |
 
@@ -2345,6 +2449,15 @@ form until the bundle hydrates.
 **One build, not two.** Separating bundles is not an access control, and lazy
 loading already keeps the Reviewer code out of the first download.
 
+**Screen widths** (decided with the repo owner 2026-09-18). The public surface —
+the form, the check page, confirmation, collection and expiry — works down to a
+360px phone, because a Requester in the field may have nothing else and the
+Delivery email is usually opened on one. **The Reviewer surface is desktop-only,
+from 1024px.** Below that it shows one sentence asking for a computer. A Decision
+puts the Reviewer's name on a release permanently and rests on a telephone call
+made while reading the dossier; a phone between meetings is the setting where that
+becomes a rubber stamp.
+
 ### 16.2 Routes
 
 | Path | Served by | Note |
@@ -2354,7 +2467,8 @@ loading already keeps the Reviewer code out of the first download.
 | `/link-expired` | Angular | §9.4's one sentence. Reached only by redirect |
 | `/reviewer/...` | Angular | sign-in, queue, one Request. Sign-in accepts a return-to address |
 | `/api/...` | NestJS | |
-| `/d/<token>` | NestJS | Download token presentation. **Fixed — travels in email** |
+| `/d/<token>` | NestJS | The collection page, server-rendered, no Angular. A lookup, not an Attempt. **Fixed — travels in email** |
+| `/d/<token>/archive` | NestJS | The archive, with range requests. **Counts the Attempt** (ADR 0018) |
 | `/health`, `/health/scheduler` | NestJS | unauthenticated |
 
 English words, lower case, **no language prefix** (§16.3 leaves nothing to
@@ -2473,6 +2587,20 @@ contact fields, submit.
 > not collapsed.** A Requester who never opens it receives a CSV with no names in
 > it and files it as broken. *What you will and will not get is visible before any
 > field is filled in, without interaction.*
+
+**Submit goes to a check page first**, decided with the repo owner 2026-09-18. It
+restates the ask and the contact details, and shows the email address at the size
+of a headline with the warning that it cannot be changed after sending. The
+Requester sends from there or goes back to edit with everything kept. Since
+[ADR 0017](adr/0017-a-reviewer-never-corrects-a-requesters-email-address.md) no one
+can correct an address after submit, so this page is the last moment a typo can be
+caught — and it is the only one.
+
+> **A typo discovered after submit cannot be fixed.** The Requester cannot edit,
+> cannot resubmit while the first Request is unfinished (duplicate suppression,
+> §4.8), and a Reviewer cannot correct the address. The Request runs its course,
+> and if approved the Delivery goes to the address as typed. Accepted knowingly by
+> the repo owner, 2026-09-18.
 
 **The confirmation page** carries the reference number, a restatement of the ask,
 the 24-business-hour service promise, and the telephone number. It must read as
@@ -2910,6 +3038,14 @@ oversights:
   surface. This is **not** deferred to the wireframe (§16.4) — it is declined, so
   nobody reopens it as a styling detail. The audience is government officers on
   ordinary connections, and some of them will not be able to use this service.
+  *(2026-09-18: the design is built to WCAG 2.1 AA as a working standard, still
+  with no claim; `docs/design/accessibility.md` is the audit.)*
+- **A Reviewer who zooms past about 125% is locked out.** The Reviewer surface is
+  desktop-only from 1024 CSS px (§16.1), and browser zoom shrinks CSS pixels: at
+  125% a 1280px laptop is 1024 wide, at 150% it is 853, and the Reviewer sees
+  *open this on a computer* on a computer. Stacking the layout below 1024 instead
+  of blocking was offered and declined by the repo owner, 2026-09-18. This fails
+  WCAG 1.4.4 and 1.4.10, and it is accepted knowingly.
 - **No redeploy, rollback or dependency-patching procedure.** §17.4 gates the
   **first** deploy thoroughly and says nothing about the second. A bad release is
   backed out by whatever the operator improvises, and the service is
@@ -3007,7 +3143,9 @@ is ever made and lands wrong, this section is deleted rather than worked around.
 | Reviewer accounts and sessions | §10.5, §17.5 | [#18](https://github.com/rawinan-soma/dds-sharing/issues/18) |
 | Scheduled work, derived expiry, heartbeat | §15 | [#20](https://github.com/rawinan-soma/dds-sharing/issues/20) |
 | Mail configuration and the unobservability premise | §11.1, §11.2 | [#17](https://github.com/rawinan-soma/dds-sharing/issues/17) |
-| Send failure vs collection lapse, Alerts, resend rules | §11.3–§11.5, §10.6, §10.8 | [#19](https://github.com/rawinan-soma/dds-sharing/issues/19), [ADR 0001](adr/0001-email-delivery-is-unobservable.md) |
+| Send failure vs collection lapse, Alerts, resend rules | §11.3–§11.5, §10.6, §10.8 | [#19](https://github.com/rawinan-soma/dds-sharing/issues/19), [ADR 0001](adr/0001-email-delivery-is-unobservable.md), [ADR 0017](adr/0017-a-reviewer-never-corrects-a-requesters-email-address.md) |
+| A Reviewer sees contact details, the record does not | §10.9, §12.3 | [ADR 0015](adr/0015-the-record-is-contact-free-the-screen-is-not.md) |
+| A lapsed Download token is terminal; no grace window | §9.3, §9.4, §10.9, §11.5 | [ADR 0016](adr/0016-a-lapsed-download-token-ends-the-request.md) |
 | `/health`, two watchers, Re-run, Bull Board, disk thresholds | §10.7, §14 | [#27](https://github.com/rawinan-soma/dds-sharing/issues/27) |
 | Retention of personal data | §12.7–§12.9 | [#28](https://github.com/rawinan-soma/dds-sharing/issues/28), [ADR 0004](adr/0004-personal-data-is-retained-indefinitely.md) |
 | Ingress boundary, ownership, kill switch, deployment requests | §17.4 | [#16](https://github.com/rawinan-soma/dds-sharing/issues/16) |
