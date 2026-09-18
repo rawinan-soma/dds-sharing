@@ -8,6 +8,20 @@
       "when": 1789714485248,
       "tag": "0000_no_op",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1789745331476,
+      "tag": "0001_province",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789745331811,
+      "tag": "0002_seed_province",
+      "breakpoints": true
     }
   ]
 }

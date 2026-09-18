@@ -4,6 +4,10 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AppModule } from '../src/app.module';
+import {
+  createScratchDatabase,
+  type ScratchDatabase,
+} from './support/scratch-database';
 
 // @nestjs/serve-static picks its Express/Fastify loader from
 // HttpAdapterHost.httpAdapter at provider-resolution time. Test.createTestingModule()
@@ -14,8 +18,13 @@ import { AppModule } from '../src/app.module';
 // so setting it in beforeAll (before the factory runs at bootstrap) is still in time.
 describe('AppModule (e2e)', () => {
   let app: INestApplication<App>;
+  let db: ScratchDatabase;
+  const originalUrl = process.env.DATABASE_URL;
 
   beforeAll(async () => {
+    // The app refuses to boot without the seeded reference data (§6.4).
+    db = await createScratchDatabase();
+    process.env.DATABASE_URL = db.appUrl;
     process.env.STATIC_ROOT = 'test/fixtures/public';
 
     app = await NestFactory.create(AppModule, { logger: false });
@@ -25,7 +34,9 @@ describe('AppModule (e2e)', () => {
 
   afterAll(async () => {
     await app.close();
+    process.env.DATABASE_URL = originalUrl;
     delete process.env.STATIC_ROOT;
+    await db.drop();
   });
 
   it('serves the SPA shell at /', async () => {

@@ -1,0 +1,59 @@
+{
+  "id": "65d48479-b024-48c5-98fd-019f722970d6",
+  "prevId": "cd18aee8-ee52-4e6e-93e6-6ed8531cb29d",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.province": {
+      "name": "province",
+      "schema": "",
+      "columns": {
+        "province_id": {
+          "name": "province_id",
+          "type": "char(2)",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "name_th": {
+          "name": "name_th",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "health_region": {
+          "name": "health_region",
+          "type": "smallint",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "province_id_two_digits": {
+          "name": "province_id_two_digits",
+          "value": "\"province\".\"province_id\" ~ '^[0-9]{2}$'"
+        },
+        "province_health_region_range": {
+          "name": "province_health_region_range",
+          "value": "\"province\".\"health_region\" BETWEEN 1 AND 13"
+        }
+      },
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {},
+  "schemas": {},
+  "views": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

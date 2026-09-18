@@ -8,7 +8,8 @@
     "lint:fix": "pnpm -r run lint:fix",
     "test": "pnpm -r run test",
     "build": "pnpm -r run build",
-    "db:migrate": "pnpm --filter api run db:migrate"
+    "db:migrate": "pnpm --filter api run db:migrate",
+    "db:generate-province-seed": "pnpm --filter api run db:generate-province-seed"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
