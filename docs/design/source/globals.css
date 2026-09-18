@@ -87,6 +87,7 @@
 .border-ready { border-color: var(--color-ready); }
 .border-failed { border-color: var(--color-failed); }
 .border-inert { border-color: var(--color-inert); }
+.border-muted-foreground { border-color: var(--color-muted-foreground); }
 
 @layer base {
   html {

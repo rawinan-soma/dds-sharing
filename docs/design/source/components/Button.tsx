@@ -38,8 +38,11 @@ const variants: Record<Variant, string> = {
     "border border-border-strong text-foreground " +
     "hover:bg-land active:bg-land-strong " +
     "disabled:hover:bg-transparent",
+  // Framed in muted-foreground (5.69:1), not the hairline border colour
+  // (1.39:1): the frame is a quiet button's only boundary, so it must meet
+  // WCAG 1.4.11's 3:1. Still visibly lighter than secondary's ink frame.
   quiet:
-    "border border-border text-muted-foreground " +
+    "border border-muted-foreground text-muted-foreground " +
     "hover:bg-land hover:text-foreground active:bg-land-strong " +
     "disabled:hover:bg-transparent",
 };

@@ -1423,6 +1423,12 @@ the screen does not need to be live.
   the Request they were on. Re-login lands them on the same screen with the
   Request still pending: ~15 seconds lost.
 - **Warning at T-5 minutes** — a bottom-left toast, not a modal or a banner.
+- **The idle timeout warns too**, at 55 minutes idle, with one action,
+  **ยังใช้งานอยู่**. Pressing it is a user-initiated request, so it extends the
+  idle window exactly as any other request does; nothing about the ceiling
+  changes. Without it a Reviewer reading a long dossier is signed out without
+  notice and loses a half-typed internal note (WCAG 2.2.1; added 2026-09-18).
+- Both warnings are `role="alert"` so a screen reader hears them.
 - **The mandatory internal note is never persisted client-side.** It is retyped,
   because a shared สคร. desktop is the wrong place for internal notes to linger.
 
@@ -3021,6 +3027,14 @@ oversights:
   surface. This is **not** deferred to the wireframe (§16.4) — it is declined, so
   nobody reopens it as a styling detail. The audience is government officers on
   ordinary connections, and some of them will not be able to use this service.
+  *(2026-09-18: the design is built to WCAG 2.1 AA as a working standard, still
+  with no claim; `docs/design/accessibility.md` is the audit.)*
+- **A Reviewer who zooms past about 125% is locked out.** The Reviewer surface is
+  desktop-only from 1024 CSS px (§16.1), and browser zoom shrinks CSS pixels: at
+  125% a 1280px laptop is 1024 wide, at 150% it is 853, and the Reviewer sees
+  *open this on a computer* on a computer. Stacking the layout below 1024 instead
+  of blocking was offered and declined by the repo owner, 2026-09-18. This fails
+  WCAG 1.4.4 and 1.4.10, and it is accepted knowingly.
 - **No redeploy, rollback or dependency-patching procedure.** §17.4 gates the
   **first** deploy thoroughly and says nothing about the second. A bad release is
   backed out by whatever the operator improvises, and the service is

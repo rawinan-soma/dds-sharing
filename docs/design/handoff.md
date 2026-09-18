@@ -361,6 +361,22 @@ Target is **WCAG 2.1 AA as a working standard, with no conformance claim made**
 
 ---
 
+### From the audit (`accessibility.md`)
+
+- **Disabled resend and re-run use `aria-disabled="true"`, not `disabled`**, so
+  they stay focusable, and `aria-describedby` points at the sentence saying why.
+  A plain `disabled` button is skipped by the keyboard, and the reason goes with it.
+- **The two date fields share one error**: both get `aria-invalid="true"` and
+  `aria-describedby` → the shared message.
+- **Status messages**: session and idle warnings `role="alert"`; the refresh
+  result `aria-live="polite"`; the error summary takes focus on a failed submit.
+- **Region cells are framed in `muted-foreground` when the map is the control**
+  (region mode). The frame is what makes each cell a visible target; province
+  mode, where the map is decoration, keeps flat cells.
+- **`<html lang="th">`**, and one `<title>` per route from the catalogue.
+- **Field is a native `<input>` with `<label for>`.** The design component draws
+  a box; the Angular one must be a labelled input.
+
 ## What is not specified here
 
 - **The province select is not a component** — there is no Select yet.

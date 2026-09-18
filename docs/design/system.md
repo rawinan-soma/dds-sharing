@@ -70,7 +70,7 @@ design had drifted to five paddings and three border weights with no rule.
 |---|---|
 | `primary` | the one action the screen exists for. One per screen. The only place the saturated colour appears on an action |
 | `secondary` | a real action that is not the point of the screen: reject, resend, re-run, refresh, an alert outcome |
-| `quiet` | disclosure and dismissal. Reveals or closes something, never changes a record |
+| `quiet` | disclosure and dismissal. Reveals or closes something, never changes a record. Framed in `muted-foreground` so its only boundary meets 3:1 |
 
 | Size | Padding | Use when |
 |---|---|---|
