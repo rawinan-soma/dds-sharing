@@ -1536,7 +1536,9 @@ likely to click was the one most likely to be dead. Revoking at **ready** rather
 than at **queued** is what makes the button free: a failed re-run leaves the
 original still collectable, so nothing is destroyed until something better exists.
 The revocation is written by the job, so `download_token_revoked` carries a
-`system` actor here and a `reviewer` actor in §10.8's corrected-address case.
+`system` actor — and since
+[ADR 0017](adr/0017-a-reviewer-never-corrects-a-requesters-email-address.md) that
+is the **only** actor it ever carries: a Reviewer cannot revoke a token.
 
 **It is a button, never automatic.** Chunk-atomic retry is already exhausted by
 the time a job is `failed`, so a self-retry mostly burns another ~25 minutes
@@ -1555,15 +1557,25 @@ exists to hold.
 
 - **Resend to the same address**: free, audited, and **never moves the 72 h
   clock**. The token is never extended by use, and a resend is not use.
-- **Resend to a corrected address is a NEW Decision, not a clerical fix.** It
-  releases the Extract to an address no Decision covered. It therefore **issues a
-  fresh Download token with a fresh 72 hours and revokes the old one**, and its
-  audit entry names **both** addresses. Revocation matters: the first address may
-  be a stranger's mailbox.
+> ⚠️ **A Reviewer never corrects a Requester's email address. The resend control
+> takes no address field.**
+> [ADR 0017](adr/0017-a-reviewer-never-corrects-a-requesters-email-address.md)
+> reverses this section's former corrected-address branch, which issued a fresh
+> token to a new address and called itself a new Decision. That guard was a
+> formality performed by the person it was meant to check, and the address it
+> released to was never verified by this service in the first place (§16.4).
+> **A Reviewer decides who receives data, never where it goes.**
 
-*(Note the mirror with §10.7: a Re-run is not a new Decision because nothing
-changed but the clock; a corrected-address resend is, because the recipient
-changed.)*
+A Requester who mistyped their own address has **ended their Request**, exactly as
+one who missed their 72 hours has
+([ADR 0016](adr/0016-a-lapsed-download-token-ends-the-request.md)). They resubmit
+and are reviewed again. The remedy is `requester_email_warning` on the form, which
+is the only place a Requester is told that a typo tells nobody — that notice is now
+the entire remedy, and it is load-bearing.
+
+*(The mirror with §10.7 collapses, and reads better for it: neither a Re-run nor a
+resend is a new Decision, because neither can change anything a Decision was
+about.)*
 
 ---
 
@@ -1859,8 +1871,7 @@ reading the ticket record alone would find `job_queued` and nothing else.
 | `download_attempted` | `anonymous` | mirrored from `token_lookup` |
 | `collection_lapse_raised` | `system` | **24 wall-clock hours, zero Attempts**, raised at the next business-hours opening (§11.4). Carries the wall-clock hours elapsed, so a trip-wire that fired on time is distinguishable from one whose Alert waited for Monday |
 | `collection_lapse_cleared` | `system` \| `reviewer` | `system` = collected late; `reviewer` carries the closed three-value outcome, and **both** the assigned and the clearing Reviewer — they differ when the assigned Reviewer was deactivated (§10.6) |
-| `download_token_revoked` | `system` \| `reviewer` | `reviewer` = corrected-address resend (§10.8); **`system` = a Re-run whose new Extract is ready** (§10.7), naming the run that superseded it |
-| `download_token_reissued` | `reviewer` | corrected-address resend; names **both** addresses |
+| `download_token_revoked` | `system` | **A Re-run whose new Extract is ready** (§10.7), naming the run that superseded it. **The only cause** — a Reviewer cannot revoke a token (ADR 0017) |
 | `expired_uncollected` | `system` | **terminal state** |
 | `object_deleted` | `system` | actor, object key, timestamp, outcome |
 
@@ -3007,7 +3018,9 @@ is ever made and lands wrong, this section is deleted rather than worked around.
 | Reviewer accounts and sessions | §10.5, §17.5 | [#18](https://github.com/rawinan-soma/dds-sharing/issues/18) |
 | Scheduled work, derived expiry, heartbeat | §15 | [#20](https://github.com/rawinan-soma/dds-sharing/issues/20) |
 | Mail configuration and the unobservability premise | §11.1, §11.2 | [#17](https://github.com/rawinan-soma/dds-sharing/issues/17) |
-| Send failure vs collection lapse, Alerts, resend rules | §11.3–§11.5, §10.6, §10.8 | [#19](https://github.com/rawinan-soma/dds-sharing/issues/19), [ADR 0001](adr/0001-email-delivery-is-unobservable.md) |
+| Send failure vs collection lapse, Alerts, resend rules | §11.3–§11.5, §10.6, §10.8 | [#19](https://github.com/rawinan-soma/dds-sharing/issues/19), [ADR 0001](adr/0001-email-delivery-is-unobservable.md), [ADR 0017](adr/0017-a-reviewer-never-corrects-a-requesters-email-address.md) |
+| A Reviewer sees contact details, the record does not | §10.9, §12.3 | [ADR 0015](adr/0015-the-record-is-contact-free-the-screen-is-not.md) |
+| A lapsed Download token is terminal; no grace window | §9.3, §9.4, §10.9, §11.5 | [ADR 0016](adr/0016-a-lapsed-download-token-ends-the-request.md) |
 | `/health`, two watchers, Re-run, Bull Board, disk thresholds | §10.7, §14 | [#27](https://github.com/rawinan-soma/dds-sharing/issues/27) |
 | Retention of personal data | §12.7–§12.9 | [#28](https://github.com/rawinan-soma/dds-sharing/issues/28), [ADR 0004](adr/0004-personal-data-is-retained-indefinitely.md) |
 | Ingress boundary, ownership, kill switch, deployment requests | §17.4 | [#16](https://github.com/rawinan-soma/dds-sharing/issues/16) |

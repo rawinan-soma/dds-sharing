@@ -1926,8 +1926,9 @@ email and never shown on a page**.
 **Exception conditions:**
 - **The token is presented after expiry, or after 10 Attempts** → refuse
   (FR-19/FR-20).
-- **A corrected-address resend** → the old token is **revoked** and a fresh one
-  issued with a fresh 72 hours (FR-27).
+- **A Re-run whose new Extract is ready** → the old token is **revoked**
+  (FR-26). It is the only thing that revokes a token; a Reviewer cannot
+  (ADR 0017).
 
 **Alternate conditions:**
 - **A same-address resend** → the same token; **the clock does not move.** The
@@ -2261,9 +2262,8 @@ session.
 **Post-conditions — same address:** A new `mail_sent{kind: delivery}` event.
 **The 72 h clock does not move.** The token is unchanged.
 
-**Post-conditions — corrected address:** `download_token_revoked` and
-`download_token_reissued`, the latter naming **both** addresses. A **fresh token
-with a fresh 72 hours**; the old token is dead.
+**There is no corrected-address path.** The control takes no address field
+(ADR 0017).
 
 **Exception conditions:**
 - **The send fails** → the FR-18 retry-then-abandon path applies.
@@ -2273,16 +2273,15 @@ with a fresh 72 hours**; the old token is dead.
   **resubmit and are reviewed again**; there is no *download again*.
 
 **Workflow:**
-1. The Reviewer chooses resend, and either keeps the address or corrects it.
-2. Same address: reuse the token, send, audit. **Free, and never moves the clock**
-   — the token is never extended by use, and a resend is not use.
-3. Corrected address: revoke, reissue, send, audit **both** addresses.
+1. The Reviewer chooses resend. There is no address to choose.
+2. Reuse the token, send to the address on the Request, audit. **Free, and never
+   moves the clock** — the token is never extended by use, and a resend is not use.
 
-> **A corrected-address resend is a NEW Decision, not a clerical fix.** It releases
-> the Extract to an address no Decision covered. **Revocation matters: the first
-> address may be a stranger's mailbox.** *(Note the mirror with FR-26: a Re-run is
-> not a new Decision because nothing changed but the clock; a corrected-address
-> resend is, because the recipient changed.)*
+> ⚠️ **A Reviewer never corrects a Requester's email address** (ADR 0017). A
+> Reviewer decides *who* receives data, never *where it goes*. A Requester who
+> mistyped their own address has ended their Request and resubmits, exactly as one
+> who missed their 72 hours does. *(Neither a Re-run nor a resend is a new
+> Decision, because neither can change anything a Decision was about.)*
 
 **Source:** §10.8, §12.4 ·
 [#19](https://github.com/rawinan-soma/dds-sharing/issues/19)
