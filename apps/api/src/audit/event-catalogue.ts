@@ -125,6 +125,39 @@ interface PerCodeTotals {
   [groupCode: string]: number;
 }
 
+// `extraction_alert_cleared` and `collection_lapse_cleared` are written by two
+// kinds of actor, and the outcome depends on which: the pairing is part of the
+// type, so a wrong one does not compile. Both name the assigned and the clearing
+// Reviewer (they differ when the assigned one was deactivated, §10.6).
+interface ClearedByReviewer<Outcome extends string> {
+  outcome: Outcome;
+  assignedReviewerId: string;
+  clearingReviewerId: string;
+}
+
+export type ExtractionAlertClearedPayload =
+  | (ClearedByReviewer<'contacted_requester' | 'abandoned'> & {
+      rerunAttempts: number;
+    })
+  | {
+      /** A deferred re-run completed (§10.6). */
+      outcome: 're_ran';
+      assignedReviewerId: string;
+      clearingReviewerId: null;
+      rerunAttempts: number;
+    };
+
+export type CollectionLapseClearedPayload =
+  | ClearedByReviewer<
+      'reached_requester' | 'could_not_reach_requester' | 'no_action_needed'
+    >
+  | {
+      /** Collected late: no Reviewer act, no outcome (§10.6). */
+      outcome: null;
+      assignedReviewerId: string;
+      clearingReviewerId: null;
+    };
+
 export interface RequestEventPayloads {
   submitted: Record<string, never>;
   probe_performed: {
@@ -176,12 +209,7 @@ export interface RequestEventPayloads {
     xRequestId: string | null;
   };
   extraction_alert_raised: Record<string, never>;
-  extraction_alert_cleared: {
-    outcome: 'contacted_requester' | 'abandoned' | 're_ran';
-    assignedReviewerId: string | null;
-    clearingReviewerId: string | null;
-    rerunAttempts: number;
-  };
+  extraction_alert_cleared: ExtractionAlertClearedPayload;
   extraction_rerun_queued: { originalDecisionEventId: number };
   mail_sent: { kind: MailKind; to: string; relayResponse: string };
   mail_send_failed: { tryNumber: number; relayError: string };
@@ -190,17 +218,7 @@ export interface RequestEventPayloads {
   /** Mirrored from `token_lookup`. Token prefix only, never the full token. */
   download_attempted: { tokenPrefix: string; outcome: string };
   collection_lapse_raised: { wallClockHoursElapsed: number };
-  /** `system` = collected late (no outcome). A `reviewer` carries the closed
-   *  three-value outcome of §10.6. */
-  collection_lapse_cleared: {
-    outcome:
-      | 'reached_requester'
-      | 'could_not_reach_requester'
-      | 'no_action_needed'
-      | null;
-    assignedReviewerId: string | null;
-    clearingReviewerId: string | null;
-  };
+  collection_lapse_cleared: CollectionLapseClearedPayload;
   download_token_revoked: { supersededByEventId: number };
   expired_uncollected: Record<string, never>;
   object_deleted: { objectKey: string; outcome: string };
@@ -275,20 +293,51 @@ type Exhaustive<Keys extends string, Map> = [Keys] extends [keyof Map]
     : never
   : never;
 
-type AuditEvent<Payloads, Actors extends Record<keyof Payloads, ActorType>> = {
-  [T in keyof Payloads & keyof Actors]: {
-    type: T;
-    /** When the predicate became true; the legally meaningful timestamp. */
-    occurredAt: Date;
-    actor: Actor<Actors[T]>;
-    payload: Payloads[T];
-  };
-}[keyof Payloads & keyof Actors];
+type DualActorType = 'extraction_alert_cleared' | 'collection_lapse_cleared';
 
-export type RequestEvent = { requestId: string } & AuditEvent<
-  Exhaustive<RequestEventType, RequestEventPayloads>,
-  Exhaustive<RequestEventType, RequestEventActors>
->;
+interface EventFields<T extends string, A extends ActorType, P> {
+  type: T;
+  /** When the predicate became true; the legally meaningful timestamp. */
+  occurredAt: Date;
+  actor: Actor<A>;
+  payload: P;
+}
+
+type AuditEvent<
+  Payloads,
+  Actors extends Record<keyof Payloads, ActorType>,
+  Skip extends string = never,
+> = {
+  [T in Exclude<keyof Payloads & keyof Actors, Skip> & string]: EventFields<
+    T,
+    Actors[T],
+    Payloads[T]
+  >;
+}[Exclude<keyof Payloads & keyof Actors, Skip> & string];
+
+// A `reviewer` actor carries a Reviewer's outcome; a `system` actor carries the
+// system's (`re_ran`, or a late collection), never the other way round.
+type ClearedEvent<T extends DualActorType> =
+  | EventFields<
+      T,
+      'reviewer',
+      Extract<RequestEventPayloads[T], { clearingReviewerId: string }>
+    >
+  | EventFields<
+      T,
+      'system',
+      Extract<RequestEventPayloads[T], { clearingReviewerId: null }>
+    >;
+
+export type RequestEvent = { requestId: string } & (
+  | AuditEvent<
+      Exhaustive<RequestEventType, RequestEventPayloads>,
+      Exhaustive<RequestEventType, RequestEventActors>,
+      DualActorType
+    >
+  | ClearedEvent<'extraction_alert_cleared'>
+  | ClearedEvent<'collection_lapse_cleared'>
+);
 
 export type ReviewerEvent = AuditEvent<
   Exhaustive<ReviewerEventType, ReviewerEventPayloads>,
