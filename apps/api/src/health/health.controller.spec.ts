@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { HealthController } from './health.controller';
-import { HealthService } from './health.service';
+import { HEALTH_COMPONENT_NAMES, HealthService } from './health.service';
 
 describe('HealthController', () => {
   let controller: HealthController;
@@ -19,12 +19,9 @@ describe('HealthController', () => {
     const document = controller.check();
 
     expect(document.status).toBe('ok');
-    expect(Object.keys(document.components).sort()).toEqual([
-      'disk',
-      'extraction',
-      'mail',
-      'scheduler',
-    ]);
+    expect(Object.keys(document.components).sort()).toEqual(
+      [...HEALTH_COMPONENT_NAMES].sort(),
+    );
   });
 
   it('serves the scheduler alias as the same document shape', () => {
