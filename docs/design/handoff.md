@@ -127,9 +127,16 @@ notes side by side, then the telephone line.
 
 ## 3. Duplicate suppression (#63)
 
-Amber, not red — a hold, not a failure. Shows the pending reference, submit
-time, and a `pending` tag. States that the first request was saved, and names
-the shared-office case, because suppression is per IP and a สคร. office is one IP.
+Amber, not red — a hold, not a failure. **Shows no reference number, no submit
+time and no status.** Suppression is keyed on IP and a สคร. office is one IP, so
+the pending request may be a colleague's; showing its reference would be the
+system showing one person another person's request. Decided with the repo owner
+2026-09-18, consistent with `/submitted` holding nothing in its address and the
+expiry page carrying no reference.
+
+Two cases, each with its own heading: *you just pressed send twice or refreshed*
+(your first request was saved), and *you have not sent a request* (it is probably
+a colleague's; call if you cannot wait).
 
 **Do not call it a rate limit** in code, comments, or copy.
 

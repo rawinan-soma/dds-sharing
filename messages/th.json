@@ -81,13 +81,8 @@
   "requester_confirm_approved_heading": "หากอนุมัติ",
   "requester_confirm_approved_detail": "ระบบจะส่งลิงก์ดาวน์โหลดไปยังอีเมลข้างต้น ลิงก์มีอายุ 72 ชั่วโมงนับจากไฟล์พร้อม",
   "requester_confirm_contact": "มีคำถามเกี่ยวกับคำขอนี้ โทร. {telephone} พร้อมแจ้งเลขที่คำขอ",
-  "requester_duplicate_title": "ท่านมีคำขอที่ยังดำเนินการอยู่",
-  "requester_duplicate_lead": "ระบบจึงยังไม่รับคำขอใหม่จากเครื่องนี้ คำขอเดิมของท่านยังอยู่ในคิวตามปกติ ไม่ได้หายไปไหน",
-  "requester_duplicate_reference_label": "คำขอที่ค้างอยู่",
-  "requester_duplicate_submitted_label": "ส่งเมื่อ",
-  "requester_duplicate_status_label": "สถานะ",
-  "requester_duplicate_after_decision": "เมื่อคำขอเดิมได้รับผลการพิจารณาแล้ว ท่านจะส่งคำขอใหม่ได้ทันที หากท่านเพิ่งกดส่งซ้ำหรือรีเฟรชหน้าเว็บ ไม่ต้องส่งใหม่ คำขอแรกถูกบันทึกไว้แล้ว",
-  "requester_duplicate_shared_office": "หากท่านคิดว่านี่ไม่ใช่คำขอของท่าน เช่น ใช้อินเทอร์เน็ตร่วมกับเพื่อนร่วมงานในสำนักงานเดียวกัน กรุณาโทร. {telephone}",
+  "requester_duplicate_title": "มีคำขอจากเครือข่ายนี้ที่ยังดำเนินการอยู่",
+  "requester_duplicate_lead": "อาจเป็นคำขอของท่านเอง หรือของเพื่อนร่วมงานที่ใช้อินเทอร์เน็ตสำนักงานเดียวกัน ระบบจึงยังไม่รับคำขอใหม่จากเครือข่ายนี้จนกว่าคำขอนั้นจะได้รับผลการพิจารณา",
   "requester_collect_title": "ไฟล์ตามคำขอของท่านพร้อมแล้ว",
   "requester_collect_filename": "ชื่อไฟล์",
   "requester_collect_size": "ขนาด",
@@ -238,5 +233,9 @@
   "requester_check_requester_heading": "ผู้ขอข้อมูล",
   "requester_check_send": "ส่งคำขอ",
   "requester_check_edit": "แก้ไข",
-  "requester_check_edit_note": "กดแก้ไขแล้ว ข้อมูลที่กรอกไว้ยังอยู่ครบ"
+  "requester_check_edit_note": "กดแก้ไขแล้ว ข้อมูลที่กรอกไว้ยังอยู่ครบ",
+  "requester_duplicate_resent_heading": "หากท่านเพิ่งกดส่งซ้ำ หรือรีเฟรชหน้าเว็บ",
+  "requester_duplicate_resent_detail": "คำขอแรกของท่านถูกบันทึกแล้ว ไม่ต้องส่งใหม่ เลขที่คำขออยู่ในหน้าที่แสดงหลังส่ง และจะอยู่ในอีเมลแจ้งผลการพิจารณา",
+  "requester_duplicate_colleague_heading": "หากท่านยังไม่เคยส่งคำขอ",
+  "requester_duplicate_colleague_detail": "คำขอที่ค้างอยู่น่าจะเป็นของเพื่อนร่วมงาน ท่านส่งได้เมื่อคำขอนั้นได้รับผลแล้ว หรือโทร. {telephone} หากรอไม่ได้"
 }

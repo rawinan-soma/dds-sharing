@@ -81,13 +81,8 @@
   "requester_confirm_approved_heading": "If it is approved",
   "requester_confirm_approved_detail": "The system emails a download link to the address above. The link lasts 72 hours from the moment the file is ready.",
   "requester_confirm_contact": "If you have a question about this request, call {telephone} and quote the reference number.",
-  "requester_duplicate_title": "You already have a request in progress",
-  "requester_duplicate_lead": "The system is not accepting a new request from this computer yet. Your existing request is still in the queue as normal. Nothing has been lost.",
-  "requester_duplicate_reference_label": "Request in progress",
-  "requester_duplicate_submitted_label": "Sent",
-  "requester_duplicate_status_label": "Status",
-  "requester_duplicate_after_decision": "Once your existing request has a decision you can send a new one straight away. If you have just pressed send twice or refreshed the page, there is no need to send again. The first request was saved.",
-  "requester_duplicate_shared_office": "If you believe this is not your request, for example because you share an internet connection with colleagues in the same office, please call {telephone}.",
+  "requester_duplicate_title": "A request from this network is already in progress",
+  "requester_duplicate_lead": "It may be your own request, or a colleague's on the same office internet connection. The system will not accept a new request from this network until that one has a decision.",
   "requester_collect_title": "Your file is ready",
   "requester_collect_filename": "File name",
   "requester_collect_size": "Size",
@@ -238,5 +233,9 @@
   "requester_check_requester_heading": "Who is asking",
   "requester_check_send": "Send request",
   "requester_check_edit": "Edit",
-  "requester_check_edit_note": "Everything you have filled in is kept when you go back to edit."
+  "requester_check_edit_note": "Everything you have filled in is kept when you go back to edit.",
+  "requester_duplicate_resent_heading": "If you just pressed send twice or refreshed the page",
+  "requester_duplicate_resent_detail": "Your first request was saved. There is no need to send again. Its reference number was on the page shown after sending, and will be in the decision email.",
+  "requester_duplicate_colleague_heading": "If you have not sent a request",
+  "requester_duplicate_colleague_detail": "The request in progress is probably a colleague's. You can send once it has a decision, or call {telephone} if you cannot wait."
 }
