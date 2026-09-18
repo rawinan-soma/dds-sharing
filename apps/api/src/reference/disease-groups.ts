@@ -62,9 +62,8 @@ export const DISEASE_GROUPS: readonly DiseaseGroup[] = [
 
 export function diseaseGroupOfReportCode(
   reportCode: string,
-  groups: readonly DiseaseGroup[] = DISEASE_GROUPS,
 ): DiseaseGroup | undefined {
-  return groups.find((g) => g.reportCodes.includes(reportCode));
+  return DISEASE_GROUPS.find((g) => g.reportCodes.includes(reportCode));
 }
 
 // A code in two groups makes "which Extract did this case land in" unanswerable;

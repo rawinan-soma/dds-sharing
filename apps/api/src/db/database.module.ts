@@ -27,9 +27,11 @@ class PoolShutdown implements OnApplicationShutdown {
     {
       provide: PG_POOL,
       useFactory: () => {
-        const connectionString = process.env.DATABASE_URL;
+        // Never DATABASE_URL: that is the owner that migrates. Falling back to
+        // it would make the read-only role (§6.4) true on paper only.
+        const connectionString = process.env.APP_DATABASE_URL;
         if (!connectionString) {
-          throw new Error('DATABASE_URL must be set');
+          throw new Error('APP_DATABASE_URL must be set');
         }
         const pool = new Pool({ connectionString });
         // An idle client dropped by the server must not crash the process.

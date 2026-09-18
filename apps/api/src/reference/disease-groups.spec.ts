@@ -44,7 +44,7 @@ describe('the Disease group classification', () => {
   // KNOWN BLIND SPOT — read before trusting this test. It compares the
   // classification against the *seed* (docs/research/003-disease-group-codes.md),
   // so it is structurally blind to a Report code that exists upstream and is
-  // missing from the seed (#33 is exactly that case: the general D506 block
+  // missing from the seed (#33 is exactly that case: the general notifiable-disease block
   // shares this endpoint). Nothing automated closes that gap and nothing should
   // pretend to — probing unenumerated codes would hit production upstream on
   // every CI run or be permanently skipped. The real control is the periodic

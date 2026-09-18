@@ -19,12 +19,12 @@ import {
 describe('AppModule (e2e)', () => {
   let app: INestApplication<App>;
   let db: ScratchDatabase;
-  const originalUrl = process.env.DATABASE_URL;
+  const originalUrl = process.env.APP_DATABASE_URL;
 
   beforeAll(async () => {
     // The app refuses to boot without the seeded reference data (§6.4).
     db = await createScratchDatabase();
-    process.env.DATABASE_URL = db.appUrl;
+    process.env.APP_DATABASE_URL = db.appUrl;
     process.env.STATIC_ROOT = 'test/fixtures/public';
 
     app = await NestFactory.create(AppModule, { logger: false });
@@ -34,7 +34,7 @@ describe('AppModule (e2e)', () => {
 
   afterAll(async () => {
     await app.close();
-    process.env.DATABASE_URL = originalUrl;
+    process.env.APP_DATABASE_URL = originalUrl;
     delete process.env.STATIC_ROOT;
     await db.drop();
   });

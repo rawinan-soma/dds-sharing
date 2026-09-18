@@ -22,13 +22,19 @@ export class ProvinceLookup implements OnModuleInit {
   constructor(@Inject(PG_POOL) private readonly pool: Pool) {}
 
   async onModuleInit() {
-    const rows = await drizzle(this.pool).select().from(province);
+    try {
+      const rows = await drizzle(this.pool).select().from(province);
 
-    this.tableChecksum = assertProvinceSeed(rows, {
-      rowCount: PROVINCE_SEED_ROW_COUNT,
-      checksum: PROVINCE_SEED_CHECKSUM,
-    });
-    this.rows = rows;
+      this.tableChecksum = assertProvinceSeed(rows, {
+        rowCount: PROVINCE_SEED_ROW_COUNT,
+        checksum: PROVINCE_SEED_CHECKSUM,
+      });
+      this.rows = rows;
+    } catch (error) {
+      // A failed boot must exit now, not after the pool's idle timeout.
+      await this.pool.end();
+      throw error;
+    }
   }
 
   get provinces(): readonly ProvinceRow[] {
@@ -38,9 +44,5 @@ export class ProvinceLookup implements OnModuleInit {
   /** Joins the job-completion event, so two hashes for one ask can be explained. */
   get checksum(): string {
     return this.tableChecksum;
-  }
-
-  healthRegionOf(provinceId: string): number | undefined {
-    return this.rows.find((r) => r.provinceId === provinceId)?.healthRegion;
   }
 }

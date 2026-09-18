@@ -5,6 +5,7 @@ import { NestFactory } from '@nestjs/core';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { AppModule } from '../src/app.module';
+import { PROVINCE_SEED_MIGRATION } from '../src/reference/province-seed';
 import { PROVINCE_SEED_CHECKSUM } from '../src/reference/province-seed.generated';
 import { ProvinceLookup } from '../src/reference/province-lookup.service';
 import {
@@ -12,14 +13,11 @@ import {
   type ScratchDatabase,
 } from './support/scratch-database';
 
-const SEED_MIGRATION = join(
-  __dirname,
-  '../src/db/migrations/0002_seed_province.sql',
-);
+const SEED_MIGRATION = join(__dirname, '..', PROVINCE_SEED_MIGRATION);
 
 describe('reference data at boot (e2e)', () => {
   let db: ScratchDatabase;
-  const originalUrl = process.env.DATABASE_URL;
+  const originalUrl = process.env.APP_DATABASE_URL;
 
   beforeAll(async () => {
     db = await createScratchDatabase();
@@ -27,14 +25,14 @@ describe('reference data at boot (e2e)', () => {
   });
 
   afterAll(async () => {
-    process.env.DATABASE_URL = originalUrl;
+    process.env.APP_DATABASE_URL = originalUrl;
     delete process.env.STATIC_ROOT;
     await db.drop();
   });
 
   // Boot as the application does: through DATABASE_URL, as the read-only role.
   const boot = async (): Promise<INestApplication> => {
-    process.env.DATABASE_URL = db.appUrl;
+    process.env.APP_DATABASE_URL = db.appUrl;
     const app = await NestFactory.create(AppModule, { logger: false });
     await app.init();
     return app;
@@ -53,7 +51,6 @@ describe('reference data at boot (e2e)', () => {
 
     expect(lookup.provinces).toHaveLength(77);
     expect(lookup.checksum).toBe(PROVINCE_SEED_CHECKSUM);
-    expect(lookup.healthRegionOf('10')).toBe(13);
     await app.close();
   });
 
