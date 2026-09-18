@@ -16,8 +16,8 @@ the ticket that decided it.
 **Vocabulary is not defined here.** [`CONTEXT.md`](../CONTEXT.md) is the glossary
 and is canonical. Capitalised terms — Requester, Reviewer, Request, Decision,
 Extract, Extract archive, Download token, Attempt, Delivery, Probe, Alert,
-Re-run, Snapshot, Redaction, Disease group, Report code — mean exactly what it
-says they mean. Read it first.
+Re-run, Snapshot, Disease group, Report code — mean exactly what it says they
+mean. Read it first.
 
 ---
 
@@ -1172,8 +1172,8 @@ Interrupted transfers are covered by range requests (§16.2) instead.
 **The verification path is a command on the Docker host, not a written
 procedure.** It takes a file — an Extract archive or a bare CSV, whichever
 arrived — and reports which Request it came from, or reports no match. Same route
-as the Redaction command and the Probe report. A procedure performed by hand is
-how a wrong answer gets made under pressure.
+as the other host commands. A procedure performed by hand is how a wrong answer
+gets made under pressure.
 
 > ⚠️ **The command prints the asymmetry, so nobody has to remember it: a match is
 > strong evidence; a mismatch is nearly none.** This audience opens CSVs in Excel,
@@ -1665,8 +1665,9 @@ finished Requests leave the surface.
 - **A terminal Request shows the record, never the contact fields**
   ([ADR 0015](adr/0015-the-record-is-contact-free-the-screen-is-not.md)): the ask,
   the Snapshot's `workplace` and row count, the Decision and its Reviewer, each
-  Extract and its link state, and the event trail. Contact details may already
-  have been removed on request, and the lookup must not become the way round that.
+  Extract and its link state, and the event trail. Contact details leave the
+  Reviewer surface when a Request stops being in flight, and the lookup must not
+  become the way round that.
 - **A lookup writes no event.** It is a read, and no read is an event anywhere in
   the catalogue. Decided with the repo owner 2026-09-18; §12.4 is unchanged.
 
@@ -1847,11 +1848,10 @@ fields (IP, user agent) that only the short-lived readers use. Accepted openly.
   `note_amended` event rather than an edit. A correctable audit record is not an
   audit record.
 - **Enforced by database roles, not by convention.** The application role holds
-  `INSERT`/`SELECT` on the event tables and **`DELETE` nowhere**. The Redaction
-  command connects as a separate admin role. This is the one arrangement under
-  which *"the running application cannot rewrite history"* is a fact rather than a
-  promise — and it matches the bar already set for privileged operations: shell
-  access to the Docker host. Convention-only was rejected explicitly: the record
+  `INSERT`/`SELECT` on the event tables and **`DELETE` nowhere**, and no role
+  holds `UPDATE` on the event tables or on `request_contact`. This is the one
+  arrangement under which *"the running application cannot rewrite history"* is a
+  fact rather than a promise. Convention-only was rejected explicitly: the record
   is permanent, so a bad `UPDATE` in year three would be undetectable.
 - **Discriminated actor.** `actor_type ∈ requester | reviewer | system |
   anonymous`. `reviewer_id` is set only for `reviewer`; IP and user agent only for
@@ -1935,7 +1935,6 @@ Snapshot exists to make the Decision legible on its own years later.
 | `rejected` | `reviewer` | carries the Snapshot and the **mandatory internal note** |
 | `note_amended` | `reviewer` | cites the event it corrects |
 | `expired` | `system` | `{notified_at, business_hours_elapsed, reviewer_accounts_active, decision_attempted_and_refused}` |
-| `contact_redacted` | `system` | written by the admin-role Redaction command |
 
 *Extraction lifecycle* — **enumerated explicitly here**, because it was previously
 described only in prose while a mail kind already pointed at it. An implementer
@@ -2064,22 +2063,7 @@ consent.
 > Extract is destroyed after 72 hours; the officer's telephone number is
 > kept for ever.***
 
-### 12.8 Redaction — a courtesy, bounded, and not a retention rule
-
-A **manual command on the Docker host**, on the same route as Reviewer seeding.
-It connects as the admin role, clears one `request_contact` row, and **writes a
-`contact_redacted` event** so the record shows that the trace was deliberately
-broken, when, and by whom.
-
-- Available to a **Requester**, for `request_contact` **only**.
-- **Never** a Decision, **never** a Snapshot, **never** `reviewer_event`.
-- **Never while a Request is in flight** — the contact fields are how the Extract
-  is delivered and how a lapse is chased.
-- **A Reviewer can never be redacted at all.** Their name on a release *is* the
-  accountability record.
-
-**It has no automatic trigger and the spec must never describe it as a retention
-rule.**
+### 12.8 Removed — see [ADR 0019](adr/0019-a-requesters-contact-details-are-never-removed.md).
 
 ### 12.9 Where the two populations are told
 
@@ -2087,11 +2071,10 @@ A rule nobody hears is a compliance artefact, not a policy.
 
 - **Requester — at submit.** One Thai sentence — `requester_retention_notice` in
   the copy catalogue (§16.3) — beside the email-typo warning, above the form and
-  not in a footer. It carries four things:
+  not in a footer. It carries three things:
   **what** is kept (contact details and the record of the Request), that it is
-  kept **indefinitely**, **why** (audit and traceability of data releases), and
-  that **redaction can be requested by phone**. Naming the reason is what makes it
-  read as a policy rather than a leak.
+  kept **indefinitely**, and **why** (audit and traceability of data releases).
+  Naming the reason is what makes it read as a policy rather than a leak.
 - ⚠️ **Reviewer — at seeding and at first login, NOT in this specification.** Four
   separate decisions deferred this to "the spec states it plainly", and **the spec
   is read by implementers, not by Reviewers** — who never see a submit form and so
@@ -2706,8 +2689,9 @@ judge.**
 - The **province seed migration**, generated from `docs/provinces.csv`.
 - The **Thai holiday config file**, reviewed annually.
 - **Host CLI commands**: Reviewer seeding / password reset / TOTP re-enrolment /
-  deactivation (§17.5), Redaction (§12.8), the fingerprint verification command
-  (§8.4), and the upstream traffic report (§13.6).
+  deactivation (§17.5), the fingerprint verification command (§8.4), and the
+  upstream traffic report (§13.6). None of them records who ran it
+  ([ADR 0020](adr/0020-a-host-command-does-not-record-who-ran-it.md)).
 - **A fake upstream dev harness.** Out of this spec's scope as a decision, but
   required to test §7.6 at all: it must expose a **500 mid-loop, a slow page, a
   truncated page, an auth expiry mid-job, and a `total_items` that shifts between
@@ -2828,9 +2812,12 @@ failed; the screen does not.**
 > breaking. A minimum living only in prose is gone on the day it is needed.
 
 **Deactivation is `deactivated_at`, never a row deletion.** It invalidates live
-sessions immediately (a Postgres query) and is itself a recorded event naming the
-operator who ran it. **The display name stays on every Decision, permanently** —
-`display_name` must be the person's real name, and the CLI prompts for it
+sessions immediately (a Postgres query) and is itself a recorded event — recording
+what happened to the Reviewer, never who ran the command
+([ADR 0020](adr/0020-a-host-command-does-not-record-who-ran-it.md)). Shell access
+to the Docker host is the bar; no argument, environment variable or host login
+name is read or recorded. **The display name stays on every Decision, permanently**
+— `display_name` must be the person's real name, and the CLI prompts for it
 deliberately rather than deriving it from the username, because it is unerasable.
 
 **`reviewer.email` is for queue notification only** — never for password reset.

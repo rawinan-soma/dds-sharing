@@ -127,7 +127,3 @@ The copy of what a Reviewer had on screen, carried by their Decision — the Dis
 **Extract fingerprint**:
 The description of a released Extract that outlives the Extract itself — row count, column count, the size of the Extract, the size of its Extract archive, and a SHA-256 of the Extract's bytes as written. It answers what was released, where the record alone would only say that a release happened. The rows are never kept. It attests **content, not provenance**: two Requests asking the same question of the same data release identical bytes and so share a fingerprint, and every empty Extract shares one — so a match narrows to a set of Requests, never to one. The checksums of the reference data that produced the Extract are recorded beside it, never inside it: they describe what made the Extract, not what was released.
 _Avoid_: Manifest, receipt
-
-**Redaction**:
-The manual removal of one Requester's contact details, performed on the host by a named operator. It is a courtesy to someone who asks, never an automatic expiry, and it is itself recorded as a Request event. It reaches the contact details and nothing else — never a Decision, never a Snapshot, never a Reviewer — and it is unavailable while the Request is still in flight. Nothing else in the record is ever removed.
-_Avoid_: Erasure, purge, deletion

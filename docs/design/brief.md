@@ -89,8 +89,7 @@ block → the three parameters → contact fields → submit.
   will: it is an input to a human's judgement, never a credential.
 - **Two notices that are not a footer** — the email address is where the link
   goes and a typo tells nobody; contact details and the record are kept
-  **indefinitely**, why, and that removal can be requested by telephone once the
-  Request is finished.
+  **indefinitely**, and why.
 
 **Never show the Requester a row count.** Hard rule, no exception.
 
@@ -243,7 +242,7 @@ Every design must give each one a home:
 | `requester_span_cap_notice` | the 365-day cap, attributed to upstream |
 | `requester_epidem_area_label` | the survey-address trap, at the point of choosing |
 | `requester_email_warning` | the only place a Requester is told a typo will not be caught |
-| `requester_retention_notice` | what is kept, indefinitely, why, and that removal is by telephone |
+| `requester_retention_notice` | what is kept, indefinitely, and why |
 
 ## 6. Audience and conditions
 
