@@ -1638,9 +1638,8 @@ finished Requests leave the surface.
   the Snapshot's `workplace` and row count, the Decision and its Reviewer, each
   Extract and its link state, and the event trail. Contact details may already
   have been removed on request, and the lookup must not become the way round that.
-- **Whether a lookup writes an event is open.** A read is not currently an event,
-  and a terminal lookup exposes no personal data beyond `workplace`. Settled in the
-  ticket that builds it.
+- **A lookup writes no event.** It is a read, and no read is an event anywhere in
+  the catalogue. Decided with the repo owner 2026-09-18; §12.4 is unchanged.
 
 ---
 
