@@ -1577,6 +1577,71 @@ the entire remedy, and it is load-bearing.
 resend is a new Decision, because neither can change anything a Decision was
 about.)*
 
+### 10.9 The in-flight list
+
+*Restored 2026-09-18 from #74, which states it in full. This section existed
+before the repository was reverted and was cited by #74, ADR 0015 and ADR 0016
+while absent from `main`.*
+
+**In flight = approved, and not yet terminal.** Terminal is `collected`,
+`expired_uncollected`, or an extraction failure a Reviewer cleared as `abandoned`.
+Rejected and expired-undecided Requests are never in flight: nothing remains to be
+done to them, and they leave the queue at the Decision.
+
+**Membership is derived at read time, never stored.** No `in_flight` column and no
+entering or leaving events; the catalogue stays closed. A Request is on the list
+because of what is true about it, not because something wrote it there. **The
+definition of *terminal* lives in exactly one place in the code.**
+
+**It is everyone's Requests.** The approving Reviewer's name is on each row as
+accountability, not permission; any active Reviewer may act on any of them
+([ADR 0013](adr/0013-deactivating-a-reviewer-widens-their-alerts.md)).
+
+**The screen shows the five live contact fields**, read from the Request and never
+from the Snapshot, for as long as the Request is in flight
+([ADR 0015](adr/0015-the-record-is-contact-free-the-screen-is-not.md)).
+
+**Actions are gated by what is physically possible, not by policy:**
+
+| Extraction state | Row reads | Available |
+|---|---|---|
+| `queued`, `running` | *extracting — nothing to do until it finishes* | nothing |
+| `ready` | time left on the Download token | Re-run, resend |
+| `failed` | *extraction failed* | Re-run, and the Alert's clearing outcomes |
+
+Each row shows the wall-clock time left on the Download token. **Sort by submit
+order and nothing more urgent**: the Alert section is the only part of this surface
+allowed to shout. The list does not auto-refresh (§10.5). **An open Alert
+suppresses its Request's in-flight row** (§10.6), so a Request appears exactly once
+on the surface.
+
+A lapsed Download token ends the Request, and no Reviewer action revives it
+([ADR 0016](adr/0016-a-lapsed-download-token-ends-the-request.md)).
+
+### 10.10 Looking up a Request by its reference
+
+*Decided with the repo owner 2026-09-18.*
+
+**A Reviewer can find any Request, finished or not, by its exact reference number,
+and read it.** The confirmation, the collection page, the rejection email and the
+expiry page all tell a Requester to telephone and quote their reference; before
+this, the Reviewer who answered could not find a finished Request, because
+finished Requests leave the surface.
+
+- **Exact reference only.** Not a search by name, email, workplace or telephone.
+  §10.2 declined prior-Request history on the review screen, and a search by person
+  is that history by another route.
+- **Read-only.** A lookup carries no actions. A Request that is still on the
+  surface opens in its zone as usual; a terminal one opens as a record.
+- **A terminal Request shows the record, never the contact fields**
+  ([ADR 0015](adr/0015-the-record-is-contact-free-the-screen-is-not.md)): the ask,
+  the Snapshot's `workplace` and row count, the Decision and its Reviewer, each
+  Extract and its link state, and the event trail. Contact details may already
+  have been removed on request, and the lookup must not become the way round that.
+- **Whether a lookup writes an event is open.** A read is not currently an event,
+  and a terminal lookup exposes no personal data beyond `workplace`. Settled in the
+  ticket that builds it.
+
 ---
 
 ## 11. Email

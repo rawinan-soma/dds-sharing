@@ -325,6 +325,8 @@ the Angular build starts; it is not in this repository yet.
 | 10. สถานะบนแบบฟอร์ม | Over-365 refusal, province mode, incomplete submit | #63 |
 | 11. สถานะของแฟ้มคำขอ | Probe pending/failed, approve confirm, reject note | #65, #66 |
 | 12. คิวว่างและเซสชัน | Both empty-queue states, session warning | #64, #65, #73 |
+| 13. ค้นหาคำขอที่สิ้นสุดแล้ว | Read-only lookup by reference | spec §10.10 |
+| 1b. ตรวจสอบคำขอก่อนส่ง | Check before submit | #63 |
 
 **The canvas is built in Thai.** The layout risk this design exists to retire is
 Thai text length, and it cannot be tested in English. The copy catalogue is still

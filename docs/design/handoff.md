@@ -238,6 +238,24 @@ reads a greyed button as a broken screen.
 
 ---
 
+## 13. Looking up a finished request (spec §10.10)
+
+A search field in the sidebar header, above refresh: **ค้นหาด้วยเลขที่คำขอ**, exact
+reference only. A Request still on the surface opens in its zone; a terminal one
+opens read-only in the dossier:
+
+- state tag in `inert` and **อ่านอย่างเดียว** on the header line;
+- an `inert-wash` notice that the request has ended and nothing more can be done;
+- the ask and the Snapshot's `workplace` beside the Decision, its Reviewer and the
+  row count at the time;
+- a files table (run, archive name, link state, attempts) and the event trail,
+  newest first.
+
+**Never the contact fields** for a terminal Request (ADR 0015). **Never a search by
+person** — that is the prior-Request history §10.2 declined.
+
+---
+
 ## 7–8. Collection and expiry (#71)
 
 ### Collection, served by NestJS
