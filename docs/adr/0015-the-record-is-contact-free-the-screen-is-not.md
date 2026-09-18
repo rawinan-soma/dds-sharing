@@ -9,6 +9,9 @@ contact details are never removed on request, so the first Consequence below now
 describes only when they leave the Reviewer's screen, and the removal request the
 alternatives mention can no longer be made. The decision below is unchanged.*
 
+*Amended (ticket #61): the `mail_sent` event carries the address it was sent to,
+as spec §12.4 always said. The Decision section now names that one exception.*
+
 Accepted. Clarifies §12.3 and §10.9. **Reconstructed**: an ADR of this number and
 title was written earlier and was lost when the repository was reverted to its
 initial state; this is written fresh from the rules the spec already carries, not
@@ -47,7 +50,11 @@ flight.**
 - Any active Reviewer sees them, not only the approving one. Alerts widen on
   deactivation ([ADR 0013](0013-deactivating-a-reviewer-widens-their-alerts.md))
   and a number only one person can read rebuilds the failure that ADR removed.
-- They are read, never copied. No Decision, Snapshot or event carries them.
+- They are read, never copied. No Decision or Snapshot carries them, and no event
+  does either, with one exception: **`mail_sent` carries `to`** (spec §12.4), the
+  address a mail was sent to. That is the answer to "where did this Delivery go?",
+  which the record must give years later; it is one address per mail, not the five
+  contact fields.
 
 ## Consequences
 
