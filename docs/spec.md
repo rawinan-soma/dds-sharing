@@ -2420,6 +2420,15 @@ form until the bundle hydrates.
 **One build, not two.** Separating bundles is not an access control, and lazy
 loading already keeps the Reviewer code out of the first download.
 
+**Screen widths** (decided with the repo owner 2026-09-18). The public surface —
+the form, the check page, confirmation, collection and expiry — works down to a
+360px phone, because a Requester in the field may have nothing else and the
+Delivery email is usually opened on one. **The Reviewer surface is desktop-only,
+from 1024px.** Below that it shows one sentence asking for a computer. A Decision
+puts the Reviewer's name on a release permanently and rests on a telephone call
+made while reading the dossier; a phone between meetings is the setting where that
+becomes a rubber stamp.
+
 ### 16.2 Routes
 
 | Path | Served by | Note |

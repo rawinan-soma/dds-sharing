@@ -257,5 +257,8 @@
   "reviewer_state_rejected": "Not approved",
   "reviewer_state_abandoned": "Abandoned",
   "reviewer_actor_system": "System",
-  "reviewer_actor_requester": "Requester"
+  "reviewer_actor_requester": "Requester",
+  "reviewer_narrow_title": "Please open this page on a computer",
+  "reviewer_narrow_detail": "Reviewing a request needs a screen at least 1024 pixels wide, so the queue and the request can be seen together.",
+  "reviewer_narrow_desk": "An approval puts your name on the release permanently, so it belongs at a desk, with a telephone free to call the requester."
 }

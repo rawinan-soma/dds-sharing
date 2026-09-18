@@ -257,5 +257,8 @@
   "reviewer_state_rejected": "ไม่อนุมัติ",
   "reviewer_state_abandoned": "ยุติเรื่อง",
   "reviewer_actor_system": "ระบบ",
-  "reviewer_actor_requester": "ผู้ขอ"
+  "reviewer_actor_requester": "ผู้ขอ",
+  "reviewer_narrow_title": "กรุณาเปิดหน้านี้บนคอมพิวเตอร์",
+  "reviewer_narrow_detail": "การพิจารณาคำขอต้องใช้หน้าจอกว้างอย่างน้อย 1024 พิกเซล เพื่อให้เห็นคิวและรายละเอียดคำขอพร้อมกัน",
+  "reviewer_narrow_desk": "การอนุมัติจะติดชื่อของท่านไว้ถาวร จึงควรทำที่โต๊ะทำงาน โดยมีโทรศัพท์ว่างไว้สำหรับโทรยืนยันตัวตนผู้ขอ"
 }

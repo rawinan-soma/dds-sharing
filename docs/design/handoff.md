@@ -299,19 +299,34 @@ table. The canvas shows them two-up for review only.
 
 ## Responsive
 
-**Not drawn. Specified here as intent.** The public surface is one column
-already and degrades naturally; the Reviewer surface is desktop-first and is the
-real work.
+Decided with the repo owner 2026-09-18 (spec §16.1).
 
-| Breakpoint | Public | Reviewer |
-|---|---|---|
-| ≥1200 | as drawn | as drawn, split |
-| 1024–1199 | as drawn | sidebar to 320, dossier ledger stays two-column |
-| 768–1023 | two-column blocks stack: get/won't-get, disease groups, contact pairs | **split collapses to list-then-detail** — the queue is a screen, a request is a screen, with a back control. Not a drawer |
-| <768 | 16px gutters, date fields stack, map centred above its panel, no horizontal scroll | same as above; the dossier strip stacks to three rows |
+**Public surface: down to 360px.** Drawn at 390 as screens **1m** (form) and **7m**
+(collection). The rules:
 
-The map keeps its 262×296 intrinsic size and centres; it never scales below that,
-because 52×40 cells are already near the 44px touch minimum.
+- 16px side gutters (`px-4`); page title drops to `text-2xl`.
+- Every two-column block stacks to one: included/excluded, the two notices, the
+  Disease groups, the contact fields.
+- The two date fields sit side by side at 163px each; the day count wraps below.
+- The map keeps its 262×296 size and sits above its panel. It never scales down:
+  52×40 cells are already near the 44px touch minimum.
+- The primary button goes full width on the collection page, where it is the only
+  thing a thumb needs to reach.
+- A long archive name moves below its label rather than squeezing beside it.
+- The check page, confirmation, duplicate and expiry pages are single-column prose
+  already; they need only the gutter and title changes.
+
+**Reviewer surface: 1024px and up, nothing below.** Under 1024 every Reviewer route
+shows screen **R**: one heading, one sentence on why, and nothing else — no queue,
+no partial layout. There is no tablet layout to build or test.
+
+### The Disease group order is the markup order
+
+On desktop the ten groups show as two columns, 1–5 and 6–10. **The markup must
+still run 1 to 10**, with the columns made by `grid-flow-col grid-rows-5`, not by
+interleaving the elements. Interleaved markup looks right at 1120px and is wrong
+everywhere else: it reads 1, 6, 2, 7… to a keyboard, to a screen reader, and on a
+phone. The design had this bug until 2026-09-18.
 
 ---
 
