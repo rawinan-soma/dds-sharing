@@ -19,6 +19,7 @@
     "test:cov": "vitest run --coverage",
     "test:e2e": "vitest run --config ./test/vitest-e2e.config.ts",
     "db:migrate": "node dist/db/migrate.js",
+    "db:generate-province-seed": "tsx scripts/generate-province-seed.ts",
     "fake-upstream": "tsx test/fake-upstream/main.ts"
   },
   "dependencies": {
