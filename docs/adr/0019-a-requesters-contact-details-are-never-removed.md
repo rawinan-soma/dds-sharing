@@ -4,6 +4,13 @@ Date: 2026-09-14
 
 ## Status
 
+*Corrected for #88: the first Consequence says no role holds `UPDATE` on
+`request`. That overstates it. The Request row is a projection that the
+application keeps current (§12.2), so it needs `UPDATE`. What holds is that no
+role holds `UPDATE` on the event tables or on `request_contact`, and no role holds
+`DELETE` on any of them. The spec and SRS state it that way. The decision below
+is unchanged.*
+
 Accepted. Removes the Redaction that
 [ADR 0004](0004-personal-data-is-retained-indefinitely.md) kept as a bounded
 courtesy, and the removal on request that
