@@ -28,8 +28,8 @@
   --failed-wash: #f6e6e3;
   --inert: #5a6862;
 
-  /* The design's face is IBM Plex Sans Thai. It is not loaded yet (see the
-     font note in the ticket), so this falls back to the system Thai face. */
+  /* Self-hosted through @fontsource (weights 400 and 600 only), loaded by the
+     `styles` array in angular.json: no request leaves the ministry network. */
   --font-sans: 'IBM Plex Sans Thai', 'IBM Plex Sans', system-ui, sans-serif;
 }
 
