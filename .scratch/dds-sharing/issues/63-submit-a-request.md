@@ -1,6 +1,6 @@
 # Submit a Request
 
-Status: ready-for-agent
+Status: closed
 Source: https://github.com/rawinan-soma/dds-sharing/issues/63 (migrated 2026-09-21)
 
 ## What to build
@@ -100,3 +100,7 @@ The de-identification block, the two notices and the gate notice all have a home
 **Copy comes from the catalogue, not from templates.** Every string is keyed in `messages/en.json` and `messages/th.json`. The English is authored and is the source (ADR 0010); the Thai in the catalogue and on the design canvas is an agent-written layout proxy, replaced by #96. Build against the keys, and do not hand-write a sentence into a template.
 
 Treat the design as the source of **visual layout only**. Structure, ordering and copy are settled by this ticket and the spec, and they outrank the design wherever they disagree.
+
+**rawinan-soma** — 2026-09-21
+
+Merged in #104 (520db970a60e6b9fb2b59804cb25c10bb3a052a4).
