@@ -61,6 +61,13 @@
                     </button>
                   </li>
                 }
+                @if (problems().reversed) {
+                  <li>
+                    <button type="button" (click)="jumpTo('to')">
+                      {{ m.error_range_reversed() }}
+                    </button>
+                  </li>
+                }
               </ul>
             }
           </div>
@@ -166,6 +173,11 @@
                   </p>
                 }
               </div>
+              @if (problems().reversed) {
+                <div class="failed-rule" id="range-error">
+                  <p>{{ m.error_range_reversed() }}</p>
+                </div>
+              }
               @if (problems().spanTooLong) {
                 <div class="failed-rule" id="span-error">
                   <p>

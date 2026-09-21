@@ -36,7 +36,8 @@ export class RequestsController {
       });
     }
 
-    const ip = req.ip ?? req.socket.remoteAddress;
+    // One client is one IP, whichever family the socket reported it in.
+    const ip = (req.ip ?? req.socket.remoteAddress)?.replace(/^::ffff:/i, '');
     if (!ip) {
       throw new BadRequestException({
         code: 'no_origin',

@@ -1,4 +1,4 @@
-import { exceedsCap } from './span-cap';
+import { dayCount, exceedsCap } from './span-cap';
 
 // The form's state and the rules that read it, kept out of the component so they
 // are testable without a DOM. Nothing here is validated for format: the contact
@@ -69,6 +69,8 @@ export interface Problems {
   missing: FieldKey[];
   /** Both dates are present and the range is over 365 days. */
   spanTooLong: boolean;
+  /** Both dates are present and `to` is before `from`. */
+  reversed: boolean;
 }
 
 export function problemsOf(form: FormState): Problems {
@@ -81,7 +83,12 @@ export function problemsOf(form: FormState): Problems {
   for (const key of CONTACT_KEYS) {
     if (form[key].trim() === '') missing.push(key);
   }
-  return { missing, spanTooLong: exceedsCap(form.from, form.to) };
+  return {
+    missing,
+    spanTooLong: exceedsCap(form.from, form.to),
+    reversed:
+      Boolean(form.from && form.to) && dayCount(form.from, form.to) === null,
+  };
 }
 
 export interface SubmissionBody {

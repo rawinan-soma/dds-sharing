@@ -1,4 +1,4 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, ElementRef, OnInit, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import * as m from '../../paraglide/messages.js';
 import { formatDay } from './format-day';
@@ -65,6 +65,7 @@ export class SubmittedPage implements OnInit {
   protected readonly formatDay = formatDay;
   protected readonly submission = inject(SubmissionState).current;
   private readonly router = inject(Router);
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
 
   ngOnInit() {
     if (!this.submission())

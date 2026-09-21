@@ -111,8 +111,8 @@ export function planRequest(body: unknown, { provinces }: Context): PlanResult {
   let areaProvinces: string[] = [];
   if (body.area !== undefined && body.area !== null) {
     const area = isRecord(body.area) ? body.area : undefined;
-    const hasProvince = area?.provinceId !== undefined;
-    const hasRegion = area?.region !== undefined;
+    const hasProvince = area?.provinceId != null;
+    const hasRegion = area?.region != null;
     if (!area) {
       fail('area', 'invalid', 'Malformed area selection.');
     } else if (hasProvince && hasRegion) {

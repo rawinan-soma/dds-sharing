@@ -28,7 +28,11 @@ const complete: FormState = {
 
 describe('problemsOf', () => {
   it('finds nothing wrong with a complete form', () => {
-    expect(problemsOf(complete)).toEqual({ missing: [], spanTooLong: false });
+    expect(problemsOf(complete)).toEqual({
+      missing: [],
+      spanTooLong: false,
+      reversed: false,
+    });
   });
 
   it('names every empty field, in page order, when nothing is filled in', () => {
@@ -54,7 +58,14 @@ describe('problemsOf', () => {
     expect(problemsOf({ ...complete, to: '2026-01-02' })).toEqual({
       missing: [],
       spanTooLong: true,
+      reversed: false,
     });
+  });
+
+  it('flags a `to` before `from`, so the check page is never reached with it', () => {
+    expect(
+      problemsOf({ ...complete, from: '2025-02-01', to: '2025-01-01' }),
+    ).toEqual({ missing: [], spanTooLong: false, reversed: true });
   });
 
   it('needs a province when the area is one province, and a region when it is a region', () => {

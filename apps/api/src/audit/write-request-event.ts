@@ -17,20 +17,19 @@ export async function writeRequestEvent(
   event: RequestEvent,
 ): Promise<void> {
   const { actor } = event;
+  // Only the unauthenticated kinds carry a network origin (§12.2).
+  const origin =
+    actor.actorType === 'requester' || actor.actorType === 'anonymous'
+      ? actor
+      : null;
   await db.insert(requestEvent).values({
     requestId: event.requestId,
     type: event.type,
     occurredAt: event.occurredAt,
     actorType: actor.actorType,
     reviewerId: actor.actorType === 'reviewer' ? actor.reviewerId : null,
-    ip:
-      actor.actorType === 'requester' || actor.actorType === 'anonymous'
-        ? actor.ip
-        : null,
-    userAgent:
-      actor.actorType === 'requester' || actor.actorType === 'anonymous'
-        ? actor.userAgent
-        : null,
+    ip: origin?.ip ?? null,
+    userAgent: origin?.userAgent ?? null,
     payload: event.payload,
   });
 }

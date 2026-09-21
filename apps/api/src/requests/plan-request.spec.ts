@@ -69,6 +69,14 @@ describe('planRequest', () => {
       expect(result.provinces).toEqual(['50']);
     });
 
+    it('ignores a null member of the area rather than calling it a conflict', () => {
+      const result = accepted(
+        plan({ ...valid, area: { provinceId: null, region: 1 } }),
+      );
+
+      expect(result.provinces).toEqual(['50', '57', '58']);
+    });
+
     it('treats an absent, null or empty area as national: no provinces', () => {
       for (const area of [undefined, null, {}]) {
         expect(accepted(plan({ ...valid, area })).provinces).toEqual([]);
