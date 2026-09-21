@@ -29,6 +29,13 @@
       "when": 1789748769207,
       "tag": "0003_seed_province",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1789982600080,
+      "tag": "0004_reviewer_accounts",
+      "breakpoints": true
     }
   ]
 }

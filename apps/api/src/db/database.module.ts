@@ -6,11 +6,16 @@ import {
   Module,
   OnApplicationShutdown,
 } from '@nestjs/common';
+import { NodePgDatabase, drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 
 const logger = new Logger('Database');
 
 export const PG_POOL = Symbol('PG_POOL');
+export const DB = Symbol('DB');
+
+/** The Drizzle handle over the application pool (never the owner's). */
+export type Db = NodePgDatabase;
 
 @Injectable()
 class PoolShutdown implements OnApplicationShutdown {
@@ -39,8 +44,13 @@ class PoolShutdown implements OnApplicationShutdown {
         return pool;
       },
     },
+    {
+      provide: DB,
+      inject: [PG_POOL],
+      useFactory: (pool: Pool): Db => drizzle(pool),
+    },
     PoolShutdown,
   ],
-  exports: [PG_POOL],
+  exports: [PG_POOL, DB],
 })
 export class DatabaseModule {}

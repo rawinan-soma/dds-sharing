@@ -85,6 +85,14 @@ describe('audit spine (database)', () => {
       migrationsFolder: join(__dirname, '../src/db/migrations'),
     });
 
+    // The event tables' reviewer_id is a real foreign key (§12.2): a
+    // `reviewer` actor names a Reviewer that exists.
+    await owner.query(
+      `INSERT INTO reviewer (id, username, display_name, email, password_hash, totp_secret)
+       VALUES ($1, 'audit.reviewer', 'Audit Reviewer', 'audit@example.go.th', 'x', 'x')`,
+      [REVIEWER_ID],
+    );
+
     // A second connection that acts as the application role. SET ROLE makes
     // every statement on it run under that role's privileges, so a refusal is
     // the database's, not the application's.

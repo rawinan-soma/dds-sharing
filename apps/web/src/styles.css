@@ -1,1 +1,161 @@
-/* You can add global styles to this file, and also import other style files */
+/*
+  DDS Sharing — the surveillance map. Tokens from docs/design/system.md.
+
+  The page is map ground, inert things are land, and the single saturated
+  colour appears only where a person has chosen something or where the primary
+  action is. Solid primary means "you chose this"; nothing else is green.
+  No radius tokens and no shadows: the system is square, and depth is carried
+  by hairlines and by `card` against `background`.
+
+  The typeface is named but not fetched: the design file loads IBM Plex Sans
+  Thai from Google Fonts, and whether this service may call a third party on
+  every page load is not decided here.
+*/
+:root {
+  --background: #eef1ee;
+  --card: #f7f9f7;
+  --foreground: #16241e;
+  --muted-foreground: #556159;
+  --border: #c8d0c9;
+  --border-strong: #16241e;
+
+  --land: #d9e0da;
+  --land-strong: #c2ccc4;
+
+  --primary: #0c6b63;
+  --primary-hover: #0a5751;
+  --primary-wash: #dceceb;
+  --primary-foreground: #f7f9f7;
+
+  --pending: #7f5300;
+  --pending-wash: #f6eedc;
+  --ready: #2b5b86;
+  --ready-wash: #e4edf4;
+  --failed: #8c2b20;
+  --failed-wash: #f6e6e3;
+
+  --font-sans: 'IBM Plex Sans Thai', 'IBM Plex Sans', system-ui, sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-family: var(--font-sans);
+}
+
+body {
+  margin: 0;
+  background-color: var(--background);
+  color: var(--foreground);
+  font-size: 15px;
+  line-height: 1.65;
+}
+
+/* Thai sets taller than Latin. Headings need the room back. */
+h1,
+h2,
+h3 {
+  line-height: 1.35;
+  margin: 0;
+}
+
+/* Every figure in this service is read against another figure. */
+time,
+data,
+.figure {
+  font-variant-numeric: tabular-nums;
+}
+
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* Button: three variants, two sizes, nothing else (system.md). */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.5rem 1.25rem;
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+  background: transparent;
+  color: var(--foreground);
+  border: 1px solid var(--border-strong);
+  border-radius: 0;
+  transition: background-color 0.1s;
+}
+.btn-lg {
+  padding: 0.75rem 2rem;
+  font-size: 1rem;
+}
+.btn-full {
+  width: 100%;
+}
+.btn:hover {
+  background: var(--land);
+}
+.btn:active {
+  background: var(--land-strong);
+}
+.btn-primary {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  border-color: var(--primary);
+  font-weight: 600;
+}
+.btn-primary:hover,
+.btn-primary:active {
+  background: var(--primary-hover);
+}
+/* Framed in muted-foreground so its only boundary meets 3:1 (WCAG 1.4.11). */
+.btn-quiet {
+  border-color: var(--muted-foreground);
+  color: var(--muted-foreground);
+}
+.btn-quiet:hover {
+  color: var(--foreground);
+}
+.btn[disabled],
+.btn[aria-busy='true'] {
+  cursor: not-allowed;
+}
+.btn[disabled] {
+  opacity: 0.45;
+}
+.btn[aria-busy='true'] {
+  cursor: progress;
+  background: var(--primary-hover);
+}
+
+/* The heaviest line on a form screen, on purpose: the fields are the work. */
+.field-box {
+  display: block;
+  width: 100%;
+  margin-top: 0.25rem;
+  padding: 0.5rem 0.75rem;
+  font: inherit;
+  color: var(--foreground);
+  background: var(--background);
+  border: 1px solid var(--border-strong);
+  border-radius: 0;
+}
+.field-box.code {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.3em;
+}
+.field-box[aria-invalid='true'] {
+  border-color: var(--failed);
+}

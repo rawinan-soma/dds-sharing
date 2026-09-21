@@ -1,8 +1,12 @@
 import { sql } from 'drizzle-orm';
 import {
   type AnyPgColumn,
+  bigint,
   bigserial,
+  boolean,
   char,
+  index,
+  integer,
   check,
   inet,
   jsonb,
@@ -35,6 +39,70 @@ export const reviewerEventType = pgEnum(
   REVIEWER_EVENT_TYPES,
 );
 
+// A Reviewer is never removed, only deactivated (`deactivated_at`): their
+// display name stays on every Decision. The application role holds no DELETE
+// here, and UPDATE only on the columns that legitimately change, so the name a
+// Decision carries cannot be rewritten either (grants: migration 0004).
+export const reviewer = pgTable(
+  'reviewer',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    username: text('username').notNull().unique(),
+    // The person's real name, prompted for at seeding. Unerasable by design.
+    displayName: text('display_name').notNull(),
+    // Queue notification only; never a password-reset address (§17.5).
+    email: text('email').notNull(),
+    passwordHash: text('password_hash').notNull(),
+    // True from seeding until the first self-service change.
+    mustChangePassword: boolean('must_change_password').notNull().default(true),
+    totpSecret: text('totp_secret').notNull(),
+    // Null until one code has confirmed enrolment. A seeded-but-unconfirmed
+    // account is inert.
+    totpConfirmedAt: timestamp('totp_confirmed_at', { withTimezone: true }),
+    // The newest TOTP step spent, so a used code cannot be replayed.
+    totpLastUsedStep: bigint('totp_last_used_step', { mode: 'number' }),
+    deactivatedAt: timestamp('deactivated_at', { withTimezone: true }),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    check(
+      'reviewer_username_format',
+      sql`${t.username} ~ '^[a-z0-9._-]{3,32}$'`,
+    ),
+  ],
+);
+
+// Operational state, genuinely deletable (spec §12.3, §15.4). In Postgres, not
+// Redis: deactivation is a query, and a flush cannot resurrect anything.
+export const reviewerSession = pgTable(
+  'reviewer_session',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    // SHA-256 of the cookie value; the cookie itself is never stored.
+    tokenHash: text('token_hash').notNull().unique(),
+    reviewerId: uuid('reviewer_id')
+      .notNull()
+      .references(() => reviewer.id),
+    // The 6-hour ceiling counts from here and is never extended.
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+    // The 1-hour idle window counts from here; user-initiated requests move it.
+    lastSeenAt: timestamp('last_seen_at', { withTimezone: true }).notNull(),
+  },
+  (t) => [index('reviewer_session_reviewer_id_idx').on(t.reviewerId)],
+);
+
+// Failed-sign-in backoff, one row per account and one per IP. No row ever locks
+// anything: it only says when the next attempt is allowed.
+export const loginThrottle = pgTable('login_throttle', {
+  // `account:<username>` or `ip:<address>`.
+  key: text('key').primaryKey(),
+  failures: integer('failures').notNull(),
+  nextAllowedAt: timestamp('next_allowed_at', { withTimezone: true }).notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull(),
+});
+
 // Timestamps are timestamptz, stored in UTC and rendered in ICT at the edge.
 // The sequence (`id`) answers "in what order"; the timestamps answer "when".
 // `occurred_at` is when the predicate became true (the legally meaningful one)
@@ -44,9 +112,8 @@ export const reviewerEventType = pgEnum(
 const eventColumns = () => ({
   id: bigserial('id', { mode: 'number' }).primaryKey(),
   actorType: actorType('actor_type').notNull(),
-  // Set only for `reviewer`. The reviewer table arrives with a later ticket,
-  // which adds the foreign key.
-  reviewerId: uuid('reviewer_id'),
+  // Set only for `reviewer`.
+  reviewerId: uuid('reviewer_id').references(() => reviewer.id),
   // Set only for the unauthenticated actor kinds.
   ip: inet('ip'),
   userAgent: text('user_agent'),
