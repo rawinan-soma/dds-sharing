@@ -6,7 +6,7 @@ import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
 const NO_PROCESS_ENV =
-  'Read configuration through a validated namespace in src/config (ADR 0018), not process.env.';
+  'Read configuration through a validated namespace in src/config (NFR-31), not process.env.';
 
 // Any way of reaching the environment directly: `process.env`, a destructured
 // `env`, or `env` imported from `node:process`.

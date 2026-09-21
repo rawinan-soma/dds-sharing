@@ -1,7 +1,7 @@
 # Production-shaped: the app, Postgres, Redis and MinIO. Every variable the app
 # needs is interpolated as ${VAR:?}, so Compose refuses to start when one is
 # unset, instead of the app booting on a guess. On the VM the values come from a
-# gitignored `.env` beside this file (see .env.example); ADR 0018.
+# gitignored `.env` beside this file (see .env.example); NFR-31.
 #
 # Development adds Mailpit, the fake upstream and dev values:
 #   docker compose -f docker-compose.yml -f compose.dev.yml up

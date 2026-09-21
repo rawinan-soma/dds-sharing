@@ -1,7 +1,7 @@
 import { isIP } from 'node:net';
 import Joi from 'joi';
 
-// The environment holds deployment facts, not policy (ADR 0018). Every variable
+// The environment holds deployment facts, not policy (NFR-31). Every variable
 // is required and has no default, except the three that name a safe choice.
 //
 // Nothing here may echo a value. A failure lists variable names and the rule
