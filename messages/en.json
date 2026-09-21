@@ -274,5 +274,6 @@
   "reviewer_rerun_loading": "Starting…",
   "reviewer_signin_loading": "Signing in…",
   "reviewer_lookup_loading": "Finding…",
-  "requester_area_region_13_caption": "Health region 13 is Bangkok"
+  "requester_area_region_13_caption": "Health region 13 is Bangkok",
+  "requester_submit_failed": "The request may not have been sent. Please wait a moment and try again. If this message comes back, call {telephone}."
 }

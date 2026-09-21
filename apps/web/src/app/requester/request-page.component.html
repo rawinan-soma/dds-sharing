@@ -1,0 +1,532 @@
+<div class="page" style="padding-bottom: 64px">
+  @switch (step()) {
+    @case ('form') {
+      <form novalidate (submit)="review($event)">
+        <div class="stack prose" style="padding: 32px 0 24px">
+          <h1 tabindex="-1">{{ m.requester_page_title() }}</h1>
+
+          <!-- 1. The approval gate, stated first. -->
+          <div class="stack">
+            <p data-notice="gate">{{ m.requester_gate_notice() }}</p>
+            <p>{{ m.requester_response_promise() }}</p>
+            <p class="pending-rule" data-notice="no-reason">
+              {{ m.requester_no_reason_notice() }}
+            </p>
+          </div>
+        </div>
+
+        <!-- 2. What the file contains: open, static, above the form. -->
+        <app-deid-block />
+
+        <!-- 3. The two notices. -->
+        <div class="two-up" style="padding: 24px 0">
+          <div class="notice" data-notice="email">
+            <h2 class="small">{{ m.requester_email_warning_heading() }}</h2>
+            <p>{{ m.requester_email_warning() }}</p>
+          </div>
+          <div class="notice" data-notice="retention">
+            <h2 class="small">{{ m.requester_retention_heading() }}</h2>
+            <p>{{ m.requester_retention_notice() }}</p>
+          </div>
+        </div>
+
+        @if (attempted() && (issueCount() > 0 || sendFailed())) {
+          <div class="summary" tabindex="-1" data-summary role="alert">
+            @if (sendFailed()) {
+              <p>
+                {{
+                  m.requester_submit_failed({ telephone: m.app_telephone() })
+                }}
+              </p>
+            }
+            @if (issueCount() > 0) {
+              <p>
+                <strong>{{
+                  m.error_incomplete_title({ count: issueCount() })
+                }}</strong>
+              </p>
+              <p class="small">{{ m.error_incomplete_hint() }}</p>
+              <ul>
+                @for (key of problems().missing; track key) {
+                  <li>
+                    <button type="button" (click)="jumpTo(key)">
+                      {{ fieldLabels[key]() }}
+                    </button>
+                  </li>
+                }
+                @if (problems().spanTooLong) {
+                  <li>
+                    <button type="button" (click)="jumpTo('to')">
+                      {{ m.error_span_too_long_title() }}
+                    </button>
+                  </li>
+                }
+              </ul>
+            }
+          </div>
+        }
+
+        <!-- 4. The three parameters. -->
+        <section class="section" aria-labelledby="params-heading">
+          <h2 id="params-heading">{{ m.requester_params_heading() }}</h2>
+
+          <div class="stack" style="margin-top: 16px">
+            <div class="field">
+              <span class="label" id="group-label">{{
+                m.requester_group_heading()
+              }}</span>
+              <p class="hint" style="margin: 0 0 8px">
+                {{ m.requester_group_hint() }}
+              </p>
+              <div
+                class="group-list"
+                role="radiogroup"
+                aria-labelledby="group-label"
+              >
+                @for (
+                  group of reference().diseaseGroups;
+                  track group.id;
+                  let first = $first
+                ) {
+                  <label
+                    class="group-row"
+                    [class.selected]="form().diseaseGroupId === group.id"
+                  >
+                    <input
+                      type="radio"
+                      name="disease-group"
+                      [value]="group.id"
+                      [checked]="form().diseaseGroupId === group.id"
+                      [attr.data-field]="first ? 'diseaseGroupId' : null"
+                      (change)="set({ diseaseGroupId: group.id })"
+                    />
+                    <span>{{ group.name }}</span>
+                  </label>
+                }
+              </div>
+              @if (fieldError('diseaseGroupId'); as error) {
+                <p class="error">{{ error }}</p>
+              }
+            </div>
+
+            <div class="field">
+              <span class="label">{{ m.requester_dates_heading() }}</span>
+              <div class="date-row">
+                <div class="field">
+                  <label for="date-from">{{ m.requester_dates_from() }}</label>
+                  <input
+                    id="date-from"
+                    type="date"
+                    class="figure"
+                    data-field="from"
+                    [value]="form().from"
+                    [attr.aria-invalid]="
+                      problems().spanTooLong || fieldError('from')
+                        ? 'true'
+                        : null
+                    "
+                    [attr.aria-describedby]="
+                      problems().spanTooLong ? 'span-error' : 'span-cap'
+                    "
+                    (input)="text('from', $event)"
+                  />
+                  @if (fieldError('from'); as error) {
+                    <p class="error">{{ error }}</p>
+                  }
+                </div>
+                <div class="field">
+                  <label for="date-to">{{ m.requester_dates_to() }}</label>
+                  <!-- The picker greys out any `to` beyond from + 365 days. -->
+                  <input
+                    id="date-to"
+                    type="date"
+                    class="figure"
+                    data-field="to"
+                    [value]="form().to"
+                    [attr.min]="form().from || null"
+                    [attr.max]="toMax()"
+                    [attr.aria-invalid]="
+                      problems().spanTooLong || fieldError('to') ? 'true' : null
+                    "
+                    [attr.aria-describedby]="
+                      problems().spanTooLong ? 'span-error' : 'span-cap'
+                    "
+                    (input)="text('to', $event)"
+                  />
+                  @if (fieldError('to'); as error) {
+                    <p class="error">{{ error }}</p>
+                  }
+                </div>
+                @if (days(); as count) {
+                  <p
+                    class="day-count figure"
+                    [class.failed-text]="problems().spanTooLong"
+                  >
+                    {{ m.requester_dates_day_count({ days: count }) }}
+                  </p>
+                }
+              </div>
+              @if (problems().spanTooLong) {
+                <div class="failed-rule" id="span-error">
+                  <p>
+                    <strong>{{ m.error_span_too_long_title() }}</strong>
+                  </p>
+                  <p>{{ m.error_span_too_long_detail() }}</p>
+                </div>
+              }
+              <p class="hint prose" id="span-cap">
+                {{ m.requester_dates_hint() }}.
+                {{ m.requester_span_cap_notice() }}
+              </p>
+            </div>
+
+            <div class="field">
+              <span class="label">{{ m.requester_area_heading() }}</span>
+              <p class="hint" style="margin: 0 0 8px">
+                {{ m.requester_area_hint() }}
+              </p>
+              <app-segmented
+                [options]="areaOptions"
+                [value]="form().areaMode"
+                [label]="m.requester_area_heading()"
+                (valueChange)="chooseArea($event)"
+              />
+              <p class="prose" style="margin-top: 12px">
+                <strong>{{ m.requester_epidem_area_label() }}</strong>
+                <br />
+                <span class="muted">{{
+                  m.requester_epidem_area_detail()
+                }}</span>
+              </p>
+
+              <div class="area-layout">
+                <div>
+                  <app-region-map
+                    [interactive]="form().areaMode === 'region'"
+                    [selected]="form().region"
+                    [highlighted]="
+                      form().areaMode === 'province'
+                        ? (chosenProvince()?.healthRegion ?? null)
+                        : null
+                    "
+                    (picked)="set({ region: $event })"
+                  />
+                </div>
+                <div>
+                  @if (form().areaMode === 'province') {
+                    <div class="field">
+                      <label for="province">{{
+                        m.requester_province_label()
+                      }}</label>
+                      <select
+                        id="province"
+                        data-field="area"
+                        [attr.aria-invalid]="fieldError('area') ? 'true' : null"
+                        (change)="set({ provinceId: asValue($event) })"
+                      >
+                        <option
+                          value=""
+                          [selected]="!form().provinceId"
+                        ></option>
+                        @for (
+                          province of reference().provinces;
+                          track province.provinceId
+                        ) {
+                          <option
+                            [value]="province.provinceId"
+                            [selected]="
+                              province.provinceId === form().provinceId
+                            "
+                          >
+                            {{ province.nameTh }} ({{ province.provinceId }})
+                          </option>
+                        }
+                      </select>
+                      @if (fieldError('area'); as error) {
+                        <p class="error">{{ error }}</p>
+                      }
+                    </div>
+                    @if (chosenProvince(); as province) {
+                      <p class="small muted" style="margin-top: 12px">
+                        {{
+                          m.requester_province_region_hint({
+                            province: province.nameTh,
+                            region: province.healthRegion,
+                          })
+                        }}
+                      </p>
+                      <p class="small" style="margin-top: 8px">
+                        {{
+                          m.requester_province_single_note({
+                            province: province.nameTh,
+                          })
+                        }}
+                      </p>
+                    }
+                  }
+                  @if (form().areaMode === 'region') {
+                    @if (fieldError('area'); as error) {
+                      <p class="error failed-text">{{ error }}</p>
+                    }
+                    @if (regionList().length > 0) {
+                      <p>
+                        <strong>{{
+                          m.requester_area_region_selected({
+                            region: form().region ?? 0,
+                          })
+                        }}</strong>
+                      </p>
+                      <p class="small muted">
+                        {{
+                          m.requester_area_region_expansion({
+                            count: regionList().length,
+                          })
+                        }}
+                      </p>
+                      <ul class="chips" data-region-provinces>
+                        @for (
+                          province of regionList();
+                          track province.provinceId
+                        ) {
+                          <li class="chip">{{ province.nameTh }}</li>
+                        }
+                      </ul>
+                    }
+                  }
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- 5. Who is asking. -->
+        <section class="section" aria-labelledby="contact-heading">
+          <h2 id="contact-heading">{{ m.requester_contact_heading() }}</h2>
+          <p class="prose muted" style="margin: 8px 0 16px">
+            {{ m.requester_contact_lead() }}
+          </p>
+          <div class="field-grid">
+            <div class="field">
+              <label for="c-name">{{ m.requester_first_name() }}</label>
+              <input
+                id="c-name"
+                type="text"
+                autocomplete="given-name"
+                data-field="name"
+                [value]="form().name"
+                [attr.aria-invalid]="fieldError('name') ? 'true' : null"
+                (input)="text('name', $event)"
+              />
+              @if (fieldError('name'); as error) {
+                <p class="error">{{ error }}</p>
+              }
+            </div>
+            <div class="field">
+              <label for="c-surname">{{ m.requester_last_name() }}</label>
+              <input
+                id="c-surname"
+                type="text"
+                autocomplete="family-name"
+                data-field="surname"
+                [value]="form().surname"
+                [attr.aria-invalid]="fieldError('surname') ? 'true' : null"
+                (input)="text('surname', $event)"
+              />
+              @if (fieldError('surname'); as error) {
+                <p class="error">{{ error }}</p>
+              }
+            </div>
+            <div class="field">
+              <label for="c-tel">{{ m.requester_telephone() }}</label>
+              <input
+                id="c-tel"
+                type="text"
+                inputmode="tel"
+                autocomplete="tel"
+                class="figure"
+                data-field="tel"
+                [value]="form().tel"
+                [attr.aria-invalid]="fieldError('tel') ? 'true' : null"
+                (input)="text('tel', $event)"
+              />
+              @if (fieldError('tel'); as error) {
+                <p class="error">{{ error }}</p>
+              } @else {
+                <p class="hint">{{ m.requester_telephone_request() }}</p>
+              }
+            </div>
+            <div class="field">
+              <label for="c-email">{{ m.requester_email() }}</label>
+              <!-- Free text on purpose: nothing about an address is validated. -->
+              <input
+                id="c-email"
+                type="text"
+                inputmode="email"
+                autocomplete="email"
+                data-field="email"
+                [value]="form().email"
+                [attr.aria-invalid]="fieldError('email') ? 'true' : null"
+                (input)="text('email', $event)"
+              />
+              @if (fieldError('email'); as error) {
+                <p class="error">{{ error }}</p>
+              }
+            </div>
+            <div class="field full">
+              <label for="c-workplace">{{ m.requester_workplace() }}</label>
+              <input
+                id="c-workplace"
+                type="text"
+                autocomplete="organization"
+                data-field="workplace"
+                [value]="form().workplace"
+                [attr.aria-invalid]="fieldError('workplace') ? 'true' : null"
+                (input)="text('workplace', $event)"
+              />
+              @if (fieldError('workplace'); as error) {
+                <p class="error">{{ error }}</p>
+              } @else {
+                <p class="hint prose">{{ m.requester_workplace_note() }}</p>
+              }
+            </div>
+          </div>
+        </section>
+
+        <!-- 6. Submit. -->
+        <div class="section" style="padding-bottom: 0">
+          <button type="submit" class="btn btn-primary btn-lg">
+            {{ m.requester_submit() }}
+          </button>
+          <p class="small muted" style="margin-top: 8px">
+            {{ m.requester_submit_note() }}
+          </p>
+        </div>
+      </form>
+    }
+
+    @case ('check') {
+      <div class="prose stack" style="padding: 32px 0">
+        <h1 tabindex="-1">{{ m.requester_check_title() }}</h1>
+        <p>{{ m.requester_check_lead() }}</p>
+
+        <div class="panel-primary" data-check="email">
+          <p class="muted small">{{ m.requester_check_send_to() }}</p>
+          <p class="headline" data-check-email>{{ form().email }}</p>
+          <p>{{ m.requester_check_send_to_warning() }}</p>
+        </div>
+
+        <h2>{{ m.requester_check_ask_heading() }}</h2>
+        <dl class="fact-list">
+          <div>
+            <dt>{{ m.requester_group_heading() }}</dt>
+            <dd>{{ chosenGroup()?.name }}</dd>
+          </div>
+          <div>
+            <dt>{{ m.requester_dates_heading() }}</dt>
+            <dd class="figure">
+              <time [attr.datetime]="form().from">{{
+                formatDay(form().from)
+              }}</time>
+              –
+              <time [attr.datetime]="form().to">{{
+                formatDay(form().to)
+              }}</time>
+            </dd>
+          </div>
+          <div>
+            <dt>{{ m.requester_area_heading() }}</dt>
+            <dd>{{ areaLabel() }}</dd>
+            @if (form().areaMode === 'region' && regionList().length > 0) {
+              <dd>
+                <ul class="chips">
+                  @for (province of regionList(); track province.provinceId) {
+                    <li class="chip">{{ province.nameTh }}</li>
+                  }
+                </ul>
+              </dd>
+            }
+          </div>
+        </dl>
+
+        <h2>{{ m.requester_check_requester_heading() }}</h2>
+        <dl class="fact-list">
+          <div>
+            <dt>{{ m.requester_first_name() }}</dt>
+            <dd>{{ form().name }}</dd>
+          </div>
+          <div>
+            <dt>{{ m.requester_last_name() }}</dt>
+            <dd>{{ form().surname }}</dd>
+          </div>
+          <div>
+            <dt>{{ m.requester_telephone() }}</dt>
+            <dd class="figure">{{ form().tel }}</dd>
+          </div>
+          <div>
+            <dt>{{ m.requester_workplace() }}</dt>
+            <dd>{{ form().workplace }}</dd>
+          </div>
+        </dl>
+
+        @if (sendFailed()) {
+          <div class="failed-rule" role="alert">
+            {{ m.requester_submit_failed({ telephone: m.app_telephone() }) }}
+          </div>
+        }
+
+        <div
+          style="display: flex; flex-wrap: wrap; gap: 16px; padding-top: 8px"
+        >
+          <button
+            type="button"
+            class="btn btn-primary btn-lg"
+            [attr.aria-busy]="sending()"
+            (click)="send()"
+          >
+            {{
+              sending()
+                ? m.requester_submit_loading()
+                : m.requester_check_send()
+            }}
+          </button>
+          <button
+            type="button"
+            class="btn btn-secondary btn-lg"
+            [disabled]="sending()"
+            (click)="edit()"
+          >
+            {{ m.requester_check_edit() }}
+          </button>
+        </div>
+        <p class="small muted">{{ m.requester_check_edit_note() }}</p>
+      </div>
+    }
+
+    @case ('duplicate') {
+      <div class="prose stack" style="padding: 32px 0">
+        <h1 tabindex="-1">{{ m.requester_duplicate_title() }}</h1>
+        <div class="panel-pending stack">
+          <p>{{ m.requester_duplicate_lead() }}</p>
+        </div>
+        <div class="two-up">
+          <div>
+            <h2 class="small">{{ m.requester_duplicate_resent_heading() }}</h2>
+            <p>{{ m.requester_duplicate_resent_detail() }}</p>
+          </div>
+          <div>
+            <h2 class="small">
+              {{ m.requester_duplicate_colleague_heading() }}
+            </h2>
+            <p>
+              {{
+                m.requester_duplicate_colleague_detail({
+                  telephone: m.app_telephone(),
+                })
+              }}
+            </p>
+          </div>
+        </div>
+      </div>
+    }
+  }
+</div>

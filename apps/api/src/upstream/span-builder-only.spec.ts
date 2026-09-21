@@ -10,7 +10,14 @@ import { join, relative } from 'node:path';
 
 // The API's source and the SPA's: a stray `+1` is likelier in the UI.
 const ROOTS = [join(__dirname, '..'), join(__dirname, '../../../web/src')];
-const ALLOWED = join(__dirname, 'span-builder.ts');
+const SPAN_BUILDER = join(__dirname, 'span-builder.ts');
+// The picker's 365-day cap (§4.2) is arithmetic on the difference of two human
+// dates, not the `+1`: it needs `from + 365 days` to grey out `to`. It lives in
+// one file of its own, and the API's copy of the same rule is `daysBetween` in
+// the span builder above. This is the second file the tripwire allows, argued
+// for here so a third has to be argued for too.
+const SPAN_CAP = join(__dirname, '../../../web/src/app/requester/span-cap.ts');
+const ALLOWED = [SPAN_BUILDER, SPAN_CAP];
 
 const DATE_ARITHMETIC = [
   /86_?400_?000/,
@@ -33,7 +40,7 @@ function sourceFiles(dir: string): string[] {
 describe('the span builder is the only date arithmetic', () => {
   it('finds no day arithmetic in production code outside span-builder.ts', () => {
     const offenders = ROOTS.flatMap(sourceFiles)
-      .filter((file) => file !== ALLOWED)
+      .filter((file) => !ALLOWED.includes(file))
       .filter((file) => {
         const text = readFileSync(file, 'utf8');
         return DATE_ARITHMETIC.some((pattern) => pattern.test(text));
@@ -44,7 +51,9 @@ describe('the span builder is the only date arithmetic', () => {
   });
 
   it('still sees the arithmetic where it lives', () => {
-    const text = readFileSync(ALLOWED, 'utf8');
-    expect(DATE_ARITHMETIC.some((pattern) => pattern.test(text))).toBe(true);
+    for (const file of ALLOWED) {
+      const text = readFileSync(file, 'utf8');
+      expect(DATE_ARITHMETIC.some((pattern) => pattern.test(text))).toBe(true);
+    }
   });
 });

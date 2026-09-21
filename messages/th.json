@@ -274,5 +274,6 @@
   "reviewer_rerun_loading": "กำลังเริ่ม…",
   "reviewer_signin_loading": "กำลังเข้าสู่ระบบ…",
   "reviewer_lookup_loading": "กำลังค้นหา…",
-  "requester_area_region_13_caption": "เขตสุขภาพที่ 13 คือกรุงเทพมหานคร"
+  "requester_area_region_13_caption": "เขตสุขภาพที่ 13 คือกรุงเทพมหานคร",
+  "requester_submit_failed": "ระบบอาจยังไม่ได้ส่งคำขอของท่าน กรุณารอสักครู่แล้วลองส่งอีกครั้ง หากยังพบข้อความนี้ โปรดโทร {telephone}"
 }
