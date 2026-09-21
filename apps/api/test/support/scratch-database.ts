@@ -13,6 +13,30 @@ export interface ScratchDatabase {
   drop(): Promise<void>;
 }
 
+const MIGRATION_LOCK = 6_425_001;
+
+/**
+ * Migrates a test database. dds_app is a cluster-wide role and the migration
+ * creates it with a check-then-create, which races when test files migrate in
+ * parallel; an advisory lock (held on its own connection) serialises them
+ * across files and worker processes.
+ */
+export async function migrateSerialised(
+  adminUrl: string,
+  owner: Pool,
+): Promise<void> {
+  const lock = new Client({ connectionString: adminUrl });
+  await lock.connect();
+  try {
+    await lock.query('SELECT pg_advisory_lock($1)', [MIGRATION_LOCK]);
+    await migrate(drizzle(owner), {
+      migrationsFolder: join(__dirname, '../../src/db/migrations'),
+    });
+  } finally {
+    await lock.end();
+  }
+}
+
 const withDatabase = (
   url: string,
   database: string,
@@ -44,9 +68,7 @@ export async function createScratchDatabase(): Promise<ScratchDatabase> {
   const owner = new Pool({ connectionString: ownerUrl });
   // DROP ... WITH (FORCE) can reach a connection that is still closing.
   owner.on('error', () => {});
-  await migrate(drizzle(owner), {
-    migrationsFolder: join(__dirname, '../../src/db/migrations'),
-  });
+  await migrateSerialised(adminUrl, owner);
   await admin.query(`CREATE ROLE "${login}" LOGIN PASSWORD '${password}'`);
   await admin.query(`GRANT dds_app TO "${login}"`);
   await admin.query(`GRANT CONNECT ON DATABASE "${name}" TO "${login}"`);

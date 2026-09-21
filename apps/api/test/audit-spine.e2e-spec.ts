@@ -1,9 +1,7 @@
 import { randomBytes } from 'node:crypto';
-import { join } from 'node:path';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { Client, Pool } from 'pg';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { migrateSerialised } from './support/scratch-database';
 
 // The audit spine's guarantees live in the database, so they are asserted
 // against a real, freshly migrated database rather than the Drizzle schema.
@@ -81,9 +79,7 @@ describe('audit spine (database)', () => {
     owner = new Pool({
       connectionString: withDatabase(ADMIN_URL, databaseName),
     });
-    await migrate(drizzle(owner), {
-      migrationsFolder: join(__dirname, '../src/db/migrations'),
-    });
+    await migrateSerialised(ADMIN_URL, owner);
 
     // The event tables' reviewer_id is a real foreign key (§12.2): a
     // `reviewer` actor names a Reviewer that exists.
