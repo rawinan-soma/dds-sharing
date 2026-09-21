@@ -1,9 +1,46 @@
 {
-  "id": "95f6a65c-4508-4e05-a1da-b29eae50628a",
-  "prevId": "79e5c4bf-a899-4750-8da6-f8bed821e819",
+  "id": "85a415b7-adbc-458d-882b-07b4c66540a6",
+  "prevId": "95f6a65c-4508-4e05-a1da-b29eae50628a",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
+    "public.login_throttle": {
+      "name": "login_throttle",
+      "schema": "",
+      "columns": {
+        "key": {
+          "name": "key",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "failures": {
+          "name": "failures",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "next_allowed_at": {
+          "name": "next_allowed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.province": {
       "name": "province",
       "schema": "",
@@ -119,7 +156,9 @@
         "request_reference_unique": {
           "name": "request_reference_unique",
           "nullsNotDistinct": false,
-          "columns": ["reference"]
+          "columns": [
+            "reference"
+          ]
         }
       },
       "policies": {},
@@ -186,8 +225,12 @@
           "name": "request_contact_request_id_request_id_fk",
           "tableFrom": "request_contact",
           "tableTo": "request",
-          "columnsFrom": ["request_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "request_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -286,12 +329,29 @@
         }
       },
       "foreignKeys": {
+        "request_event_reviewer_id_reviewer_id_fk": {
+          "name": "request_event_reviewer_id_reviewer_id_fk",
+          "tableFrom": "request_event",
+          "tableTo": "reviewer",
+          "columnsFrom": [
+            "reviewer_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
         "request_event_request_id_request_id_fk": {
           "name": "request_event_request_id_request_id_fk",
           "tableFrom": "request_event",
           "tableTo": "request",
-          "columnsFrom": ["request_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "request_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -307,6 +367,101 @@
         "actor_ip_user_agent": {
           "name": "actor_ip_user_agent",
           "value": "\"request_event\".\"actor_type\" IN ('requester', 'anonymous')\n        OR (\"request_event\".\"ip\" IS NULL AND \"request_event\".\"user_agent\" IS NULL)"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.reviewer": {
+      "name": "reviewer",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "username": {
+          "name": "username",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "display_name": {
+          "name": "display_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "password_hash": {
+          "name": "password_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "must_change_password": {
+          "name": "must_change_password",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
+        },
+        "totp_secret": {
+          "name": "totp_secret",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "totp_confirmed_at": {
+          "name": "totp_confirmed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "totp_last_used_step": {
+          "name": "totp_last_used_step",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "deactivated_at": {
+          "name": "deactivated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "reviewer_username_unique": {
+          "name": "reviewer_username_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "username"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "reviewer_username_format": {
+          "name": "reviewer_username_format",
+          "value": "\"reviewer\".\"username\" ~ '^[a-z0-9._-]{3,32}$'"
         }
       },
       "isRLSEnabled": false
@@ -375,7 +530,21 @@
         }
       },
       "indexes": {},
-      "foreignKeys": {},
+      "foreignKeys": {
+        "reviewer_event_reviewer_id_reviewer_id_fk": {
+          "name": "reviewer_event_reviewer_id_reviewer_id_fk",
+          "tableFrom": "reviewer_event",
+          "tableTo": "reviewer",
+          "columnsFrom": [
+            "reviewer_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
@@ -390,13 +559,100 @@
         }
       },
       "isRLSEnabled": false
+    },
+    "public.reviewer_session": {
+      "name": "reviewer_session",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "token_hash": {
+          "name": "token_hash",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reviewer_id": {
+          "name": "reviewer_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "last_seen_at": {
+          "name": "last_seen_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "reviewer_session_reviewer_id_idx": {
+          "name": "reviewer_session_reviewer_id_idx",
+          "columns": [
+            {
+              "expression": "reviewer_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "reviewer_session_reviewer_id_reviewer_id_fk": {
+          "name": "reviewer_session_reviewer_id_reviewer_id_fk",
+          "tableFrom": "reviewer_session",
+          "tableTo": "reviewer",
+          "columnsFrom": [
+            "reviewer_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "reviewer_session_token_hash_unique": {
+          "name": "reviewer_session_token_hash_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "token_hash"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
     }
   },
   "enums": {
     "public.actor_type": {
       "name": "actor_type",
       "schema": "public",
-      "values": ["requester", "reviewer", "system", "anonymous"]
+      "values": [
+        "requester",
+        "reviewer",
+        "system",
+        "anonymous"
+      ]
     },
     "public.request_event_type": {
       "name": "request_event_type",

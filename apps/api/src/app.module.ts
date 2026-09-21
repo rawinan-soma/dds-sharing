@@ -4,6 +4,7 @@ import { ServeStaticModule } from '@nestjs/serve-static';
 import { DatabaseModule } from './db/database.module';
 import { HealthModule } from './health/health.module';
 import { ReferenceDataModule } from './reference/reference-data.module';
+import { RequestsModule } from './requests/requests.module';
 import { ReviewerModule } from './reviewer/reviewer.module';
 import { keepReviewerSurfaceOutOfSearch } from './reviewer/noindex';
 
@@ -28,6 +29,7 @@ const staticRoot = (root: string) =>
     DatabaseModule,
     ReferenceDataModule,
     HealthModule,
+    RequestsModule,
     ReviewerModule,
   ],
 })

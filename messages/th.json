@@ -299,5 +299,7 @@
   "reviewer_password_violation_same_as_current": "รหัสผ่านใหม่ต้องต่างจากรหัสผ่านปัจจุบัน",
   "reviewer_signed_in_as": "เข้าสู่ระบบในชื่อ {reviewer}",
   "reviewer_signed_in_empty": "เข้าสู่ระบบแล้ว ยังไม่มีรายการให้ตรวจ",
-  "requester_area_region_13_caption": "เขตสุขภาพที่ 13 คือกรุงเทพมหานคร"
+  "requester_area_region_13_caption": "เขตสุขภาพที่ 13 คือกรุงเทพมหานคร",
+  "requester_submit_failed": "ระบบอาจยังไม่ได้ส่งคำขอของท่าน กรุณารอสักครู่แล้วลองส่งอีกครั้ง หากยังพบข้อความนี้ โปรดโทร {telephone}",
+  "error_range_reversed": "วันสุดท้ายอยู่ก่อนวันแรก กรุณาตรวจสอบวันที่อีกครั้ง"
 }

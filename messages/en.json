@@ -299,5 +299,7 @@
   "reviewer_password_violation_same_as_current": "The new password must be different from the current one.",
   "reviewer_signed_in_as": "Signed in as {reviewer}",
   "reviewer_signed_in_empty": "You are signed in. There is nothing to review yet.",
-  "requester_area_region_13_caption": "Health region 13 is Bangkok"
+  "requester_area_region_13_caption": "Health region 13 is Bangkok",
+  "requester_submit_failed": "The request may not have been sent. Please wait a moment and try again. If this message comes back, call {telephone}.",
+  "error_range_reversed": "The last day is before the first day. Please check the dates."
 }
