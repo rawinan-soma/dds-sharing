@@ -1,0 +1,62 @@
+services:
+  app:
+    build: .
+    ports:
+      - '3000:3000'
+    environment:
+      PORT: 3000
+      # Migrations run as the owner; the application runs as a read-only member of dds_app.
+      DATABASE_URL: postgres://postgres:postgres@postgres:5432/dds_sharing
+      APP_DATABASE_URL: postgres://dds_app_login:dds_app@postgres:5432/dds_sharing
+      REDIS_URL: redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      minio:
+        condition: service_started
+      mailpit:
+        condition: service_started
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: dds_sharing
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./docker/postgres-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    volumes:
+      - redis-data:/data
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    ports:
+      - '9000:9000'
+      - '9001:9001'
+    volumes:
+      - minio-data:/data
+
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - '8025:8025'
+      - '1025:1025'
+
+volumes:
+  postgres-data:
+  redis-data:
+  minio-data:
