@@ -1,6 +1,6 @@
 # Reviewer accounts and sign-in
 
-Status: ready-for-agent
+Status: closed
 Source: https://github.com/rawinan-soma/dds-sharing/issues/64 (migrated 2026-09-21)
 
 ## What to build
@@ -168,3 +168,7 @@ Your screens: **4** เข้าสู่ระบบ (sign in), and the session
 **Copy comes from the catalogue, not from templates.** Every string is keyed in `messages/en.json` and `messages/th.json`. The English is authored and is the source (ADR 0010); the Thai in the catalogue and on the design canvas is an agent-written layout proxy, replaced by #96. Build against the keys, and do not hand-write a sentence into a template.
 
 Treat the design as the source of **visual layout only**. Structure, ordering and copy are settled by this ticket and the spec, and they outrank the design wherever they disagree.
+
+**rawinan-soma** — 2026-09-21
+
+Merged in #105 (fe8148fd66359ad62f5800786d327ceb9653fae0).
