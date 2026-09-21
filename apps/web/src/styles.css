@@ -1,1 +1,549 @@
-/* You can add global styles to this file, and also import other style files */
+/*
+  DDS Sharing — the surveillance map. Tokens from docs/design/source/globals.css
+  and docs/design/system.md, written as plain CSS custom properties: the
+  design's Tailwind `@theme` is React-tool scaffolding, not the implementation
+  (docs/design/README.md).
+
+  Solid `primary` means "you chose this" or "the primary action" and nothing
+  else; `primary-wash` is context; everything inert is `land`. No state is green.
+  Square everywhere: there are no radius tokens. No shadows.
+*/
+
+:root {
+  --background: #eef1ee;
+  --card: #f7f9f7;
+  --foreground: #16241e;
+  --muted-foreground: #556159;
+  --border: #c8d0c9;
+  --border-strong: #16241e;
+  --land: #d9e0da;
+  --land-strong: #c2ccc4;
+  --primary: #0c6b63;
+  --primary-foreground: #f7f9f7;
+  --primary-wash: #dceceb;
+  --primary-hover: #0a5751;
+  --pending: #7f5300;
+  --pending-wash: #f6eedc;
+  --failed: #8c2b20;
+  --failed-wash: #f6e6e3;
+  --inert: #5a6862;
+
+  /* Self-hosted through @fontsource (weights 400 and 600 only), loaded by the
+     `styles` array in angular.json: no request leaves the ministry network. */
+  --font-sans: 'IBM Plex Sans Thai', 'IBM Plex Sans', system-ui, sans-serif;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  font-family: var(--font-sans);
+}
+
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--foreground);
+  font-size: 15px;
+  line-height: 1.65;
+}
+
+/* Thai sets taller than Latin: headings need the room back. */
+h1,
+h2,
+h3 {
+  line-height: 1.35;
+  margin: 0;
+}
+
+p {
+  margin: 0;
+}
+
+/* Every figure in this service is read against another figure. */
+time,
+data,
+.figure {
+  font-variant-numeric: tabular-nums;
+}
+
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ---- Layout ------------------------------------------------------------ */
+
+.page {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 0 16px;
+}
+
+@media (min-width: 720px) {
+  .page {
+    padding: 0 40px;
+  }
+}
+
+/* Thai at 15px runs to ~90 characters at 920: cap paragraphs, not tables. */
+.prose {
+  max-width: 720px;
+}
+
+.stack > * + * {
+  margin-top: 16px;
+}
+
+.section {
+  border-top: 1px solid var(--border-strong);
+  padding: 24px 0;
+}
+
+.section > h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.muted {
+  color: var(--muted-foreground);
+}
+
+.small {
+  font-size: 0.875rem;
+}
+
+.two-up {
+  display: grid;
+  gap: 24px 40px;
+}
+
+@media (min-width: 720px) {
+  .two-up {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* ---- Header ------------------------------------------------------------ */
+
+.site-header {
+  background: var(--card);
+  border-bottom: 1px solid var(--border-strong);
+}
+
+.site-header .page {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 4px 24px;
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
+.brand {
+  font-weight: 600;
+}
+
+/* ---- Buttons: three variants, two sizes ------------------------------- */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font: inherit;
+  font-size: 0.875rem;
+  padding: 8px 20px;
+  cursor: pointer;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--foreground);
+  transition: background-color 0.1s;
+}
+
+.btn-lg {
+  font-size: 1rem;
+  padding: 12px 32px;
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-weight: 600;
+}
+
+.btn-primary:hover,
+.btn-primary:active {
+  background: var(--primary-hover);
+}
+
+.btn-secondary {
+  border-color: var(--border-strong);
+}
+
+.btn-secondary:hover {
+  background: var(--land);
+}
+
+.btn-secondary:active {
+  background: var(--land-strong);
+}
+
+.btn:disabled,
+.btn[aria-disabled='true'] {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.btn[aria-busy='true'] {
+  cursor: progress;
+  background: var(--primary-hover);
+}
+
+/* ---- Fields ------------------------------------------------------------ */
+
+.field label,
+.field .label {
+  display: block;
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
+}
+
+.field input:not([type='radio']),
+.field select {
+  display: block;
+  width: 100%;
+  margin-top: 4px;
+  font: inherit;
+  color: var(--foreground);
+  background: var(--card);
+  border: 1px solid var(--border-strong);
+  padding: 8px 12px;
+  border-radius: 0;
+}
+
+.field input[aria-invalid='true'],
+.field select[aria-invalid='true'] {
+  border-color: var(--failed);
+}
+
+.field .hint {
+  margin-top: 8px;
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
+}
+
+.field .error {
+  margin-top: 4px;
+  font-size: 0.875rem;
+  color: var(--failed);
+}
+
+.field-grid {
+  display: grid;
+  gap: 24px 40px;
+}
+
+@media (min-width: 720px) {
+  .field-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .field-grid .full {
+    grid-column: 1 / -1;
+  }
+}
+
+.date-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 16px 24px;
+}
+
+.date-row .field {
+  width: calc(50% - 8px);
+}
+
+@media (min-width: 720px) {
+  .date-row .field {
+    width: 200px;
+  }
+}
+
+.day-count {
+  padding-bottom: 8px;
+}
+
+.failed-text {
+  color: var(--failed);
+}
+
+.failed-rule {
+  margin-top: 12px;
+  border-left: 2px solid var(--failed);
+  padding-left: 16px;
+  color: var(--failed);
+}
+
+.pending-rule {
+  border-left: 2px solid var(--pending);
+  padding-left: 16px;
+}
+
+/* ---- Notices and lists ------------------------------------------------- */
+
+.notice {
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+}
+
+.plain-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.plain-list li {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+}
+
+.kicker {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+/* Disease groups: two columns, 1–5 and 6–10, but the markup runs 1 to 10 so a
+   keyboard, a screen reader and a phone all read in order. */
+.group-list {
+  display: grid;
+  gap: 0 40px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  min-width: 0;
+}
+
+@media (min-width: 720px) {
+  .group-list {
+    grid-auto-flow: column;
+    grid-template-rows: repeat(5, auto);
+  }
+}
+
+.group-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 8px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+}
+
+.group-row:hover {
+  background: var(--land);
+}
+
+.group-row input {
+  margin-top: 6px;
+  accent-color: var(--primary);
+}
+
+.group-row.selected {
+  background: var(--primary-wash);
+  border-bottom-color: var(--primary);
+  color: var(--primary);
+  font-weight: 600;
+}
+
+/* ---- Segmented --------------------------------------------------------- */
+
+.segmented {
+  display: flex;
+  flex-wrap: wrap;
+  width: fit-content;
+  max-width: 100%;
+  border: 1px solid var(--border-strong);
+}
+
+.segmented button {
+  font: inherit;
+  font-size: 0.875rem;
+  padding: 8px 20px;
+  background: transparent;
+  border: 0;
+  color: var(--foreground);
+  cursor: pointer;
+}
+
+.segmented button + button {
+  border-left: 1px solid var(--border-strong);
+}
+
+.segmented button:hover {
+  background: var(--land);
+}
+
+.segmented button[aria-checked='true'] {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-weight: 600;
+}
+
+.segmented button:focus-visible {
+  outline-offset: -2px;
+}
+
+/* ---- Region map -------------------------------------------------------- */
+
+.area-layout {
+  display: grid;
+  gap: 24px 40px;
+  margin-top: 16px;
+}
+
+@media (min-width: 720px) {
+  .area-layout {
+    grid-template-columns: max-content 1fr;
+  }
+}
+
+.region-map {
+  display: grid;
+  grid-template-columns: repeat(5, 52px);
+  grid-template-rows: repeat(7, 40px);
+  gap: 2px;
+  width: max-content;
+}
+
+.region-cell {
+  font: inherit;
+  font-size: 0.875rem;
+  padding: 0;
+  background: var(--land);
+  border: 1px solid transparent;
+  color: var(--foreground);
+}
+
+/* When the map is the control the frame is what makes a cell a target. */
+button.region-cell {
+  border-color: var(--muted-foreground);
+  cursor: pointer;
+}
+
+button.region-cell:hover {
+  background: var(--land-strong);
+}
+
+.region-cell.related {
+  background: var(--primary-wash);
+}
+
+.region-cell[aria-checked='true'] {
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-weight: 600;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 0;
+  margin: 12px 0 0;
+  list-style: none;
+}
+
+/* A Chip lists part of what was asked for. Outlined, never filled. */
+.chip {
+  border: 1px solid var(--primary);
+  color: var(--primary);
+  padding: 2px 12px;
+  font-size: 0.875rem;
+}
+
+/* ---- Panels ------------------------------------------------------------ */
+
+.panel-primary {
+  background: var(--primary-wash);
+  padding: 24px 32px;
+}
+
+.panel-pending {
+  background: var(--pending-wash);
+  border-left: 2px solid var(--pending);
+  padding: 24px 32px;
+}
+
+.headline {
+  font-size: 1.875rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.display {
+  font-size: 2.25rem;
+  font-weight: 600;
+}
+
+.summary {
+  background: var(--failed-wash);
+  border-left: 2px solid var(--failed);
+  padding: 16px 24px;
+  margin-bottom: 24px;
+}
+
+.summary ul {
+  margin: 8px 0 0;
+  padding-left: 20px;
+}
+
+.summary button {
+  font: inherit;
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--failed);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.fact-list {
+  margin: 0;
+}
+
+.fact-list div {
+  border-bottom: 1px solid var(--border);
+  padding: 12px 0;
+}
+
+.fact-list dt {
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
+}
+
+.fact-list dd {
+  margin: 0;
+}
+
+@media (max-width: 719px) {
+  h1 {
+    font-size: 1.5rem;
+  }
+}

@@ -1,8 +1,10 @@
 import { Module, OnModuleInit } from '@nestjs/common';
 import { DISEASE_GROUPS, assertDiseaseGroupsPartition } from './disease-groups';
 import { ProvinceLookup } from './province-lookup.service';
+import { ReferenceController } from './reference.controller';
 
 @Module({
+  controllers: [ReferenceController],
   providers: [ProvinceLookup],
   exports: [ProvinceLookup],
 })

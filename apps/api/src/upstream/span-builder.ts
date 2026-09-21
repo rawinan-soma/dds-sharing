@@ -44,3 +44,21 @@ export function buildSpan({ from, to }: RequestDates): Span {
     endDate: new Date(endMs).toISOString().slice(0, 10),
   };
 }
+
+export function isCalendarDay(day: unknown): day is string {
+  if (typeof day !== 'string') return false;
+  try {
+    parseDay(day);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// Whole days from one human date to another, both inclusive as the human gave
+// them: 1 Jan to 31 Jan is 30. It answers the 365-day cap (§4.2), which is a
+// limit on this difference and not on the half-open span the API is asked for.
+// Kept here so that no other file in the API does arithmetic on a date.
+export function daysBetween(from: string, to: string): number {
+  return (parseDay(to) - parseDay(from)) / ONE_DAY_MS;
+}
