@@ -1,17 +1,43 @@
+# Production-shaped: the app, Postgres, Redis and MinIO. Every variable the app
+# needs is interpolated as ${VAR:?}, so Compose refuses to start when one is
+# unset, instead of the app booting on a guess. On the VM the values come from a
+# gitignored `.env` beside this file (see .env.example); ADR 0018.
+#
+# Development adds Mailpit, the fake upstream and dev values:
+#   docker compose -f docker-compose.yml -f compose.dev.yml up
+# It is a second file passed by name, never `compose.override.yml`: Compose loads
+# that one automatically, so a VM checkout would pick up dev settings silently.
 services:
   app:
     build: .
     ports:
       - '3000:3000'
     environment:
-      PORT: 3000
       # Migrations run as the owner; the application runs as a read-only member of dds_app.
-      DATABASE_URL: postgres://postgres:postgres@postgres:5432/dds_sharing
-      APP_DATABASE_URL: postgres://dds_app_login:dds_app@postgres:5432/dds_sharing
-      REDIS_URL: redis://redis:6379
-      # The dev stack has no TLS, so the Reviewer cookies drop `Secure` here and only
-      # here. Production leaves this unset; nothing else disables it (spec §10.5).
-      REVIEWER_INSECURE_COOKIE: 'true'
+      DATABASE_URL: ${DATABASE_URL:?}
+      APP_DATABASE_URL: ${APP_DATABASE_URL:?}
+      REDIS_URL: ${REDIS_URL:?}
+      TRUST_PROXY: ${TRUST_PROXY:?}
+      FRONTEND_URL: ${FRONTEND_URL:?}
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT:?}
+      MINIO_PORT: ${MINIO_PORT:?}
+      MINIO_USE_SSL: ${MINIO_USE_SSL:?}
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:?}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:?}
+      MINIO_BUCKET: ${MINIO_BUCKET:?}
+      SMTP_HOST: ${SMTP_HOST:?}
+      SMTP_PORT: ${SMTP_PORT:?}
+      SMTP_STARTTLS: ${SMTP_STARTTLS:?}
+      SMTP_SECURE: ${SMTP_SECURE:?}
+      SMTP_USER: ${SMTP_USER:?}
+      SMTP_PASS: ${SMTP_PASS:?}
+      SMTP_FROM: ${SMTP_FROM:?}
+      UPSTREAM_BASE_URL: ${UPSTREAM_BASE_URL:?}
+      UPSTREAM_TOKEN: ${UPSTREAM_TOKEN:?}
+      # The insecure flags default to off here and are read from `.env` only if
+      # the operator sets them on purpose. The app logs a WARN when either is on.
+      ALLOW_INSECURE_TRANSPORT: ${ALLOW_INSECURE_TRANSPORT:-false}
+      SMTP_ALLOW_PLAINTEXT: ${SMTP_ALLOW_PLAINTEXT:-false}
     depends_on:
       postgres:
         condition: service_healthy
@@ -19,13 +45,11 @@ services:
         condition: service_started
       minio:
         condition: service_started
-      mailpit:
-        condition: service_started
 
   postgres:
     image: postgres:16-alpine
     environment:
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
       POSTGRES_DB: dds_sharing
     volumes:
       - postgres-data:/var/lib/postgresql/data
@@ -45,19 +69,10 @@ services:
     image: minio/minio:latest
     command: server /data --console-address ":9001"
     environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
-    ports:
-      - '9000:9000'
-      - '9001:9001'
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:?}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:?}
     volumes:
       - minio-data:/data
-
-  mailpit:
-    image: axllent/mailpit:latest
-    ports:
-      - '8025:8025'
-      - '1025:1025'
 
 volumes:
   postgres-data:

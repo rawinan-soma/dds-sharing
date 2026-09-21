@@ -1,6 +1,6 @@
 // Runs the fake upstream for development:
 //
-//   pnpm --filter api run fake-upstream -- --fault=server-error --rows=25000
+//   FAKE_UPSTREAM_PORT=4010 pnpm --filter api run fake-upstream -- --fault=server-error --rows=25000
 //
 // then point the service at it:
 //
@@ -9,6 +9,10 @@
 //
 // Synthetic data only. See fake-upstream.ts.
 
+import {
+  fakeUpstreamSchema,
+  validateEnvOrExit,
+} from '../../src/config/env.schema';
 import { createFakeUpstream, DEFAULT_TOKEN, Fault } from './fake-upstream';
 
 const FAULTS: Record<string, Fault> = {
@@ -31,8 +35,11 @@ async function main() {
       `Unknown --fault=${faultName}. One of: ${Object.keys(FAULTS).join(', ')}`,
     );
   }
+  const { FAKE_UPSTREAM_PORT } = validateEnvOrExit(fakeUpstreamSchema);
   const upstream = await createFakeUpstream({
-    port: Number(flag('port') ?? 4010),
+    port: Number(FAKE_UPSTREAM_PORT),
+    // Reachable from the app's container in the dev stack. Synthetic data only.
+    host: '0.0.0.0',
     rowsPerCode: Number(flag('rows') ?? 25_000),
   });
   if (faultName) upstream.setFault(FAULTS[faultName]);

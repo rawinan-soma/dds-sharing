@@ -24,4 +24,6 @@ WORKDIR /app/apps/api
 
 EXPOSE 3000
 
-CMD ["sh", "-c", "node dist/db/migrate.js && node dist/main.js"]
+# The whole environment is checked first: the migration runner validates only
+# DATABASE_URL, and a bad SMTP_PASS should stop the image before it migrates.
+CMD ["sh", "-c", "node dist/config/check.js && node dist/db/migrate.js && node dist/main.js"]
