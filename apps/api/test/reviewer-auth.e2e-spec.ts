@@ -70,7 +70,9 @@ describe('reviewer sign-in and sessions (e2e)', () => {
       .compile();
     app = moduleRef.createNestApplication({ logger: false });
     app.setGlobalPrefix('api');
-    await app.init();
+    // Listening once, so concurrent requests share one server rather than each
+    // supertest binding and closing its own.
+    await app.listen(0);
     server = app.getHttpServer() as App;
   }
 
@@ -281,7 +283,14 @@ describe('reviewer sign-in and sessions (e2e)', () => {
           code: '000000',
         } as never),
       ).toBe('password_and_totp');
-      expect(await factorOf({ username: 'nobody.here' })).toBe('username');
+      // An unknown name is not written down, only that it was unknown.
+      clock.advance(2 * MIN);
+      await signIn(await browser(), p, { username: 'nobody.here' });
+      const unknown = await events(
+        'login_failed',
+        `AND payload->>'failedFactor' = 'username'`,
+      );
+      expect(unknown.at(-1).payload.username).toBe('');
     });
 
     it('records IP and user agent on a failure, and never the password or the code', async () => {
@@ -448,6 +457,21 @@ describe('reviewer sign-in and sessions (e2e)', () => {
       expect(rows[0].deactivated_at).toBeNull();
     });
 
+    it('holds a burst of parallel guesses to the backoff, not one guess each', async () => {
+      const p = await person();
+      const results = await Promise.all(
+        Array.from({ length: 10 }, async () =>
+          signIn(await browser(), p, { code: '000000' }),
+        ),
+      );
+      const evaluated = results.filter((r) => r.status === 401).length;
+      // The first failure retries at once, the second starts the wait.
+      expect(evaluated).toBeLessThanOrEqual(2);
+      expect(results.filter((r) => r.status === 429).length).toBe(
+        10 - evaluated,
+      );
+    });
+
     it('lets the first failure be retried immediately', async () => {
       const p = await person();
       expect(
@@ -513,6 +537,12 @@ describe('reviewer sign-in and sessions (e2e)', () => {
       expect(
         (await signIn(await browser(), p, { code: '000000' })).status,
       ).toBe(401);
+      // The counter itself starts over, not just the wait.
+      const { rows } = await scratch.owner.query(
+        'SELECT failures FROM login_throttle WHERE key = $1',
+        [`account:${p.username}`],
+      );
+      expect(rows[0].failures).toBe(1);
       expect((await signIn(await browser(), p)).status).toBe(200);
     });
   });

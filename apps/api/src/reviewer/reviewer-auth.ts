@@ -51,6 +51,24 @@ const getDummyHash = () => (dummyHash ??= hashPassword('Dummy-Password-1!'));
 // attacker when the password is right, which is the signal that makes attacking
 // the second factor worthwhile. The audit record keeps which factor failed; the
 // caller's screen never learns it.
+// Attempts on one account run one at a time. Without this, N parallel guesses
+// all read "not throttled" before any of them records a failure, and the
+// one-attempt-per-30-seconds bound on a six-digit code would not hold. One
+// process serves the app (the kill switch is `docker compose down`), so a
+// keyed in-process queue is enough.
+const accountQueues = new Map<string, Promise<unknown>>();
+async function serially<T>(key: string, work: () => Promise<T>): Promise<T> {
+  const previous = accountQueues.get(key) ?? Promise.resolve();
+  const run = previous.then(work, work);
+  const tail = run.catch(() => undefined);
+  accountQueues.set(key, tail);
+  try {
+    return await run;
+  } finally {
+    if (accountQueues.get(key) === tail) accountQueues.delete(key);
+  }
+}
+
 export class ReviewerAuth {
   constructor(
     private readonly db: Db,
@@ -59,11 +77,21 @@ export class ReviewerAuth {
     private readonly sessions: ReviewerSessions,
   ) {}
 
-  async signIn(
+  signIn(
     input: { username: string; password: string; code: string },
     origin: Origin,
   ): Promise<SignInResult> {
     const username = normalise(input.username);
+    return serially(accountKey(username), () =>
+      this.attemptSignIn(username, input, origin),
+    );
+  }
+
+  private async attemptSignIn(
+    username: string,
+    input: { password: string; code: string },
+    origin: Origin,
+  ): Promise<SignInResult> {
     const keys = [accountKey(username), ipKey(origin.ip)];
 
     const wait = await this.throttle.retryAfterSeconds(keys);
@@ -116,9 +144,12 @@ export class ReviewerAuth {
         ip: origin.ip,
         userAgent: origin.userAgent,
       },
-      // Never the submitted password or code: the pattern is the signal.
+      // Never the submitted password or code: the pattern is the signal. The
+      // username is recorded only when it names a real account: a Reviewer who
+      // types their password into the wrong box must not put it in a record
+      // that is kept for ever.
       payload: {
-        username,
+        username: account?.username ?? '',
         failedFactor,
         totpClockDrift: totp?.drift ?? false,
       },

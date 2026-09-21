@@ -67,7 +67,9 @@ export class LoginThrottle {
           .onConflictDoUpdate({
             target: loginThrottle.key,
             set: {
-              failures: sql`${loginThrottle.failures} + 1`,
+              // Only a concurrent first insert reaches here; the row was read
+              // under lock above, so a stale one is reset, not incremented.
+              failures: row ? failures : sql`${loginThrottle.failures} + 1`,
               nextAllowedAt,
               updatedAt: now,
             },
