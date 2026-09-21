@@ -4,9 +4,12 @@ import {
   bigserial,
   char,
   check,
+  date,
+  index,
   inet,
   jsonb,
   pgEnum,
+  pgSequence,
   pgTable,
   smallint,
   text,
@@ -19,6 +22,7 @@ import {
   REVIEWER_EVENT_TYPES,
   UNAUTHENTICATED_ACTOR_TYPES,
 } from '../audit/event-catalogue';
+import { REQUEST_STATES } from '../requests/request-state';
 
 // The audit spine (spec §12.2). Both tables are append-only. That is enforced
 // by the database, not by convention: the application role `dds_app` holds
@@ -74,15 +78,78 @@ const actorChecks = (table: {
   ),
 ];
 
+export const requestState = pgEnum('request_state', REQUEST_STATES);
+
+// The reference number's counter (spec §12.5). One sequence, never reset: the
+// shape `REQ-2569-0142` fixes the year and the padding, and what the counter
+// resets on is left to the implementer. A sequence cannot collide under
+// concurrent submits, which a per-year counter would have to be made to do.
+export const requestReferenceSeq = pgSequence('request_reference_seq');
+
+// The Request (spec §12.3): the ask and its state, and **no identifying data** —
+// the contact fields live in `request_contact`, and the requester's IP is on
+// the `submitted` event. It stores both forms of the ask: what the human chose
+// (inclusive dates, the group's name) and the two expansions, which are
+// authoritative because both taxonomies are amendable.
+export const request = pgTable(
+  'request',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    // A display label; the UUID is the key.
+    reference: text('reference').notNull().unique(),
+    state: requestState('state').notNull().default('pending'),
+    submittedAt: timestamp('submitted_at', { withTimezone: true }).notNull(),
+    diseaseGroupId: text('disease_group_id').notNull(),
+    diseaseGroupName: text('disease_group_name').notNull(),
+    // Inclusive, as the human gave them. Upstream's half-open end
+    // date never appears here (§4.3); the span builder is its only home.
+    startDate: date('start_date', { mode: 'string' }).notNull(),
+    endDate: date('end_date', { mode: 'string' }).notNull(),
+    reportCodes: text('report_codes').array().notNull(),
+    // Empty means national. Never a region: a region is expanded before storing.
+    provinces: char('provinces', { length: 2 }).array().notNull(),
+  },
+  (t) => [
+    check(
+      'request_report_codes_nonempty',
+      sql`cardinality(${t.reportCodes}) > 0`,
+    ),
+    check('request_dates_ordered', sql`${t.startDate} <= ${t.endDate}`),
+    // Belt to the server's braces: the cap is upstream's, and a row that broke
+    // it could never be fetched.
+    check('request_span_cap', sql`${t.endDate} - ${t.startDate} <= 365`),
+  ],
+);
+
+// Split out so every other query touches no personal data (§12.3). No role
+// holds UPDATE here (§12.2): a contact detail is never rewritten (ADR 0019).
+export const requestContact = pgTable('request_contact', {
+  requestId: uuid('request_id')
+    .primaryKey()
+    .references(() => request.id),
+  name: text('name').notNull(),
+  surname: text('surname').notNull(),
+  tel: text('tel').notNull(),
+  email: text('email').notNull(),
+  workplace: text('workplace').notNull(),
+});
+
 export const requestEvent = pgTable(
   'request_event',
   {
     ...eventColumns(),
-    // The request table arrives with a later ticket, which adds the foreign key.
-    requestId: uuid('request_id').notNull(),
+    requestId: uuid('request_id')
+      .notNull()
+      .references(() => request.id),
     type: requestEventType('type').notNull(),
   },
-  (table) => actorChecks(table),
+  (table) => [
+    ...actorChecks(table),
+    // Duplicate suppression asks "which Requests came from this IP".
+    index('request_event_submitted_ip')
+      .on(table.ip)
+      .where(sql`${table.type} = 'submitted'`),
+  ],
 );
 
 export const reviewerEvent = pgTable(

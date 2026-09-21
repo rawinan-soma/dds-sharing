@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildSpan } from './span-builder';
+import { buildSpan, daysBetween, isCalendarDay } from './span-builder';
 
 describe('buildSpan', () => {
   it('turns an inclusive `to` of 31 Dec into an exclusive end_date of 1 Jan', () => {
@@ -48,5 +48,34 @@ describe('buildSpan', () => {
   it('rejects a date that is not a real calendar day', () => {
     expect(() => buildSpan({ from: '2025-01-01', to: '2025-02-30' })).toThrow();
     expect(() => buildSpan({ from: '01/01/2025', to: '2025-01-31' })).toThrow();
+  });
+});
+
+describe('daysBetween', () => {
+  it('counts the difference of two inclusive human dates', () => {
+    expect(daysBetween('2025-01-01', '2025-01-31')).toBe(30);
+    expect(daysBetween('2025-01-01', '2025-01-01')).toBe(0);
+    expect(daysBetween('2025-01-01', '2026-01-01')).toBe(365);
+    expect(daysBetween('2024-01-01', '2025-01-01')).toBe(366);
+  });
+
+  it('is negative when `to` is before `from`', () => {
+    expect(daysBetween('2025-01-02', '2025-01-01')).toBe(-1);
+  });
+});
+
+describe('isCalendarDay', () => {
+  it('accepts real days and nothing else', () => {
+    expect(isCalendarDay('2024-02-29')).toBe(true);
+    for (const bad of [
+      '2025-02-29',
+      '2025-1-1',
+      '',
+      null,
+      undefined,
+      20250101,
+    ]) {
+      expect(isCalendarDay(bad)).toBe(false);
+    }
   });
 });

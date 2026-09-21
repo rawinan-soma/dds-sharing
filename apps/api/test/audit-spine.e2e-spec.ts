@@ -84,6 +84,15 @@ describe('audit spine (database)', () => {
     await migrate(drizzle(owner), {
       migrationsFolder: join(__dirname, '../src/db/migrations'),
     });
+    // Events belong to a Request: the foreign key needs a parent to point at.
+    await owner.query(
+      `INSERT INTO request
+         (id, reference, submitted_at, disease_group_id, disease_group_name,
+          start_date, end_date, report_codes, provinces)
+       VALUES ($1, 'REQ-2569-0001', now(), 'heat', 'heat',
+               '2026-01-01', '2026-01-31', '{501}', '{}')`,
+      [REQUEST_ID],
+    );
 
     // A second connection that acts as the application role. SET ROLE makes
     // every statement on it run under that role's privileges, so a refusal is
