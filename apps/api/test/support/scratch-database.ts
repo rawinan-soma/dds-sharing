@@ -13,6 +13,8 @@ export interface ScratchDatabase {
   drop(): Promise<void>;
 }
 
+// An arbitrary key, unique to this lock; the app's own advisory locks
+// (pg_advisory_xact_lock in reviewer-accounts and requests) use other keys.
 const MIGRATION_LOCK = 6_425_001;
 
 /**

@@ -8,8 +8,8 @@ import {
   check,
   date,
   index,
-  integer,
   inet,
+  integer,
   jsonb,
   pgEnum,
   pgSequence,
@@ -45,7 +45,7 @@ export const reviewerEventType = pgEnum(
 // A Reviewer is never removed, only deactivated (`deactivated_at`): their
 // display name stays on every Decision. The application role holds no DELETE
 // here, and UPDATE only on the columns that legitimately change, so the name a
-// Decision carries cannot be rewritten either (grants: migration 0004).
+// Decision carries cannot be rewritten either (grants: migration 0005).
 export const reviewer = pgTable(
   'reviewer',
   {
