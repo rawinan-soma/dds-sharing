@@ -95,7 +95,7 @@ export class ReviewerAccounts {
         type: 'seeded',
         occurredAt: this.clock.now(),
         actor: { actorType: 'system' },
-        payload: { reviewerId: id, username },
+        payload: {},
       });
       return id;
     });
@@ -173,7 +173,7 @@ export class ReviewerAccounts {
         type: 'deactivated',
         occurredAt: this.clock.now(),
         actor: { actorType: 'system' },
-        payload: { reviewerId: target.id, forcedBelowFloor: belowFloor },
+        payload: { force: options.force },
       });
       return {
         status: 'deactivated',

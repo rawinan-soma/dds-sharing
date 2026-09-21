@@ -242,10 +242,11 @@ export interface ReviewerEventPayloads {
   logged_out: Record<string, never>;
   session_expired: Record<string, never>;
   password_changed: Record<string, never>;
-  /** Host commands name no one (ADR 0020): what happened to the Reviewer. */
-  seeded: { reviewerId: string; username: string };
+  /** Host commands name no one (ADR 0020), so `seeded` carries nothing. */
+  seeded: Record<string, never>;
   totp_enrolled: Record<string, never>;
-  deactivated: { reviewerId: string; forcedBelowFloor: boolean };
+  /** Whether `--force` was passed, i.e. the two-Reviewer floor was overridden. */
+  deactivated: { force: boolean };
 }
 
 // ---------------------------------------------------------------------------

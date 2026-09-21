@@ -77,16 +77,12 @@ describe('reviewer accounts (host commands)', () => {
       ).toBe(false);
     });
 
-    it('writes a `seeded` event naming no operator', async () => {
+    it('writes a `seeded` event with an empty payload, naming no operator', async () => {
       const [event] = await events('seeded');
-      const row = await reviewerRow('somchai');
 
       expect(event.actor_type).toBe('system');
       expect(event.reviewer_id).toBeNull();
-      expect(event.payload).toEqual({
-        reviewerId: row.id,
-        username: 'somchai',
-      });
+      expect(event.payload).toEqual({});
       expect(event.occurred_at).toEqual(now);
     });
 
@@ -182,14 +178,11 @@ describe('reviewer accounts (host commands)', () => {
       expect(sessions.rowCount).toBe(0);
     });
 
-    it('records `deactivated` with the Reviewer and whether the floor was forced, and no operator', async () => {
+    it('records `deactivated` carrying only `{ force }`, and no operator', async () => {
       const [event] = await events('deactivated');
-      const row = await reviewerRow('prasert');
       expect(event.actor_type).toBe('system');
-      expect(event.payload).toEqual({
-        reviewerId: row.id,
-        forcedBelowFloor: false,
-      });
+      expect(event.reviewer_id).toBeNull();
+      expect(event.payload).toEqual({ force: false });
     });
 
     it('goes below two only with force, and records that it did', async () => {
@@ -201,7 +194,7 @@ describe('reviewer accounts (host commands)', () => {
         sessionsEnded: 0,
       });
       const forced = (await events('deactivated')).at(-1);
-      expect(forced.payload.forcedBelowFloor).toBe(true);
+      expect(forced.payload).toEqual({ force: true });
     });
 
     it('never deletes the row', async () => {

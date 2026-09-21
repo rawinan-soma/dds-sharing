@@ -245,7 +245,7 @@ describe('the reviewer host commands', () => {
           `SELECT payload FROM reviewer_event WHERE type = 'deactivated'`,
         )
       ).rows[0];
-      expect(event.payload.forcedBelowFloor).toBe(true);
+      expect(event.payload).toEqual({ force: true });
     });
 
     it('reports an unknown Reviewer', async () => {
