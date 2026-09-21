@@ -547,3 +547,41 @@ button.region-cell:hover {
     font-size: 1.5rem;
   }
 }
+
+/* ---- Reviewer surface --------------------------------------------------- */
+
+.btn-full {
+  width: 100%;
+}
+
+/* Framed in muted-foreground so its only boundary meets 3:1 (WCAG 1.4.11). */
+.btn-quiet {
+  border-color: var(--muted-foreground);
+  color: var(--muted-foreground);
+}
+
+.btn-quiet:hover {
+  color: var(--foreground);
+}
+
+/* The heaviest line on a form screen, on purpose: the fields are the work. */
+.field-box {
+  display: block;
+  width: 100%;
+  margin-top: 0.25rem;
+  padding: 0.5rem 0.75rem;
+  font: inherit;
+  color: var(--foreground);
+  background: var(--background);
+  border: 1px solid var(--border-strong);
+  border-radius: 0;
+}
+
+.field-box.code {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.3em;
+}
+
+.field-box[aria-invalid='true'] {
+  border-color: var(--failed);
+}

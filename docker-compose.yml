@@ -9,6 +9,9 @@ services:
       DATABASE_URL: postgres://postgres:postgres@postgres:5432/dds_sharing
       APP_DATABASE_URL: postgres://dds_app_login:dds_app@postgres:5432/dds_sharing
       REDIS_URL: redis://redis:6379
+      # The dev stack has no TLS, so the Reviewer cookies drop `Secure` here and only
+      # here. Production leaves this unset; nothing else disables it (spec §10.5).
+      REVIEWER_INSECURE_COOKIE: 'true'
     depends_on:
       postgres:
         condition: service_healthy

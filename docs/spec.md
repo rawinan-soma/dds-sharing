@@ -1990,10 +1990,12 @@ about.
 - **Actors and payloads** (settled with #61): `login_succeeded`, `logged_out`,
   `session_expired`, `password_changed` and `totp_enrolled` have a `reviewer`
   actor. `login_failed` has an `anonymous` actor, because the login did not
-  succeed, and carries `{username, totp_clock_drift}`. `seeded` and `deactivated`
+  succeed, and carries `{username, failed_factor, totp_clock_drift}` —
+  `failed_factor` is which of the checks failed (§17.5: the record keeps it, the
+  screen never says). `seeded` and `deactivated`
   are written by a host command and so have a `system` actor and name no one
-  (ADR 0020); they carry the Reviewer they concern, and `deactivated` records
-  whether the two-Reviewer floor was forced.
+  (ADR 0020). `seeded` has an empty payload; `deactivated` carries only
+  `{force}`, whether `--force` overrode the two-Reviewer floor.
 - Failed logins carry IP and user agent and **never the submitted password or
   TOTP code** — the pattern is the signal, not the credential.
 - **A `login_failed` whose code was valid one or two TOTP steps ago is recorded

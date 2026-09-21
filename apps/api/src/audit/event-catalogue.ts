@@ -229,16 +229,24 @@ export interface ReviewerEventPayloads {
   /** Never the submitted password or TOTP code: the pattern is the signal. */
   login_failed: {
     username: string;
+    /**
+     * Which factor failed. The audit record keeps this; the screen never says
+     * (§17.5). `username` is an unknown account, `deactivated` a known one that
+     * may no longer sign in.
+     */
+    failedFactor:
+      'username' | 'password' | 'totp' | 'password_and_totp' | 'deactivated';
     /** Valid one or two TOTP steps ago: host clock drift, not an attack. */
     totpClockDrift: boolean;
   };
   logged_out: Record<string, never>;
   session_expired: Record<string, never>;
   password_changed: Record<string, never>;
-  /** Host commands name no one (ADR 0020): what happened to the Reviewer. */
-  seeded: { reviewerId: string; username: string };
+  /** Host commands name no one (ADR 0020), so `seeded` carries nothing. */
+  seeded: Record<string, never>;
   totp_enrolled: Record<string, never>;
-  deactivated: { reviewerId: string; forcedBelowFloor: boolean };
+  /** Whether `--force` was passed, i.e. the two-Reviewer floor was overridden. */
+  deactivated: { force: boolean };
 }
 
 // ---------------------------------------------------------------------------
