@@ -301,5 +301,18 @@
   "reviewer_signed_in_empty": "You are signed in. There is nothing to review yet.",
   "requester_area_region_13_caption": "Health region 13 is Bangkok",
   "requester_submit_failed": "The request may not have been sent. Please wait a moment and try again. If this message comes back, call {telephone}.",
-  "error_range_reversed": "The last day is before the first day. Please check the dates."
+  "error_range_reversed": "The last day is before the first day. Please check the dates.",
+  "reviewer_duration_hm": "{hours} h {minutes} m",
+  "reviewer_duration_m": "{minutes} m",
+  "reviewer_clock_expired": "Expired",
+  "reviewer_dossier_expired": "This request went 24 business hours without a decision. It can no longer be approved or rejected.",
+  "reviewer_dossier_ahead_none": "No requests are ahead of this one",
+  "reviewer_dossier_ahead_one": "1 request is ahead of this one",
+  "reviewer_dossier_none_selected": "Pick a request from the list to read it.",
+  "reviewer_dossier_gone": "This request is no longer awaiting review.",
+  "reviewer_dossier_load_failed": "The request could not be loaded. Pick it again to retry.",
+  "reviewer_dossier_group": "Disease group",
+  "reviewer_probe_unavailable": "Not available yet",
+  "reviewer_queue_count": "{count} awaiting review",
+  "reviewer_queue_load_failed": "The list could not be loaded. You can try again."
 }

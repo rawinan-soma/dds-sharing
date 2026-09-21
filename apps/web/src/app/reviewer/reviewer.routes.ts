@@ -1,11 +1,13 @@
 import { inject } from '@angular/core';
 import { type CanActivateFn, type Routes, Router } from '@angular/router';
+import * as m from '../../paraglide/messages.js';
+import { DossierPage } from './dossier.page';
 import { PasswordGatePage } from './password-gate.page';
+import { QueuePage } from './queue.page';
 import { signInQueryFor } from './return-to';
 import { ReviewerShell } from './reviewer-shell';
 import { ReviewerSession } from './reviewer-session';
 import { SignInPage } from './sign-in.page';
-import { SignedInPage } from './signed-in.page';
 
 /**
  * Everything behind sign-in. A Reviewer who still owes the forced password
@@ -62,7 +64,14 @@ export const reviewerRoutes: Routes = [
         component: PasswordGatePage,
         canActivate: [requirePendingChange],
       },
-      { path: '', component: SignedInPage, canActivate: [requireSession] },
+      {
+        // The split queue: the list stays put while the Request beside it changes.
+        path: '',
+        component: QueuePage,
+        title: () => m.reviewer_queue_heading(),
+        canActivate: [requireSession],
+        children: [{ path: ':id', component: DossierPage }],
+      },
       { path: '**', redirectTo: '' },
     ],
   },
