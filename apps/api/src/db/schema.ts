@@ -244,3 +244,47 @@ export const province = pgTable(
     ),
   ],
 );
+
+// The extraction job (spec §7.7): BullMQ executes, this table is the system of
+// record. A row is written at approval and moves queued -> running -> one of
+// succeeded/failed; the reconcile on worker startup re-enqueues any row left
+// `queued`/`running` with no live BullMQ job (never touching `pending` — that
+// state does not exist here at all).
+//
+// `succeeded` means fetch -> filter -> project -> completeness held for every
+// Report code: rows were produced in memory and never written anywhere. `job_completed`
+// (the Extract fingerprint) is not written yet, and does not belong here —
+// writing the Extract archive and its `job_completed` event is a later ticket
+// (#70), which will use this row's `succeeded` state as its own starting point.
+export const extractionJobStatus = pgEnum('extraction_job_status', [
+  'queued',
+  'running',
+  'succeeded',
+  'failed',
+]);
+
+export const extractionJob = pgTable(
+  'extraction_job',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    requestId: uuid('request_id')
+      .notNull()
+      .references(() => request.id),
+    status: extractionJobStatus('status').notNull().default('queued'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    startedAt: timestamp('started_at', { withTimezone: true }),
+    finishedAt: timestamp('finished_at', { withTimezone: true }),
+    // Touched each time a Report code finishes fetch -> filter -> project; the
+    // stall watchdog measures against this, not against `startedAt` (spec §7.6).
+    lastProgressAt: timestamp('last_progress_at', { withTimezone: true }),
+    // Counts and identifiers only — never a case row (the retained premise:
+    // surveillance data is never stored at rest). What the future writer and
+    // `job_completed` need: per-code counts, the unknown-field names seen, the
+    // impossible-derivation count, and the upstream `x-request-id`s.
+    result: jsonb('result'),
+    failureCause: text('failure_cause'),
+  },
+  (t) => [index('extraction_job_request_id_idx').on(t.requestId)],
+);

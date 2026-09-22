@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { type ConfigType } from '@nestjs/config';
 import { transportConfig } from '../config/namespaces';
 import { DB, type Db } from '../db/database.module';
+import { ExtractionModule } from '../extraction/extraction.module';
 import { ReferenceDataModule } from '../reference/reference-data.module';
 import { CLOCK, type Clock, systemClock } from './clock';
 import { LoginThrottle } from './login-throttle';
@@ -18,7 +19,7 @@ import { ReviewerSessions } from './reviewer-sessions';
 import { THAI_HOLIDAYS_SET } from './thai-holidays';
 
 @Module({
-  imports: [ReferenceDataModule],
+  imports: [ReferenceDataModule, ExtractionModule],
   controllers: [ReviewerController, ReviewQueueController, DecisionsController],
   providers: [
     { provide: HOLIDAYS, useValue: THAI_HOLIDAYS_SET },

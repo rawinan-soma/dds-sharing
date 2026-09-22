@@ -7,6 +7,7 @@ import { Pool } from 'pg';
 import { App } from 'supertest/types';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AppModule } from '../src/app.module';
+import { ExtractionQueue } from '../src/extraction/extraction-queue';
 import { CLOCK } from '../src/reviewer/clock';
 import { ReviewerAccounts } from '../src/reviewer/reviewer-accounts';
 import { Browser, TestClock } from './support/browser';
@@ -97,6 +98,13 @@ describe('the Decision (e2e)', () => {
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(CLOCK)
       .useValue(clock)
+      // The Decision writes the queued job row and enqueues a BullMQ job
+      // (spec §7.7) — the extraction pipeline itself is this file's business
+      // to trigger, never to run: it has its own tests. A real enqueue here
+      // would have the real Worker retry a real (fake) upstream host on
+      // every `approve()`, which is both slow and off-topic for this file.
+      .overrideProvider(ExtractionQueue)
+      .useValue({ enqueue: () => Promise.resolve() })
       .compile();
     app = moduleRef.createNestApplication({ logger: false });
     app.setGlobalPrefix('api');

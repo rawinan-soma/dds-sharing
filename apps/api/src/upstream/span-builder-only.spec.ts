@@ -17,7 +17,13 @@ const SPAN_BUILDER = join(__dirname, 'span-builder.ts');
 // the span builder above. This is the second file the tripwire allows, argued
 // for here so a third has to be argued for too.
 const SPAN_CAP = join(__dirname, '../../../web/src/app/requester/span-cap.ts');
-const ALLOWED = [SPAN_BUILDER, SPAN_CAP];
+// `onset_age` (§6.3) reads completed years between two dates on one case's
+// row — a different question from the Request's half-open span, and never a
+// substitute for it. It needs `getUTCDate`/`getUTCMonth` to compare calendar
+// components, which is what trips the generic heuristic below. Argued for
+// here, the third file the tripwire allows, so a fourth still has to be.
+const PROJECT = join(__dirname, '../extraction/project.ts');
+const ALLOWED = [SPAN_BUILDER, SPAN_CAP, PROJECT];
 
 const DATE_ARITHMETIC = [
   /86_?400_?000/,

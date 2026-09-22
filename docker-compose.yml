@@ -19,6 +19,7 @@ services:
       REDIS_URL: ${REDIS_URL:?}
       TRUST_PROXY: ${TRUST_PROXY:?}
       FRONTEND_URL: ${FRONTEND_URL:?}
+      SCRATCH_DIR: ${SCRATCH_DIR:?}
       MINIO_ENDPOINT: ${MINIO_ENDPOINT:?}
       MINIO_PORT: ${MINIO_PORT:?}
       MINIO_USE_SSL: ${MINIO_USE_SSL:?}
@@ -38,6 +39,8 @@ services:
       # the operator sets them on purpose. The app logs a WARN when either is on.
       ALLOW_INSECURE_TRANSPORT: ${ALLOW_INSECURE_TRANSPORT:-false}
       SMTP_ALLOW_PLAINTEXT: ${SMTP_ALLOW_PLAINTEXT:-false}
+    volumes:
+      - scratch-data:/scratch
     depends_on:
       postgres:
         condition: service_healthy
@@ -62,6 +65,11 @@ services:
 
   redis:
     image: redis:7-alpine
+    # AOF, not the default RDB-only persistence (spec §7.7): a restart on the
+    # default config drops queued extraction jobs while Postgres still says
+    # those Requests exist, leaving a Requester waiting forever on a job in no
+    # queue. The worker-startup reconcile is the second half of this guarantee.
+    command: redis-server --appendonly yes
     volumes:
       - redis-data:/data
 
@@ -78,3 +86,4 @@ volumes:
   postgres-data:
   redis-data:
   minio-data:
+  scratch-data:
