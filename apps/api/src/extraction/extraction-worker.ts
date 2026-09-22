@@ -1,12 +1,20 @@
+import { unlink, writeFile } from 'node:fs/promises';
+import { join } from 'node:path';
 import { Logger, type LoggerService } from '@nestjs/common';
 import { DelayedError, type Job, Worker } from 'bullmq';
 import type Redis from 'ioredis';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { writeRequestEvent } from '../audit/write-request-event';
-import { type JobFailureCause } from '../audit/event-catalogue';
-import { request } from '../db/schema';
+import {
+  type JobFailureCause,
+  type RequestEventPayloads,
+} from '../audit/event-catalogue';
+import { request, requestEvent } from '../db/schema';
 import { type ProvinceLookup } from '../reference/province-lookup.service';
+import { type ArchiveStore } from './archive-store';
+import { buildExtractArchive } from './build-extract-archive';
+import { DATA_DICTIONARY_CHECKSUM } from './data-dictionary';
 import {
   DISK_FLOOR_BYTES,
   DISK_RECHECK_DELAY_MS,
@@ -19,11 +27,16 @@ import { ExtractionJobs } from './extraction-jobs.repository';
 import {
   ExtractionFailure,
   runExtraction,
+  type ExtractionResult,
   type ExtractionSummary,
   type ExtractionTarget,
   type UpstreamPager,
 } from './extraction-pipeline';
 import { StallError, StallGuard } from './stall-guard';
+
+// A Re-run (#74) will pass a run number above 1, which is what earns an
+// archive its `-rN` suffix (spec §8.3). Nothing produces one yet.
+const FIRST_RUN = 1;
 
 export interface ExtractionWorkerDeps {
   db: NodePgDatabase;
@@ -35,6 +48,8 @@ export interface ExtractionWorkerDeps {
   provinceLookup: ProvinceLookup;
   scratchDir: string;
   freeDiskBytes: (path: string) => Promise<number>;
+  /** Where the finished archive uploads in one operation (spec §7.8). */
+  archiveStore: ArchiveStore;
   /** BullMQ's Redis key prefix — see `extraction.module.ts` for why. */
   prefix?: string;
   now?: () => Date;
@@ -51,18 +66,25 @@ export interface ExtractionJobLike {
   moveToDelayed(timestamp: number, token?: string): Promise<void>;
 }
 
+interface ExtractionTargetWithSubmittedAt extends ExtractionTarget {
+  /** The archive filename's anchor (spec §8.3) — irrelevant to the pipeline
+   * itself, so it rides along on the same row rather than a second query. */
+  submittedAt: Date;
+}
+
 /** The Request's stored parameters — read fresh per job, never cached
  * outside it: a Re-run (a later ticket) must see whatever is stored now. */
 async function loadTarget(
   db: NodePgDatabase,
   requestId: string,
-): Promise<ExtractionTarget> {
+): Promise<ExtractionTargetWithSubmittedAt> {
   const [row] = await db
     .select({
       reportCodes: request.reportCodes,
       startDate: request.startDate,
       endDate: request.endDate,
       provinces: request.provinces,
+      submittedAt: request.submittedAt,
     })
     .from(request)
     .where(eq(request.id, requestId));
@@ -70,6 +92,79 @@ async function loadTarget(
     throw new Error(`extraction job: request ${requestId} does not exist`);
   }
   return { requestId, ...row };
+}
+
+/**
+ * The Probe's per-code totals, for `job_completed`'s drift group — recorded,
+ * never asserted (spec §5.4, §12.4). `probe_performed`/`probe_failed` is terminal
+ * and written at most once per Request, so the first match settles it; a
+ * Probe that never landed or that failed reports no totals, `{}`.
+ */
+async function loadProbeTotals(
+  db: NodePgDatabase,
+  requestId: string,
+): Promise<Record<string, number>> {
+  const [row] = await db
+    .select({ payload: requestEvent.payload })
+    .from(requestEvent)
+    .where(
+      and(
+        eq(requestEvent.requestId, requestId),
+        eq(requestEvent.type, 'probe_performed'),
+      ),
+    );
+  if (!row) return {};
+  return (row.payload as RequestEventPayloads['probe_performed'])
+    .totalItemsByCode;
+}
+
+/**
+ * Storage during the job (spec §7.8): the finished archive is written to
+ * scratch, uploaded to MinIO in one operation, then scratch is deleted — so
+ * "an object exists in the bucket" means exactly "a complete, publishable
+ * Extract". Writes `job_completed` last, once the archive is actually
+ * published, so the event never describes an upload that did not happen.
+ */
+async function publishExtract(
+  deps: Pick<
+    ExtractionWorkerDeps,
+    'db' | 'scratchDir' | 'archiveStore' | 'provinceLookup'
+  >,
+  requestId: string,
+  target: ExtractionTargetWithSubmittedAt,
+  result: ExtractionResult,
+  now: () => Date,
+): Promise<void> {
+  const archive = await buildExtractArchive({
+    rowsByCode: result.rowsByCode,
+    codes: result.summary.reportCodes,
+    submittedAt: target.submittedAt,
+    runNumber: FIRST_RUN,
+  });
+  const scratchPath = join(deps.scratchDir, archive.archiveFilename);
+  await writeFile(scratchPath, archive.archiveBytes);
+  await deps.archiveStore.upload(archive.archiveFilename, archive.archiveBytes);
+  await unlink(scratchPath);
+
+  const probeTotals = await loadProbeTotals(deps.db, requestId);
+  await writeRequestEvent(deps.db, {
+    requestId,
+    type: 'job_completed',
+    occurredAt: now(),
+    actor: { actorType: 'system' },
+    payload: {
+      rowCount: archive.rowCount,
+      columnCount: archive.columnCount,
+      csvBytes: archive.csvBytes,
+      zipBytes: archive.archiveBytes.length,
+      csvSha256: archive.csvSha256,
+      provincesChecksum: deps.provinceLookup.checksum,
+      dataDictionaryChecksum: DATA_DICTIONARY_CHECKSUM,
+      archiveFilename: archive.archiveFilename,
+      impossibleDerivationInputs: result.summary.impossibleDerivationInputs,
+      drift: { probe: probeTotals, run: result.summary.totalItemsByCode },
+    },
+  });
 }
 
 function toFailure(error: unknown): {
@@ -188,6 +283,7 @@ export async function processExtractionJob(
 
     const result = await Promise.race([pipeline, stallGuard.promise]);
     raiseOperationalAlerts(logger, jobId, result.summary);
+    await publishExtract(deps, requestId, target, result, now);
     await deps.extractionJobs.markSucceeded(jobId, now(), result.summary);
   } catch (error) {
     const failure = toFailure(error);

@@ -8,12 +8,22 @@ import {
 import { type ConfigType } from '@nestjs/config';
 import { Queue, Worker } from 'bullmq';
 import type Redis from 'ioredis';
-import { appConfig, dbConfig, redisConfig } from '../config/namespaces';
+import {
+  appConfig,
+  dbConfig,
+  minioConfig,
+  redisConfig,
+} from '../config/namespaces';
 import { DB, type Db } from '../db/database.module';
 import { ReferenceDataModule } from '../reference/reference-data.module';
 import { ProvinceLookup } from '../reference/province-lookup.service';
 import { UpstreamModule } from '../upstream/upstream.module';
 import { UpstreamClient } from '../upstream/upstream-client';
+import {
+  type ArchiveStore,
+  createMinioArchiveStore,
+  createMinioClient,
+} from './archive-store';
 import { freeDiskBytes } from './disk-space';
 import { EXTRACTION_QUEUE_NAME } from './extraction.config';
 import { ExtractionJobs } from './extraction-jobs.repository';
@@ -29,6 +39,10 @@ const QUEUE_REDIS_CONNECTION = Symbol('EXTRACTION_QUEUE_REDIS_CONNECTION');
 const WORKER_REDIS_CONNECTION = Symbol('EXTRACTION_WORKER_REDIS_CONNECTION');
 const BULLMQ_QUEUE = Symbol('EXTRACTION_BULLMQ_QUEUE');
 const BULLMQ_WORKER = Symbol('EXTRACTION_BULLMQ_WORKER');
+/** Exported so an e2e spec can override it with an in-memory fake — nothing
+ * in CI runs a real MinIO (spec §7.8's upload is exercised at the unit layer
+ * instead, in `extraction-worker.spec.ts`). */
+export const ARCHIVE_STORE = Symbol('EXTRACTION_ARCHIVE_STORE');
 
 /**
  * BullMQ's Redis key prefix, namespaced by the application database's own
@@ -110,6 +124,12 @@ class ExtractionLifecycle implements OnModuleInit, OnApplicationShutdown {
       useFactory: (db: Db) => new ExtractionJobs(db),
     },
     {
+      provide: ARCHIVE_STORE,
+      inject: [minioConfig.KEY],
+      useFactory: (minio: ConfigType<typeof minioConfig>): ArchiveStore =>
+        createMinioArchiveStore(createMinioClient(minio), minio.bucket),
+    },
+    {
       provide: BULLMQ_WORKER,
       inject: [
         DB,
@@ -117,6 +137,7 @@ class ExtractionLifecycle implements OnModuleInit, OnApplicationShutdown {
         UpstreamClient,
         ExtractionJobs,
         ProvinceLookup,
+        ARCHIVE_STORE,
         appConfig.KEY,
         dbConfig.KEY,
       ],
@@ -126,6 +147,7 @@ class ExtractionLifecycle implements OnModuleInit, OnApplicationShutdown {
         upstream: UpstreamClient,
         extractionJobs: ExtractionJobs,
         provinceLookup: ProvinceLookup,
+        archiveStore: ArchiveStore,
         app: ConfigType<typeof appConfig>,
         dbCfg: ConfigType<typeof dbConfig>,
       ) =>
@@ -135,6 +157,7 @@ class ExtractionLifecycle implements OnModuleInit, OnApplicationShutdown {
           upstream,
           extractionJobs,
           provinceLookup,
+          archiveStore,
           scratchDir: app.scratchDir,
           freeDiskBytes,
           prefix: bullPrefix(dbCfg.url),

@@ -251,11 +251,11 @@ export const province = pgTable(
 // `queued`/`running` with no live BullMQ job (never touching `pending` — that
 // state does not exist here at all).
 //
-// `succeeded` means fetch -> filter -> project -> completeness held for every
-// Report code: rows were produced in memory and never written anywhere. `job_completed`
-// (the Extract fingerprint) is not written yet, and does not belong here —
-// writing the Extract archive and its `job_completed` event is a later ticket
-// (#70), which will use this row's `succeeded` state as its own starting point.
+// `succeeded` means the whole job held: fetch -> filter -> project ->
+// completeness, then the Extract archive written, fingerprinted, uploaded to
+// MinIO in one operation, and `job_completed` written (#70). A failure at any
+// of those steps is `failed`, never a status between the two — there is no
+// "extracted but not yet published" state to leave stranded.
 export const extractionJobStatus = pgEnum('extraction_job_status', [
   'queued',
   'running',
