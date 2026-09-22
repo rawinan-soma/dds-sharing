@@ -6,8 +6,10 @@ import {
   Module,
   OnApplicationShutdown,
 } from '@nestjs/common';
+import { type ConfigType } from '@nestjs/config';
 import { NodePgDatabase, drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
+import { dbConfig } from '../config/namespaces';
 
 const logger = new Logger('Database');
 
@@ -31,14 +33,12 @@ class PoolShutdown implements OnApplicationShutdown {
   providers: [
     {
       provide: PG_POOL,
-      useFactory: () => {
-        // Never DATABASE_URL: that is the owner that migrates. Falling back to
-        // it would make the read-only role (§6.4) true on paper only.
-        const connectionString = process.env.APP_DATABASE_URL;
-        if (!connectionString) {
-          throw new Error('APP_DATABASE_URL must be set');
-        }
-        const pool = new Pool({ connectionString });
+      inject: [dbConfig.KEY],
+      useFactory: (db: ConfigType<typeof dbConfig>) => {
+        // Never DATABASE_URL: that is the owner that migrates, and the `db`
+        // namespace does not carry it. A fallback to it would make the
+        // read-only role (§6.4) true on paper only.
+        const pool = new Pool({ connectionString: db.url });
         // An idle client dropped by the server must not crash the process.
         pool.on('error', (error) => logger.error(error.message));
         return pool;

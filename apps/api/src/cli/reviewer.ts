@@ -1,6 +1,7 @@
 import { createInterface } from 'node:readline/promises';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
+import { hostCliSchema, validateEnvOrExit } from '../config/env.schema';
 import { systemClock } from '../reviewer/clock';
 import { ReviewerAccounts } from '../reviewer/reviewer-accounts';
 import { runReviewerCli, type CliIo } from './reviewer-cli';
@@ -13,11 +14,8 @@ import { loadRetentionNotice } from './retention-notice';
 // name than the running application can.
 
 async function main(): Promise<number> {
-  const connectionString = process.env.APP_DATABASE_URL;
-  if (!connectionString) {
-    console.error('APP_DATABASE_URL must be set');
-    return 1;
-  }
+  const { APP_DATABASE_URL: connectionString } =
+    validateEnvOrExit(hostCliSchema);
   const pool = new Pool({ connectionString });
   const rl = createInterface({ input: process.stdin, output: process.stdout });
   const io: CliIo = {

@@ -22,6 +22,7 @@ describe('the /reviewer surface (e2e)', () => {
   let scratch: ScratchDatabase;
   let app: INestApplication<App>;
   const originalUrl = process.env.APP_DATABASE_URL;
+  const originalStaticRoot = process.env.STATIC_ROOT;
   // express's sendFile refuses a path with a dot-directory in it, which is where
   // a git worktree can live; the fixture is copied somewhere that has none.
   const staticRoot = mkdtempSync(join(tmpdir(), 'dds-spa-'));
@@ -38,15 +39,16 @@ describe('the /reviewer surface (e2e)', () => {
     process.env.APP_DATABASE_URL = scratch.appUrl;
     cpSync(join(__dirname, 'fixtures/public'), staticRoot, { recursive: true });
     process.env.STATIC_ROOT = staticRoot;
-    delete process.env.REVIEWER_INSECURE_COOKIE;
+    delete process.env.ALLOW_INSECURE_TRANSPORT;
     app = await boot();
   });
 
   afterAll(async () => {
     await app.close();
     process.env.APP_DATABASE_URL = originalUrl;
-    delete process.env.STATIC_ROOT;
-    delete process.env.REVIEWER_INSECURE_COOKIE;
+    process.env.STATIC_ROOT = originalStaticRoot;
+    delete process.env.ALLOW_INSECURE_TRANSPORT;
+    delete process.env.SMTP_ALLOW_PLAINTEXT;
     rmSync(staticRoot, { recursive: true, force: true });
     await scratch.drop();
   });
@@ -139,15 +141,21 @@ describe('the /reviewer surface (e2e)', () => {
       expect(csrf).not.toMatch(/HttpOnly/);
     });
 
-    it('drops Secure only under the explicit development flag', async () => {
+    it('drops Secure only when the deployment allows insecure transport', async () => {
       await app.close();
-      process.env.REVIEWER_INSECURE_COOKIE = 'true';
+      process.env.ALLOW_INSECURE_TRANSPORT = 'true';
+      process.env.SMTP_ALLOW_PLAINTEXT = 'true';
       app = await boot();
       const cookies = await signInCookies();
       const session = cookies.find((c) => c.startsWith('reviewer_session='))!;
       expect(session).not.toMatch(/Secure/);
       expect(session).toMatch(/HttpOnly/);
       expect(session).toMatch(/SameSite=Lax/);
+
+      const health = await request(app.getHttpServer()).get('/api/health');
+      expect(
+        (health.body as { insecureFlags: string[] }).insecureFlags,
+      ).toEqual(['ALLOW_INSECURE_TRANSPORT', 'SMTP_ALLOW_PLAINTEXT']);
     });
   });
 });

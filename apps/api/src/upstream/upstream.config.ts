@@ -2,8 +2,6 @@
 // Verified behaviour (spec §5) supersedes the published field dictionary, which
 // has four documented errors.
 
-export const DEFAULT_BASE_URL = 'https://exchange.ddc.moph.go.th/api/d506/v1';
-
 /**
  * The only query parameter names the client may send. Unknown parameters are
  * silently ignored upstream — a mistyped name yields a cheerful 200 with
