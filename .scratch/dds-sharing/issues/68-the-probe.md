@@ -1,6 +1,6 @@
 # The Probe
 
-Status: ready-for-agent
+Status: closed
 Blocked by: 65, 85
 Source: https://github.com/rawinan-soma/dds-sharing/issues/68 (migrated 2026-09-21)
 
@@ -52,3 +52,5 @@ Events: `probe_performed` (`system`) carrying the Report codes probed, calls mad
 **rawinan-soma** — 2026-09-17
 
 Reopening: the implementation was discarded. The branch carrying this work (ticket#70) and its PR were deleted, so nothing on any branch satisfies this ticket. Back to ready-for-agent.
+
+Merged in #108 (3d1ace26a09cac6a388fdc87cdf7566d76036510).
