@@ -43,8 +43,8 @@ export interface Dossier extends QueueRow {
   startDate: string;
   endDate: string;
   area: Area;
-  /** Null until the Probe exists (a later slice). */
-  rowCount: number | null;
+  /** A summed count, or the Probe's still-pending or abandoned state. */
+  rowCount: number | 'pending' | 'failed';
 }
 
 export type DossierOutcome =

@@ -40,7 +40,7 @@ const dossier = (over: Partial<Dossier> = {}): Dossier => ({
     provinces: [{ id: '50', name: 'เชียงใหม่' }],
     region: null,
   },
-  rowCount: null,
+  rowCount: 'pending',
   ...over,
 });
 
@@ -162,10 +162,24 @@ describe('DossierPage', () => {
     expect(text()).toContain(m.reviewer_dossier_ahead_none());
   });
 
-  it('gives a placeholder for the row count, not a number', async () => {
-    await load();
+  it('shows the count as pending, with a note, while the Probe has not landed', async () => {
+    await load({ rowCount: 'pending' });
     expect(text()).toContain(m.reviewer_probe_label());
-    expect(text()).toContain(m.reviewer_probe_unavailable());
+    expect(text()).toContain(m.reviewer_probe_pending());
+    expect(text()).toContain(m.reviewer_probe_note());
+  });
+
+  it('shows the count as failed, with a different note, when the Probe was abandoned', async () => {
+    await load({ rowCount: 'failed' });
+    expect(text()).toContain(m.reviewer_probe_failed());
+    expect(text()).toContain(m.reviewer_probe_failed_note());
+    expect(text()).not.toContain(m.reviewer_probe_note());
+  });
+
+  it('shows the summed count as a number once the Probe has landed', async () => {
+    await load({ rowCount: 129 });
+    expect(text()).toContain('129');
+    expect(text()).toContain(m.reviewer_probe_note());
   });
 
   it('shows a Request past the threshold as not actionable', async () => {
