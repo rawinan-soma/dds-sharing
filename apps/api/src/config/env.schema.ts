@@ -114,6 +114,9 @@ export const appGroup: Group = {
   TRUST_PROXY: trustProxy.required(),
   STATIC_ROOT: secret.required(),
   FRONTEND_URL: secureUrl(S.custom(originOnly)),
+  // The local scratch volume the extraction job's disk floor checks (spec
+  // §7.8) and, from a later ticket, writes each Report code's output to.
+  SCRATCH_DIR: secret.required(),
 };
 
 /** What the HTTP app connects as. Never the owner (§6.4). */

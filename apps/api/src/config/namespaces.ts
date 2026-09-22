@@ -29,6 +29,7 @@ export const mapApp = (v: Vars) => ({
   /** Relative to the working directory unless absolute. */
   staticRoot: v.STATIC_ROOT,
   frontendUrl: v.FRONTEND_URL,
+  scratchDir: v.SCRATCH_DIR,
 });
 
 export const mapDb = (v: Vars) => ({ url: v.APP_DATABASE_URL });
