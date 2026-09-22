@@ -1,6 +1,6 @@
 # The extraction pipeline
 
-Status: ready-for-agent
+Status: closed
 Blocked by: 66, 85
 Source: https://github.com/rawinan-soma/dds-sharing/issues/69 (migrated 2026-09-21)
 
@@ -86,3 +86,5 @@ Events: `job_queued`, `job_deferred_low_disk`, `job_started`, `code_fetched` (on
 **rawinan-soma** — 2026-09-17
 
 Reopening: the implementation was discarded. The branch carrying this work (ticket#70) and its PR were deleted, so nothing on any branch satisfies this ticket. Back to ready-for-agent.
+
+Merged in #110 (cbd430b9cabe5fddbaede5fa15a884b7833b89d5).
