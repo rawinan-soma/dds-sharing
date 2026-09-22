@@ -1,6 +1,6 @@
 # The Extract, the Extract archive and the fingerprint
 
-Status: ready-for-agent
+Status: closed
 Blocked by: 69, 85
 Source: https://github.com/rawinan-soma/dds-sharing/issues/70 (migrated 2026-09-21)
 
@@ -58,4 +58,8 @@ A completed job writes one CSV, zips it with the Data dictionary, hashes the CSV
 ## Blocked by
 
 - #69 — The extraction pipeline
+
+## Comments
+
+Merged in #111 (0e3fdc589f086e47a7bb9ab59dd4aa7d030fae16).
 
