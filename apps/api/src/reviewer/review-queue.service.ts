@@ -1,7 +1,8 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
+import { type RequestEventPayloads } from '../audit/event-catalogue';
 import { DB, type Db } from '../db/database.module';
-import { request, requestContact } from '../db/schema';
+import { request, requestContact, requestEvent } from '../db/schema';
 import { ProvinceLookup } from '../reference/province-lookup.service';
 import { CLOCK, type Clock } from './clock';
 import { type Holidays } from './business-hours';
@@ -33,6 +34,9 @@ export interface QueueList {
   requests: QueueRow[];
 }
 
+/** The summed count, or the Probe's still-pending or abandoned state (§5.4). */
+export type ProbeRowCount = number | 'pending' | 'failed';
+
 export interface Dossier extends QueueRow {
   contact: {
     name: string;
@@ -46,8 +50,7 @@ export interface Dossier extends QueueRow {
   startDate: string;
   endDate: string;
   area: Area;
-  /** No Probe yet (a later slice): null is the honest value, not zero. */
-  rowCount: null;
+  rowCount: ProbeRowCount;
 }
 
 // What a signed-in Reviewer reads. Read-only, and it selects only what the
@@ -127,8 +130,26 @@ export class ReviewQueue {
       startDate: entry.startDate,
       endDate: entry.endDate,
       area: describeArea(entry.provinces, this.provinces.provinces),
-      rowCount: null,
+      rowCount: await this.probeRowCount(id),
     };
+  }
+
+  // `probe_performed`/`probe_failed` is terminal and written at most once per
+  // Request (§5.4), so the first match settles it; no event yet reads pending.
+  private async probeRowCount(id: string): Promise<ProbeRowCount> {
+    const [row] = await this.db
+      .select({ type: requestEvent.type, payload: requestEvent.payload })
+      .from(requestEvent)
+      .where(
+        and(
+          eq(requestEvent.requestId, id),
+          inArray(requestEvent.type, ['probe_performed', 'probe_failed']),
+        ),
+      )
+      .limit(1);
+    if (!row) return 'pending';
+    if (row.type === 'probe_failed') return 'failed';
+    return (row.payload as RequestEventPayloads['probe_performed']).totalItems;
   }
 }
 
