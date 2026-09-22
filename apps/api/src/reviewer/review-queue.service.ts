@@ -61,39 +61,36 @@ export class ReviewQueue {
     private readonly provinces: ProvinceLookup,
   ) {}
 
+  // The list shows a name and a group, never the rest of the dossier (§10.2),
+  // so it reads only those columns: the Reviewer's browsing view has no reason
+  // to pull tel, email, workplace or the Request's parameters off disk.
   async list(): Promise<QueueList> {
     const now = this.clock.now();
-    const ranked = await this.ranked(now);
+    const rows = await this.db
+      .select({
+        id: request.id,
+        reference: request.reference,
+        submittedAt: request.submittedAt,
+        diseaseGroupName: request.diseaseGroupName,
+        name: requestContact.name,
+        surname: requestContact.surname,
+      })
+      .from(request)
+      .innerJoin(requestContact, eq(requestContact.requestId, request.id))
+      .where(eq(request.state, 'pending'));
     return {
       generatedAt: now.toISOString(),
-      requests: ranked.map((entry) => toRow(entry)),
+      requests: rankPending(rows, now, this.holidays).map(toRow),
     };
   }
 
-  /** Null when there is no such pending Request. */
+  /**
+   * Null when there is no such pending Request. Queue position and expiry are
+   * both properties of the whole pending set, so this still ranks every
+   * pending Row — only the one Row's contact fields are ever read out of it.
+   */
   async dossier(id: string): Promise<Dossier | null> {
-    const entry = (await this.ranked(this.clock.now())).find(
-      (r) => r.id === id,
-    );
-    if (!entry) return null;
-    return {
-      ...toRow(entry),
-      contact: {
-        name: entry.name,
-        surname: entry.surname,
-        tel: entry.tel,
-        email: entry.email,
-        workplace: entry.workplace,
-      },
-      reportCodes: entry.reportCodes,
-      startDate: entry.startDate,
-      endDate: entry.endDate,
-      area: describeArea(entry.provinces, this.provinces.provinces),
-      rowCount: null,
-    };
-  }
-
-  private async ranked(now: Date) {
+    const now = this.clock.now();
     const rows = await this.db
       .select({
         id: request.id,
@@ -113,7 +110,25 @@ export class ReviewQueue {
       .from(request)
       .innerJoin(requestContact, eq(requestContact.requestId, request.id))
       .where(eq(request.state, 'pending'));
-    return rankPending(rows, now, this.holidays);
+    const entry = rankPending(rows, now, this.holidays).find(
+      (r) => r.id === id,
+    );
+    if (!entry) return null;
+    return {
+      ...toRow(entry),
+      contact: {
+        name: entry.name,
+        surname: entry.surname,
+        tel: entry.tel,
+        email: entry.email,
+        workplace: entry.workplace,
+      },
+      reportCodes: entry.reportCodes,
+      startDate: entry.startDate,
+      endDate: entry.endDate,
+      area: describeArea(entry.provinces, this.provinces.provinces),
+      rowCount: null,
+    };
   }
 }
 

@@ -12,14 +12,20 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
 import * as m from '../../paraglide/messages.js';
 import { formatDay } from '../requester/format-day';
-import { type Area, type Dossier, QueueApi } from './queue-api';
+import {
+  type Area,
+  type Dossier,
+  type DossierOutcome,
+  QueueApi,
+} from './queue-api';
 import { formatDuration, formatInstant } from './queue-format';
 
+// The outcomes QueueApi can report, plus the moment before any of them has
+// arrived. Reusing DossierOutcome's union keeps the two from drifting apart.
 type View =
   | { kind: 'loading' }
   | { kind: 'ok'; dossier: Dossier }
-  | { kind: 'gone' }
-  | { kind: 'failed' };
+  | Exclude<DossierOutcome, { kind: 'ok' }>;
 
 // The review screen: read-only. It shows the five contact fields, the ask in
 // human terms, the clock and the queue position, and only those (§10.2). The
@@ -31,7 +37,7 @@ type View =
   template: `
     @switch (view().kind) {
       @case ('ok') {
-        @if (loaded(); as d) {
+        @if (currentDossier(); as d) {
           <article class="dossier">
             <header>
               <h2 #heading tabindex="-1">{{ d.reference }}</h2>
@@ -81,6 +87,7 @@ type View =
                     <time [attr.datetime]="d.endDate">{{
                       day(d.endDate)
                     }}</time>
+                    <span class="muted">{{ copy.datesInclusive }}</span>
                   </dd>
                   <dt>{{ copy.area }}</dt>
                   <dd>
@@ -115,7 +122,7 @@ type View =
               </div>
               <div>
                 <p class="cell-label">{{ copy.probe }}</p>
-                <p class="placeholder">
+                <p class="placeholder figure">
                   @if (d.rowCount === null) {
                     {{ copy.probeUnavailable }}
                   } @else {
@@ -225,7 +232,11 @@ type View =
       color: var(--pending);
       font-weight: 600;
     }
+    /* Same size and slot as the counted state (handoff.md "Row count states"):
+       a missing count must read as a fact, not a smaller, lesser answer. */
     .placeholder {
+      font-size: 1.875rem;
+      font-weight: 600;
       color: var(--inert);
     }
   `,
@@ -236,8 +247,9 @@ export class DossierPage {
   private readonly heading = viewChild<ElementRef<HTMLElement>>('heading');
 
   protected readonly view = signal<View>({ kind: 'loading' });
-  // The narrowed dossier, for the template.
-  protected readonly loaded = () => {
+  // The narrowed dossier, for the template: null while loading or once the
+  // Request is gone or failed to load.
+  protected readonly currentDossier = () => {
     const v = this.view();
     return v.kind === 'ok' ? v.dossier : null;
   };
@@ -254,6 +266,7 @@ export class DossierPage {
     workplace: m.requester_workplace(),
     group: m.reviewer_dossier_group(),
     dates: m.reviewer_dossier_dates(),
+    datesInclusive: m.reviewer_dossier_dates_inclusive(),
     area: m.reviewer_dossier_area(),
     submitted: m.reviewer_submitted_label(),
     clock: m.reviewer_clock_label(),
@@ -309,15 +322,21 @@ export class DossierPage {
   protected areaHeadline(area: Area): string {
     if (area.kind === 'national') return m.requester_area_national();
     return area.region === null
-      ? area.provinces.map((p) => p.name).join(', ')
+      ? this.areaProvinceNames(area)
       : m.requester_area_region_selected({ region: area.region });
   }
 
   // A named region shows the provinces it stands for beneath it; a hand-picked
-  // list already is the provinces.
+  // list already is the provinces, so there is nothing to repeat under it.
   protected areaProvinces(area: Area): string | null {
     return area.kind === 'provinces' && area.region !== null
-      ? area.provinces.map((p) => p.name).join(', ')
+      ? this.areaProvinceNames(area)
       : null;
+  }
+
+  private areaProvinceNames(
+    area: Extract<Area, { kind: 'provinces' }>,
+  ): string {
+    return area.provinces.map((p) => p.name).join(', ');
   }
 }

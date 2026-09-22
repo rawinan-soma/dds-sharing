@@ -11,13 +11,13 @@ import { HOLIDAYS, ReviewQueue } from './review-queue.service';
 import { ReviewQueueController } from './review-queue.controller';
 import { ReviewerController } from './reviewer.controller';
 import { ReviewerSessions } from './reviewer-sessions';
-import { HOLIDAYS as THAI_HOLIDAY_SET } from './thai-holidays';
+import { THAI_HOLIDAYS_SET } from './thai-holidays';
 
 @Module({
   imports: [ReferenceDataModule],
   controllers: [ReviewerController, ReviewQueueController],
   providers: [
-    { provide: HOLIDAYS, useValue: THAI_HOLIDAY_SET },
+    { provide: HOLIDAYS, useValue: THAI_HOLIDAYS_SET },
     ReviewQueue,
     { provide: CLOCK, useValue: systemClock },
     {

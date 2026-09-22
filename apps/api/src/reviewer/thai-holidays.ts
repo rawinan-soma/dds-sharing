@@ -46,4 +46,4 @@ export const THAI_HOLIDAYS: readonly string[] = [
   '2027-12-31',
 ];
 
-export const HOLIDAYS: ReadonlySet<string> = new Set(THAI_HOLIDAYS);
+export const THAI_HOLIDAYS_SET: ReadonlySet<string> = new Set(THAI_HOLIDAYS);

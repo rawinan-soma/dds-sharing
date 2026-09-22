@@ -101,12 +101,12 @@ const STALENESS_TICK_MS = 30_000;
               <p class="prose">{{ copy.emptyDetail }}</p>
               <p class="prose muted">{{ copy.emptyNote }}</p>
             </section>
-          } @else if (rows() && !selected()) {
+          } @else if (rows() && !dossierOpen()) {
             <p class="empty muted">{{ copy.noneSelected }}</p>
           }
           <router-outlet
-            (activate)="selected.set(true)"
-            (deactivate)="selected.set(false)"
+            (activate)="dossierOpen.set(true)"
+            (deactivate)="dossierOpen.set(false)"
           />
         </main>
       </div>
@@ -249,7 +249,8 @@ export class QueuePage {
   protected readonly rows = signal<QueueRow[] | null>(null);
   protected readonly loading = signal(false);
   protected readonly failed = signal(false);
-  protected readonly selected = signal(false);
+  // Whether the routed dossier (the child route) currently has a Request open.
+  protected readonly dossierOpen = signal(false);
   private readonly changes = signal(0);
   private readonly loadedAt = signal(0);
   private readonly now = signal(Date.now());
