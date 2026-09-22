@@ -1,8 +1,9 @@
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import * as m from '../../paraglide/messages.js';
-import { type QueueRow, QueueApi } from './queue-api';
-import { countChanges, formatDuration, minutesSince } from './queue-format';
+import { type QueueRow } from './queue-api';
+import { formatDuration, minutesSince } from './queue-format';
+import { QueueStore } from './queue-store';
 import { ReviewerSession } from './reviewer-session';
 
 // How often the staleness line re-reads the local clock. It asks the server for
@@ -242,17 +243,16 @@ const STALENESS_TICK_MS = 30_000;
   `,
 })
 export class QueuePage {
-  private readonly api = inject(QueueApi);
+  private readonly store = inject(QueueStore);
   private readonly session = inject(ReviewerSession);
 
-  /** Null until the first list arrives. Kept, never blanked, while a reload runs. */
-  protected readonly rows = signal<QueueRow[] | null>(null);
-  protected readonly loading = signal(false);
-  protected readonly failed = signal(false);
+  protected readonly rows = this.store.rows;
+  protected readonly loading = this.store.loading;
+  protected readonly failed = this.store.failed;
   // Whether the routed dossier (the child route) currently has a Request open.
   protected readonly dossierOpen = signal(false);
-  private readonly changes = signal(0);
-  private readonly loadedAt = signal(0);
+  private readonly changes = this.store.changes;
+  private readonly loadedAt = this.store.loadedAt;
   private readonly now = signal(Date.now());
 
   protected readonly leaderId = computed(
@@ -313,20 +313,7 @@ export class QueuePage {
   /** The only way the list is read again: the Reviewer asks for it. */
   protected async reload(): Promise<void> {
     if (this.loading()) return;
-    this.loading.set(true);
-    this.failed.set(false);
-    try {
-      const list = await this.api.list();
-      const before = this.rows();
-      this.changes.set(before ? countChanges(before, list.requests) : 0);
-      this.rows.set(list.requests);
-      this.loadedAt.set(Date.now());
-      this.now.set(Date.now());
-    } catch {
-      // The old list stays on screen, and the staleness line says how old it is.
-      this.failed.set(true);
-    } finally {
-      this.loading.set(false);
-    }
+    await this.store.reload();
+    this.now.set(Date.now());
   }
 }

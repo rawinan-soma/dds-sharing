@@ -189,10 +189,14 @@ describe('DossierPage', () => {
     expect(text()).not.toContain('requests are ahead');
   });
 
-  it('offers no decision, no drain estimate and no history in this slice', async () => {
+  it('offers no drain estimate and no history', async () => {
     await load();
-    expect(el.querySelector('button')).toBeNull();
     expect(text()).not.toMatch(/~\s*\d+\s*min|will start|estimate/i);
+  });
+
+  it('offers no decision for a Request already past the threshold', async () => {
+    await load({ expired: true, minutesLeft: 0, ahead: null });
+    expect(el.querySelector('button')).toBeNull();
   });
 
   it('moves focus to the heading once the Request is on screen', async () => {
@@ -223,5 +227,132 @@ describe('DossierPage', () => {
     await settle();
     http.expectOne('/api/reviewer/queue/r2');
     expect(text()).not.toContain('Somchai');
+  });
+
+  describe('the Decision (§10.3)', () => {
+    const buttonNamed = (name: string) =>
+      [...el.querySelectorAll('button')].find(
+        (b) => b.textContent?.trim() === name,
+      )!;
+    const approveButton = () => buttonNamed(m.reviewer_approve());
+    const rejectButton = () => buttonNamed(m.reviewer_reject());
+    const confirmButton = () =>
+      buttonNamed(m.reviewer_approve_confirm_submit());
+    const rejectSubmitButton = () => buttonNamed(m.reviewer_reject_submit());
+
+    it('sits below the identity fields and the ask, in the DOM as well as on screen', async () => {
+      await load();
+      const html = el.innerHTML;
+      expect(html.indexOf('class="strip"')).toBeLessThan(
+        html.indexOf(m.reviewer_approve()),
+      );
+    });
+
+    it('states plainly what was recorded once approved, without asking again', async () => {
+      await load();
+      approveButton().click();
+      fixture.detectChanges();
+      expect(text()).toContain(m.reviewer_approve_confirm_permanence());
+
+      confirmButton().click();
+      http
+        .expectOne({ url: '/api/reviewer/queue/r1/approve', method: 'POST' })
+        .flush({ outcome: 'approved', decidedAt: '2026-09-21T07:32:00.000Z' });
+      await settle();
+
+      expect(el.querySelector('button')).toBeNull();
+      expect(text()).toContain(m.reviewer_decided_approved_detail());
+      // Never auto-advances: the same Request stays on screen (§10.3).
+      expect(text()).toContain('REQ-2569-0001');
+    });
+
+    it('requires a note of at least 10 characters before reject can be submitted', async () => {
+      await load();
+      rejectButton().click();
+      fixture.detectChanges();
+      expect(rejectSubmitButton().disabled).toBe(true);
+
+      const textarea = el.querySelector('textarea')!;
+      textarea.value = 'too short';
+      textarea.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+      expect(rejectSubmitButton().disabled).toBe(true);
+
+      textarea.value = 'Could not verify the workplace.';
+      textarea.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+      expect(rejectSubmitButton().disabled).toBe(false);
+    });
+
+    it('sends the note and states that no reason was sent to the requester', async () => {
+      await load();
+      rejectButton().click();
+      fixture.detectChanges();
+      const textarea = el.querySelector('textarea')!;
+      textarea.value = 'Could not verify the workplace by phone.';
+      textarea.dispatchEvent(new Event('input'));
+      fixture.detectChanges();
+
+      rejectSubmitButton().click();
+      const req = http.expectOne({
+        url: '/api/reviewer/queue/r1/reject',
+        method: 'POST',
+      });
+      expect(req.request.body).toEqual({
+        note: 'Could not verify the workplace by phone.',
+      });
+      req.flush({ outcome: 'rejected', decidedAt: '2026-09-21T07:32:00.000Z' });
+      await settle();
+
+      expect(el.querySelector('button')).toBeNull();
+      expect(text()).toContain(m.reviewer_decided_rejected_detail());
+    });
+
+    it('lets the Reviewer cancel an approve confirm without submitting', async () => {
+      await load();
+      approveButton().click();
+      fixture.detectChanges();
+      const cancel = buttonNamed(m.reviewer_cancel());
+      cancel.click();
+      fixture.detectChanges();
+      http.expectNone(() => true);
+      expect(approveButton()).not.toBeNull();
+    });
+
+    it('shows a refusal, not a Decision, when the Request expired while it was open', async () => {
+      await load();
+      approveButton().click();
+      fixture.detectChanges();
+      confirmButton().click();
+      http
+        .expectOne({ url: '/api/reviewer/queue/r1/approve', method: 'POST' })
+        .flush({ error: 'expired' }, { status: 409, statusText: 'Conflict' });
+      await settle();
+
+      expect(el.querySelector('button')).toBeNull();
+      expect(text()).toContain(m.reviewer_decision_expired_heading());
+    });
+
+    it('never carries a half-typed note across Requests', async () => {
+      await load();
+      rejectButton().click();
+      fixture.detectChanges();
+      const textarea = el.querySelector('textarea')!;
+      textarea.value = 'A note nobody should see again.';
+      textarea.dispatchEvent(new Event('input'));
+
+      params.next(paramMap('r2'));
+      await settle();
+      http.expectOne('/api/reviewer/queue/r2').flush(dossier({ id: 'r2' }));
+      await settle();
+
+      expect(el.querySelector('textarea')).toBeNull();
+      expect(text()).not.toContain('A note nobody should see again');
+    });
+
+    it('offers no decision once the Request has already expired', async () => {
+      await load({ expired: true, minutesLeft: 0, ahead: null });
+      expect(el.querySelector('button')).toBeNull();
+    });
   });
 });

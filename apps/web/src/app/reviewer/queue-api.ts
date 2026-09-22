@@ -50,6 +50,14 @@ export interface Dossier extends QueueRow {
 export type DossierOutcome =
   { kind: 'ok'; dossier: Dossier } | { kind: 'gone' } | { kind: 'failed' };
 
+/** What approve or reject came back with (spec §10.3, §10.4). */
+export type DecisionOutcome =
+  | { kind: 'recorded'; decision: 'approved' | 'rejected'; decidedAt: string }
+  | { kind: 'expired' }
+  | { kind: 'gone' }
+  | { kind: 'invalid_note' }
+  | { kind: 'failed' };
+
 const BASE = '/api/reviewer/queue';
 
 // Every call here is one the Reviewer asked for. Nothing calls it on a timer:
@@ -72,6 +80,43 @@ export class QueueApi {
       return error instanceof HttpErrorResponse && error.status === 404
         ? { kind: 'gone' }
         : { kind: 'failed' };
+    }
+  }
+
+  approve(id: string): Promise<DecisionOutcome> {
+    return this.decide(`${BASE}/${encodeURIComponent(id)}/approve`, {});
+  }
+
+  reject(id: string, note: string): Promise<DecisionOutcome> {
+    return this.decide(`${BASE}/${encodeURIComponent(id)}/reject`, { note });
+  }
+
+  private async decide(
+    path: string,
+    body: Record<string, unknown>,
+  ): Promise<DecisionOutcome> {
+    try {
+      const res = await firstValueFrom(
+        this.http.post<{ outcome: 'approved' | 'rejected'; decidedAt: string }>(
+          path,
+          body,
+        ),
+      );
+      return {
+        kind: 'recorded',
+        decision: res.outcome,
+        decidedAt: res.decidedAt,
+      };
+    } catch (error) {
+      if (!(error instanceof HttpErrorResponse)) return { kind: 'failed' };
+      const code = (error.error as { error?: string } | null)?.error;
+      if (error.status === 409 && code === 'expired')
+        return { kind: 'expired' };
+      if (error.status === 404) return { kind: 'gone' };
+      if (error.status === 400 && code === 'invalid_note') {
+        return { kind: 'invalid_note' };
+      }
+      return { kind: 'failed' };
     }
   }
 }
