@@ -220,8 +220,47 @@ describe('the Reviewer queue (e2e)', () => {
         ahead: 0,
         minutesLeft: 21 * 60,
         expired: false,
-        rowCount: null,
+        rowCount: 'pending',
       });
+    });
+
+    it('shows the summed count once the Probe has written probe_performed', async () => {
+      await scratch.owner.query(
+        `INSERT INTO request_event (request_id, type, actor_type, occurred_at, payload)
+         VALUES ($1, 'probe_performed', 'system', now(), $2)`,
+        [
+          older,
+          JSON.stringify({
+            reportCodes: ['202', '203'],
+            callsMade: 2,
+            spanStart: '2025-01-01',
+            spanEnd: '2025-02-01',
+            totalItemsByCode: { '202': 40, '203': 65 },
+            totalItems: 105,
+            xRequestIds: ['req-1', 'req-2'],
+          }),
+        ],
+      );
+
+      const res = await signedIn.get(`/api/reviewer/queue/${older}`);
+      expect(res.body.rowCount).toBe(105);
+    });
+
+    it('shows the count as failed once the Probe has been abandoned', async () => {
+      await scratch.owner.query(
+        `INSERT INTO request_event (request_id, type, actor_type, occurred_at, payload)
+         VALUES ($1, 'probe_failed', 'system', now(), $2)`,
+        [
+          newer,
+          JSON.stringify({
+            groupCode: '208',
+            errors: [{ message: 'Upstream server_error', xRequestId: null }],
+          }),
+        ],
+      );
+
+      const res = await signedIn.get(`/api/reviewer/queue/${newer}`);
+      expect(res.body.rowCount).toBe('failed');
     });
 
     it('names the area: nationwide, and a whole health region', async () => {

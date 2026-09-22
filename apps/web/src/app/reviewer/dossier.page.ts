@@ -146,12 +146,21 @@ type DecisionProblem = 'gone' | 'invalid_note' | 'failed';
               </div>
               <div>
                 <p class="cell-label">{{ copy.probe }}</p>
-                <p class="placeholder figure">
-                  @if (d.rowCount === null) {
-                    {{ copy.probeUnavailable }}
-                  } @else {
+                <p class="figure" [class.placeholder]="!isCounted(d.rowCount)">
+                  @if (isCounted(d.rowCount)) {
                     {{ d.rowCount }}
+                  } @else if (d.rowCount === 'pending') {
+                    {{ copy.probePending }}
+                  } @else {
+                    {{ copy.probeFailed }}
                   }
+                </p>
+                <p class="cell-note muted">
+                  {{
+                    d.rowCount === 'failed'
+                      ? copy.probeFailedNote
+                      : copy.probeNote
+                  }}
                 </p>
               </div>
             </div>
@@ -493,7 +502,10 @@ export class DossierPage {
     clockNote: m.reviewer_clock_note(),
     clockExpired: m.reviewer_clock_expired(),
     probe: m.reviewer_probe_label(),
-    probeUnavailable: m.reviewer_probe_unavailable(),
+    probePending: m.reviewer_probe_pending(),
+    probeFailed: m.reviewer_probe_failed(),
+    probeNote: m.reviewer_probe_note(),
+    probeFailedNote: m.reviewer_probe_failed_note(),
     expired: m.reviewer_dossier_expired(),
     gone: m.reviewer_dossier_gone(),
     loadFailed: m.reviewer_dossier_load_failed(),
@@ -567,6 +579,10 @@ export class DossierPage {
     if (count === 0) return m.reviewer_dossier_ahead_none();
     if (count === 1) return m.reviewer_dossier_ahead_one();
     return m.reviewer_dossier_ahead({ count });
+  }
+
+  protected isCounted(rowCount: Dossier['rowCount']): rowCount is number {
+    return typeof rowCount === 'number';
   }
 
   protected codesDisclosure(count: number): string {
