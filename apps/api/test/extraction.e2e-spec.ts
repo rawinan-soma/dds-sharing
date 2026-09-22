@@ -6,6 +6,8 @@ import { Test } from '@nestjs/testing';
 import { App } from 'supertest/types';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { AppModule } from '../src/app.module';
+import { type ArchiveStore } from '../src/extraction/archive-store';
+import { ARCHIVE_STORE } from '../src/extraction/extraction.module';
 import { Decisions } from '../src/reviewer/decisions.service';
 import {
   createFakeUpstream,
@@ -15,6 +17,25 @@ import {
   createScratchDatabase,
   type ScratchDatabase,
 } from './support/scratch-database';
+
+// Nothing in CI runs a real MinIO (`.env.test`'s MINIO_ENDPOINT is an
+// unresolvable placeholder, matching CI's services, which stops at Postgres
+// and Redis). §7.8's one-operation upload is exercised for real here against
+// an in-memory stand-in instead — the DI override a `Test.createTestingModule`
+// gives for exactly this case — while the unit layer
+// (`extraction-worker.spec.ts`) covers the failure paths a fake can force.
+function fakeArchiveStore(): ArchiveStore & {
+  uploads: { objectKey: string; bytes: Buffer }[];
+} {
+  const uploads: { objectKey: string; bytes: Buffer }[] = [];
+  return {
+    uploads,
+    upload(objectKey, bytes) {
+      uploads.push({ objectKey, bytes });
+      return Promise.resolve();
+    },
+  };
+}
 
 // The extraction pipeline (spec §7), wired for real: approve -> a job row in
 // Postgres -> a real BullMQ job -> a real Worker calling a real (fake)
@@ -36,6 +57,7 @@ describe('the extraction pipeline (e2e)', () => {
   let app: INestApplication<App>;
   let decisions: Decisions;
   let reviewerId: string;
+  let archiveStore: ReturnType<typeof fakeArchiveStore>;
 
   const original = {
     dbUrl: process.env.APP_DATABASE_URL,
@@ -107,9 +129,13 @@ describe('the extraction pipeline (e2e)', () => {
     process.env.UPSTREAM_TOKEN = upstream.token;
     process.env.ALLOW_INSECURE_TRANSPORT = 'true';
 
+    archiveStore = fakeArchiveStore();
     const moduleRef = await Test.createTestingModule({
       imports: [AppModule],
-    }).compile();
+    })
+      .overrideProvider(ARCHIVE_STORE)
+      .useValue(archiveStore)
+      .compile();
     app = moduleRef.createNestApplication({ logger: false });
     await app.init();
     decisions = moduleRef.get(Decisions);
@@ -135,6 +161,7 @@ describe('the extraction pipeline (e2e)', () => {
   beforeEach(() => {
     upstream.requests.length = 0;
     upstream.setFault(null);
+    archiveStore.uploads.length = 0;
   });
 
   it('approving writes a queued job row and enqueues a BullMQ job carrying only the reference', async () => {
@@ -154,7 +181,7 @@ describe('the extraction pipeline (e2e)', () => {
     expect(events.map((e) => e.type)).toContain('job_queued');
   });
 
-  it('runs to success on a code with no matching rows, and writes job_started + code_fetched', async () => {
+  it('runs to success on a code with no matching rows, uploads the archive once, and writes job_started + code_fetched + job_completed', async () => {
     const id = await insertPendingRequest(['999']);
     await decisions.approve(id, {
       reviewerId,
@@ -171,13 +198,38 @@ describe('the extraction pipeline (e2e)', () => {
 
     const events = await eventsOf(id);
     expect(events.map((e) => e.type)).toEqual(
-      expect.arrayContaining(['job_queued', 'job_started', 'code_fetched']),
+      expect.arrayContaining([
+        'job_queued',
+        'job_started',
+        'code_fetched',
+        'job_completed',
+      ]),
     );
     const fetched = events.find((e) => e.type === 'code_fetched')!;
     expect(fetched.payload).toMatchObject({
       groupCode: '999',
       rowsReceived: 0,
       totalItems: 0,
+    });
+
+    // spec §7.8: the finished archive uploads to MinIO, and `job_completed`
+    // records what was released. Exactly-one-upload is a unit-level property
+    // (`extraction-worker.spec.ts`, in isolation); here the wiring is what's
+    // under test — a real DI override reaching a real worker — so this only
+    // checks that this job's own archive landed, by name and non-empty bytes.
+    // An earlier test's job may still be completing in the background and
+    // land an upload of its own in the same shared fake.
+    const completed = events.find((e) => e.type === 'job_completed')!;
+    const archiveFilename = completed.payload.archiveFilename as string;
+    expect(
+      archiveStore.uploads.some(
+        (u) => u.objectKey === archiveFilename && u.bytes.length > 0,
+      ),
+    ).toBe(true);
+    expect(completed.payload).toMatchObject({
+      rowCount: 0,
+      columnCount: 23,
+      drift: { probe: {}, run: { '999': 0 } },
     });
   }, 10_000);
 

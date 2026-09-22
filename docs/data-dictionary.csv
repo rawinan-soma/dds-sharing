@@ -1,0 +1,49 @@
+Data dictionary,,,
+dds-sharing — DDC DDS occupational- and environmental-disease case-level Extract,,,
+This file is identical in every Extract archive (spec §8.2 rule 8). It is a property of the service, never of the Request.,,,
+,,,
+Encoding note,,,
+"This CSV opens correctly in Excel by double-click. If you read it with pandas, pass encoding='utf-8-sig' — otherwise the first column name reads as literally ""epidem_report_guid"" prefixed by the byte-order mark. In R, readr::read_csv detects the BOM automatically.",,,
+,,,
+Columns,,,
+#,column,description (English),คำอธิบาย (ไทย)
+1,epidem_report_guid,Unique identifier for this case report,รหัสประจำตัวของรายงานผู้ป่วยรายนี้ (ไม่ซ้ำกัน)
+2,epidem_report_group_code,The Report code this row was fetched under — what the Requester asked for,รหัสกลุ่มโรค/การบาดเจ็บ (Report code) ที่ใช้ดึงข้อมูลแถวนี้ ตรงกับกลุ่มโรคที่ผู้ขอข้อมูลร้องขอ
+3,diagnosis_icd10,Primary ICD-10 diagnosis code. Uppercase-normalised,รหัสวินิจฉัยหลักตามมาตรฐาน ICD-10 (ปรับเป็นตัวพิมพ์ใหญ่ทั้งหมด)
+4,diagnosis_icd10_list,"All ICD-10 diagnosis codes reported for the case, comma-separated. Uppercase-normalised",รายการรหัสวินิจฉัยตาม ICD-10 ทั้งหมดของผู้ป่วยรายนี้ คั่นด้วยเครื่องหมายจุลภาค (ปรับเป็นตัวพิมพ์ใหญ่ทั้งหมด)
+5,birth_date,Date of birth,วันเดือนปีเกิด
+6,gender,"Sex/gender code, as reported upstream",เพศ (รหัสตามต้นทาง)
+7,prefix,"Honorific/title code, as reported upstream",คำนำหน้าชื่อ (รหัสตามต้นทาง)
+8,nationality,"Nationality code, as reported upstream",สัญชาติ (รหัสตามต้นทาง)
+9,occupation,"Occupation code, as reported upstream",อาชีพ (รหัสตามต้นทาง)
+10,marital_status_id,"Marital status code, as reported upstream",สถานภาพสมรส (รหัสตามต้นทาง)
+11,chw_code,"2-digit province code of the case's registered address (ทะเบียนราษฎร์), not where the case was investigated",รหัสจังหวัด 2 หลัก ตามที่อยู่ทะเบียนราษฎร์ของผู้ป่วย (ไม่ใช่ที่อยู่ขณะสอบสวนโรค)
+12,amp_code,4-digit district code of the case's registered address,รหัสอำเภอ 4 หลัก ตามที่อยู่ทะเบียนราษฎร์ของผู้ป่วย
+13,epidem_chw_code,"2-digit province code of the case's address at the time of investigation. This is the column an area-limited Request is filtered on",รหัสจังหวัด 2 หลัก ตามที่อยู่ของผู้ป่วยขณะสอบสวนโรค เป็นคอลัมน์ที่ใช้กรองพื้นที่เมื่อมีการจำกัดขอบเขตคำขอ
+14,epidem_health_zone,"Health region (1–13) of epidem_chw_code. Derived by this service, not upstream — blank if epidem_chw_code is absent",เขตสุขภาพ (1-13) ที่คำนวณจาก epidem_chw_code คอลัมน์นี้คำนวณโดยระบบนี้เอง ไม่ใช่ข้อมูลจากต้นทาง หากไม่มี epidem_chw_code จะเว้นว่าง
+15,epidem_amp_code,4-digit district code of the case's address at the time of investigation,รหัสอำเภอ 4 หลัก ตามที่อยู่ของผู้ป่วยขณะสอบสวนโรค
+16,hospital_code,Reporting facility code,รหัสสถานพยาบาลผู้รายงาน
+17,onset_date,Date of symptom or injury onset,วันที่เริ่มป่วยหรือได้รับบาดเจ็บ
+18,onset_age,"Age in completed years at onset_date, anchored on the case rather than on submission. Derived from onset_date and birth_date — blank if either is missing, or if the result would be impossible (a future birth date, or an age over 120)",อายุ (ปีเต็ม) ณ วันที่เริ่มป่วย คำนวณจากวันที่เริ่มป่วยและวันเกิด จะเว้นว่างหากไม่มีข้อมูลใดข้อมูลหนึ่ง หรือผลลัพธ์ที่ได้เป็นไปไม่ได้ (เช่น วันเกิดในอนาคต หรืออายุเกิน 120 ปี)
+19,treated_date,Date the case was treated,วันที่เข้ารับการรักษา
+20,diagnosis_date,Date of diagnosis,วันที่วินิจฉัยโรค
+21,death_date,"Date of death, if applicable",วันที่เสียชีวิต (ถ้ามี)
+22,report_datetime,Date and time the case was reported into the DDS system,วันที่และเวลาที่บันทึกรายงานเข้าสู่ระบบ DDS
+23,update_datetime,Date and time the report record was last updated,วันที่และเวลาที่ปรับปรุงข้อมูลรายงานล่าสุด
+,,,
+Notes,,,
+"Every column above is either passed through from upstream unchanged (trimmed of surrounding whitespace) or computed by this service as noted. An empty cell means the value was absent or could not be computed — never a sentinel such as -1 or UNKNOWN. No sub-district geography and no point coordinates are ever released (this service's de-identification allowlist).",,,
+,,,
+Disease group classification,,,
+"This classification is ours, not upstream's: it is how this service groups upstream Report codes under the names a Requester picks from. See docs/disease-groups.md for the authoritative source.",,,
+id,Disease group (Thai),Report codes,
+air-pollution,โรคจากการสัมผัสมลพิษทางอากาศ,201,
+silicosis,โรคซิลิโคสิส,"202, 203",
+asbestos,โรคจากแร่ใยหิน,"204, 205, 206, 207",
+lead,โรคจากตะกั่วและสารประกอบของตะกั่ว,208,
+pesticides,โรคจากสารกำจัดศัตรูพืช,"209, 210, 211, 212, 213, 214, 215, 216, 217, 218",
+confined-space,การบาดเจ็บจากภาวะอับอากาศ,219,
+radiation,โรคจากรังสี,"222, 223, 224",
+work-related,โรคจากการทำงาน,220,
+environmental-pollution,โรคที่เกี่ยวข้องกับการสัมผัสมลพิษในสิ่งแวดล้อม,221,
+heat,โรคจากความร้อน,501,
