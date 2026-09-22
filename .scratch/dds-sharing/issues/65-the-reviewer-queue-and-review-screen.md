@@ -1,6 +1,6 @@
 # The Reviewer queue and review screen
 
-Status: ready-for-agent
+Status: closed
 Blocked by: 63, 64
 Source: https://github.com/rawinan-soma/dds-sharing/issues/65 (migrated 2026-09-21)
 
@@ -102,3 +102,5 @@ The three queue zones are drawn, including the line saying a Request with an ope
 **Copy comes from the catalogue, not from templates.** Every string is keyed in `messages/en.json` and `messages/th.json`. The English is authored and is the source (ADR 0010); the Thai in the catalogue and on the design canvas is an agent-written layout proxy, replaced by #96. Build against the keys, and do not hand-write a sentence into a template.
 
 Treat the design as the source of **visual layout only**. Structure, ordering and copy are settled by this ticket and the spec, and they outrank the design wherever they disagree.
+
+Merged in #107 (bc98ae6b347a5f1797c8419e028daef08c1c4739).
