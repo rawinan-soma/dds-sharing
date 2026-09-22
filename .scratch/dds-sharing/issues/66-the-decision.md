@@ -1,6 +1,6 @@
 # The Decision
 
-Status: ready-for-agent
+Status: closed
 Blocked by: 65
 Source: https://github.com/rawinan-soma/dds-sharing/issues/66 (migrated 2026-09-21)
 
@@ -103,3 +103,7 @@ Your screens: the decision actions on **5** คิวและแฟ้มคำ
 **Copy comes from the catalogue, not from templates.** Every string is keyed in `messages/en.json` and `messages/th.json`. The English is authored and is the source (ADR 0010); the Thai in the catalogue and on the design canvas is an agent-written layout proxy, replaced by #96. Build against the keys, and do not hand-write a sentence into a template.
 
 Treat the design as the source of **visual layout only**. Structure, ordering and copy are settled by this ticket and the spec, and they outrank the design wherever they disagree.
+
+**rawinan-soma** — 2026-09-22
+
+Merged in #109 (3cb2fd47384a8b35b1d19fa87ee8f2f61bf4e6e3).
