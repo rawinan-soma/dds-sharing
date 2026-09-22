@@ -6,6 +6,8 @@ import { ReferenceDataModule } from '../reference/reference-data.module';
 import { CLOCK, type Clock, systemClock } from './clock';
 import { LoginThrottle } from './login-throttle';
 import { CsrfGuard } from './csrf.guard';
+import { DecisionsController } from './decisions.controller';
+import { Decisions } from './decisions.service';
 import { ReviewerAuth } from './reviewer-auth';
 import { ReviewerAuthGuard } from './reviewer-auth.guard';
 import { REVIEWER_CONFIG, reviewerConfigFrom } from './reviewer-config';
@@ -17,10 +19,11 @@ import { THAI_HOLIDAYS_SET } from './thai-holidays';
 
 @Module({
   imports: [ReferenceDataModule],
-  controllers: [ReviewerController, ReviewQueueController],
+  controllers: [ReviewerController, ReviewQueueController, DecisionsController],
   providers: [
     { provide: HOLIDAYS, useValue: THAI_HOLIDAYS_SET },
     ReviewQueue,
+    Decisions,
     { provide: CLOCK, useValue: systemClock },
     {
       provide: REVIEWER_CONFIG,

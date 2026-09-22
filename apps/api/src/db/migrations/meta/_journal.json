@@ -43,6 +43,13 @@
       "when": 1789982600080,
       "tag": "0005_reviewer_accounts",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790047708094,
+      "tag": "0006_decision_state_grant",
+      "breakpoints": true
     }
   ]
 }
