@@ -1,6 +1,6 @@
 # Validate configuration at boot through ConfigModule
 
-Status: ready-for-agent
+Status: closed
 Blocked by: 64
 Labels: enhancement
 Source: https://github.com/rawinan-soma/dds-sharing/issues/85 (migrated 2026-09-21)
@@ -158,3 +158,7 @@ Triage of #87 removed the Operator (ADR 0020): host commands do not record who r
 **rawinan-soma** — 2026-09-17
 
 Reopening: the implementation was discarded. The branch carrying this work (ticket#70) and its PR were deleted, so nothing on any branch satisfies this ticket. Back to ready-for-agent.
+
+**pr-landing** — 2026-09-22
+
+Merged in #106 (49951dae299497b44ce9833c5625e6ff72008c96).

@@ -1,4 +1,6 @@
 import { Module } from '@nestjs/common';
+import { type ConfigType } from '@nestjs/config';
+import { transportConfig } from '../config/namespaces';
 import { DB, type Db } from '../db/database.module';
 import { ReferenceDataModule } from '../reference/reference-data.module';
 import { CLOCK, type Clock, systemClock } from './clock';
@@ -6,7 +8,7 @@ import { LoginThrottle } from './login-throttle';
 import { CsrfGuard } from './csrf.guard';
 import { ReviewerAuth } from './reviewer-auth';
 import { ReviewerAuthGuard } from './reviewer-auth.guard';
-import { REVIEWER_CONFIG, reviewerConfigFromEnv } from './reviewer-config';
+import { REVIEWER_CONFIG, reviewerConfigFrom } from './reviewer-config';
 import { HOLIDAYS, ReviewQueue } from './review-queue.service';
 import { ReviewQueueController } from './review-queue.controller';
 import { ReviewerController } from './reviewer.controller';
@@ -22,7 +24,9 @@ import { THAI_HOLIDAYS_SET } from './thai-holidays';
     { provide: CLOCK, useValue: systemClock },
     {
       provide: REVIEWER_CONFIG,
-      useFactory: () => reviewerConfigFromEnv(process.env),
+      inject: [transportConfig.KEY],
+      useFactory: (transport: ConfigType<typeof transportConfig>) =>
+        reviewerConfigFrom(transport),
     },
     {
       provide: LoginThrottle,

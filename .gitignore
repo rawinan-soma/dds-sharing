@@ -9,3 +9,6 @@ node_modules
 dist
 coverage
 *.tsbuildinfo
+
+# Deployment secrets; .env.example and apps/api/.env.test are the checked-in ones
+.env

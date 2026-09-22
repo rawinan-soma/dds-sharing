@@ -21,12 +21,10 @@ describe('reference data at boot (e2e)', () => {
 
   beforeAll(async () => {
     db = await createScratchDatabase();
-    process.env.STATIC_ROOT = 'test/fixtures/public';
   });
 
   afterAll(async () => {
     process.env.APP_DATABASE_URL = originalUrl;
-    delete process.env.STATIC_ROOT;
     await db.drop();
   });
 

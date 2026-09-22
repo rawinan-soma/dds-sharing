@@ -1,18 +1,17 @@
 export const REVIEWER_CONFIG = Symbol('REVIEWER_CONFIG');
 
 export interface ReviewerConfig {
-  /** `Secure` on the Reviewer cookies. On unless explicitly switched off. */
+  /** `Secure` on the Reviewer cookies. On unless the deployment has no TLS. */
   secureCookies: boolean;
 }
 
 /**
- * `Secure` is on by default and is switched off only by an explicit
- * development flag, exactly `REVIEWER_INSECURE_COOKIE=true`. There is no TLS
- * before production, so the insecure setting must be opted into: no other value
- * (unset, empty, `1`, `yes`, a typo) degrades it silently.
+ * `Secure` is on unless `ALLOW_INSECURE_TRANSPORT` is exactly `true`. That flag
+ * is validated at boot as strictly `true` or `false`, so no other value (unset
+ * aside, which is `false`) can degrade it silently (§10.5).
  */
-export function reviewerConfigFromEnv(
-  env: Record<string, string | undefined>,
-): ReviewerConfig {
-  return { secureCookies: env.REVIEWER_INSECURE_COOKIE !== 'true' };
+export function reviewerConfigFrom(transport: {
+  allowInsecureTransport: boolean;
+}): ReviewerConfig {
+  return { secureCookies: !transport.allowInsecureTransport };
 }

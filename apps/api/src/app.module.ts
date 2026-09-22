@@ -1,6 +1,9 @@
 import { isAbsolute, join } from 'node:path';
 import { Module } from '@nestjs/common';
+import { type ConfigType } from '@nestjs/config';
 import { ServeStaticModule } from '@nestjs/serve-static';
+import { AppConfigModule } from './config/app-config.module';
+import { appConfig } from './config/namespaces';
 import { DatabaseModule } from './db/database.module';
 import { HealthModule } from './health/health.module';
 import { ReferenceDataModule } from './reference/reference-data.module';
@@ -17,10 +20,12 @@ const staticRoot = (root: string) =>
 
 @Module({
   imports: [
+    AppConfigModule,
     ServeStaticModule.forRootAsync({
-      useFactory: () => [
+      inject: [appConfig.KEY],
+      useFactory: (app: ConfigType<typeof appConfig>) => [
         {
-          rootPath: staticRoot(process.env.STATIC_ROOT ?? 'public'),
+          rootPath: staticRoot(app.staticRoot),
           exclude: API_PREFIX_EXCLUDE,
           serveStaticOptions: { setHeaders: keepReviewerSurfaceOutOfSearch },
         },

@@ -59,7 +59,6 @@ describe('submit a Request (e2e)', () => {
   beforeAll(async () => {
     db = await createScratchDatabase();
     process.env.APP_DATABASE_URL = db.appUrl;
-    process.env.STATIC_ROOT = 'test/fixtures/public';
 
     app = await NestFactory.create(AppModule, { logger: false });
     app.setGlobalPrefix('api');
@@ -77,7 +76,6 @@ describe('submit a Request (e2e)', () => {
     await appPool.end();
     await app.close();
     process.env.APP_DATABASE_URL = originalUrl;
-    delete process.env.STATIC_ROOT;
     await db.drop();
   });
 

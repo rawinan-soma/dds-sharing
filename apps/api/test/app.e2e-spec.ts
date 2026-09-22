@@ -14,8 +14,8 @@ import {
 // resolves providers during .compile(), before createNestApplication() attaches the
 // adapter, so it silently falls back to a no-op loader. NestFactory.create() attaches
 // the adapter first, matching how main.ts actually boots — so the e2e app is built the
-// same way here. STATIC_ROOT is read lazily inside AppModule's forRootAsync factory,
-// so setting it in beforeAll (before the factory runs at bootstrap) is still in time.
+// same way here. The environment comes from .env.test (test/setup-env.ts); only the
+// database URL is this file's own, set in beforeAll before the pool is built.
 describe('AppModule (e2e)', () => {
   let app: INestApplication<App>;
   let db: ScratchDatabase;
@@ -25,7 +25,6 @@ describe('AppModule (e2e)', () => {
     // The app refuses to boot without the seeded reference data (§6.4).
     db = await createScratchDatabase();
     process.env.APP_DATABASE_URL = db.appUrl;
-    process.env.STATIC_ROOT = 'test/fixtures/public';
 
     app = await NestFactory.create(AppModule, { logger: false });
     app.setGlobalPrefix('api');
@@ -35,7 +34,6 @@ describe('AppModule (e2e)', () => {
   afterAll(async () => {
     await app.close();
     process.env.APP_DATABASE_URL = originalUrl;
-    delete process.env.STATIC_ROOT;
     await db.drop();
   });
 
@@ -58,6 +56,7 @@ describe('AppModule (e2e)', () => {
         disk: { status: 'ok' },
         mail: { status: 'ok' },
       },
+      insecureFlags: [],
     });
   });
 

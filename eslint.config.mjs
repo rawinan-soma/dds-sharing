@@ -5,6 +5,18 @@ import eslintPluginPrettierRecommended from 'eslint-plugin-prettier/recommended'
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
+const NO_PROCESS_ENV =
+  'Read configuration through a validated namespace in src/config (NFR-31), not process.env.';
+
+// Any way of reaching the environment directly: `process.env`, a destructured
+// `env`, or `env` imported from `node:process`.
+const noProcessEnv = [
+  "MemberExpression[object.name='process'][property.name='env']",
+  "MemberExpression[object.name='process'][property.value='env']",
+  "VariableDeclarator[init.name='process'] > ObjectPattern > Property[key.name='env']",
+  "ImportDeclaration[source.value=/^(node:)?process$/] ImportSpecifier[imported.name='env']",
+].map((selector) => ({ selector, message: NO_PROCESS_ENV }));
+
 export default tseslint.config(
   {
     ignores: [
@@ -36,7 +48,19 @@ export default tseslint.config(
       '@typescript-eslint/no-floating-promises': 'warn',
       '@typescript-eslint/no-unsafe-argument': 'warn',
       'prettier/prettier': ['error', { endOfLine: 'auto' }],
+      'no-restricted-syntax': ['error', ...noProcessEnv],
     },
+  },
+  {
+    // Configuration is read once, validated, in the config module. Tests set
+    // their own environment.
+    files: [
+      'apps/api/src/config/**/*.ts',
+      'apps/api/test/**/*.ts',
+      'apps/api/**/*.spec.ts',
+      'apps/api/**/*.e2e-spec.ts',
+    ],
+    rules: { 'no-restricted-syntax': 'off' },
   },
   {
     files: ['apps/web/**/*.ts'],

@@ -79,7 +79,7 @@ describe('reviewer sign-in and sessions (e2e)', () => {
   beforeAll(async () => {
     scratch = await createScratchDatabase();
     process.env.APP_DATABASE_URL = scratch.appUrl;
-    delete process.env.REVIEWER_INSECURE_COOKIE;
+    delete process.env.ALLOW_INSECURE_TRANSPORT;
     appPool = new Pool({ connectionString: scratch.appUrl });
     // DROP ... WITH (FORCE) can reach a connection that is still closing.
     appPool.on('error', () => {});

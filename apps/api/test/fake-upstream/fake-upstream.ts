@@ -49,6 +49,8 @@ export interface FakeUpstreamOptions {
   /** A string planted in every field and every error body. */
   sentinel?: string;
   port?: number;
+  /** Interface to bind. Default loopback; a container needs `0.0.0.0`. */
+  host?: string;
 }
 
 export interface RecordedRequest {
@@ -259,7 +261,7 @@ export async function createFakeUpstream(
     });
   });
   await new Promise<void>((resolve) =>
-    server.listen(options.port ?? 0, '127.0.0.1', resolve),
+    server.listen(options.port ?? 0, options.host ?? '127.0.0.1', resolve),
   );
   const { port } = server.address() as AddressInfo;
 
