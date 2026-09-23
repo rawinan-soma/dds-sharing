@@ -5,4 +5,8 @@
 // this the same way, so a bootstrap that forgets it fails loudly (a 404 on a
 // route an e2e spec exercises) rather than silently prefixing the address.
 export const API_PREFIX = 'api';
-export const API_PREFIX_EXCLUDE = ['d/:token', 'd/:token/archive'];
+export const API_PREFIX_EXCLUDE = [
+  'd/:token',
+  'd/:token/archive',
+  'link-expired',
+];

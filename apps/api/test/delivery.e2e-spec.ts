@@ -7,6 +7,7 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AppModule } from '../src/app.module';
+import { catalogue } from '../src/i18n/copy-catalogue';
 import { ARCHIVE_STORE } from '../src/extraction/extraction.module';
 import { ATTEMPT_CAP } from '../src/delivery/resolve-token';
 import { hashToken } from '../src/delivery/token';
@@ -85,6 +86,17 @@ describe('delivery and collection (e2e)', () => {
     await app.close();
     process.env.APP_DATABASE_URL = originalDbUrl;
     await scratch.drop();
+  });
+
+  it('renders the expiry page itself, the target every dead-token redirect above points at', async () => {
+    const response = await request(app.getHttpServer())
+      .get('/link-expired')
+      .expect(200);
+
+    expect(response.headers['content-type']).toContain('text/html');
+    expect(response.text).toContain(catalogue.t('requester_expired_title'));
+    expect(response.text).toContain(catalogue.t('app_telephone'));
+    expect(response.text).not.toMatch(/REQ-/);
   });
 
   it('redirects an unknown token to /link-expired from either route, auditing a row with no Request', async () => {

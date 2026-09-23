@@ -4,6 +4,17 @@ import { catalogue } from '../i18n/copy-catalogue';
 import { DeliveryService } from './delivery.service';
 import { renderCollectionPage, renderExpiredPage } from './pages';
 
+// `/link-expired` itself (spec §9.4, ADR 0018) — every dead-token redirect in
+// DeliveryController below points here; it must exist outside `/d/:token` so
+// a bare GET renders the one identical page rather than 404ing.
+@Controller('link-expired')
+export class LinkExpiredController {
+  @Get()
+  page(@Res() res: Response): void {
+    res.status(200).type('html').send(renderExpiredPage(catalogue));
+  }
+}
+
 /** `req.ip`/`req.socket.remoteAddress` may carry the IPv4-mapped IPv6 prefix; every other IP-keyed spot in the codebase strips it the same way (`requests.controller.ts`). */
 function clientIp(req: Request): string | undefined {
   return (req.ip ?? req.socket.remoteAddress)?.replace(/^::ffff:/i, '');

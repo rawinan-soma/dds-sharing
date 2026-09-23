@@ -5,7 +5,10 @@ import {
 } from '../extraction/extraction.module';
 import { type ArchiveStore } from '../extraction/archive-store';
 import { DB, type Db } from '../db/database.module';
-import { DeliveryController } from './delivery.controller';
+import {
+  DeliveryController,
+  LinkExpiredController,
+} from './delivery.controller';
 import { DeliveryService } from './delivery.service';
 import { DownloadThrottle } from './download-throttle';
 import { DownloadTokens } from './download-tokens.repository';
@@ -13,7 +16,7 @@ import { DownloadTokensModule } from './download-tokens.module';
 
 @Module({
   imports: [ExtractionModule, DownloadTokensModule],
-  controllers: [DeliveryController],
+  controllers: [DeliveryController, LinkExpiredController],
   providers: [
     {
       provide: DownloadThrottle,
