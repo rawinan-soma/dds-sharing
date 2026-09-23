@@ -5,11 +5,9 @@ import {
 } from '../extraction/extraction.module';
 import { type ArchiveStore } from '../extraction/archive-store';
 import { DB, type Db } from '../db/database.module';
-import {
-  DeliveryController,
-  LinkExpiredController,
-} from './delivery.controller';
+import { DeliveryController } from './delivery.controller';
 import { DeliveryService } from './delivery.service';
+import { LinkExpiredController } from './link-expired.controller';
 import { DownloadThrottle } from './download-throttle';
 import { DownloadTokens } from './download-tokens.repository';
 import { DownloadTokensModule } from './download-tokens.module';
