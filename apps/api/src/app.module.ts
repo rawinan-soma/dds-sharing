@@ -5,7 +5,9 @@ import { ServeStaticModule } from '@nestjs/serve-static';
 import { AppConfigModule } from './config/app-config.module';
 import { appConfig } from './config/namespaces';
 import { DatabaseModule } from './db/database.module';
+import { DeliveryModule } from './delivery/delivery.module';
 import { HealthModule } from './health/health.module';
+import { MailModule } from './mail/mail.module';
 import { ReferenceDataModule } from './reference/reference-data.module';
 import { RequestsModule } from './requests/requests.module';
 import { ReviewerModule } from './reviewer/reviewer.module';
@@ -36,6 +38,8 @@ const staticRoot = (root: string) =>
     HealthModule,
     RequestsModule,
     ReviewerModule,
+    MailModule,
+    DeliveryModule,
   ],
 })
 export class AppModule {}

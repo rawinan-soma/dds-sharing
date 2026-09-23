@@ -6,13 +6,13 @@ import { Test } from '@nestjs/testing';
 import { App } from 'supertest/types';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { AppModule } from '../src/app.module';
-import { type ArchiveStore } from '../src/extraction/archive-store';
 import { ARCHIVE_STORE } from '../src/extraction/extraction.module';
 import { Decisions } from '../src/reviewer/decisions.service';
 import {
   createFakeUpstream,
   FakeUpstream,
 } from './fake-upstream/fake-upstream';
+import { fakeArchiveStore } from './support/fake-archive-store';
 import {
   createScratchDatabase,
   type ScratchDatabase,
@@ -24,18 +24,6 @@ import {
 // an in-memory stand-in instead — the DI override a `Test.createTestingModule`
 // gives for exactly this case — while the unit layer
 // (`extraction-worker.spec.ts`) covers the failure paths a fake can force.
-function fakeArchiveStore(): ArchiveStore & {
-  uploads: { objectKey: string; bytes: Buffer }[];
-} {
-  const uploads: { objectKey: string; bytes: Buffer }[] = [];
-  return {
-    uploads,
-    upload(objectKey, bytes) {
-      uploads.push({ objectKey, bytes });
-      return Promise.resolve();
-    },
-  };
-}
 
 // The extraction pipeline (spec §7), wired for real: approve -> a job row in
 // Postgres -> a real BullMQ job -> a real Worker calling a real (fake)

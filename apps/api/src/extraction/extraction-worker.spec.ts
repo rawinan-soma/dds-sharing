@@ -22,31 +22,50 @@ import {
 const SCRATCH_DIR = mkdtempSync(join(tmpdir(), 'extraction-worker-'));
 afterAll(() => rmSync(SCRATCH_DIR, { recursive: true, force: true }));
 
-// A stand-in for the three drizzle calls this module makes: `select().from()
-// .where()` for `loadTarget`'s request row and `loadProbeTotals`'s event row,
-// and `insert().values()` (writeRequestEvent). The two selects are told apart
-// by the columns asked for — `loadProbeTotals` asks for `payload` alone — not
-// by the table or condition, which no other unit spec in this codebase fakes
-// either (DB-touching logic is tested against a real scratch database at the
-// e2e layer instead), so this stays deliberately minimal: only the shapes
-// `extraction-worker.ts` actually calls.
+// A stand-in for the drizzle calls this module makes: `select().from()
+// .where()` for `loadTarget`'s request row, `loadProbeTotals`'s event row,
+// `sendDeliveryMail`'s contact row, and `sendExtractionFailureMail`'s
+// approval/reviewer rows — and `insert().values()` (writeRequestEvent). Each
+// select is told apart by the columns asked for, not by the table or
+// condition, which no other unit spec in this codebase fakes either
+// (DB-touching logic is tested against a real scratch database at the e2e
+// layer instead), so this stays deliberately minimal: only the shapes
+// `extraction-worker.ts` actually calls. `approvalRow`/`reviewerRow` default
+// to absent, so `sendExtractionFailureMail` is a no-op unless a test opts in.
 interface Inserted {
   values: { type: string; payload?: Record<string, unknown> };
 }
 
+const DEFAULT_CONTACT_ROW = {
+  name: 'Somchai',
+  surname: 'Devkul',
+  email: 'somchai@example.go.th',
+};
+
 function fakeDb(
   requestRow: Record<string, unknown> | undefined,
   probeRow?: { payload: unknown },
+  contactRow: Record<string, unknown> | undefined = DEFAULT_CONTACT_ROW,
+  approvalRow?: { reviewerId: string },
+  reviewerRow?: { email: string; displayName: string },
 ) {
   const inserted: Inserted[] = [];
   const db = {
     select: (shape: Record<string, unknown>) => ({
       from: () => ({
         where: () => {
-          const isProbeQuery =
-            Object.keys(shape).length === 1 && 'payload' in shape;
-          if (isProbeQuery) {
+          const keys = Object.keys(shape);
+          if (keys.length === 1 && 'payload' in shape) {
             return Promise.resolve(probeRow ? [probeRow] : []);
+          }
+          if (keys.length === 1 && 'reviewerId' in shape) {
+            return Promise.resolve(approvalRow ? [approvalRow] : []);
+          }
+          if ('name' in shape && 'surname' in shape && 'email' in shape) {
+            return Promise.resolve(contactRow ? [contactRow] : []);
+          }
+          if ('email' in shape && 'displayName' in shape) {
+            return Promise.resolve(reviewerRow ? [reviewerRow] : []);
           }
           return Promise.resolve(requestRow ? [requestRow] : []);
         },
@@ -60,6 +79,25 @@ function fakeDb(
     }),
   } as unknown as NodePgDatabase;
   return { db, inserted };
+}
+
+function fakeDownloadTokens(): ExtractionWorkerDeps['downloadTokens'] {
+  return {
+    create: vi.fn().mockResolvedValue(undefined),
+  } as unknown as ExtractionWorkerDeps['downloadTokens'];
+}
+
+function fakeMailSender(): ExtractionWorkerDeps['mailSender'] & {
+  sent: { requestId: string; to: string; params: unknown }[];
+} {
+  const sent: { requestId: string; to: string; params: unknown }[] = [];
+  return {
+    sent,
+    send: vi.fn((requestId: string, to: string, params: unknown) => {
+      sent.push({ requestId, to, params });
+      return Promise.resolve();
+    }),
+  } as unknown as ExtractionWorkerDeps['mailSender'] & { sent: typeof sent };
 }
 
 function fakeJobs(): ExtractionJobs {
@@ -88,6 +126,7 @@ const REQUEST_ROW = {
   endDate: '2025-01-31',
   provinces: [],
   submittedAt: new Date('2025-12-31T10:00:00Z'),
+  reference: 'REQ-2569-0001',
 };
 
 function fakeArchiveStore(): ArchiveStore & {
@@ -100,6 +139,8 @@ function fakeArchiveStore(): ArchiveStore & {
       uploads.push({ objectKey, bytes });
       return Promise.resolve();
     }),
+    stat: vi.fn(() => Promise.resolve(null)),
+    download: vi.fn(() => Promise.reject(new Error('not used by this spec'))),
   };
 }
 
@@ -140,6 +181,9 @@ function baseDeps(
     } as unknown as ExtractionWorkerDeps['provinceLookup'],
     scratchDir: SCRATCH_DIR,
     archiveStore: fakeArchiveStore(),
+    downloadTokens: fakeDownloadTokens(),
+    mailSender: fakeMailSender(),
+    frontendUrl: 'https://frontend.test',
     freeDiskBytes: () => Promise.resolve(DISK_FLOOR_BYTES * 2),
     now: () => new Date('2026-01-01T00:00:00Z'),
     sleep: () => Promise.resolve(),
@@ -193,6 +237,72 @@ describe('processExtractionJob', () => {
       'code_fetched',
       'job_completed',
     ]);
+  });
+
+  it('issues a Download token and sends the Delivery email on completion (spec §9.3, §11.3)', async () => {
+    const jobs = fakeJobs();
+    const { db } = fakeDb(REQUEST_ROW);
+    const downloadTokens = fakeDownloadTokens();
+    const mailSender = fakeMailSender();
+
+    await processExtractionJob(
+      fakeJob(),
+      undefined,
+      baseDeps({ db, extractionJobs: jobs, downloadTokens, mailSender }),
+    );
+
+    expect(downloadTokens.create).toHaveBeenCalledTimes(1);
+    expect(mailSender.sent).toHaveLength(1);
+    expect(mailSender.sent[0]).toMatchObject({
+      requestId: 'req-1',
+      to: 'somchai@example.go.th',
+      params: {
+        kind: 'delivery',
+        reference: 'REQ-2569-0001',
+        name: 'Somchai Devkul',
+      },
+    });
+  });
+
+  it('sends the extraction-failure email to the approving Reviewer on failure, and is a no-op with none on record', async () => {
+    const jobs = fakeJobs();
+    const { db } = fakeDb(
+      REQUEST_ROW,
+      undefined,
+      undefined,
+      { reviewerId: 'rev-1' },
+      { email: 'reviewer@ddc.go.th', displayName: 'Reviewer One' },
+    );
+    const mailSender = fakeMailSender();
+    const hangingUpstream: UpstreamPager = {
+      async *pages(): AsyncGenerator<UpstreamPage> {
+        await new Promise<never>(() => undefined);
+        yield undefined as never;
+      },
+    };
+
+    await processExtractionJob(
+      fakeJob(),
+      undefined,
+      baseDeps({
+        db,
+        extractionJobs: jobs,
+        mailSender,
+        upstream: hangingUpstream,
+        stallMs: 5,
+      }),
+    );
+
+    expect(mailSender.sent).toHaveLength(1);
+    expect(mailSender.sent[0]).toMatchObject({
+      requestId: 'req-1',
+      to: 'reviewer@ddc.go.th',
+      params: {
+        kind: 'extraction_failure',
+        name: 'Reviewer One',
+        reference: 'REQ-2569-0001',
+      },
+    });
   });
 
   it('uploads the finished archive to MinIO in exactly one operation, then deletes it from scratch', async () => {

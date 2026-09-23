@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-call --
    rows from pg and JSON bodies over HTTP are untyped by nature; the assertions are the types. */
+import { API_PREFIX, API_PREFIX_EXCLUDE } from '../src/global-prefix';
 import {
   Controller,
   Get,
@@ -69,7 +70,7 @@ describe('reviewer sign-in and sessions (e2e)', () => {
       .useValue(clock)
       .compile();
     app = moduleRef.createNestApplication({ logger: false });
-    app.setGlobalPrefix('api');
+    app.setGlobalPrefix(API_PREFIX, { exclude: API_PREFIX_EXCLUDE });
     // Listening once, so concurrent requests share one server rather than each
     // supertest binding and closing its own.
     await app.listen(0);

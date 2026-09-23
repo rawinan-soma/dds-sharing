@@ -5,6 +5,7 @@ import { DB, type Db } from '../db/database.module';
 import { request, requestContact, requestEvent, reviewer } from '../db/schema';
 import { insertQueuedJob } from '../extraction/extraction-jobs.repository';
 import { ExtractionQueue } from '../extraction/extraction-queue';
+import { MailSender } from '../mail/mail-sender';
 import { requestExpiry, type Holidays } from './business-hours';
 import { buildSnapshot, noteIsValid } from './decisions';
 import { CLOCK, type Clock } from './clock';
@@ -37,6 +38,7 @@ export class Decisions {
     @Inject(CLOCK) private readonly clock: Clock,
     @Inject(HOLIDAYS) private readonly holidays: Holidays,
     private readonly extractionQueue: ExtractionQueue,
+    private readonly mailSender: MailSender,
   ) {}
 
   async approve(id: string, by: DecidingReviewer): Promise<DecisionOutcome> {
@@ -64,10 +66,14 @@ export class Decisions {
   ): Promise<DecisionOutcome> {
     const now = this.clock.now();
     let queuedJobId: string | undefined;
+    let rejectionMail:
+      | { requestId: string; to: string; name: string; reference: string }
+      | undefined;
     const outcome = await this.db.transaction(
       async (tx): Promise<DecisionOutcome> => {
         const [row] = await tx
           .select({
+            reference: request.reference,
             submittedAt: request.submittedAt,
             diseaseGroupName: request.diseaseGroupName,
             reportCodes: request.reportCodes,
@@ -75,6 +81,9 @@ export class Decisions {
             endDate: request.endDate,
             provinces: request.provinces,
             workplace: requestContact.workplace,
+            contactName: requestContact.name,
+            contactSurname: requestContact.surname,
+            contactEmail: requestContact.email,
           })
           .from(request)
           .innerJoin(requestContact, eq(requestContact.requestId, request.id))
@@ -151,6 +160,12 @@ export class Decisions {
             actor,
             payload: { snapshot, internalNote: extra.internalNote! },
           });
+          rejectionMail = {
+            requestId: id,
+            to: row.contactEmail,
+            name: `${row.contactName} ${row.contactSurname}`,
+            reference: row.reference,
+          };
         }
 
         return { status: 'recorded', decision, decidedAt: now.toISOString() };
@@ -169,6 +184,24 @@ export class Decisions {
           `Failed to enqueue extraction job ${jobId}: ${(error as Error).message}`,
         );
       });
+    }
+
+    // Also fired after commit, and never awaited, matching the enqueue above —
+    // a rejected Request is already recorded regardless of whether the email
+    // sends (spec §11.3's retry-then-Alert path covers a failed send).
+    if (rejectionMail) {
+      const mail = rejectionMail;
+      this.mailSender
+        .send(mail.requestId, mail.to, {
+          kind: 'rejection',
+          name: mail.name,
+          reference: mail.reference,
+        })
+        .catch((error: unknown) => {
+          this.logger.error(
+            `Failed to send rejection mail for request ${mail.requestId}: ${(error as Error).message}`,
+          );
+        });
     }
 
     return outcome;

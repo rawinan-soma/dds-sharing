@@ -118,8 +118,13 @@ export type JobFailureCause =
   | 'stall'
   | 'internal';
 
-export type MailKind =
-  'delivery' | 'queue_notification' | 'rejection' | 'extraction_failure';
+export const MAIL_KINDS = [
+  'delivery',
+  'queue_notification',
+  'rejection',
+  'extraction_failure',
+] as const;
+export type MailKind = (typeof MAIL_KINDS)[number];
 
 interface PerCodeTotals {
   [groupCode: string]: number;

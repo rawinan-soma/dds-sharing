@@ -14,7 +14,12 @@ import {
   minioConfig,
   redisConfig,
 } from '../config/namespaces';
+import { bullPrefix } from '../db/bull-prefix';
 import { DB, type Db } from '../db/database.module';
+import { DownloadTokens } from '../delivery/download-tokens.repository';
+import { DownloadTokensModule } from '../delivery/download-tokens.module';
+import { MailModule } from '../mail/mail.module';
+import { MailSender } from '../mail/mail-sender';
 import { ReferenceDataModule } from '../reference/reference-data.module';
 import { ProvinceLookup } from '../reference/province-lookup.service';
 import { UpstreamModule } from '../upstream/upstream.module';
@@ -43,19 +48,6 @@ const BULLMQ_WORKER = Symbol('EXTRACTION_BULLMQ_WORKER');
  * in CI runs a real MinIO (spec §7.8's upload is exercised at the unit layer
  * instead, in `extraction-worker.spec.ts`). */
 export const ARCHIVE_STORE = Symbol('EXTRACTION_ARCHIVE_STORE');
-
-/**
- * BullMQ's Redis key prefix, namespaced by the application database's own
- * name. In production this is one stable value. In an e2e suite, every test
- * file runs its own app instance against its own throwaway scratch database
- * on a *shared* Redis (`test/support/scratch-database.ts`) — without this,
- * every such instance's Worker would compete for the same 'extraction' queue
- * key space and could pick up and process a job that belongs to a different
- * test file's Postgres.
- */
-function bullPrefix(databaseUrl: string): string {
-  return new URL(databaseUrl).pathname.replace(/^\//, '') || 'dds';
-}
 
 @Injectable()
 class ExtractionLifecycle implements OnModuleInit, OnApplicationShutdown {
@@ -89,7 +81,12 @@ class ExtractionLifecycle implements OnModuleInit, OnApplicationShutdown {
 }
 
 @Module({
-  imports: [ReferenceDataModule, UpstreamModule],
+  imports: [
+    ReferenceDataModule,
+    UpstreamModule,
+    MailModule,
+    DownloadTokensModule,
+  ],
   providers: [
     {
       provide: QUEUE_REDIS_CONNECTION,
@@ -138,6 +135,8 @@ class ExtractionLifecycle implements OnModuleInit, OnApplicationShutdown {
         ExtractionJobs,
         ProvinceLookup,
         ARCHIVE_STORE,
+        DownloadTokens,
+        MailSender,
         appConfig.KEY,
         dbConfig.KEY,
       ],
@@ -148,6 +147,8 @@ class ExtractionLifecycle implements OnModuleInit, OnApplicationShutdown {
         extractionJobs: ExtractionJobs,
         provinceLookup: ProvinceLookup,
         archiveStore: ArchiveStore,
+        downloadTokens: DownloadTokens,
+        mailSender: MailSender,
         app: ConfigType<typeof appConfig>,
         dbCfg: ConfigType<typeof dbConfig>,
       ) =>
@@ -158,6 +159,9 @@ class ExtractionLifecycle implements OnModuleInit, OnApplicationShutdown {
           extractionJobs,
           provinceLookup,
           archiveStore,
+          downloadTokens,
+          mailSender,
+          frontendUrl: app.frontendUrl,
           scratchDir: app.scratchDir,
           freeDiskBytes,
           prefix: bullPrefix(dbCfg.url),
@@ -188,6 +192,6 @@ class ExtractionLifecycle implements OnModuleInit, OnApplicationShutdown {
         ),
     },
   ],
-  exports: [ExtractionJobs, ExtractionQueue],
+  exports: [ExtractionJobs, ExtractionQueue, ARCHIVE_STORE],
 })
 export class ExtractionModule {}

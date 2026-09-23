@@ -1,14 +1,38 @@
-import { Inject, Injectable } from '@nestjs/common';
-import { and, eq, notInArray, sql } from 'drizzle-orm';
+import { Inject, Injectable, Logger } from '@nestjs/common';
+import { type ConfigType } from '@nestjs/config';
+import { and, eq, isNull, notInArray, sql } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import { writeRequestEvent } from '../audit/write-request-event';
+import { appConfig } from '../config/namespaces';
 import { PG_POOL } from '../db/database.module';
-import { request, requestContact, requestEvent } from '../db/schema';
+import { request, requestContact, requestEvent, reviewer } from '../db/schema';
+import { MailSender } from '../mail/mail-sender';
+import { requestExpiry } from '../reviewer/business-hours';
+import { THAI_HOLIDAYS_SET } from '../reviewer/thai-holidays';
 import { type RequestPlan } from './plan-request';
 import { ProbeService } from './probe.service';
 import { formatReference } from './reference-number';
 import { TERMINAL_REQUEST_STATES } from './request-state';
+
+const ICT_FORMAT = new Intl.DateTimeFormat('en-CA', {
+  timeZone: 'Asia/Bangkok',
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false,
+});
+
+/** `YYYY-MM-DD HH:mm ICT` — via `Intl`, not manual offset arithmetic: the
+ * span builder is the only file allowed day arithmetic (§17.1's tripwire),
+ * and this is display formatting, not a Request span. */
+function formatIct(date: Date): string {
+  const parts = ICT_FORMAT.formatToParts(date);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '';
+  return `${get('year')}-${get('month')}-${get('day')} ${get('hour')}:${get('minute')} ICT`;
+}
 
 /** Who is asking, as far as the system can tell: network origin only (§3.3). */
 export interface Origin {
@@ -21,18 +45,21 @@ export type SubmitOutcome =
 
 @Injectable()
 export class RequestsService {
+  private readonly logger = new Logger(RequestsService.name);
   private readonly db;
 
   constructor(
     @Inject(PG_POOL) pool: Pool,
     private readonly probe: ProbeService,
+    private readonly mailSender: MailSender,
+    @Inject(appConfig.KEY) private readonly app: ConfigType<typeof appConfig>,
   ) {
     this.db = drizzle(pool);
   }
 
   // Stores the Request, its contact details and the `submitted` event in one
   // transaction: there is never a Request with no event, or an event for a
-  // Request that was not stored. No Reviewer is told; that is the next slice.
+  // Request that was not stored.
   async submit(
     plan: RequestPlan,
     origin: Origin,
@@ -117,8 +144,50 @@ export class RequestsService {
         startDate: plan.startDate,
         endDate: plan.endDate,
       });
+      void this.notifyReviewers(requestId, outcome.reference, plan, now);
     }
 
     return outcome;
+  }
+
+  /**
+   * The Reviewer queue notification (spec §11.3): the only notification
+   * channel there is — the queue page does not update itself. Sent to every
+   * active Reviewer as one email, off the submit path like the Probe above —
+   * and, like `ProbeService.run`, self-catching: the caller does not await
+   * this and never rejects, so a failure here must strand only the
+   * notification, never crash the request that just committed.
+   */
+  private async notifyReviewers(
+    requestId: string,
+    reference: string,
+    plan: RequestPlan,
+    now: Date,
+  ): Promise<void> {
+    try {
+      const activeReviewers = await this.db
+        .select({ email: reviewer.email })
+        .from(reviewer)
+        .where(isNull(reviewer.deactivatedAt));
+      if (activeReviewers.length === 0) return;
+
+      const deadline = requestExpiry(now, now, THAI_HOLIDAYS_SET).expiresAt;
+      await this.mailSender.send(
+        requestId,
+        activeReviewers.map((r) => r.email).join(', '),
+        {
+          kind: 'queue_notification',
+          reference,
+          requesterName: `${plan.contact.name} ${plan.contact.surname}`,
+          workplace: plan.contact.workplace,
+          deadline: formatIct(deadline),
+          queueUrl: `${this.app.frontendUrl}/reviewer`,
+        },
+      );
+    } catch (error) {
+      this.logger.error(
+        `Failed to notify Reviewers for request ${requestId}: ${(error as Error).message}`,
+      );
+    }
   }
 }
