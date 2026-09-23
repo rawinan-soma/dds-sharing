@@ -6,6 +6,7 @@ import {
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import * as m from '../../paraglide/messages.js';
+import { getLocale, overwriteGetLocale } from '../../paraglide/runtime.js';
 import { type QueueList, type QueueRow } from './queue-api';
 import { QueuePage } from './queue.page';
 
@@ -190,6 +191,27 @@ describe('QueuePage', () => {
       m.reviewer_scheduler_stopped_detail(),
     );
     expect(banner!.textContent).not.toMatch(/\b\d{3}\b|error|code/i);
+  });
+
+  it('renders the banner in Thai, the only language production serves (ADR 0010)', async () => {
+    const baseLocale = getLocale;
+    overwriteGetLocale(() => 'th');
+    try {
+      const thai = TestBed.createComponent(QueuePage);
+      for (const req of http.match('/api/reviewer/queue')) {
+        req.flush(list([row('a')], 'stopped'));
+      }
+      for (let i = 0; i < 5; i++) await Promise.resolve();
+      await thai.whenStable();
+
+      const banner = (thai.nativeElement as HTMLElement).querySelector(
+        '[role="alert"].scheduler-stopped',
+      );
+      expect(banner!.textContent).toContain('ระบบประมวลผลอัตโนมัติหยุดทำงาน');
+      expect(banner!.textContent).toContain('กรุณาแจ้งผู้ดูแลระบบ');
+    } finally {
+      overwriteGetLocale(baseLocale);
+    }
   });
 
   it('shows no banner while automatic processing is running', async () => {
