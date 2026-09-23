@@ -182,7 +182,8 @@ export interface RequestEventPayloads {
   rejected: { snapshot: Snapshot; internalNote: string };
   note_amended: { amendsEventId: number; internalNote: string };
   expired: {
-    notifiedAt: string;
+    /** The first queue notification the relay accepted; null if none ever was. */
+    notifiedAt: string | null;
     businessHoursElapsed: number;
     reviewerAccountsActive: number;
     decisionAttemptedAndRefused: boolean;

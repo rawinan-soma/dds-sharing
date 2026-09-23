@@ -1,6 +1,7 @@
 import { Logger, type LoggerService } from '@nestjs/common';
 import { and, eq, sql } from 'drizzle-orm';
 import { type Pool } from 'pg';
+import { queueNotifiedAt } from '../audit/queue-notified-at';
 import { writeRequestEvent } from '../audit/write-request-event';
 import { type Db } from '../db/database.module';
 import {
@@ -25,10 +26,14 @@ import { type Clock } from '../reviewer/clock';
 import { type LoginThrottle } from '../reviewer/login-throttle';
 import { type ReviewerSessions } from '../reviewer/reviewer-sessions';
 import { collectionLapse } from './collection-lapse';
+import { withTimeout } from './with-timeout';
 import {
   type ObjectDeletedOutcome,
   objectsStillHeld,
 } from './scheduler-health';
+
+/** A MinIO call slower than this fails its step rather than stalling the pass. */
+export const OBJECT_STORE_TIMEOUT_MS = 30_000;
 
 /** Every pass takes this one lock (spec §15.3). Distinct from the app's other advisory keys. */
 export const TICK_LOCK_KEY = 7_215_003;
@@ -245,8 +250,19 @@ export class Tick {
     let failed = 0;
     for (const { requestId, objectKey } of due) {
       try {
-        const present = (await archiveStore.stat(objectKey)) !== null;
-        if (present) await archiveStore.remove(objectKey);
+        const present =
+          (await withTimeout(
+            archiveStore.stat(objectKey),
+            OBJECT_STORE_TIMEOUT_MS,
+            `stat of ${objectKey}`,
+          )) !== null;
+        if (present) {
+          await withTimeout(
+            archiveStore.remove(objectKey),
+            OBJECT_STORE_TIMEOUT_MS,
+            `removal of ${objectKey}`,
+          );
+        }
         const outcome: ObjectDeletedOutcome = present
           ? 'deleted'
           : 'already_absent';
@@ -316,9 +332,7 @@ export class Tick {
             occurredAt: expiry.expiresAt,
             actor: { actorType: 'system' },
             payload: {
-              // When the 24-business-hour clock started: a Request reaches
-              // the queue at submit (§2).
-              notifiedAt: row.submittedAt.toISOString(),
+              notifiedAt: await queueNotifiedAt(tx, row.id),
               businessHoursElapsed: expiry.hoursElapsed,
               reviewerAccountsActive: active,
               decisionAttemptedAndRefused: false,

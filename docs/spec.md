@@ -1798,6 +1798,10 @@ annual leave.
 > does not help: 8 business hours from Friday 15:00 still lands on Monday 15:00.
 > **Do not re-unify the two clocks.**
 
+- **A trip-wire whose next opening falls after the token has already expired
+  raises nothing** (e.g. Friday 16:00 plus a Monday holiday; decided
+  2026-09-23, #72). The link is dead and nothing revives it (ADR 0016), so the
+  Alert would have no action; `expired_uncollected` records the Request.
 - **Waiting for the 72 h token expiry was the alternative and it is useless** — it
   fires as the window closes, leaving no time to telephone. The old business-hours
   trip-wire was worse than that alternative, not better.
@@ -1934,7 +1938,7 @@ Snapshot exists to make the Decision legible on its own years later.
 | `approved` | `reviewer` | carries the Snapshot |
 | `rejected` | `reviewer` | carries the Snapshot and the **mandatory internal note** |
 | `note_amended` | `reviewer` | cites the event it corrects |
-| `expired` | `system` | `{notified_at, business_hours_elapsed, reviewer_accounts_active, decision_attempted_and_refused}` |
+| `expired` | `system` | `{notified_at, business_hours_elapsed, reviewer_accounts_active, decision_attempted_and_refused}`. `notified_at` is when the first queue notification was accepted by the relay, **null if none ever was** — the record of an expiry "through nobody's fault" (§11.3) |
 
 *Extraction lifecycle* — **enumerated explicitly here**, because it was previously
 described only in prose while a mail kind already pointed at it. An implementer
@@ -2385,6 +2389,16 @@ Redis loss silently cancels.
   **It never touches `pending`.**
 - Every "cleanup" the tick performs on the event tables is expressed as an
   **insert**, per §12.2.
+- **What is enqueued and what runs in the pass** (decided 2026-09-23, #72).
+  Extraction re-enqueues and mail send-retries go to BullMQ. Object deletion,
+  materialising `expired` and `expired_uncollected`, the collection lapse and
+  pruning run **inline under the lock** — single execution is then the lock's
+  guarantee rather than a job-id's. Each MinIO call times out at 30 s, so a hung
+  call fails its job instead of stalling the pass, and **a pass with a failed
+  job writes no heartbeat**: a half-alive tick reaches the banner like a dead
+  one. A failed delete writes no `object_deleted` — the record holds settled
+  outcomes only; the failure is in the log, the missing heartbeat and the
+  1-hour overdue signal.
 
 **The work on the pass:** object deletion at token expiry · stall detection ·
 materialising `expired` · due mail send-retries · Deliveries past 24 **wall-clock**

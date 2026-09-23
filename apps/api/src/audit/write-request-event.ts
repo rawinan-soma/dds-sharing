@@ -6,7 +6,7 @@ import { type RequestEvent } from './event-catalogue';
 // Anything that can run an INSERT: the database, or a transaction of it. Writing
 // through a transaction is how an event lands atomically with the state change
 // it records (§12.2: `approved` and `job_queued` share one).
-type Executor =
+export type Executor =
   NodePgDatabase<Record<string, never>> | PgTransaction<any, any, any>;
 
 // The only writer of `request_event`. The type of `event` is the catalogue's

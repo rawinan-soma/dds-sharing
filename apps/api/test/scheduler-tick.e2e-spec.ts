@@ -271,8 +271,26 @@ describe('the tick (e2e)', () => {
       expect(event.occurred_at).toEqual(ict('2026-09-24T09:00'));
       expect(event.payload).toMatchObject({
         decisionAttemptedAndRefused: false,
+        // No queue notification was ever accepted: nobody was told (§11.3).
+        notifiedAt: null,
       });
       expect(event.payload.businessHoursElapsed).toBeGreaterThanOrEqual(24);
+    });
+
+    it('records when the Reviewers were told: the queue notification the relay accepted', async () => {
+      const id = await insertRequest('pending', ict('2026-09-21T09:00'));
+      await insertEvent(id, 'mail_sent', ict('2026-09-21T09:01'), {
+        kind: 'queue_notification',
+        to: 'r@example.go.th',
+        relayResponse: '250 OK',
+      });
+
+      await tick.runPass();
+
+      const [event] = await eventsOf(id, 'expired');
+      expect(event.payload.notifiedAt).toBe(
+        ict('2026-09-21T09:01').toISOString(),
+      );
     });
 
     it('leaves a pending Request inside its window pending', async () => {

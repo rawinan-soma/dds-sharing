@@ -1,5 +1,6 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { eq, sql } from 'drizzle-orm';
+import { queueNotifiedAt } from '../audit/queue-notified-at';
 import { writeRequestEvent } from '../audit/write-request-event';
 import { DB, type Db } from '../db/database.module';
 import { request, requestContact, requestEvent, reviewer } from '../db/schema';
@@ -110,7 +111,7 @@ export class Decisions {
             occurredAt: now,
             actor: { actorType: 'system' },
             payload: {
-              notifiedAt: now.toISOString(),
+              notifiedAt: await queueNotifiedAt(tx, id),
               businessHoursElapsed: expiry.hoursElapsed,
               reviewerAccountsActive: activeReviewers,
               decisionAttemptedAndRefused: true,
