@@ -4,7 +4,9 @@ import { downloadToken, tokenLookup } from '../db/schema';
 import { hashToken } from './token';
 import { type DownloadTokenRow } from './resolve-token';
 
-const HOURS_72_MS = 72 * 60 * 60 * 1000;
+/** From job completion, never extended (§9.3). The lifecycle backstop rests on it: `extraction/bucket-lifecycle.ts`. */
+export const DOWNLOAD_TOKEN_LIFETIME_HOURS = 72;
+const LIFETIME_MS = DOWNLOAD_TOKEN_LIFETIME_HOURS * 60 * 60 * 1000;
 
 export class DownloadTokens {
   constructor(private readonly db: Db) {}
@@ -23,7 +25,7 @@ export class DownloadTokens {
         tokenHash: hashToken(rawToken),
         archiveFilename,
         createdAt: now,
-        expiresAt: new Date(now.getTime() + HOURS_72_MS),
+        expiresAt: new Date(now.getTime() + LIFETIME_MS),
       })
       .returning();
     return row;

@@ -6,6 +6,7 @@ import {
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import * as m from '../../paraglide/messages.js';
+import { getLocale, overwriteGetLocale } from '../../paraglide/runtime.js';
 import { type QueueList, type QueueRow } from './queue-api';
 import { QueuePage } from './queue.page';
 
@@ -22,8 +23,12 @@ const row = (id: string, over: Partial<QueueRow> = {}): QueueRow => ({
   ...over,
 });
 
-const list = (requests: QueueRow[]): QueueList => ({
+const list = (
+  requests: QueueRow[],
+  automaticProcessing: QueueList['automaticProcessing'] = 'running',
+): QueueList => ({
   generatedAt: '2026-09-21T05:00:00.000Z',
+  automaticProcessing,
   requests,
 });
 
@@ -50,9 +55,9 @@ describe('QueuePage', () => {
 
   afterEach(() => vi.useRealTimers());
 
-  async function settle() {
+  async function settle(on: ComponentFixture<QueuePage> = fixture) {
     for (let i = 0; i < 5; i++) await Promise.resolve();
-    await fixture.whenStable();
+    await on.whenStable();
   }
 
   async function firstLoad(requests: QueueRow[]) {
@@ -173,6 +178,56 @@ describe('QueuePage', () => {
     expect(text()).toContain(m.reviewer_queue_load_failed());
     expect(text()).not.toContain(m.reviewer_empty_clear_title());
     expect(refresh()).not.toBeNull();
+  });
+
+  it('says plainly, with no error code, that automatic processing has stopped', async () => {
+    http.expectOne('/api/reviewer/queue').flush(list([row('a')], 'stopped'));
+    await settle();
+
+    const banner = el.querySelector('[role="alert"].scheduler-stopped');
+    expect(banner).not.toBeNull();
+    expect(banner!.textContent).toContain(m.reviewer_scheduler_stopped_title());
+    expect(banner!.textContent).toContain(
+      m.reviewer_scheduler_stopped_detail(),
+    );
+    expect(banner!.textContent).not.toMatch(/\b\d{3}\b|error|code/i);
+  });
+
+  it('renders the banner in the Thai catalogue’s own wording, with no error code', async () => {
+    const th = { locale: 'th' } as const;
+    const title = m.reviewer_scheduler_stopped_title({}, th);
+    const detail = m.reviewer_scheduler_stopped_detail({}, th);
+    // A missing `th` key falls back to English: prove these are translations.
+    expect(title).not.toBe(
+      m.reviewer_scheduler_stopped_title({}, { locale: 'en' }),
+    );
+    expect(detail).not.toBe(
+      m.reviewer_scheduler_stopped_detail({}, { locale: 'en' }),
+    );
+
+    const originalGetLocale = getLocale;
+    overwriteGetLocale(() => 'th');
+    try {
+      const thai = TestBed.createComponent(QueuePage);
+      for (const req of http.match('/api/reviewer/queue')) {
+        req.flush(list([row('a')], 'stopped'));
+      }
+      await settle(thai);
+
+      const banner = (thai.nativeElement as HTMLElement).querySelector(
+        '[role="alert"].scheduler-stopped',
+      );
+      expect(banner!.textContent).toContain(title);
+      expect(banner!.textContent).toContain(detail);
+      expect(banner!.textContent).not.toMatch(/\b\d{3}\b|error|code/i);
+    } finally {
+      overwriteGetLocale(originalGetLocale);
+    }
+  });
+
+  it('shows no banner while automatic processing is running', async () => {
+    await firstLoad([row('a')]);
+    expect(el.querySelector('.scheduler-stopped')).toBeNull();
   });
 
   it('shows no drain estimate and no history anywhere', async () => {

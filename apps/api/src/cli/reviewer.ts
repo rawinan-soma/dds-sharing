@@ -2,7 +2,7 @@ import { createInterface } from 'node:readline/promises';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import { hostCliSchema, validateEnvOrExit } from '../config/env.schema';
-import { systemClock } from '../reviewer/clock';
+import { systemClock } from '../clock/clock';
 import { ReviewerAccounts } from '../reviewer/reviewer-accounts';
 import { runReviewerCli, type CliIo } from './reviewer-cli';
 import { loadRetentionNotice } from './retention-notice';

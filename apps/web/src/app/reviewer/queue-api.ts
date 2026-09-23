@@ -20,6 +20,8 @@ export interface QueueRow {
 
 export interface QueueList {
   generatedAt: string;
+  /** `stopped` puts the banner up: the tick has stopped (spec §15.3). */
+  automaticProcessing: 'running' | 'stopped';
   requests: QueueRow[];
 }
 

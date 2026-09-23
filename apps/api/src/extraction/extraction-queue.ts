@@ -1,4 +1,5 @@
 import { Queue } from 'bullmq';
+import { LIVE_JOB_STATES } from '../db/bull-job-states';
 import { EXTRACTION_QUEUE_NAME } from './extraction.config';
 
 /** The BullMQ job payload: the Request id and nothing fetched (spec §14.5) —
@@ -6,14 +7,6 @@ import { EXTRACTION_QUEUE_NAME } from './extraction.config';
 export interface ExtractionJobData {
   requestId: string;
 }
-
-const LIVE_STATES = new Set([
-  'waiting',
-  'active',
-  'delayed',
-  'waiting-children',
-  'prioritized',
-]);
 
 /**
  * A thin wrapper over the BullMQ `Queue`. The Postgres `extraction_job.id` is
@@ -40,7 +33,7 @@ export class ExtractionQueue {
   async isLive(jobId: string): Promise<boolean> {
     const job = await this.queue.getJob(jobId);
     if (!job) return false;
-    return LIVE_STATES.has(await job.getState());
+    return LIVE_JOB_STATES.has(await job.getState());
   }
 
   /**
@@ -53,7 +46,7 @@ export class ExtractionQueue {
   async reenqueueIfNotLive(jobId: string, requestId: string): Promise<boolean> {
     const existing = await this.queue.getJob(jobId);
     if (existing) {
-      if (LIVE_STATES.has(await existing.getState())) return false;
+      if (LIVE_JOB_STATES.has(await existing.getState())) return false;
       await existing.remove();
     }
     await this.enqueue(jobId, requestId);

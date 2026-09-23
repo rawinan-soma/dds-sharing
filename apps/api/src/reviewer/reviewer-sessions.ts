@@ -1,8 +1,8 @@
 import { createHash, randomBytes } from 'node:crypto';
-import { and, asc, eq, inArray, ne } from 'drizzle-orm';
+import { and, asc, eq, inArray, lte, ne, or } from 'drizzle-orm';
 import { type Db } from '../db/database.module';
 import { reviewer, reviewerSession } from '../db/schema';
-import { type Clock } from './clock';
+import { type Clock } from '../clock/clock';
 import { writeReviewerEvent } from './reviewer-events';
 
 /** Slides: only a user-initiated request moves it. */
@@ -146,6 +146,50 @@ export class ReviewerSessions {
         actor: { actorType: 'reviewer', reviewerId },
         payload: {},
       });
+    });
+  }
+
+  /**
+   * The tick's pruning (spec §15.4): deletes every session past its idle
+   * window or its ceiling, and writes `session_expired` for each — the same
+   * record `resolve` writes when a request finds one first, dated when the
+   * session actually died. The row is operational state; the event is the
+   * record, and on the event table the cleanup is an insert.
+   */
+  async pruneDead(now: Date): Promise<number> {
+    return this.db.transaction(async (tx) => {
+      const dead = await tx
+        .delete(reviewerSession)
+        .where(
+          or(
+            lte(
+              reviewerSession.lastSeenAt,
+              new Date(now.getTime() - IDLE_TIMEOUT_MS),
+            ),
+            lte(
+              reviewerSession.createdAt,
+              new Date(now.getTime() - CEILING_MS),
+            ),
+          ),
+        )
+        .returning({
+          reviewerId: reviewerSession.reviewerId,
+          createdAt: reviewerSession.createdAt,
+          lastSeenAt: reviewerSession.lastSeenAt,
+        });
+      for (const session of dead) {
+        const diedAt = Math.min(
+          session.lastSeenAt.getTime() + IDLE_TIMEOUT_MS,
+          session.createdAt.getTime() + CEILING_MS,
+        );
+        await writeReviewerEvent(tx, {
+          type: 'session_expired',
+          occurredAt: new Date(diedAt),
+          actor: { actorType: 'reviewer', reviewerId: session.reviewerId },
+          payload: {},
+        });
+      }
+      return dead.length;
     });
   }
 

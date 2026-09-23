@@ -27,6 +27,15 @@ const STALENESS_TICK_MS = 30_000;
         </button>
       </header>
 
+      <!-- The one screen a named human opens daily is the guaranteed reader
+           of a stopped tick (spec §15.3): what it means, never an error code. -->
+      @if (automaticProcessing() === 'stopped') {
+        <section class="scheduler-stopped" role="alert">
+          <h2>{{ copy.schedulerStoppedTitle }}</h2>
+          <p>{{ copy.schedulerStoppedDetail }}</p>
+        </section>
+      }
+
       <div class="split">
         <aside class="sidebar">
           <div class="side-head">
@@ -129,6 +138,20 @@ const STALENESS_TICK_MS = 30_000;
     }
     .who {
       font-weight: 600;
+    }
+    .scheduler-stopped {
+      padding: 16px 24px;
+      background: var(--card);
+      border-bottom: 2px solid var(--failed);
+    }
+    .scheduler-stopped h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--failed);
+    }
+    .scheduler-stopped p {
+      max-width: 720px;
+      margin-top: 4px;
     }
     .split {
       flex: 1;
@@ -249,6 +272,7 @@ export class QueuePage {
   protected readonly rows = this.store.rows;
   protected readonly loading = this.store.loading;
   protected readonly failed = this.store.failed;
+  protected readonly automaticProcessing = this.store.automaticProcessing;
   // Whether the routed dossier (the child route) currently has a Request open.
   protected readonly dossierOpen = signal(false);
   private readonly changes = this.store.changes;
@@ -277,6 +301,8 @@ export class QueuePage {
     emptyTitle: m.reviewer_empty_clear_title(),
     emptyDetail: m.reviewer_empty_clear_detail(),
     emptyNote: m.reviewer_empty_clear_note(),
+    schedulerStoppedTitle: m.reviewer_scheduler_stopped_title(),
+    schedulerStoppedDetail: m.reviewer_scheduler_stopped_detail(),
   };
 
   constructor() {

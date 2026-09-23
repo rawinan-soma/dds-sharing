@@ -1,7 +1,7 @@
 import { and, eq, isNull, lt, or } from 'drizzle-orm';
 import { type Db } from '../db/database.module';
 import { reviewer } from '../db/schema';
-import { type Clock } from './clock';
+import { type Clock } from '../clock/clock';
 import { accountKey, ipKey, type LoginThrottle } from './login-throttle';
 import {
   hashPassword,

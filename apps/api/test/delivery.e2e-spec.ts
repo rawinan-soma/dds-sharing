@@ -164,6 +164,25 @@ describe('delivery and collection (e2e)', () => {
     expect(response.text).toBe('0123456789');
   });
 
+  it('moves the Request to collected on its first Attempt, and not on a page view', async () => {
+    const { id } = await insertRequest();
+    const { rawToken } = await insertLiveToken(id);
+    const stateOf = async () =>
+      (
+        await scratch.owner.query('SELECT state FROM request WHERE id = $1', [
+          id,
+        ])
+      ).rows[0].state as string;
+
+    await request(app.getHttpServer()).get(`/d/${rawToken}`).expect(200);
+    expect(await stateOf()).toBe('approved');
+
+    await request(app.getHttpServer())
+      .get(`/d/${rawToken}/archive`)
+      .expect(200);
+    expect(await stateOf()).toBe('collected');
+  });
+
   it('honours a Range request with a 206 and Content-Range', async () => {
     const { id } = await insertRequest();
     const { rawToken } = await insertLiveToken(id);

@@ -323,5 +323,7 @@
   "reviewer_probe_unavailable": "ยังไม่มีข้อมูล",
   "reviewer_queue_count": "รอพิจารณา {count} รายการ",
   "reviewer_queue_load_failed": "โหลดรายการไม่สำเร็จ ลองอีกครั้งได้",
-  "reviewer_dossier_dates_inclusive": "รวมวันแรกและวันสุดท้าย"
+  "reviewer_dossier_dates_inclusive": "รวมวันแรกและวันสุดท้าย",
+  "reviewer_scheduler_stopped_title": "ระบบประมวลผลอัตโนมัติหยุดทำงาน",
+  "reviewer_scheduler_stopped_detail": "คำขอที่อนุมัติแล้วอาจยังไม่ถูกดึงข้อมูลหรือส่งถึงผู้ขอ อีเมลที่ส่งไม่สำเร็จจะไม่ถูกส่งซ้ำ และไฟล์ที่หมดอายุจะไม่ถูกลบตามกำหนด การอนุมัติหรือปฏิเสธคำขอยังบันทึกได้ตามปกติ กรุณาแจ้งผู้ดูแลระบบ"
 }

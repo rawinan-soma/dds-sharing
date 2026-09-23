@@ -157,9 +157,10 @@
    ========================================================================= */
 
 /* --- The business-hours clock (spec §15.2) ------------------------------- */
-/* Mon-Fri 08:30-16:30 ICT, minus Thai public holidays from a checked-in file.
-   The holiday list is empty here on purpose: this demo is not about holidays,
-   and a stale list can only ever make expiry more generous. */
+/* Mon-Fri 08:30-16:30 ICT. When this prototype was built the clock also
+   subtracted a checked-in holiday list, left empty here because the demo was
+   not about holidays. That list has since been removed: only weekends stop the
+   clock (ADR 0021), which is what this empty set already models. */
 const BH_OPEN = 8 * 60 + 30;
 const BH_CLOSE = 16 * 60 + 30;
 const HOLIDAYS = new Set();

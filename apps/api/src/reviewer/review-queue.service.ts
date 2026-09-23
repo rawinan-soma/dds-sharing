@@ -4,8 +4,8 @@ import { type RequestEventPayloads } from '../audit/event-catalogue';
 import { DB, type Db } from '../db/database.module';
 import { request, requestContact, requestEvent } from '../db/schema';
 import { ProvinceLookup } from '../reference/province-lookup.service';
-import { CLOCK, type Clock } from './clock';
-import { type Holidays } from './business-hours';
+import { schedulerHealth } from '../scheduler/scheduler-health';
+import { CLOCK, type Clock } from '../clock/clock';
 import {
   type Area,
   type PendingRow,
@@ -13,8 +13,6 @@ import {
   describeArea,
   rankPending,
 } from './review-queue';
-
-export const HOLIDAYS = Symbol('HOLIDAYS');
 
 export interface QueueRow {
   id: string;
@@ -31,6 +29,13 @@ export interface QueueRow {
 export interface QueueList {
   /** When this list was read: the screen shows how stale it has become. */
   generatedAt: string;
+  /**
+   * `stopped` puts the banner on the queue (spec §15.3): the tick has missed
+   * five passes, or an Extract has outlived its token by an hour. The Reviewer
+   * is the guaranteed reader, so the screen says what that means for their
+   * work; the operator reads the same fact on `/health`.
+   */
+  automaticProcessing: 'running' | 'stopped';
   requests: QueueRow[];
 }
 
@@ -60,7 +65,6 @@ export class ReviewQueue {
   constructor(
     @Inject(DB) private readonly db: Db,
     @Inject(CLOCK) private readonly clock: Clock,
-    @Inject(HOLIDAYS) private readonly holidays: Holidays,
     private readonly provinces: ProvinceLookup,
   ) {}
 
@@ -81,9 +85,11 @@ export class ReviewQueue {
       .from(request)
       .innerJoin(requestContact, eq(requestContact.requestId, request.id))
       .where(eq(request.state, 'pending'));
+    const scheduler = await schedulerHealth(this.db, now);
     return {
       generatedAt: now.toISOString(),
-      requests: rankPending(rows, now, this.holidays).map(toRow),
+      automaticProcessing: scheduler.status === 'ok' ? 'running' : 'stopped',
+      requests: rankPending(rows, now).map(toRow),
     };
   }
 
@@ -113,9 +119,7 @@ export class ReviewQueue {
       .from(request)
       .innerJoin(requestContact, eq(requestContact.requestId, request.id))
       .where(eq(request.state, 'pending'));
-    const entry = rankPending(rows, now, this.holidays).find(
-      (r) => r.id === id,
-    );
+    const entry = rankPending(rows, now).find((r) => r.id === id);
     if (!entry) return null;
     return {
       ...toRow(entry),

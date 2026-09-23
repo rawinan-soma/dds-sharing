@@ -1,6 +1,6 @@
 import { type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { type PgTransaction } from 'drizzle-orm/pg-core';
-import { inArray, eq } from 'drizzle-orm';
+import { and, eq, inArray, lte, or, sql } from 'drizzle-orm';
 import { type JobFailureCause } from '../audit/event-catalogue';
 import { extractionJob } from '../db/schema';
 import { type ExtractionSummary } from './extraction-pipeline';
@@ -27,6 +27,12 @@ export async function insertQueuedJob(
     .values({ requestId, status: 'queued' })
     .returning({ id: extractionJob.id });
   return id;
+}
+
+/** An unfinished job, as the tick checks it against BullMQ. */
+export interface UnfinishedJob {
+  id: string;
+  requestId: string;
 }
 
 export class ExtractionJobs {
@@ -75,14 +81,31 @@ export class ExtractionJobs {
   }
 
   /**
-   * Postgres jobs left `queued` or `running` — the only two non-terminal
-   * states (spec §7.7). Never `pending`: that state belongs to `request`, not
-   * `extraction_job`, and does not exist here.
+   * Jobs left `queued` or `running` — the only two non-terminal states — for
+   * the tick to check against BullMQ (spec §7.7, §15.3). `quietSince` is the
+   * lower bound on "due": a job counts only once it has shown no progress
+   * since then. The startup reconcile passes `null`, because a process that
+   * just started has no job of its own in flight. Never `pending`: that state
+   * belongs to `request`, not `extraction_job`, and does not exist here.
    */
-  async unfinished(): Promise<{ id: string; requestId: string }[]> {
+  async unfinished(quietSince: Date | null): Promise<UnfinishedJob[]> {
+    const unfinished = inArray(extractionJob.status, ['queued', 'running']);
     return this.db
       .select({ id: extractionJob.id, requestId: extractionJob.requestId })
       .from(extractionJob)
-      .where(inArray(extractionJob.status, ['queued', 'running']));
+      .where(
+        quietSince
+          ? and(
+              unfinished,
+              or(
+                lte(extractionJob.lastProgressAt, quietSince),
+                and(
+                  sql`${extractionJob.lastProgressAt} IS NULL`,
+                  lte(extractionJob.createdAt, quietSince),
+                ),
+              ),
+            )
+          : unfinished,
+      );
   }
 }

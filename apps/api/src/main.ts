@@ -4,6 +4,7 @@ import { type ConfigType } from '@nestjs/config';
 import { AppModule } from './app.module';
 import { appConfig } from './config/namespaces';
 import { API_PREFIX, API_PREFIX_EXCLUDE } from './global-prefix';
+import { TickScheduler } from './scheduler/scheduler.module';
 
 async function bootstrap() {
   // A failed boot rejects here with the reason, rather than Nest aborting the
@@ -15,6 +16,9 @@ async function bootstrap() {
   app.setGlobalPrefix(API_PREFIX, { exclude: API_PREFIX_EXCLUDE });
   app.set('trust proxy', config.trustProxy);
   await app.listen(config.port);
+  // The startup reconcile, then the 60-second pass (spec §15.3). The pass
+  // also applies the MinIO lifecycle backstop, retrying until it takes.
+  await app.get(TickScheduler).start();
 }
 
 bootstrap().catch((error: unknown) => {

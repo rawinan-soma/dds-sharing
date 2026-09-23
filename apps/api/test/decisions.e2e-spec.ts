@@ -9,7 +9,7 @@ import { App } from 'supertest/types';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AppModule } from '../src/app.module';
 import { ExtractionQueue } from '../src/extraction/extraction-queue';
-import { CLOCK } from '../src/reviewer/clock';
+import { CLOCK } from '../src/clock/clock';
 import { ReviewerAccounts } from '../src/reviewer/reviewer-accounts';
 import { Browser, TestClock } from './support/browser';
 import { phoneCode } from './support/phone-authenticator';
@@ -267,6 +267,21 @@ describe('the Decision (e2e)', () => {
     it('refuses an approval past 24 business hours and records why', async () => {
       // Submitted the prior Monday: well past 24 business hours by Monday noon.
       const id = await submitted('REQ-2569-1030', '2026-09-14T09:00');
+      // The relay accepted the queue notification a minute after submit.
+      const notifiedAt = new Date('2026-09-14T09:01:00+07:00');
+      await scratch.owner.query(
+        `INSERT INTO request_event (request_id, type, actor_type, occurred_at, payload)
+         VALUES ($1, 'mail_sent', 'system', $2, $3)`,
+        [
+          id,
+          notifiedAt,
+          {
+            kind: 'queue_notification',
+            to: 'r@example.go.th',
+            relayResponse: '250 OK',
+          },
+        ],
+      );
 
       const res = await signedIn.post(`/api/reviewer/queue/${id}/approve`);
 
@@ -283,7 +298,8 @@ describe('the Decision (e2e)', () => {
         reviewerAccountsActive: 1,
       });
       expect(event.payload.businessHoursElapsed).toBeGreaterThanOrEqual(24);
-      expect(event.payload.notifiedAt).toBe(clock.now().toISOString());
+      // When the Reviewers were told, not when the refusal happened (§11.3).
+      expect(event.payload.notifiedAt).toBe(notifiedAt.toISOString());
     });
 
     it('refuses a late rejection the same way', async () => {

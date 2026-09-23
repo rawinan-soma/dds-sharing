@@ -1282,7 +1282,9 @@ A re-run by the Requester means **resubmit and be reviewed again**, never
    deletion record: actor, object key, timestamp, outcome. A **startup reconcile**
    sweeps objects whose tokens expired while the application was down.
 2. **A MinIO lifecycle rule is the backstop only** — for when that job is broken
-   or the box was down.
+   or the box was down. The tick applies it, retrying every pass until it takes;
+   until then the pass withholds its heartbeat, so a backstop that is not in
+   place reaches the banner rather than a boot-time log line.
 
 A lifecycle rule deletes *silently*. The application would hold a token row
 asserting an Extract exists when the object is already gone, and hold no record
@@ -1798,6 +1800,12 @@ annual leave.
 > does not help: 8 business hours from Friday 15:00 still lands on Monday 15:00.
 > **Do not re-unify the two clocks.**
 
+- **A trip-wire whose next opening falls after the token has already expired
+  raises nothing** (decided 2026-09-23, #72). That is every Delivery from
+  Thursday's 16:30 close to Friday's 08:30 opening: it trips after Friday's
+  close, the queue next opens Monday 08:30, and its token has died over the
+  weekend. The link is dead and nothing revives it (ADR 0016), so the Alert
+  would have no action; `expired_uncollected` records the Request.
 - **Waiting for the 72 h token expiry was the alternative and it is useless** — it
   fires as the window closes, leaving no time to telephone. The old business-hours
   trip-wire was worse than that alternative, not better.
@@ -1934,7 +1942,7 @@ Snapshot exists to make the Decision legible on its own years later.
 | `approved` | `reviewer` | carries the Snapshot |
 | `rejected` | `reviewer` | carries the Snapshot and the **mandatory internal note** |
 | `note_amended` | `reviewer` | cites the event it corrects |
-| `expired` | `system` | `{notified_at, business_hours_elapsed, reviewer_accounts_active, decision_attempted_and_refused}` |
+| `expired` | `system` | `{notified_at, business_hours_elapsed, reviewer_accounts_active, decision_attempted_and_refused}`. `notified_at` is when the first queue notification was accepted by the relay, **null if none ever was** — the record of an expiry "through nobody's fault" (§11.3) |
 
 *Extraction lifecycle* — **enumerated explicitly here**, because it was previously
 described only in prose while a mail kind already pointed at it. An implementer
@@ -1958,7 +1966,7 @@ reading the ticket record alone would find `job_queued` and nothing else.
 |---|---|---|
 | `mail_sent` | `system` | `{kind: delivery \| queue_notification \| rejection \| extraction_failure, to, relay_response}` |
 | `mail_send_failed` | `system` | try number, relay error |
-| `mail_send_abandoned` | `system` | fifth try failed |
+| `mail_send_abandoned` | `system` | fifth try failed — or the queued send was lost from Redis, which cannot be rebuilt because the rendered Delivery is the only place its raw Download token existed (§15.3) |
 | `delivery_alert_raised` | `system` | send abandoned |
 | `download_attempted` | `anonymous` | mirrored from `token_lookup` |
 | `collection_lapse_raised` | `system` | **24 wall-clock hours, zero Attempts**, raised at the next business-hours opening (§11.4). Carries the wall-clock hours elapsed, so a trip-wire that fired on time is distinguishable from one whose Alert waited for Monday |
@@ -2338,16 +2346,18 @@ fact that is already true* — a late tick produces a late row, not a wrong outc
 
 ### 15.2 The business-hours clock
 
-**Mon–Fri 08:30–16:30 ICT, minus Thai public holidays from a checked-in config
-file reviewed annually.** The clock only advances inside those windows, so a 02:00
-Sunday submit starts counting at 08:30 Monday.
+**Mon–Fri 08:30–16:30 ICT, and nothing else stops it.** The clock only advances
+inside those windows, so a 02:00 Sunday submit starts counting at 08:30 Monday.
+**There is no public-holiday list**
+([ADR 0021](adr/0021-the-business-hours-clock-has-no-holiday-list.md)).
 
-> **Load-bearing property: a stale holiday list can only make expiry MORE
-> generous, never less.** It cannot manufacture a rejection. That is the safe
-> failure direction — **do not "fix" it the other way.**
-
-The holiday list is read at derivation time. Drift from editing it mid-flight is
-**accepted, not defended** — no startup guard.
+> **Accepted cost: a public holiday counts as a working day.** A Request that
+> arrives before a holiday has less real Reviewer attention inside its 24 business
+> hours than its window says, and over a long holiday it can expire with nobody at
+> their desk. The earlier design subtracted a checked-in holiday list and claimed
+> a stale list could only make expiry more generous. That was false: a stale list
+> *omits* holidays, which shortens the window. The list was removed rather than
+> maintained by hand every year for a property it could not deliver.
 
 **The same clock serves two callers, and it answers a different question for
 each.** Request expiry (§10.4) asks it *how much attention time has elapsed* — the
@@ -2380,18 +2390,29 @@ Redis loss silently cancels.
   work", and four schedules mean four heartbeats and four ways to be half-alive.
 - **The startup reconcile is the same pass with no lower bound on "due"** — not a
   separate code path. It touches exactly two things: approved Requests whose
-  extraction was `running` when the process died (re-enqueue; code-atomic retry
-  makes this safe), and expired Download tokens whose objects still exist (delete).
+  extraction was unfinished — `running`, or `queued` with no live BullMQ job
+  (§7.7) — when the process died (re-enqueue; code-atomic retry makes this
+  safe), and expired Download tokens whose objects still exist (delete).
   **It never touches `pending`.**
 - Every "cleanup" the tick performs on the event tables is expressed as an
   **insert**, per §12.2.
+- **What is enqueued and what runs in the pass** (decided 2026-09-23, #72).
+  Extraction re-enqueues and mail send-retries go to BullMQ. Object deletion,
+  materialising `expired` and `expired_uncollected`, the collection lapse and
+  pruning run **inline under the lock** — single execution is then the lock's
+  guarantee rather than a job-id's. Each MinIO call times out at 30 s, so a hung
+  call fails its job instead of stalling the pass, and **a pass with a failed
+  job writes no heartbeat**: a half-alive tick reaches the banner like a dead
+  one. A failed delete writes no `object_deleted` — the record holds settled
+  outcomes only; the failure is in the log, the missing heartbeat and the
+  1-hour overdue signal.
 
 **The work on the pass:** object deletion at token expiry · stall detection ·
-materialising `expired` · due mail send-retries · Deliveries past 24 business
+materialising `expired` · due mail send-retries · Deliveries past 24 **wall-clock**
 hours with zero Attempts · pruning §15.4's tables.
 
 **Liveness: the tick writes a heartbeat row every pass; stale after 5 minutes**
-(five missed passes — unambiguous, and well inside the 15-minute stall window).
+(five missed passes — unambiguous).
 In-band alerting is circular, so one fact feeds two consumers:
 
 - **A Thai banner on the Reviewer queue**, stating plainly that automatic
@@ -2696,7 +2717,6 @@ judge.**
 - The **static Thai/English Data dictionary CSV**, checked in, copied into every
   archive under a fixed filename. Its content is a build-time task, not a decision.
 - The **province seed migration**, generated from `docs/provinces.csv`.
-- The **Thai holiday config file**, reviewed annually.
 - **Host CLI commands**: Reviewer seeding / password reset / TOTP re-enrolment /
   deactivation (§17.5), the fingerprint verification command (§8.4), and the
   upstream traffic report (§13.6). None of them records who ran it
@@ -3110,7 +3130,8 @@ is ever made and lands wrong, this section is deleted rather than worked around.
   until the Decision email arrives (§12.5).
 - **`cid` is not a stable person key**, so repeat-patient detection and
   de-duplication are impossible from this feed (§6.5).
-- **The holiday config can drift mid-flight**, accepted and not defended (§15.2).
+- **A public holiday counts as business time** — the clock skips weekends only
+  (§15.2, ADR 0021).
 
 ---
 

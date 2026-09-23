@@ -1,10 +1,4 @@
-import {
-  Injectable,
-  Logger,
-  Module,
-  OnApplicationShutdown,
-  OnModuleInit,
-} from '@nestjs/common';
+import { Injectable, Module, OnApplicationShutdown } from '@nestjs/common';
 import { type ConfigType } from '@nestjs/config';
 import { Queue, Worker } from 'bullmq';
 import type Redis from 'ioredis';
@@ -33,7 +27,6 @@ import { freeDiskBytes } from './disk-space';
 import { EXTRACTION_QUEUE_NAME } from './extraction.config';
 import { ExtractionJobs } from './extraction-jobs.repository';
 import { ExtractionQueue, type ExtractionJobData } from './extraction-queue';
-import { reconcileExtractionJobs } from './extraction-reconcile';
 import { createExtractionWorker } from './extraction-worker';
 import { createRedisConnection } from './redis-connection';
 
@@ -49,21 +42,17 @@ const BULLMQ_WORKER = Symbol('EXTRACTION_BULLMQ_WORKER');
  * instead, in `extraction-worker.spec.ts`). */
 export const ARCHIVE_STORE = Symbol('EXTRACTION_ARCHIVE_STORE');
 
+// The reconcile (spec §7.7) is not here: it is the tick's startup pass
+// (`scheduler/tick.ts`), the same pass as every other, so there is one code
+// path for "a job Postgres has and BullMQ does not".
 @Injectable()
-class ExtractionLifecycle implements OnModuleInit, OnApplicationShutdown {
-  private readonly logger = new Logger('ExtractionModule');
-
+class ExtractionLifecycle implements OnApplicationShutdown {
   constructor(
-    private readonly jobs: ExtractionJobs,
     private readonly queue: ExtractionQueue,
     private readonly worker: Worker<ExtractionJobData>,
     private readonly queueConnection: Redis,
     private readonly workerConnection: Redis,
   ) {}
-
-  async onModuleInit() {
-    await reconcileExtractionJobs(this.jobs, this.queue, this.logger);
-  }
 
   async onApplicationShutdown() {
     await this.worker.close();
@@ -170,21 +159,18 @@ class ExtractionLifecycle implements OnModuleInit, OnApplicationShutdown {
     {
       provide: ExtractionLifecycle,
       inject: [
-        ExtractionJobs,
         ExtractionQueue,
         BULLMQ_WORKER,
         QUEUE_REDIS_CONNECTION,
         WORKER_REDIS_CONNECTION,
       ],
       useFactory: (
-        jobs: ExtractionJobs,
         queue: ExtractionQueue,
         worker: Worker<ExtractionJobData>,
         queueConnection: Redis,
         workerConnection: Redis,
       ) =>
         new ExtractionLifecycle(
-          jobs,
           queue,
           worker,
           queueConnection,

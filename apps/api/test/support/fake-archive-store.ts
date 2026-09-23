@@ -9,12 +9,18 @@ import {
  * deleted-object paths are exercisable without one. */
 export function fakeArchiveStore(): ArchiveStore & {
   uploads: { objectKey: string; bytes: Buffer }[];
+  bucketPreparations: number;
 } {
   const objects = new Map<string, Buffer>();
   const uploads: { objectKey: string; bytes: Buffer }[] = [];
 
   return {
     uploads,
+    bucketPreparations: 0,
+    prepareBucket() {
+      this.bucketPreparations += 1;
+      return Promise.resolve();
+    },
     upload(objectKey, bytes) {
       objects.set(objectKey, bytes);
       uploads.push({ objectKey, bytes });
@@ -34,6 +40,10 @@ export function fakeArchiveStore(): ArchiveStore & {
         size: bytes.length,
         range: range ?? null,
       });
+    },
+    remove(objectKey) {
+      objects.delete(objectKey);
+      return Promise.resolve();
     },
   };
 }

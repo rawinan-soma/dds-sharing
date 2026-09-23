@@ -1,5 +1,6 @@
 import { type Db } from '../db/database.module';
 import { tokenLookup } from '../db/schema';
+import { moveRequestState } from '../requests/move-request-state';
 import { writeRequestEvent } from '../audit/write-request-event';
 import { type LookupOutcome } from './resolve-token';
 import { tokenPrefix } from './token';
@@ -16,6 +17,11 @@ export interface LookupContext {
  * ("who collected this Extract?") and abuse ("is one IP sweeping the token
  * space?") ask different questions of the same fact, and the second must not
  * filter out the first.
+ *
+ * The first successful Attempt also moves the Request to `collected` (spec
+ * §2): a terminal state, and the opposite outcome from `expired_uncollected`,
+ * which the tick writes for a token that expires with none (§11.5). Only an
+ * `approved` Request moves; any later Attempt finds it already there.
  */
 export async function recordLookup(
   db: Db,
@@ -44,19 +50,23 @@ export async function recordLookup(
     params.outcome === 'success' &&
     params.requestId
   ) {
-    await writeRequestEvent(db, {
-      requestId: params.requestId,
-      type: 'download_attempted',
-      occurredAt: params.now,
-      actor: {
-        actorType: 'anonymous',
-        ip: params.ip,
-        userAgent: params.userAgent,
-      },
-      payload: {
-        tokenPrefix: tokenPrefix(params.rawToken),
-        outcome: params.outcome,
-      },
+    const requestId = params.requestId;
+    await db.transaction(async (tx) => {
+      await moveRequestState(tx, requestId, 'approved', 'collected');
+      await writeRequestEvent(tx, {
+        requestId,
+        type: 'download_attempted',
+        occurredAt: params.now,
+        actor: {
+          actorType: 'anonymous',
+          ip: params.ip,
+          userAgent: params.userAgent,
+        },
+        payload: {
+          tokenPrefix: tokenPrefix(params.rawToken),
+          outcome: params.outcome,
+        },
+      });
     });
   }
 }

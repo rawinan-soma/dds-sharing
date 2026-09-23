@@ -1,7 +1,7 @@
-import { eq, inArray, sql } from 'drizzle-orm';
+import { and, eq, inArray, lt, lte, sql } from 'drizzle-orm';
 import { type Db } from '../db/database.module';
 import { loginThrottle } from '../db/schema';
-import { type Clock } from './clock';
+import { type Clock } from '../clock/clock';
 
 /** Exponential backoff, capping near 30 seconds. There is no lockout at all. */
 const BACKOFF_CAP_SECONDS = 30;
@@ -76,6 +76,24 @@ export class LoginThrottle {
           });
       });
     }
+  }
+
+  /**
+   * The tick's pruning (spec §15.4). A row that has decayed and whose wait has
+   * passed says nothing any more — the next failure would start again from one
+   * — so deleting it changes no outcome.
+   */
+  async pruneDecayed(now: Date): Promise<number> {
+    const pruned = await this.db
+      .delete(loginThrottle)
+      .where(
+        and(
+          lt(loginThrottle.updatedAt, new Date(now.getTime() - DECAY_MS)),
+          lte(loginThrottle.nextAllowedAt, now),
+        ),
+      )
+      .returning({ key: loginThrottle.key });
+    return pruned.length;
   }
 
   async reset(keys: string[]): Promise<void> {

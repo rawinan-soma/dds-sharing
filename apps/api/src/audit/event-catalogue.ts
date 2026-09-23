@@ -126,6 +126,13 @@ export const MAIL_KINDS = [
 ] as const;
 export type MailKind = (typeof MAIL_KINDS)[number];
 
+/**
+ * How an object came to be gone (§9.5): the application deleted it, or found
+ * it already removed — by the lifecycle backstop — and recorded that instead
+ * of skipping it. A delete that failed writes no event at all.
+ */
+export type ObjectDeletedOutcome = 'deleted' | 'already_absent';
+
 interface PerCodeTotals {
   [groupCode: string]: number;
 }
@@ -182,7 +189,8 @@ export interface RequestEventPayloads {
   rejected: { snapshot: Snapshot; internalNote: string };
   note_amended: { amendsEventId: number; internalNote: string };
   expired: {
-    notifiedAt: string;
+    /** The first queue notification the relay accepted; null if none ever was. */
+    notifiedAt: string | null;
     businessHoursElapsed: number;
     reviewerAccountsActive: number;
     decisionAttemptedAndRefused: boolean;
@@ -226,7 +234,7 @@ export interface RequestEventPayloads {
   collection_lapse_cleared: CollectionLapseClearedPayload;
   download_token_revoked: { supersededByEventId: number };
   expired_uncollected: Record<string, never>;
-  object_deleted: { objectKey: string; outcome: string };
+  object_deleted: { objectKey: string; outcome: ObjectDeletedOutcome };
 }
 
 export interface ReviewerEventPayloads {
