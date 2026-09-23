@@ -1801,8 +1801,8 @@ annual leave.
 > **Do not re-unify the two clocks.**
 
 - **A trip-wire whose next opening falls after the token has already expired
-  raises nothing** (e.g. Friday 16:00 plus a Monday holiday; decided
-  2026-09-23, #72). The link is dead and nothing revives it (ADR 0016), so the
+  raises nothing** (a Delivery on Friday before 08:30, whose token expires on
+  Monday before the queue opens; decided 2026-09-23, #72). The link is dead and nothing revives it (ADR 0016), so the
   Alert would have no action; `expired_uncollected` records the Request.
 - **Waiting for the 72 h token expiry was the alternative and it is useless** — it
   fires as the window closes, leaving no time to telephone. The old business-hours
@@ -2344,16 +2344,18 @@ fact that is already true* — a late tick produces a late row, not a wrong outc
 
 ### 15.2 The business-hours clock
 
-**Mon–Fri 08:30–16:30 ICT, minus Thai public holidays from a checked-in config
-file reviewed annually.** The clock only advances inside those windows, so a 02:00
-Sunday submit starts counting at 08:30 Monday.
+**Mon–Fri 08:30–16:30 ICT, and nothing else stops it.** The clock only advances
+inside those windows, so a 02:00 Sunday submit starts counting at 08:30 Monday.
+**There is no public-holiday list**
+([ADR 0021](adr/0021-the-business-hours-clock-has-no-holiday-list.md)).
 
-> **Load-bearing property: a stale holiday list can only make expiry MORE
-> generous, never less.** It cannot manufacture a rejection. That is the safe
-> failure direction — **do not "fix" it the other way.**
-
-The holiday list is read at derivation time. Drift from editing it mid-flight is
-**accepted, not defended** — no startup guard.
+> **Accepted cost: a public holiday counts as a working day.** A Request that
+> arrives before a holiday has less real Reviewer attention inside its 24 business
+> hours than its window says, and over a long holiday it can expire with nobody at
+> their desk. The earlier design subtracted a checked-in holiday list and claimed
+> a stale list could only make expiry more generous. That was false: a stale list
+> *omits* holidays, which shortens the window. The list was removed rather than
+> maintained by hand every year for a property it could not deliver.
 
 **The same clock serves two callers, and it answers a different question for
 each.** Request expiry (§10.4) asks it *how much attention time has elapsed* — the
@@ -2713,7 +2715,6 @@ judge.**
 - The **static Thai/English Data dictionary CSV**, checked in, copied into every
   archive under a fixed filename. Its content is a build-time task, not a decision.
 - The **province seed migration**, generated from `docs/provinces.csv`.
-- The **Thai holiday config file**, reviewed annually.
 - **Host CLI commands**: Reviewer seeding / password reset / TOTP re-enrolment /
   deactivation (§17.5), the fingerprint verification command (§8.4), and the
   upstream traffic report (§13.6). None of them records who ran it
@@ -3127,7 +3128,8 @@ is ever made and lands wrong, this section is deleted rather than worked around.
   until the Decision email arrives (§12.5).
 - **`cid` is not a stable person key**, so repeat-patient detection and
   de-duplication are impossible from this feed (§6.5).
-- **The holiday config can drift mid-flight**, accepted and not defended (§15.2).
+- **A public holiday counts as business time** — the clock skips weekends only
+  (§15.2, ADR 0021).
 
 ---
 

@@ -17,7 +17,6 @@ import { ExtractionJobs } from '../src/extraction/extraction-jobs.repository';
 import { MailDeliveries } from '../src/mail/mail-delivery.repository';
 import { LoginThrottle } from '../src/reviewer/login-throttle';
 import { ReviewerSessions } from '../src/reviewer/reviewer-sessions';
-import { THAI_HOLIDAYS_SET } from '../src/clock/thai-holidays';
 import { TICK_LOCK_KEY, Tick, type TickDeps } from '../src/scheduler/tick';
 import { fakeArchiveStore } from './support/fake-archive-store';
 import {
@@ -146,7 +145,6 @@ describe('the tick (e2e)', () => {
     db: app.get(DB),
     pool: app.get(PG_POOL),
     clock: { now: () => now },
-    holidays: THAI_HOLIDAYS_SET,
     archiveStore,
     extractionJobs: app.get(ExtractionJobs),
     extractionQueue: extractionQueue as unknown as TickDeps['extractionQueue'],

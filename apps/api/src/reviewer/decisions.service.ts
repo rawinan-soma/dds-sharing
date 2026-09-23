@@ -8,10 +8,9 @@ import { insertQueuedJob } from '../extraction/extraction-jobs.repository';
 import { moveRequestState } from '../requests/move-request-state';
 import { ExtractionQueue } from '../extraction/extraction-queue';
 import { MailSender } from '../mail/mail-sender';
-import { requestExpiry, type Holidays } from '../clock/business-hours';
+import { requestExpiry } from '../clock/business-hours';
 import { buildSnapshot, noteIsValid } from './decisions';
 import { CLOCK, type Clock } from '../clock/clock';
-import { HOLIDAYS } from '../clock/thai-holidays';
 
 export interface DecidingReviewer {
   reviewerId: string;
@@ -38,7 +37,6 @@ export class Decisions {
   constructor(
     @Inject(DB) private readonly db: Db,
     @Inject(CLOCK) private readonly clock: Clock,
-    @Inject(HOLIDAYS) private readonly holidays: Holidays,
     private readonly extractionQueue: ExtractionQueue,
     private readonly mailSender: MailSender,
   ) {}
@@ -100,7 +98,7 @@ export class Decisions {
           .for('update', { of: request });
         if (!row) return { status: 'not_pending' };
 
-        const expiry = requestExpiry(row.submittedAt, now, this.holidays);
+        const expiry = requestExpiry(row.submittedAt, now);
         if (expiry.expired) {
           const [{ activeReviewers }] = await tx
             .select({ activeReviewers: sql<number>`count(*)::int` })

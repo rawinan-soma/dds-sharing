@@ -6,8 +6,6 @@ import { request, requestContact, requestEvent } from '../db/schema';
 import { ProvinceLookup } from '../reference/province-lookup.service';
 import { schedulerHealth } from '../scheduler/scheduler-health';
 import { CLOCK, type Clock } from '../clock/clock';
-import { type Holidays } from '../clock/business-hours';
-import { HOLIDAYS } from '../clock/thai-holidays';
 import {
   type Area,
   type PendingRow,
@@ -67,7 +65,6 @@ export class ReviewQueue {
   constructor(
     @Inject(DB) private readonly db: Db,
     @Inject(CLOCK) private readonly clock: Clock,
-    @Inject(HOLIDAYS) private readonly holidays: Holidays,
     private readonly provinces: ProvinceLookup,
   ) {}
 
@@ -92,7 +89,7 @@ export class ReviewQueue {
     return {
       generatedAt: now.toISOString(),
       automaticProcessing: scheduler.status === 'ok' ? 'running' : 'stopped',
-      requests: rankPending(rows, now, this.holidays).map(toRow),
+      requests: rankPending(rows, now).map(toRow),
     };
   }
 
@@ -122,9 +119,7 @@ export class ReviewQueue {
       .from(request)
       .innerJoin(requestContact, eq(requestContact.requestId, request.id))
       .where(eq(request.state, 'pending'));
-    const entry = rankPending(rows, now, this.holidays).find(
-      (r) => r.id === id,
-    );
+    const entry = rankPending(rows, now).find((r) => r.id === id);
     if (!entry) return null;
     return {
       ...toRow(entry),

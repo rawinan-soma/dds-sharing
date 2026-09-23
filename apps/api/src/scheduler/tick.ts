@@ -27,7 +27,7 @@ import {
   MAIL_RETRY_DELAY_MS,
   type MailQueue,
 } from '../mail/mail-queue';
-import { type Holidays, requestExpiry } from '../clock/business-hours';
+import { requestExpiry } from '../clock/business-hours';
 import { type Clock } from '../clock/clock';
 import { moveRequestState } from '../requests/move-request-state';
 import { type LoginThrottle } from '../reviewer/login-throttle';
@@ -68,7 +68,6 @@ export interface TickDeps {
   /** The lock is held on one connection of its own for the whole pass. */
   pool: Pool;
   clock: Clock;
-  holidays: Holidays;
   archiveStore: ArchiveStore;
   extractionJobs: ExtractionJobs;
   extractionQueue: ExtractionQueue;
@@ -329,14 +328,14 @@ export class Tick {
    * moves.
    */
   private async materialiseExpired(now: Date): Promise<number> {
-    const { db, holidays } = this.deps;
+    const { db } = this.deps;
     const pending = await db
       .select({ id: request.id, submittedAt: request.submittedAt })
       .from(request)
       .where(eq(request.state, 'pending'));
     let expired = 0;
     for (const row of pending) {
-      const expiry = requestExpiry(row.submittedAt, now, holidays);
+      const expiry = requestExpiry(row.submittedAt, now);
       if (!expiry.expired) continue;
       await db.transaction(async (tx) => {
         if (!(await moveRequestState(tx, row.id, 'pending', 'expired'))) {
@@ -505,7 +504,7 @@ export class Tick {
    */
   private async raiseLapse(token: LiveToken, now: Date): Promise<boolean> {
     if (!token.deliveredAt || token.lapseRaised) return false;
-    const lapse = collectionLapse(token.deliveredAt, this.deps.holidays);
+    const lapse = collectionLapse(token.deliveredAt);
     if (lapse.raisesAt > now || lapse.raisesAt >= token.expiresAt) return false;
     await writeRequestEvent(this.deps.db, {
       requestId: token.requestId,

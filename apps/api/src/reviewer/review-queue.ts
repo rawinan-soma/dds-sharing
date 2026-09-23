@@ -1,4 +1,4 @@
-import { type Holidays, requestExpiry } from '../clock/business-hours';
+import { requestExpiry } from '../clock/business-hours';
 
 // The pending queue as the Reviewer sees it (spec §10.1). This is the pure part:
 // given the pending rows and a clock reading, it says the order, how many are
@@ -29,7 +29,6 @@ export type Ranked<Row extends PendingRow> = Row & {
 export function rankPending<Row extends PendingRow>(
   rows: readonly Row[],
   now: Date,
-  holidays: Holidays,
 ): Ranked<Row>[] {
   const ordered = rows.toSorted(
     (a, b) =>
@@ -39,7 +38,7 @@ export function rankPending<Row extends PendingRow>(
 
   let actionable = 0;
   return ordered.map((row) => {
-    const expiry = requestExpiry(row.submittedAt, now, holidays);
+    const expiry = requestExpiry(row.submittedAt, now);
     const ahead = expiry.expired ? null : actionable++;
     return {
       ...row,

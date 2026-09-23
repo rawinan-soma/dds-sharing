@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { describeArea, rankPending } from './review-queue';
 
 const ict = (local: string) => new Date(`${local}:00+07:00`);
-const NONE = new Set<string>();
 
 const row = (reference: string, submitted: string) => ({
   id: `id-${reference}`,
@@ -21,7 +20,6 @@ describe('rankPending (§10.1)', () => {
         row('A', '2026-09-21T09:00'),
       ],
       now,
-      NONE,
     );
     expect(ranked.map((r) => r.reference)).toEqual(['A', 'B', 'C']);
   });
@@ -34,7 +32,6 @@ describe('rankPending (§10.1)', () => {
         row('C', '2026-09-21T11:00'),
       ],
       now,
-      NONE,
     );
     expect(ranked.map((r) => r.ahead)).toEqual([0, 1, 2]);
   });
@@ -43,7 +40,6 @@ describe('rankPending (§10.1)', () => {
     const ranked = rankPending(
       [row('REQ-2', '2026-09-21T09:00'), row('REQ-1', '2026-09-21T09:00')],
       now,
-      NONE,
     );
     expect(ranked.map((r) => r.reference)).toEqual(['REQ-1', 'REQ-2']);
   });
@@ -52,7 +48,6 @@ describe('rankPending (§10.1)', () => {
     const [stale, live] = rankPending(
       [row('OLD', '2026-09-14T09:00'), row('NEW', '2026-09-21T09:00')],
       now,
-      NONE,
     );
     expect(stale).toMatchObject({ reference: 'OLD', expired: true });
     expect(stale.minutesLeft).toBe(0);
@@ -64,7 +59,6 @@ describe('rankPending (§10.1)', () => {
     const ranked = rankPending(
       [row('OLD', '2026-09-14T09:00'), row('NEW', '2026-09-21T09:00')],
       now,
-      NONE,
     );
     expect(ranked.find((r) => r.reference === 'NEW')?.ahead).toBe(0);
     expect(ranked.find((r) => r.reference === 'OLD')?.ahead).toBeNull();
@@ -72,22 +66,8 @@ describe('rankPending (§10.1)', () => {
 
   it('reads the clock again on every call: nothing is remembered', () => {
     const rows = [row('A', '2026-09-21T09:00')];
-    expect(rankPending(rows, ict('2026-09-23T12:00'), NONE)[0].expired).toBe(
-      false,
-    );
-    expect(rankPending(rows, ict('2026-09-24T12:00'), NONE)[0].expired).toBe(
-      true,
-    );
-  });
-
-  it('counts a listed holiday in the Request’s favour', () => {
-    const at = ict('2026-09-24T12:00');
-    const holidays = new Set(['2026-09-22']);
-    expect(rankPending(rows(), at, NONE)[0].expired).toBe(true);
-    expect(rankPending(rows(), at, holidays)[0].expired).toBe(false);
-    function rows() {
-      return [row('A', '2026-09-21T09:00')];
-    }
+    expect(rankPending(rows, ict('2026-09-23T12:00'))[0].expired).toBe(false);
+    expect(rankPending(rows, ict('2026-09-24T12:00'))[0].expired).toBe(true);
   });
 });
 

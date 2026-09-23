@@ -17,10 +17,8 @@ import { ExtractionQueue } from '../extraction/extraction-queue';
 import { MailDeliveries } from '../mail/mail-delivery.repository';
 import { MailModule } from '../mail/mail.module';
 import { MailQueue } from '../mail/mail-queue';
-import { type Holidays } from '../clock/business-hours';
 import { CLOCK, type Clock } from '../clock/clock';
 import { LoginThrottle } from '../reviewer/login-throttle';
-import { HOLIDAYS } from '../clock/thai-holidays';
 import { ReviewerModule } from '../reviewer/reviewer.module';
 import { ReviewerSessions } from '../reviewer/reviewer-sessions';
 import { Tick, type TickMode } from './tick';
@@ -82,7 +80,6 @@ export class TickScheduler implements OnApplicationShutdown {
         DB,
         PG_POOL,
         CLOCK,
-        HOLIDAYS,
         ARCHIVE_STORE,
         ExtractionJobs,
         ExtractionQueue,
@@ -95,7 +92,6 @@ export class TickScheduler implements OnApplicationShutdown {
         db: Db,
         pool: Pool,
         clock: Clock,
-        holidays: Holidays,
         archiveStore: ArchiveStore,
         extractionJobs: ExtractionJobs,
         extractionQueue: ExtractionQueue,
@@ -108,7 +104,6 @@ export class TickScheduler implements OnApplicationShutdown {
           db,
           pool,
           clock,
-          holidays,
           archiveStore,
           extractionJobs,
           extractionQueue,

@@ -9,7 +9,6 @@ import { PG_POOL } from '../db/database.module';
 import { request, requestContact, requestEvent, reviewer } from '../db/schema';
 import { MailSender } from '../mail/mail-sender';
 import { requestExpiry } from '../clock/business-hours';
-import { THAI_HOLIDAYS_SET } from '../clock/thai-holidays';
 import { type RequestPlan } from './plan-request';
 import { ProbeService } from './probe.service';
 import { formatReference } from './reference-number';
@@ -171,7 +170,7 @@ export class RequestsService {
         .where(isNull(reviewer.deactivatedAt));
       if (activeReviewers.length === 0) return;
 
-      const deadline = requestExpiry(now, now, THAI_HOLIDAYS_SET).expiresAt;
+      const deadline = requestExpiry(now, now).expiresAt;
       await this.mailSender.send(
         requestId,
         activeReviewers.map((r) => r.email).join(', '),

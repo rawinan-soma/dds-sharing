@@ -129,7 +129,7 @@ clock is defined in ICT. The reference number renders a Buddhist-era year.
 | S9 | **Health endpoints and operational alerting** to two distinct watchers — the operator via `/health`, the approving Reviewer via must-clear Alerts | §14, [#27](https://github.com/rawinan-soma/dds-sharing/issues/27) |
 | S10 | **Scheduled work** — one 60-second tick, the business-hours clock, object deletion, stall detection, derived expiry materialisation | §15, [#20](https://github.com/rawinan-soma/dds-sharing/issues/20) |
 | S11 | **Host CLI commands** — Reviewer seeding / password reset / TOTP re-enrolment / deactivation, fingerprint verification, upstream traffic report | §17.3, §17.5, §8.4, §13.6 |
-| S12 | **Build artefacts** — the static Thai/English Data dictionary CSV, the province seed migration, the Thai holiday config, a fake upstream dev harness | §17.3 |
+| S12 | **Build artefacts** — the static Thai/English Data dictionary CSV, the province seed migration, a fake upstream dev harness | §17.3 |
 | S13 | **Everything from the TCP connection inward** on the VM | §17.4 |
 
 **The service's data scope is the 25 EnvOcc Report codes** — `201`–`224` plus
@@ -403,7 +403,6 @@ framework, the component library or the typeface.
   the only seed of the Disease group picker.
 - **NTP on the host** — TOTP, the business-hours clock and the UTC/ICT rendering
   are all clock-dependent, and there is no email reset path.
-- **The Thai holiday config file**, reviewed annually.
 
 ### 2.7 User documentation
 
@@ -617,7 +616,7 @@ Two host-level facts are nevertheless requirements on the machine (§17.4):
 | **Redis + BullMQ** | Outbound | Executor only. **AOF persistence required.** The BullMQ job carries a reference; Postgres carries the authoritative state. BullMQ repeatable jobs are rejected — a schedule living only in Redis is a schedule a Redis loss silently cancels (§7.7, §15.3) |
 | **MinIO (S3-compatible)** | Outbound | One object per completed job, uploaded in **one** operation, so *"an object exists in the bucket"* means exactly *"a complete, publishable Extract"*. Bucket lifecycle 72 h as a **backstop only** (§7.8, §9.5) |
 | **SMTP relay** | Outbound | `SMTP_HOST=mailrelay.uc-workd.com`, `SMTP_STARTTLS=true`, `SMTP_SECURE=false`, `SMTP_USER=envocc@ddc.mail.go.th`. `SMTP_PORT` and `SMTP_PASS` supplied at dev cycle. Four message kinds: `delivery`, `queue_notification`, `rejection`, `extraction_failure`. **No inbound mail interface exists and none may be added without reopening [ADR 0001](adr/0001-email-delivery-is-unobservable.md)** |
-| **Reference data files** | Inbound, build time | `docs/provinces.csv` → a checked-in seed migration (77 rows + checksum asserted at startup, **failing fast**); `docs/disease-groups.md` + `docs/research/003-disease-group-codes.md` → the Disease group picker and the Data dictionary's classification block; the Thai holiday config file, reviewed annually |
+| **Reference data files** | Inbound, build time | `docs/provinces.csv` → a checked-in seed migration (77 rows + checksum asserted at startup, **failing fast**); `docs/disease-groups.md` + `docs/research/003-disease-group-codes.md` → the Disease group picker and the Data dictionary's classification block |
 | **Fake upstream dev harness** | Outbound, development | Must expose a **500 mid-loop, a slow page, a truncated page, an auth expiry mid-job, and a `total_items` that shifts between attempts** — that last one is what tests the retry guard, and no fixture can produce it. **Standing constraint: no real patient data ever seeds it** (§17.3) |
 | **Mailpit** | Outbound, development | Covers mail in development |
 
@@ -757,8 +756,7 @@ that produced it.
 **Workflow:**
 1. `/submitted` renders from client state only.
 2. It shows: the reference number; a restatement of the ask; the
-   **24-business-hour** service promise (จันทร์–ศุกร์ 08:30–16:30, minus Thai public
-   holidays); the contact telephone number; and the statement that **no receipt
+   **24-business-hour** service promise (จันทร์–ศุกร์ 08:30–16:30); the contact telephone number; and the statement that **no receipt
    email is sent** and the next email will be the Decision.
 3. It must read as *you are done*, not as *something went wrong*.
 
@@ -2113,15 +2111,14 @@ insert).
   scheduler cannot un-expire a Request or keep an Extract reachable. A late tick
   produces a **late row, not a wrong outcome**; and when `occurred_at` and
   `recorded_at` diverge, **that divergence *is* the outage record**.
-- **A stale holiday list** → ⚠️ **load-bearing property: it can only make expiry
-  MORE generous, never less. It cannot manufacture a rejection.** That is the safe
-  failure direction — **do not "fix" it the other way.** Drift from editing the
-  list mid-flight is **accepted, not defended**; there is no startup guard.
+- **A public holiday** → counted as business time: the clock skips weekends only,
+  and there is no holiday list (ADR 0021). Accepted cost: over a long holiday a
+  Request can expire with nobody at their desk.
 
 **Workflow:**
-1. The business-hours clock advances only **Mon–Fri 08:30–16:30 ICT, minus Thai
-   public holidays** from a checked-in config file reviewed annually. A 02:00
-   Sunday submit starts counting at 08:30 Monday.
+1. The business-hours clock advances only **Mon–Fri 08:30–16:30 ICT**; weekends
+   are the only closed days (ADR 0021). A 02:00 Sunday submit starts counting at
+   08:30 Monday.
 2. The queue computes elapsed business hours when it renders; a Request past the
    threshold is simply not actionable.
 3. The tick materialises the `expired` event for the fact that is already true.
@@ -2479,7 +2476,7 @@ rows — `air-pollution`, 1 code, ~3.5 s, 1,952 rows. The entire in-scope domain
 #### NFR-03 — Service promise
 
 **Requirement.** Every Request reaches a terminal state within **24 elapsed
-business hours** (จันทร์–ศุกร์ 08:30–16:30 ICT, minus Thai public holidays), whether
+business hours** (จันทร์–ศุกร์ 08:30–16:30 ICT), whether
 by Decision or by expiry — and the promise is **measurable**, not anecdotal.
 
 **Measure.** 100% of Requests terminal within the window; the `expired` event's
@@ -2814,8 +2811,7 @@ recovery path** — there are no TOTP recovery codes.
 
 **Requirement.** **NTP synchronisation on the Docker host is a deployment
 requirement, not a recommendation.** Timestamps are stored `timestamptz` in
-**UTC** and rendered in **ICT**; the business-hours clock is defined in ICT; the
-holiday list is a checked-in config file **reviewed annually**.
+**UTC** and rendered in **ICT**; the business-hours clock is defined in ICT.
 
 **Measure.** ⚠️ **Drift beyond ~30 seconds locks out every Reviewer
 simultaneously**, and the only fix is shell access to the machine that is broken.
@@ -3277,8 +3273,8 @@ an event the Requester never sees · bounce detection is lost because there is n
 receipt email · an implementer who does not read Thai cannot read the copy
 catalogue · the Requester loses the reference number if they close the confirmation
 tab · `cid` is not a stable person key, so repeat-patient detection and
-de-duplication are impossible from this feed · the holiday config can drift
-mid-flight, accepted and not defended.
+de-duplication are impossible from this feed · a public holiday counts as
+business time (ADR 0021).
 
 **One risk was retired rather than deleted.** *"Excel silently truncates above
 1,048,576 rows"* **does not exist and never did** — it was accepted on a volume

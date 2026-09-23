@@ -294,7 +294,8 @@ targeted yet, because the current manual process is unmeasured (assumption A11).
     archive.
 12. **Province seed migration**, generated from `docs/provinces.csv`, with a
     startup assert treated as a boot failure.
-13. **Thai holiday config file**, reviewed annually.
+13. ~~Thai holiday config file~~ — removed: the business-hours clock skips
+    weekends only ([ADR 0021](adr/0021-the-business-hours-clock-has-no-holiday-list.md)).
 14. **Host CLI commands** — Reviewer seeding, password reset, TOTP re-enrolment,
     deactivation, fingerprint verification, upstream traffic report.
 15. **Fake upstream dev harness** — required to test §7.6 at all. Must expose a

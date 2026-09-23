@@ -1,4 +1,4 @@
-import { type Holidays, nextOpening } from '../clock/business-hours';
+import { nextOpening } from '../clock/business-hours';
 
 const HOUR_MS = 60 * 60 * 1000;
 
@@ -23,14 +23,11 @@ export interface CollectionLapse {
 // ⚠️ Do not re-unify the two. Measuring the lapse in business hours is the
 // natural-looking simplification and it is a defect: 24 business hours are 72
 // wall-clock hours on a weekend-free week — the token's whole life.
-export function collectionLapse(
-  deliveredAt: Date,
-  holidays: Holidays,
-): CollectionLapse {
+export function collectionLapse(deliveredAt: Date): CollectionLapse {
   const tripsAt = new Date(
     deliveredAt.getTime() + COLLECTION_LAPSE_WALL_CLOCK_HOURS * HOUR_MS,
   );
-  const raisesAt = nextOpening(tripsAt, holidays);
+  const raisesAt = nextOpening(tripsAt);
   return {
     tripsAt,
     raisesAt,

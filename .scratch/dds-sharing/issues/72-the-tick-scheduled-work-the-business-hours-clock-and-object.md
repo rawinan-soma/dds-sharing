@@ -24,7 +24,7 @@ A 60-second pass that finds due work and does it — deleting expired objects, d
 
 **An object still present 1 hour past its token expiry is a scheduler-class fault** and raises the banner and the health signal. Never a silent skip.
 
-**The business-hours clock** is Mon–Fri 08:30–16:30 ICT minus Thai public holidays from a checked-in config file reviewed annually. **A stale holiday list can only make expiry MORE generous, never less** — it cannot manufacture a rejection. That is the safe failure direction; do not "fix" it the other way. The list is read at derivation time and mid-flight drift is accepted, not defended.
+**The business-hours clock** is Mon–Fri 08:30–16:30 ICT, and only weekends stop it — there is no public-holiday list (ADR 0021, amended 2026-09-23; see Comments). A public holiday counts as a working day: that is the accepted cost, and the clock is fully determined by the instant alone, with nothing to maintain or drift.
 
 **The same clock serves two callers and answers a different question for each.** Request expiry asks it *how much attention time has elapsed*, so business hours are the measurement itself. The collection lapse asks it only *is anyone there to be told?*
 
@@ -55,7 +55,7 @@ Events: `expired`, `collection_lapse_raised` (carrying the wall-clock hours elap
 - [ ] Objects are deleted at token expiry by the application, writing `object_deleted` with actor, object key, timestamp and outcome
 - [ ] A MinIO lifecycle rule exists as a backstop, with a config comment recording why the equality of 72 and 72 is safe and what would break it
 - [ ] An object still present 1 hour past token expiry raises the banner and the health signal rather than being skipped
-- [ ] The business-hours clock reads a checked-in holiday config, and a stale list can only widen the window
+- [ ] The business-hours clock counts Mon–Fri 08:30–16:30 ICT and skips weekends only, with no holiday list to go stale (ADR 0021)
 - [ ] The collection-lapse trip-wire measures 24 **wall-clock** hours with zero Attempts; only the raising of the Alert waits for business hours
 - [ ] `collection_lapse_raised` carries the wall-clock hours elapsed
 - [ ] `expired_uncollected` exists as a distinct terminal state, separate from collected
@@ -69,3 +69,7 @@ Events: `expired`, `collection_lapse_raised` (carrying the wall-clock hours elap
 
 - #71 — Delivery, the Download token and collection
 
+## Comments
+
+**rawinan-soma** — 2026-09-23
+Amended after the #113 clearance failed the original criterion "reads a checked-in holiday config, and a stale list can only widen the window": a stale list omits holidays, which narrows the window, and the checked-in list was already stale. Decision: skip Thai public holidays entirely and let only weekends stop the clock. Recorded in ADR 0021; spec §15.2 amended.
