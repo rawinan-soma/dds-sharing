@@ -8,7 +8,7 @@ import { Pool } from 'pg';
 import { App } from 'supertest/types';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AppModule } from '../src/app.module';
-import { CLOCK } from '../src/reviewer/clock';
+import { CLOCK } from '../src/clock/clock';
 import { ReviewerAccounts } from '../src/reviewer/reviewer-accounts';
 import { Browser, TestClock } from './support/browser';
 import { phoneCode } from './support/phone-authenticator';

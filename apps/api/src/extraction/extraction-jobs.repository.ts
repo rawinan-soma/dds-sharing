@@ -29,6 +29,12 @@ export async function insertQueuedJob(
   return id;
 }
 
+/** An unfinished job, as the tick checks it against BullMQ. */
+export interface UnfinishedJob {
+  id: string;
+  requestId: string;
+}
+
 export class ExtractionJobs {
   constructor(private readonly db: NodePgDatabase) {}
 
@@ -82,9 +88,7 @@ export class ExtractionJobs {
    * just started has no job of its own in flight. Never `pending`: that state
    * belongs to `request`, not `extraction_job`, and does not exist here.
    */
-  async unfinished(
-    quietSince: Date | null,
-  ): Promise<{ id: string; requestId: string }[]> {
+  async unfinished(quietSince: Date | null): Promise<UnfinishedJob[]> {
     const unfinished = inArray(extractionJob.status, ['queued', 'running']);
     return this.db
       .select({ id: extractionJob.id, requestId: extractionJob.requestId })

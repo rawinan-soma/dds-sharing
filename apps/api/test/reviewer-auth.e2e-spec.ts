@@ -15,7 +15,7 @@ import supertest from 'supertest';
 import { App } from 'supertest/types';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { AppModule } from '../src/app.module';
-import { CLOCK } from '../src/reviewer/clock';
+import { CLOCK } from '../src/clock/clock';
 import { ReviewerAccounts } from '../src/reviewer/reviewer-accounts';
 import { ReviewerModule } from '../src/reviewer/reviewer.module';
 import {

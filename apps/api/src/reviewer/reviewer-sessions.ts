@@ -2,7 +2,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { and, asc, eq, inArray, lte, ne, or } from 'drizzle-orm';
 import { type Db } from '../db/database.module';
 import { reviewer, reviewerSession } from '../db/schema';
-import { type Clock } from './clock';
+import { type Clock } from '../clock/clock';
 import { writeReviewerEvent } from './reviewer-events';
 
 /** Slides: only a user-initiated request moves it. */

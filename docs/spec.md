@@ -1282,7 +1282,9 @@ A re-run by the Requester means **resubmit and be reviewed again**, never
    deletion record: actor, object key, timestamp, outcome. A **startup reconcile**
    sweeps objects whose tokens expired while the application was down.
 2. **A MinIO lifecycle rule is the backstop only** — for when that job is broken
-   or the box was down.
+   or the box was down. The tick applies it, retrying every pass until it takes;
+   until then the pass withholds its heartbeat, so a backstop that is not in
+   place reaches the banner rather than a boot-time log line.
 
 A lifecycle rule deletes *silently*. The application would hold a token row
 asserting an Extract exists when the object is already gone, and hold no record
@@ -1962,7 +1964,7 @@ reading the ticket record alone would find `job_queued` and nothing else.
 |---|---|---|
 | `mail_sent` | `system` | `{kind: delivery \| queue_notification \| rejection \| extraction_failure, to, relay_response}` |
 | `mail_send_failed` | `system` | try number, relay error |
-| `mail_send_abandoned` | `system` | fifth try failed |
+| `mail_send_abandoned` | `system` | fifth try failed — or the queued send was lost from Redis, which cannot be rebuilt because the rendered Delivery is the only place its raw Download token existed (§15.3) |
 | `delivery_alert_raised` | `system` | send abandoned |
 | `download_attempted` | `anonymous` | mirrored from `token_lookup` |
 | `collection_lapse_raised` | `system` | **24 wall-clock hours, zero Attempts**, raised at the next business-hours opening (§11.4). Carries the wall-clock hours elapsed, so a trip-wire that fired on time is distinguishable from one whose Alert waited for Monday |
@@ -2384,8 +2386,9 @@ Redis loss silently cancels.
   work", and four schedules mean four heartbeats and four ways to be half-alive.
 - **The startup reconcile is the same pass with no lower bound on "due"** — not a
   separate code path. It touches exactly two things: approved Requests whose
-  extraction was `running` when the process died (re-enqueue; code-atomic retry
-  makes this safe), and expired Download tokens whose objects still exist (delete).
+  extraction was unfinished — `running`, or `queued` with no live BullMQ job
+  (§7.7) — when the process died (re-enqueue; code-atomic retry makes this
+  safe), and expired Download tokens whose objects still exist (delete).
   **It never touches `pending`.**
 - Every "cleanup" the tick performs on the event tables is expressed as an
   **insert**, per §12.2.

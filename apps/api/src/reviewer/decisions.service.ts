@@ -5,12 +5,13 @@ import { writeRequestEvent } from '../audit/write-request-event';
 import { DB, type Db } from '../db/database.module';
 import { request, requestContact, requestEvent, reviewer } from '../db/schema';
 import { insertQueuedJob } from '../extraction/extraction-jobs.repository';
+import { moveRequestState } from '../requests/move-request-state';
 import { ExtractionQueue } from '../extraction/extraction-queue';
 import { MailSender } from '../mail/mail-sender';
-import { requestExpiry, type Holidays } from './business-hours';
+import { requestExpiry, type Holidays } from '../clock/business-hours';
 import { buildSnapshot, noteIsValid } from './decisions';
-import { CLOCK, type Clock } from './clock';
-import { HOLIDAYS } from './review-queue.service';
+import { CLOCK, type Clock } from '../clock/clock';
+import { HOLIDAYS } from '../clock/thai-holidays';
 
 export interface DecidingReviewer {
   reviewerId: string;
@@ -120,12 +121,9 @@ export class Decisions {
           return { status: 'expired' };
         }
 
-        const updated = await tx
-          .update(request)
-          .set({ state: decision })
-          .where(sql`${request.id} = ${id} AND ${request.state} = 'pending'`)
-          .returning({ id: request.id });
-        if (updated.length === 0) return { status: 'not_pending' };
+        if (!(await moveRequestState(tx, id, 'pending', decision))) {
+          return { status: 'not_pending' };
+        }
 
         const snapshot = buildSnapshot(row);
         const actor = {

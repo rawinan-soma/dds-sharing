@@ -175,12 +175,7 @@
     "public.actor_type": {
       "name": "actor_type",
       "schema": "public",
-      "values": [
-        "requester",
-        "reviewer",
-        "system",
-        "anonymous"
-      ]
+      "values": ["requester", "reviewer", "system", "anonymous"]
     },
     "public.request_event_type": {
       "name": "request_event_type",

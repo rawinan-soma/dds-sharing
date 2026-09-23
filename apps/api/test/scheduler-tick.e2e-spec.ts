@@ -10,9 +10,15 @@ import { ARCHIVE_STORE } from '../src/extraction/extraction.module';
 import { ExtractionQueue } from '../src/extraction/extraction-queue';
 import { HealthService } from '../src/health/health.service';
 import { MailQueue } from '../src/mail/mail-queue';
-import { CLOCK } from '../src/reviewer/clock';
+import { CLOCK } from '../src/clock/clock';
 import { ReviewQueue } from '../src/reviewer/review-queue.service';
-import { TICK_LOCK_KEY, Tick } from '../src/scheduler/tick';
+import { DB, PG_POOL } from '../src/db/database.module';
+import { ExtractionJobs } from '../src/extraction/extraction-jobs.repository';
+import { MailDeliveries } from '../src/mail/mail-delivery.repository';
+import { LoginThrottle } from '../src/reviewer/login-throttle';
+import { ReviewerSessions } from '../src/reviewer/reviewer-sessions';
+import { THAI_HOLIDAYS_SET } from '../src/clock/thai-holidays';
+import { TICK_LOCK_KEY, Tick, type TickDeps } from '../src/scheduler/tick';
 import { fakeArchiveStore } from './support/fake-archive-store';
 import {
   createScratchDatabase,
@@ -135,6 +141,21 @@ describe('the tick (e2e)', () => {
     return { id, ...token };
   }
 
+  /** What the app's own Tick is built from, for a second Tick with one part swapped. */
+  const tickDeps = (): TickDeps => ({
+    db: app.get(DB),
+    pool: app.get(PG_POOL),
+    clock: { now: () => now },
+    holidays: THAI_HOLIDAYS_SET,
+    archiveStore,
+    extractionJobs: app.get(ExtractionJobs),
+    extractionQueue: extractionQueue as unknown as TickDeps['extractionQueue'],
+    mailQueue: mailQueue as unknown as TickDeps['mailQueue'],
+    mailDeliveries: app.get(MailDeliveries),
+    sessions: app.get(ReviewerSessions),
+    loginThrottle: app.get(LoginThrottle),
+  });
+
   const eventsOf = (requestId: string, type: string) =>
     q(
       `SELECT actor_type, occurred_at, payload FROM request_event
@@ -230,6 +251,28 @@ describe('the tick (e2e)', () => {
       expect(await archiveStore.stat(objectKey)).not.toBeNull();
       expect(await eventsOf(live, 'object_deleted')).toHaveLength(0);
       expect(await eventsOf(dead, 'object_deleted')).toHaveLength(1);
+    });
+
+    it('records a delete it issued as deleted, even when the call failed after removing the object', async () => {
+      const id = await insertRequest('expired_uncollected');
+      const { objectKey } = await insertToken(id, ict('2026-09-21T09:00'));
+      const remove = archiveStore.remove.bind(archiveStore);
+      // MinIO removed it, but the answer never came back in time.
+      archiveStore.remove = async (key) => {
+        await remove(key);
+        throw new Error('removal timed out');
+      };
+      try {
+        await tick.runPass();
+      } finally {
+        archiveStore.remove = remove;
+      }
+      expect(await eventsOf(id, 'object_deleted')).toHaveLength(0);
+
+      await tick.runPass();
+
+      const [event] = await eventsOf(id, 'object_deleted');
+      expect(event.payload).toEqual({ objectKey, outcome: 'deleted' });
     });
 
     it('raises the banner and the health signal for an object still present an hour past expiry', async () => {
@@ -604,6 +647,42 @@ describe('the tick (e2e)', () => {
 
       await tick.runPass();
       expect(await beatAt()).toEqual(now);
+    });
+
+    it('applies the lifecycle backstop once per process, not on every pass', async () => {
+      // Applied by the first pass this file ran.
+      expect(archiveStore.bucketPreparations).toBe(1);
+      await tick.runPass();
+      expect(archiveStore.bucketPreparations).toBe(1);
+    });
+
+    it('keeps the heartbeat back until the lifecycle backstop is applied, retrying each pass', async () => {
+      let attempts = 0;
+      const fresh = new Tick({
+        ...tickDeps(),
+        archiveStore: {
+          ...archiveStore,
+          prepareBucket: () => {
+            attempts += 1;
+            return attempts === 1
+              ? Promise.reject(new Error('minio unreachable'))
+              : Promise.resolve();
+          },
+        },
+      });
+      const beatAt = async () =>
+        (await q('SELECT beat_at FROM scheduler_heartbeat'))[0].beat_at;
+      await tick.runPass();
+      const before = await beatAt();
+
+      now = new Date(now.getTime() + 60_000);
+      await fresh.runPass();
+      expect(await beatAt()).toEqual(before);
+
+      await fresh.runPass();
+      expect(await beatAt()).toEqual(now);
+      await fresh.runPass();
+      expect(attempts).toBe(2);
     });
 
     it('skips the whole pass while another process holds the advisory lock', async () => {

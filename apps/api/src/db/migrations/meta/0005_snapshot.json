@@ -156,9 +156,7 @@
         "request_reference_unique": {
           "name": "request_reference_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "reference"
-          ]
+          "columns": ["reference"]
         }
       },
       "policies": {},
@@ -225,12 +223,8 @@
           "name": "request_contact_request_id_request_id_fk",
           "tableFrom": "request_contact",
           "tableTo": "request",
-          "columnsFrom": [
-            "request_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["request_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -333,12 +327,8 @@
           "name": "request_event_reviewer_id_reviewer_id_fk",
           "tableFrom": "request_event",
           "tableTo": "reviewer",
-          "columnsFrom": [
-            "reviewer_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["reviewer_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -346,12 +336,8 @@
           "name": "request_event_request_id_request_id_fk",
           "tableFrom": "request_event",
           "tableTo": "request",
-          "columnsFrom": [
-            "request_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["request_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -452,9 +438,7 @@
         "reviewer_username_unique": {
           "name": "reviewer_username_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "username"
-          ]
+          "columns": ["username"]
         }
       },
       "policies": {},
@@ -535,12 +519,8 @@
           "name": "reviewer_event_reviewer_id_reviewer_id_fk",
           "tableFrom": "reviewer_event",
           "tableTo": "reviewer",
-          "columnsFrom": [
-            "reviewer_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["reviewer_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -618,12 +598,8 @@
           "name": "reviewer_session_reviewer_id_reviewer_id_fk",
           "tableFrom": "reviewer_session",
           "tableTo": "reviewer",
-          "columnsFrom": [
-            "reviewer_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["reviewer_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -633,9 +609,7 @@
         "reviewer_session_token_hash_unique": {
           "name": "reviewer_session_token_hash_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "token_hash"
-          ]
+          "columns": ["token_hash"]
         }
       },
       "policies": {},
@@ -647,12 +621,7 @@
     "public.actor_type": {
       "name": "actor_type",
       "schema": "public",
-      "values": [
-        "requester",
-        "reviewer",
-        "system",
-        "anonymous"
-      ]
+      "values": ["requester", "reviewer", "system", "anonymous"]
     },
     "public.request_event_type": {
       "name": "request_event_type",

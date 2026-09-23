@@ -1,4 +1,4 @@
-import { type Holidays, requestExpiry } from './business-hours';
+import { type Holidays, requestExpiry } from '../clock/business-hours';
 
 // The pending queue as the Reviewer sees it (spec §10.1). This is the pure part:
 // given the pending rows and a clock reading, it says the order, how many are

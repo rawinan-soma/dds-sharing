@@ -2,7 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { type InsecureFlagName, InsecureFlags } from '../config/insecure-flags';
 import { DB, type Db } from '../db/database.module';
 import { mailHealth } from '../mail/mail-health';
-import { CLOCK, type Clock } from '../reviewer/clock';
+import { CLOCK, type Clock } from '../clock/clock';
 import { schedulerHealth } from '../scheduler/scheduler-health';
 
 // The single source of truth for which components the health document names.

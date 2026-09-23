@@ -1,8 +1,11 @@
 import { Logger, type LoggerService } from '@nestjs/common';
 import { and, eq, sql } from 'drizzle-orm';
 import { type Pool } from 'pg';
+import { type ObjectDeletedOutcome } from '../audit/event-catalogue';
+import { mailSentOfKind } from '../audit/mail-sent';
 import { queueNotifiedAt } from '../audit/queue-notified-at';
 import { writeRequestEvent } from '../audit/write-request-event';
+import { ADVISORY_LOCK } from '../db/advisory-locks';
 import { type Db } from '../db/database.module';
 import {
   downloadToken,
@@ -15,34 +18,36 @@ import { type ArchiveStore } from '../extraction/archive-store';
 import { EXTRACTION_DEFAULTS } from '../extraction/extraction.config';
 import { type ExtractionJobs } from '../extraction/extraction-jobs.repository';
 import { type ExtractionQueue } from '../extraction/extraction-queue';
-import { type MailDeliveries } from '../mail/mail-delivery.repository';
+import {
+  type MailDeliveries,
+  type PendingSend,
+} from '../mail/mail-delivery.repository';
 import {
   MAIL_MAX_ATTEMPTS,
   MAIL_RETRY_DELAY_MS,
   type MailQueue,
 } from '../mail/mail-queue';
-import { type Holidays, requestExpiry } from '../reviewer/business-hours';
-import { type Clock } from '../reviewer/clock';
+import { type Holidays, requestExpiry } from '../clock/business-hours';
+import { type Clock } from '../clock/clock';
+import { moveRequestState } from '../requests/move-request-state';
 import { type LoginThrottle } from '../reviewer/login-throttle';
 import { type ReviewerSessions } from '../reviewer/reviewer-sessions';
 import { collectionLapse } from './collection-lapse';
+import { objectsStillHeld } from './scheduler-health';
 import { withTimeout } from './with-timeout';
-import {
-  type ObjectDeletedOutcome,
-  objectsStillHeld,
-} from './scheduler-health';
 
 /** A MinIO call slower than this fails its step rather than stalling the pass. */
 export const OBJECT_STORE_TIMEOUT_MS = 30_000;
 
-/** Every pass takes this one lock (spec §15.3). Distinct from the app's other advisory keys. */
-export const TICK_LOCK_KEY = 7_215_003;
+/** Every pass takes this one lock (spec §15.3). */
+export const TICK_LOCK_KEY = ADVISORY_LOCK.tick;
 
 /**
  * `startup` is the same pass with no lower bound on "due", and it touches
- * exactly two things: unfinished extractions and expired-token objects. It
- * never touches `pending` — an unapproved Request has no work, and its clock
- * is derived (§15.3).
+ * exactly two things: unfinished extractions (`queued` or `running`, §7.7) and
+ * expired-token objects — plus the lifecycle backstop, until it is applied. It
+ * never touches `pending`: an unapproved Request has no work, and its clock is
+ * derived (§15.3).
  */
 export type TickMode = 'regular' | 'startup';
 
@@ -98,7 +103,16 @@ interface LiveToken {
  */
 export class Tick {
   private readonly logger: LoggerService;
-  private failedSteps = 0;
+  /** Set once the MinIO lifecycle backstop has been applied by this process. */
+  private backstopApplied = false;
+  /**
+   * Objects this process has asked MinIO to remove whose removal it has not
+   * yet recorded — a call that timed out may still have removed the object,
+   * and finding it gone next pass is then this application's deletion, not
+   * the backstop's. Lost on restart, when such an object reads
+   * `already_absent`: the one case where the record under-claims.
+   */
+  private readonly removalsIssued = new Set<string>();
 
   constructor(private readonly deps: TickDeps) {
     this.logger = deps.logger ?? new Logger('Tick');
@@ -125,13 +139,35 @@ export class Tick {
 
   private async pass(mode: TickMode): Promise<PassReport> {
     const now = this.deps.clock.now();
-    this.failedSteps = 0;
     const startup = mode === 'startup';
+    let failures = 0;
+    // One job failing must not stop the others: a broken MinIO is no reason
+    // to stop expiring Requests. The failure is loud in the log, and withholds
+    // the heartbeat, so it is loud on the banner and /health too.
+    const step = async <T>(
+      name: string,
+      nothingDone: T,
+      run: () => Promise<T>,
+    ): Promise<T> => {
+      try {
+        return await run();
+      } catch (error) {
+        this.logger.error(
+          `tick step ${name} failed: ${(error as Error).message}`,
+        );
+        failures += 1;
+        return nothingDone;
+      }
+    };
+
+    if (!this.backstopApplied) {
+      await step('backstop', undefined, () => this.applyBackstop());
+    }
     const report: PassReport = {
-      extractionsReenqueued: await this.step('extractions', 0, () =>
+      extractionsReenqueued: await step('extractions', 0, () =>
         this.reconcileExtractions(startup ? null : now),
       ),
-      objectsDeleted: await this.step('objects', 0, () =>
+      objectsDeleted: await step('objects', 0, () =>
         this.deleteExpiredObjects(now),
       ),
       requestsExpired: 0,
@@ -143,51 +179,47 @@ export class Tick {
       throttleRowsPruned: 0,
     };
     if (!startup) {
-      report.requestsExpired = await this.step('expiry', 0, () =>
+      report.requestsExpired = await step('expiry', 0, () =>
         this.materialiseExpired(now),
       );
-      const mail = await this.step('mail', { retried: 0, abandoned: 0 }, () =>
+      const mail = await step('mail', { retried: 0, abandoned: 0 }, () =>
         this.retryDueMail(now),
       );
       report.mailRetried = mail.retried;
       report.mailAbandoned = mail.abandoned;
-      report.lapsesRaised = await this.step('lapses', 0, () =>
-        this.raiseCollectionLapses(now),
+      const collection = await step(
+        'collection',
+        { lapsesRaised: 0, requestsEnded: 0 },
+        () => this.settleDeliveries(now),
       );
-      report.requestsEnded = await this.step('collection', 0, () =>
-        this.endExpiredDeliveries(now),
-      );
-      report.sessionsPruned = await this.step('sessions', 0, () =>
+      report.lapsesRaised = collection.lapsesRaised;
+      report.requestsEnded = collection.requestsEnded;
+      report.sessionsPruned = await step('sessions', 0, () =>
         this.deps.sessions.pruneDead(now),
       );
-      report.throttleRowsPruned = await this.step('throttle', 0, () =>
+      report.throttleRowsPruned = await step('throttle', 0, () =>
         this.deps.loginThrottle.pruneDecayed(now),
       );
     }
     // The heartbeat means the whole pass did its work. A pass with a failed
     // job does not beat: four ways to be half-alive is what one pass exists
     // to rule out (§15.3), and five such passes put the banner up.
-    if (this.failedSteps === 0) await this.beat(now);
+    if (failures === 0) await this.beat(now);
     return report;
   }
 
-  // One job failing must not stop the others: a broken MinIO is no reason to
-  // stop expiring Requests. The failure is loud in the log, and withholds the
-  // heartbeat, so it is loud on the banner and /health too.
-  private async step<T>(
-    name: string,
-    nothingDone: T,
-    run: () => Promise<T>,
-  ): Promise<T> {
-    try {
-      return await run();
-    } catch (error) {
-      this.logger.error(
-        `tick step ${name} failed: ${(error as Error).message}`,
-      );
-      this.failedSteps += 1;
-      return nothingDone;
-    }
+  /**
+   * The MinIO lifecycle rule (§9.5): the backstop, applied by the tick so a
+   * failure to apply it is not a log line at boot but a job that fails every
+   * pass — withholding the heartbeat — until it takes.
+   */
+  private async applyBackstop(): Promise<void> {
+    await withTimeout(
+      this.deps.archiveStore.prepareBucket(),
+      OBJECT_STORE_TIMEOUT_MS,
+      'lifecycle backstop',
+    );
+    this.backstopApplied = true;
   }
 
   private async beat(now: Date): Promise<void> {
@@ -231,9 +263,10 @@ export class Tick {
   /**
    * Object deletion at token expiry (§9.5), by the application, on the
    * record. A token a Re-run superseded has its object deleted on the next
-   * pass rather than at its own expiry (ADR 0012). An object already gone —
-   * the lifecycle backstop got there first — is recorded as such, never
-   * skipped. A failed delete writes no record and is tried again next pass;
+   * pass rather than at its own expiry (ADR 0012). An object already gone,
+   * that this process never asked to remove — the lifecycle backstop got there
+   * first — is recorded as such, never skipped. A failed delete writes no
+   * record and is tried again next pass;
    * it fails the step, so the heartbeat is withheld, and an hour of it also
    * trips the overdue-object signal.
    */
@@ -257,15 +290,17 @@ export class Tick {
             `stat of ${objectKey}`,
           )) !== null;
         if (present) {
+          this.removalsIssued.add(objectKey);
           await withTimeout(
             archiveStore.remove(objectKey),
             OBJECT_STORE_TIMEOUT_MS,
             `removal of ${objectKey}`,
           );
         }
-        const outcome: ObjectDeletedOutcome = present
-          ? 'deleted'
-          : 'already_absent';
+        const outcome: ObjectDeletedOutcome =
+          present || this.removalsIssued.has(objectKey)
+            ? 'deleted'
+            : 'already_absent';
         await writeRequestEvent(db, {
           requestId,
           type: 'object_deleted',
@@ -273,6 +308,7 @@ export class Tick {
           actor: { actorType: 'system' },
           payload: { objectKey, outcome },
         });
+        this.removalsIssued.delete(objectKey);
         deleted += 1;
       } catch (error) {
         failed += 1;
@@ -303,14 +339,9 @@ export class Tick {
       const expiry = requestExpiry(row.submittedAt, now, holidays);
       if (!expiry.expired) continue;
       await db.transaction(async (tx) => {
-        const moved = await tx
-          .update(request)
-          .set({ state: 'expired' })
-          .where(
-            sql`${request.id} = ${row.id} AND ${request.state} = 'pending'`,
-          )
-          .returning({ id: request.id });
-        if (moved.length === 0) return;
+        if (!(await moveRequestState(tx, row.id, 'pending', 'expired'))) {
+          return;
+        }
         const [prior] = await tx
           .select({ id: requestEvent.id })
           .from(requestEvent)
@@ -380,10 +411,7 @@ export class Tick {
     return { retried, abandoned };
   }
 
-  private async abandonLostMail(
-    mail: { id: string; requestId: string },
-    now: Date,
-  ): Promise<void> {
+  private async abandonLostMail(mail: PendingSend, now: Date): Promise<void> {
     const { db, mailDeliveries } = this.deps;
     await mailDeliveries.markAbandoned(
       mail.id,
@@ -421,11 +449,11 @@ export class Tick {
         (SELECT count(*)::int FROM token_lookup l
           WHERE l.download_token_id = t.id
             AND l.kind = 'archive' AND l.outcome = 'success') AS attempts,
-        (SELECT (extract(epoch FROM min(e.occurred_at)) * 1000)::float8
-          FROM request_event e
-          WHERE e.request_id = t.request_id AND e.type = 'mail_sent'
-            AND e.payload->>'kind' = 'delivery'
-            AND e.occurred_at >= t.created_at) AS delivered_at,
+        (SELECT (extract(epoch FROM min(${requestEvent.occurredAt})) * 1000)::float8
+          FROM ${requestEvent}
+          WHERE ${requestEvent.requestId} = t.request_id
+            AND ${mailSentOfKind('delivery')}
+            AND ${requestEvent.occurredAt} >= t.created_at) AS delivered_at,
         EXISTS (SELECT 1 FROM request_event e
           WHERE e.request_id = t.request_id
             AND e.type = 'collection_lapse_raised'
@@ -446,6 +474,27 @@ export class Tick {
   }
 
   /**
+   * The collection rules, over one read of the live tokens. A token that
+   * expired with no Attempt ends its Request; one still live may trip the
+   * lapse.
+   */
+  private async settleDeliveries(
+    now: Date,
+  ): Promise<{ lapsesRaised: number; requestsEnded: number }> {
+    let lapsesRaised = 0;
+    let requestsEnded = 0;
+    for (const token of await this.liveTokens()) {
+      if (token.attempts > 0) continue;
+      if (token.expiresAt <= now) {
+        if (await this.endUncollected(token)) requestsEnded += 1;
+      } else if (await this.raiseLapse(token, now)) {
+        lapsesRaised += 1;
+      }
+    }
+    return { lapsesRaised, requestsEnded };
+  }
+
+  /**
    * The collection-lapse trip-wire (§11.4): 24 WALL-CLOCK hours after the
    * Delivery with zero Attempts, raised no earlier than the next business-
    * hours opening. Dated at that raise instant, and carrying the wall-clock
@@ -454,27 +503,21 @@ export class Tick {
    * already expired is not an Alert anyone can act on: `expired_uncollected`
    * says it instead.
    */
-  private async raiseCollectionLapses(now: Date): Promise<number> {
-    let raised = 0;
-    for (const token of await this.liveTokens()) {
-      if (!token.deliveredAt || token.attempts > 0 || token.lapseRaised) {
-        continue;
-      }
-      const lapse = collectionLapse(token.deliveredAt, this.deps.holidays);
-      if (lapse.raisesAt > now || lapse.raisesAt >= token.expiresAt) continue;
-      await writeRequestEvent(this.deps.db, {
-        requestId: token.requestId,
-        type: 'collection_lapse_raised',
-        occurredAt: lapse.raisesAt,
-        actor: { actorType: 'system' },
-        payload: {
-          wallClockHoursElapsed:
-            Math.round(lapse.wallClockHoursElapsed * 100) / 100,
-        },
-      });
-      raised += 1;
-    }
-    return raised;
+  private async raiseLapse(token: LiveToken, now: Date): Promise<boolean> {
+    if (!token.deliveredAt || token.lapseRaised) return false;
+    const lapse = collectionLapse(token.deliveredAt, this.deps.holidays);
+    if (lapse.raisesAt > now || lapse.raisesAt >= token.expiresAt) return false;
+    await writeRequestEvent(this.deps.db, {
+      requestId: token.requestId,
+      type: 'collection_lapse_raised',
+      occurredAt: lapse.raisesAt,
+      actor: { actorType: 'system' },
+      payload: {
+        wallClockHoursElapsed:
+          Math.round(lapse.wallClockHoursElapsed * 100) / 100,
+      },
+    });
+    return true;
   }
 
   /**
@@ -483,29 +526,23 @@ export class Tick {
    * number that measures whether email is working (§11.5). A collected one is
    * already `collected`: the first Attempt moved it there.
    */
-  private async endExpiredDeliveries(now: Date): Promise<number> {
-    let ended = 0;
-    for (const token of await this.liveTokens()) {
-      if (token.expiresAt > now || token.attempts > 0) continue;
-      await this.deps.db.transaction(async (tx) => {
-        const moved = await tx
-          .update(request)
-          .set({ state: 'expired_uncollected' })
-          .where(
-            sql`${request.id} = ${token.requestId} AND ${request.state} = 'approved'`,
-          )
-          .returning({ id: request.id });
-        if (moved.length === 0) return;
-        await writeRequestEvent(tx, {
-          requestId: token.requestId,
-          type: 'expired_uncollected',
-          occurredAt: token.expiresAt,
-          actor: { actorType: 'system' },
-          payload: {},
-        });
-        ended += 1;
+  private async endUncollected(token: LiveToken): Promise<boolean> {
+    return this.deps.db.transaction(async (tx) => {
+      const moved = await moveRequestState(
+        tx,
+        token.requestId,
+        'approved',
+        'expired_uncollected',
+      );
+      if (!moved) return false;
+      await writeRequestEvent(tx, {
+        requestId: token.requestId,
+        type: 'expired_uncollected',
+        occurredAt: token.expiresAt,
+        actor: { actorType: 'system' },
+        payload: {},
       });
-    }
-    return ended;
+      return true;
+    });
   }
 }

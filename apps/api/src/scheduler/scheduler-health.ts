@@ -39,14 +39,11 @@ export function schedulerStatus(
   return { status: 'ok' };
 }
 
-/** What an `object_deleted` may say; both settle the object (§9.5). */
-export type ObjectDeletedOutcome = 'deleted' | 'already_absent';
-const SETTLED: ObjectDeletedOutcome[] = ['deleted', 'already_absent'];
-
 /**
  * Download tokens whose object fell due by `dueBy` and that no
- * `object_deleted` has settled yet. The deletion record is the evidence
- * (§9.5): an object counts as still present until one names it.
+ * `object_deleted` names yet. The deletion record is the evidence (§9.5): an
+ * object counts as still present until one does — and one is only ever
+ * written once the object is known to be gone.
  */
 export function objectsStillHeld(db: Db, dueBy: Date): SQL | undefined {
   return and(
@@ -63,10 +60,6 @@ export function objectsStillHeld(db: Db, dueBy: Date): SQL | undefined {
             eq(requestEvent.requestId, downloadToken.requestId),
             eq(requestEvent.type, 'object_deleted'),
             sql`${requestEvent.payload}->>'objectKey' = ${downloadToken.archiveFilename}`,
-            sql`${requestEvent.payload}->>'outcome' IN (${sql.join(
-              SETTLED.map((o) => sql`${o}`),
-              sql`, `,
-            )})`,
           ),
         ),
     ),

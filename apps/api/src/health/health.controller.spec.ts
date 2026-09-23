@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { InsecureFlagName, InsecureFlags } from '../config/insecure-flags';
 import { DB } from '../db/database.module';
 import { mailDelivery, schedulerHeartbeat } from '../db/schema';
-import { CLOCK } from '../reviewer/clock';
+import { CLOCK } from '../clock/clock';
 import { HealthController } from './health.controller';
 import { HEALTH_COMPONENT_NAMES, HealthService } from './health.service';
 

@@ -23,7 +23,6 @@ import {
   createMinioArchiveStore,
   createMinioClient,
 } from './archive-store';
-import { prepareExtractBucket } from './bucket-lifecycle';
 import { freeDiskBytes } from './disk-space';
 import { EXTRACTION_QUEUE_NAME } from './extraction.config';
 import { ExtractionJobs } from './extraction-jobs.repository';
@@ -42,10 +41,6 @@ const BULLMQ_WORKER = Symbol('EXTRACTION_BULLMQ_WORKER');
  * in CI runs a real MinIO (spec §7.8's upload is exercised at the unit layer
  * instead, in `extraction-worker.spec.ts`). */
 export const ARCHIVE_STORE = Symbol('EXTRACTION_ARCHIVE_STORE');
-/** `() => Promise<void>`: makes the bucket and applies the lifecycle backstop.
- * Called once from `main.ts`, never on module init, so a test boot never
- * reaches for a MinIO it does not have. */
-export const PREPARE_EXTRACT_BUCKET = Symbol('PREPARE_EXTRACT_BUCKET');
 
 // The reconcile (spec §7.7) is not here: it is the tick's startup pass
 // (`scheduler/tick.ts`), the same pass as every other, so there is one code
@@ -121,13 +116,6 @@ class ExtractionLifecycle implements OnApplicationShutdown {
         createMinioArchiveStore(createMinioClient(minio), minio.bucket),
     },
     {
-      provide: PREPARE_EXTRACT_BUCKET,
-      inject: [minioConfig.KEY],
-      useFactory:
-        (minio: ConfigType<typeof minioConfig>) => (): Promise<void> =>
-          prepareExtractBucket(createMinioClient(minio), minio.bucket),
-    },
-    {
       provide: BULLMQ_WORKER,
       inject: [
         DB,
@@ -190,11 +178,6 @@ class ExtractionLifecycle implements OnApplicationShutdown {
         ),
     },
   ],
-  exports: [
-    ExtractionJobs,
-    ExtractionQueue,
-    ARCHIVE_STORE,
-    PREPARE_EXTRACT_BUCKET,
-  ],
+  exports: [ExtractionJobs, ExtractionQueue, ARCHIVE_STORE],
 })
 export class ExtractionModule {}

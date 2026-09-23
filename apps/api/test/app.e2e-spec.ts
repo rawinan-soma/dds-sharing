@@ -5,7 +5,6 @@ import request from 'supertest';
 import { App } from 'supertest/types';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AppModule } from '../src/app.module';
-import { Tick } from '../src/scheduler/tick';
 import {
   createScratchDatabase,
   type ScratchDatabase,
@@ -31,9 +30,13 @@ describe('AppModule (e2e)', () => {
     app = await NestFactory.create(AppModule, { logger: false });
     app.setGlobalPrefix(API_PREFIX, { exclude: API_PREFIX_EXCLUDE });
     await app.init();
-    // One pass, as main.ts's startup reconcile would make: the heartbeat is
-    // what keeps the `scheduler` component ok (§15.3).
-    await app.get(Tick).runPass();
+    // A fresh heartbeat, as a successful pass would leave it: it is what keeps
+    // the `scheduler` component ok (§15.3). A real pass is not run here — this
+    // app has no MinIO for the lifecycle backstop, and the pass itself is
+    // scheduler-tick.e2e-spec.ts's to test.
+    await db.owner.query(
+      'INSERT INTO scheduler_heartbeat (id, beat_at) VALUES (1, now())',
+    );
   });
 
   afterAll(async () => {

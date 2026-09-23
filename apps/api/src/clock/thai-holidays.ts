@@ -47,3 +47,6 @@ export const THAI_HOLIDAYS: readonly string[] = [
 ];
 
 export const THAI_HOLIDAYS_SET: ReadonlySet<string> = new Set(THAI_HOLIDAYS);
+
+/** The DI token for the holiday set the business-hours clock reads. */
+export const HOLIDAYS = Symbol('HOLIDAYS');

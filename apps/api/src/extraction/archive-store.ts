@@ -6,6 +6,7 @@
 
 import { Readable } from 'node:stream';
 import { Client } from 'minio';
+import { prepareExtractBucket } from './bucket-lifecycle';
 
 export interface ObjectRange {
   /** Inclusive byte offset. */
@@ -30,6 +31,8 @@ export interface ArchiveStore {
   download(objectKey: string, range?: ObjectRange): Promise<RangedObject>;
   /** Deletes the object at its token's expiry (spec §9.5); the tick records it. */
   remove(objectKey: string): Promise<void>;
+  /** Makes the bucket if missing and applies the lifecycle backstop (§9.5). */
+  prepareBucket(): Promise<void>;
 }
 
 export function createMinioClient(config: {
@@ -102,6 +105,10 @@ export function createMinioArchiveStore(
 
     async remove(objectKey) {
       await client.removeObject(bucket, objectKey);
+    },
+
+    async prepareBucket() {
+      await prepareExtractBucket(client, bucket);
     },
   };
 }

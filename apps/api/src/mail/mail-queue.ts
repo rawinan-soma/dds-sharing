@@ -1,5 +1,6 @@
 import { Queue } from 'bullmq';
 import { type MailKind } from '../audit/event-catalogue';
+import { LIVE_JOB_STATES } from '../db/bull-job-states';
 
 export const MAIL_QUEUE_NAME = 'mail';
 
@@ -7,8 +8,6 @@ export const MAIL_QUEUE_NAME = 'mail';
 // retry started by the tick once its 15 minutes are up.
 export const MAIL_MAX_ATTEMPTS = 5;
 export const MAIL_RETRY_DELAY_MS = 15 * 60 * 1000;
-
-const LIVE_STATES = new Set(['waiting', 'active', 'delayed', 'prioritized']);
 
 export interface MailJobData {
   mailDeliveryId: string;
@@ -56,7 +55,7 @@ export class MailQueue {
 
   async isLive(mailDeliveryId: string): Promise<boolean> {
     const job = await this.queue.getJob(mailDeliveryId);
-    return !!job && LIVE_STATES.has(await job.getState());
+    return !!job && LIVE_JOB_STATES.has(await job.getState());
   }
 
   async close(): Promise<void> {

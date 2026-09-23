@@ -5,7 +5,7 @@ import { DB, type Db } from '../db/database.module';
 import { ExtractionModule } from '../extraction/extraction.module';
 import { MailModule } from '../mail/mail.module';
 import { ReferenceDataModule } from '../reference/reference-data.module';
-import { CLOCK, type Clock, systemClock } from './clock';
+import { CLOCK, type Clock } from '../clock/clock';
 import { LoginThrottle } from './login-throttle';
 import { CsrfGuard } from './csrf.guard';
 import { DecisionsController } from './decisions.controller';
@@ -13,20 +13,17 @@ import { Decisions } from './decisions.service';
 import { ReviewerAuth } from './reviewer-auth';
 import { ReviewerAuthGuard } from './reviewer-auth.guard';
 import { REVIEWER_CONFIG, reviewerConfigFrom } from './reviewer-config';
-import { HOLIDAYS, ReviewQueue } from './review-queue.service';
+import { ReviewQueue } from './review-queue.service';
 import { ReviewQueueController } from './review-queue.controller';
 import { ReviewerController } from './reviewer.controller';
 import { ReviewerSessions } from './reviewer-sessions';
-import { THAI_HOLIDAYS_SET } from './thai-holidays';
 
 @Module({
   imports: [ReferenceDataModule, ExtractionModule, MailModule],
   controllers: [ReviewerController, ReviewQueueController, DecisionsController],
   providers: [
-    { provide: HOLIDAYS, useValue: THAI_HOLIDAYS_SET },
     ReviewQueue,
     Decisions,
-    { provide: CLOCK, useValue: systemClock },
     {
       provide: REVIEWER_CONFIG,
       inject: [transportConfig.KEY],
@@ -56,13 +53,6 @@ import { THAI_HOLIDAYS_SET } from './thai-holidays';
     CsrfGuard,
     ReviewerAuthGuard,
   ],
-  exports: [
-    ReviewerSessions,
-    ReviewerAuthGuard,
-    CLOCK,
-    ReviewerAuth,
-    HOLIDAYS,
-    LoginThrottle,
-  ],
+  exports: [ReviewerSessions, ReviewerAuthGuard, ReviewerAuth, LoginThrottle],
 })
 export class ReviewerModule {}

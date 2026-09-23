@@ -5,8 +5,9 @@ import { DB, type Db } from '../db/database.module';
 import { request, requestContact, requestEvent } from '../db/schema';
 import { ProvinceLookup } from '../reference/province-lookup.service';
 import { schedulerHealth } from '../scheduler/scheduler-health';
-import { CLOCK, type Clock } from './clock';
-import { type Holidays } from './business-hours';
+import { CLOCK, type Clock } from '../clock/clock';
+import { type Holidays } from '../clock/business-hours';
+import { HOLIDAYS } from '../clock/thai-holidays';
 import {
   type Area,
   type PendingRow,
@@ -14,8 +15,6 @@ import {
   describeArea,
   rankPending,
 } from './review-queue';
-
-export const HOLIDAYS = Symbol('HOLIDAYS');
 
 export interface QueueRow {
   id: string;

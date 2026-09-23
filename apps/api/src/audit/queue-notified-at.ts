@@ -1,5 +1,6 @@
-import { and, eq, min, sql } from 'drizzle-orm';
+import { and, eq, min } from 'drizzle-orm';
 import { requestEvent } from '../db/schema';
+import { mailSentOfKind } from './mail-sent';
 import { type Executor } from './write-request-event';
 
 /**
@@ -18,8 +19,7 @@ export async function queueNotifiedAt(
     .where(
       and(
         eq(requestEvent.requestId, requestId),
-        eq(requestEvent.type, 'mail_sent'),
-        sql`${requestEvent.payload}->>'kind' = 'queue_notification'`,
+        mailSentOfKind('queue_notification'),
       ),
     );
   return row?.at ? row.at.toISOString() : null;

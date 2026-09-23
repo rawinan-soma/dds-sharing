@@ -39,7 +39,7 @@ type BucketClient = Pick<
   'bucketExists' | 'makeBucket' | 'setBucketLifecycle'
 >;
 
-/** Run once at boot: makes the Extract bucket if it is missing, and (re)applies the backstop. */
+/** Makes the Extract bucket if it is missing, and (re)applies the backstop. The tick runs it until it succeeds once per process. */
 export async function prepareExtractBucket(
   client: BucketClient,
   bucket: string,

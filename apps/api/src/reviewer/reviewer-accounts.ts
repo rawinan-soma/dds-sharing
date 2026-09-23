@@ -1,7 +1,7 @@
 import { and, count, eq, isNotNull, isNull, ne, sql } from 'drizzle-orm';
 import { type Db } from '../db/database.module';
 import { reviewer, reviewerSession } from '../db/schema';
-import { type Clock } from './clock';
+import { type Clock } from '../clock/clock';
 import {
   generatePassword,
   hashPassword,
@@ -9,6 +9,7 @@ import {
 } from './password-policy';
 import { enrolmentUri, generateTotpSecret } from './totp';
 import { writeReviewerEvent } from './reviewer-events';
+import { ADVISORY_LOCK } from '../db/advisory-locks';
 
 /** The floor: two reachable people, one being the other's only recovery path. */
 export const MIN_ACTIVE_REVIEWERS = 2;
@@ -133,7 +134,9 @@ export class ReviewerAccounts {
     return this.db.transaction(async (tx) => {
       // Serialises concurrent deactivations, so two commands cannot each see
       // "two left" and both proceed.
-      await tx.execute(sql`SELECT pg_advisory_xact_lock(64)`);
+      await tx.execute(
+        sql`SELECT pg_advisory_xact_lock(${ADVISORY_LOCK.reviewerAccounts})`,
+      );
 
       const [target] = await tx
         .select()

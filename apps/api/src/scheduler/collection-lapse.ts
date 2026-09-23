@@ -1,4 +1,4 @@
-import { type Holidays, nextOpening } from '../reviewer/business-hours';
+import { type Holidays, nextOpening } from '../clock/business-hours';
 
 const HOUR_MS = 60 * 60 * 1000;
 

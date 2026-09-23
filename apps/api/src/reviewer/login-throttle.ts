@@ -1,7 +1,7 @@
 import { and, eq, inArray, lt, lte, sql } from 'drizzle-orm';
 import { type Db } from '../db/database.module';
 import { loginThrottle } from '../db/schema';
-import { type Clock } from './clock';
+import { type Clock } from '../clock/clock';
 
 /** Exponential backoff, capping near 30 seconds. There is no lockout at all. */
 const BACKOFF_CAP_SECONDS = 30;

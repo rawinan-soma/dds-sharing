@@ -1,11 +1,9 @@
-import { Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { type NestExpressApplication } from '@nestjs/platform-express';
 import { type ConfigType } from '@nestjs/config';
 import { AppModule } from './app.module';
 import { appConfig } from './config/namespaces';
 import { API_PREFIX, API_PREFIX_EXCLUDE } from './global-prefix';
-import { PREPARE_EXTRACT_BUCKET } from './extraction/extraction.module';
 import { TickScheduler } from './scheduler/scheduler.module';
 
 async function bootstrap() {
@@ -18,16 +16,8 @@ async function bootstrap() {
   app.setGlobalPrefix(API_PREFIX, { exclude: API_PREFIX_EXCLUDE });
   app.set('trust proxy', config.trustProxy);
   await app.listen(config.port);
-  // The lifecycle rule is the backstop, not the control (spec §9.5): failing
-  // to apply it is loud, never fatal — the tick's own deletion is the record.
-  await app
-    .get<() => Promise<void>>(PREPARE_EXTRACT_BUCKET)()
-    .catch((error: unknown) =>
-      new Logger('Bootstrap').error(
-        `could not apply the Extract bucket's lifecycle backstop: ${(error as Error).message}`,
-      ),
-    );
-  // The startup reconcile, then the 60-second pass (spec §15.3).
+  // The startup reconcile, then the 60-second pass (spec §15.3). The pass
+  // also applies the MinIO lifecycle backstop, retrying until it takes.
   await app.get(TickScheduler).start();
 }
 

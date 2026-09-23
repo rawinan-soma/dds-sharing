@@ -2,6 +2,7 @@ import { isAbsolute, join } from 'node:path';
 import { Module } from '@nestjs/common';
 import { type ConfigType } from '@nestjs/config';
 import { ServeStaticModule } from '@nestjs/serve-static';
+import { ClockModule } from './clock/clock.module';
 import { AppConfigModule } from './config/app-config.module';
 import { appConfig } from './config/namespaces';
 import { DatabaseModule } from './db/database.module';
@@ -35,6 +36,7 @@ const staticRoot = (root: string) =>
       ],
     }),
     DatabaseModule,
+    ClockModule,
     ReferenceDataModule,
     HealthModule,
     RequestsModule,

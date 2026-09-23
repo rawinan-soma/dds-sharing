@@ -1,6 +1,6 @@
-import { sql } from 'drizzle-orm';
 import { type Db } from '../db/database.module';
-import { request, tokenLookup } from '../db/schema';
+import { tokenLookup } from '../db/schema';
+import { moveRequestState } from '../requests/move-request-state';
 import { writeRequestEvent } from '../audit/write-request-event';
 import { type LookupOutcome } from './resolve-token';
 import { tokenPrefix } from './token';
@@ -52,12 +52,7 @@ export async function recordLookup(
   ) {
     const requestId = params.requestId;
     await db.transaction(async (tx) => {
-      await tx
-        .update(request)
-        .set({ state: 'collected' })
-        .where(
-          sql`${request.id} = ${requestId} AND ${request.state} = 'approved'`,
-        );
+      await moveRequestState(tx, requestId, 'approved', 'collected');
       await writeRequestEvent(tx, {
         requestId,
         type: 'download_attempted',

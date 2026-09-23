@@ -3,6 +3,12 @@ import { type MailKind } from '../audit/event-catalogue';
 import { type Db } from '../db/database.module';
 import { mailDelivery } from '../db/schema';
 
+/** A send not yet settled, as the tick retries or abandons it. */
+export interface PendingSend {
+  id: string;
+  requestId: string;
+}
+
 export class MailDeliveries {
   constructor(private readonly db: Db) {}
 
@@ -28,7 +34,7 @@ export class MailDeliveries {
   async dueForRetry(
     failedBefore: Date,
     maxAttempts: number,
-  ): Promise<{ id: string; requestId: string }[]> {
+  ): Promise<PendingSend[]> {
     return this.db
       .select({ id: mailDelivery.id, requestId: mailDelivery.requestId })
       .from(mailDelivery)
@@ -42,9 +48,7 @@ export class MailDeliveries {
   }
 
   /** Sends queued before `queuedBefore` and still not sent — checked against Redis by the tick. */
-  async queuedBefore(
-    queuedBefore: Date,
-  ): Promise<{ id: string; requestId: string }[]> {
+  async queuedBefore(queuedBefore: Date): Promise<PendingSend[]> {
     return this.db
       .select({ id: mailDelivery.id, requestId: mailDelivery.requestId })
       .from(mailDelivery)

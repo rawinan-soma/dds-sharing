@@ -17,13 +17,13 @@ import { ExtractionQueue } from '../extraction/extraction-queue';
 import { MailDeliveries } from '../mail/mail-delivery.repository';
 import { MailModule } from '../mail/mail.module';
 import { MailQueue } from '../mail/mail-queue';
-import { type Holidays } from '../reviewer/business-hours';
-import { CLOCK, type Clock } from '../reviewer/clock';
+import { type Holidays } from '../clock/business-hours';
+import { CLOCK, type Clock } from '../clock/clock';
 import { LoginThrottle } from '../reviewer/login-throttle';
-import { HOLIDAYS } from '../reviewer/review-queue.service';
+import { HOLIDAYS } from '../clock/thai-holidays';
 import { ReviewerModule } from '../reviewer/reviewer.module';
 import { ReviewerSessions } from '../reviewer/reviewer-sessions';
-import { Tick } from './tick';
+import { Tick, type TickMode } from './tick';
 
 /** Every 60 seconds (spec §15.3). One schedule: there is no second one anywhere. */
 export const TICK_INTERVAL_MS = 60_000;
@@ -59,7 +59,7 @@ export class TickScheduler implements OnApplicationShutdown {
 
   // A pass that throws must not take the process down: the next one is the
   // retry, and a tick that stays down is what the heartbeat is for.
-  private async run(mode: 'startup' | 'regular'): Promise<void> {
+  private async run(mode: TickMode): Promise<void> {
     try {
       await this.tick.runPass(mode);
     } catch (error) {
