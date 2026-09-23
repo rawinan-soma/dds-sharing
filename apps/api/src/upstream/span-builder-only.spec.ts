@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { readdirSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
+import { sourceFiles } from '../../test/support/source-files';
 
 // The `+1` that turns an inclusive `to` into upstream's exclusive `end_date`
 // lives in the span builder and nowhere else (spec §4.3, §7.2, §17.1). This is a
@@ -34,14 +35,6 @@ const DATE_ARITHMETIC = [
   /\b(end|to)(Date)?\s*\+\s*1\b/i,
   /\bDate\.parse\b/,
 ];
-
-function sourceFiles(dir: string): string[] {
-  return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
-    const path = join(dir, entry.name);
-    if (entry.isDirectory()) return sourceFiles(path);
-    return path.endsWith('.ts') && !path.endsWith('.spec.ts') ? [path] : [];
-  });
-}
 
 describe('the span builder is the only date arithmetic', () => {
   it('finds no day arithmetic in production code outside span-builder.ts', () => {

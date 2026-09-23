@@ -55,9 +55,9 @@ describe('QueuePage', () => {
 
   afterEach(() => vi.useRealTimers());
 
-  async function settle() {
+  async function settle(on: ComponentFixture<QueuePage> = fixture) {
     for (let i = 0; i < 5; i++) await Promise.resolve();
-    await fixture.whenStable();
+    await on.whenStable();
   }
 
   async function firstLoad(requests: QueueRow[]) {
@@ -193,24 +193,35 @@ describe('QueuePage', () => {
     expect(banner!.textContent).not.toMatch(/\b\d{3}\b|error|code/i);
   });
 
-  it('renders the banner in Thai, the only language production serves (ADR 0010)', async () => {
-    const baseLocale = getLocale;
+  it('renders the banner in the Thai catalogue’s own wording, with no error code', async () => {
+    const th = { locale: 'th' } as const;
+    const title = m.reviewer_scheduler_stopped_title({}, th);
+    const detail = m.reviewer_scheduler_stopped_detail({}, th);
+    // A missing `th` key falls back to English: prove these are translations.
+    expect(title).not.toBe(
+      m.reviewer_scheduler_stopped_title({}, { locale: 'en' }),
+    );
+    expect(detail).not.toBe(
+      m.reviewer_scheduler_stopped_detail({}, { locale: 'en' }),
+    );
+
+    const originalGetLocale = getLocale;
     overwriteGetLocale(() => 'th');
     try {
       const thai = TestBed.createComponent(QueuePage);
       for (const req of http.match('/api/reviewer/queue')) {
         req.flush(list([row('a')], 'stopped'));
       }
-      for (let i = 0; i < 5; i++) await Promise.resolve();
-      await thai.whenStable();
+      await settle(thai);
 
       const banner = (thai.nativeElement as HTMLElement).querySelector(
         '[role="alert"].scheduler-stopped',
       );
-      expect(banner!.textContent).toContain('ระบบประมวลผลอัตโนมัติหยุดทำงาน');
-      expect(banner!.textContent).toContain('กรุณาแจ้งผู้ดูแลระบบ');
+      expect(banner!.textContent).toContain(title);
+      expect(banner!.textContent).toContain(detail);
+      expect(banner!.textContent).not.toMatch(/\b\d{3}\b|error|code/i);
     } finally {
-      overwriteGetLocale(baseLocale);
+      overwriteGetLocale(originalGetLocale);
     }
   });
 
