@@ -446,6 +446,16 @@ describe('the tick (e2e)', () => {
       expect(event.payload).toEqual({ wallClockHoursElapsed: 24 });
     });
 
+    it('raises nothing when the next opening falls after the token has expired', async () => {
+      // Thursday 20:00: trips Friday 20:00, the queue next opens Monday 08:30,
+      // but the token died Sunday 20:00 — expired_uncollected says it instead.
+      const req = await delivered(ict('2026-09-17T20:00'));
+      now = ict('2026-09-21T09:00');
+      await tick.runPass();
+      expect(await eventsOf(req.id, 'collection_lapse_raised')).toHaveLength(0);
+      expect(await stateOf(req.id)).toBe('expired_uncollected');
+    });
+
     it('raises nothing once the Requester has made an Attempt', async () => {
       const req = await delivered(ict('2026-09-22T09:00'));
       await recordAttempt(req.id, req.tokenId);

@@ -72,4 +72,4 @@ Events: `expired`, `collection_lapse_raised` (carrying the wall-clock hours elap
 ## Comments
 
 **rawinan-soma** — 2026-09-23
-Amended after the #113 clearance failed the original criterion "reads a checked-in holiday config, and a stale list can only widen the window": a stale list omits holidays, which narrows the window, and the checked-in list was already stale. Decision: skip Thai public holidays entirely and let only weekends stop the clock. Recorded in ADR 0021; spec §15.2 amended.
+Amended after the clearance on PR 113 failed the original criterion "reads a checked-in holiday config, and a stale list can only widen the window": a stale list omits holidays, which narrows the window, and the checked-in list was already stale. Decision: skip Thai public holidays entirely and let only weekends stop the clock. Recorded in ADR 0021, which lists every section amended (spec §11.4, §15.2, §17.3, §18.14; the SRS; the charter).

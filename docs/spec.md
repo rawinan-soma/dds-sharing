@@ -1801,9 +1801,11 @@ annual leave.
 > **Do not re-unify the two clocks.**
 
 - **A trip-wire whose next opening falls after the token has already expired
-  raises nothing** (a Delivery on Friday before 08:30, whose token expires on
-  Monday before the queue opens; decided 2026-09-23, #72). The link is dead and nothing revives it (ADR 0016), so the
-  Alert would have no action; `expired_uncollected` records the Request.
+  raises nothing** (decided 2026-09-23, #72). That is every Delivery from
+  Thursday's 16:30 close to Friday's 08:30 opening: it trips after Friday's
+  close, the queue next opens Monday 08:30, and its token has died over the
+  weekend. The link is dead and nothing revives it (ADR 0016), so the Alert
+  would have no action; `expired_uncollected` records the Request.
 - **Waiting for the 72 h token expiry was the alternative and it is useless** — it
   fires as the window closes, leaving no time to telephone. The old business-hours
   trip-wire was worse than that alternative, not better.

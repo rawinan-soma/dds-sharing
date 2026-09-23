@@ -104,3 +104,6 @@ The three queue zones are drawn, including the line saying a Request with an ope
 Treat the design as the source of **visual layout only**. Structure, ordering and copy are settled by this ticket and the spec, and they outrank the design wherever they disagree.
 
 Merged in #107 (bc98ae6b347a5f1797c8419e028daef08c1c4739).
+
+**rawinan-soma** — 2026-09-23
+Superseded in part: the holiday list this ticket added is removed, and the business-hours clock now skips weekends only (ADR 0021, ticket 72). A stale list omitted holidays, which narrowed the window rather than widening it.

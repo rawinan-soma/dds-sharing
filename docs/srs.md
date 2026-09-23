@@ -756,8 +756,9 @@ that produced it.
 **Workflow:**
 1. `/submitted` renders from client state only.
 2. It shows: the reference number; a restatement of the ask; the
-   **24-business-hour** service promise (จันทร์–ศุกร์ 08:30–16:30); the contact telephone number; and the statement that **no receipt
-   email is sent** and the next email will be the Decision.
+   **24-business-hour** service promise (จันทร์–ศุกร์ 08:30–16:30); the contact
+   telephone number; and the statement that **no receipt email is sent** and the
+   next email will be the Decision.
 3. It must read as *you are done*, not as *something went wrong*.
 
 **Source:** §12.5, §16.2, §16.4 ·

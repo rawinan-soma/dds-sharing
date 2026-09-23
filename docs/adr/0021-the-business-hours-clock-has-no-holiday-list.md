@@ -5,8 +5,11 @@ Date: 2026-09-23
 ## Status
 
 Accepted. Decided by the repo owner during ticket #72, after its clearance.
-Amends `docs/spec.md` §15.2 and §17.3, and removes the holiday config that
-ticket #65 added.
+Amends `docs/spec.md` §11.4 (the lapse edge's example), §15.2, §17.3 and the
+accepted-risks list in §18.14; amends the derived SRS (S12, §2.6, the submitted
+page's promise, the reference-data interface, the §4.24 exception, NFR on
+business hours, the clock requirement and the known limitations) and item 13
+of the project charter; and removes the holiday config that ticket #65 added.
 
 ## Context
 
@@ -49,8 +52,11 @@ carries `reviewer_accounts_active` and `notified_at`, so an expiry over a
 holiday can be recognised.
 
 A collection-lapse Alert can also be raised on a holiday, to a queue nobody is
-reading that day. It is still read the next working morning, inside the
-token's life on every delivery time except the edge §11.4 already covers.
+reading that day, and wait for the next working morning. After a holiday
+Friday that morning is Monday, which can be after the token has died: a
+Thursday 10:00 Delivery raises its Alert on the Friday and is first read on
+the Monday, a day after its token expired. The Reviewer then has nothing to
+telephone about, and `expired_uncollected` records the Request.
 
 **The clock is fully deterministic from the instant alone.** No file can drift,
 go stale or be edited mid-flight, so there is nothing for an operator to

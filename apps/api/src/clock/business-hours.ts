@@ -48,9 +48,14 @@ export function businessHoursBetween(from: Date, to: Date): number {
 export function addBusinessHours(from: Date, hours: number): Date {
   let remaining = hours * HOUR_MS;
   const start = from.getTime();
+  // An invalid instant or a non-finite duration would never be used up: the
+  // scan below would run for ever instead of failing.
+  if (!Number.isFinite(start) || !Number.isFinite(remaining)) {
+    throw new RangeError(`cannot add ${hours} business hours to ${start}`);
+  }
   const firstDay = ictDay(start);
 
-  // Terminates: a working day comes round within any seven.
+  // Terminates for finite input: a working day comes round within any seven.
   for (let day = firstDay; ; day++) {
     if (!isWorkingDay(day)) continue;
     const opens = dayStart(day) + OPENS_MS;

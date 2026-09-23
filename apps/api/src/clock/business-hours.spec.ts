@@ -82,6 +82,14 @@ describe('addBusinessHours', () => {
     ).toEqual(ict('2026-09-23T16:30'));
   });
 
+  it('refuses an instant or a duration it cannot count, instead of scanning for ever', () => {
+    expect(() => addBusinessHours(new Date(Number.NaN), 1)).toThrow();
+    expect(() => addBusinessHours(ict('2026-09-21T09:00'), Infinity)).toThrow();
+    expect(() =>
+      addBusinessHours(ict('2026-09-21T09:00'), Number.NaN),
+    ).toThrow();
+  });
+
   it('inverts businessHoursBetween', () => {
     for (const start of [
       '2026-09-18T15:10',
