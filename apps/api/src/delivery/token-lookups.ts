@@ -50,25 +50,28 @@ export async function recordLookup(
     params.outcome === 'success' &&
     params.requestId
   ) {
-    await db
-      .update(request)
-      .set({ state: 'collected' })
-      .where(
-        sql`${request.id} = ${params.requestId} AND ${request.state} = 'approved'`,
-      );
-    await writeRequestEvent(db, {
-      requestId: params.requestId,
-      type: 'download_attempted',
-      occurredAt: params.now,
-      actor: {
-        actorType: 'anonymous',
-        ip: params.ip,
-        userAgent: params.userAgent,
-      },
-      payload: {
-        tokenPrefix: tokenPrefix(params.rawToken),
-        outcome: params.outcome,
-      },
+    const requestId = params.requestId;
+    await db.transaction(async (tx) => {
+      await tx
+        .update(request)
+        .set({ state: 'collected' })
+        .where(
+          sql`${request.id} = ${requestId} AND ${request.state} = 'approved'`,
+        );
+      await writeRequestEvent(tx, {
+        requestId,
+        type: 'download_attempted',
+        occurredAt: params.now,
+        actor: {
+          actorType: 'anonymous',
+          ip: params.ip,
+          userAgent: params.userAgent,
+        },
+        payload: {
+          tokenPrefix: tokenPrefix(params.rawToken),
+          outcome: params.outcome,
+        },
+      });
     });
   }
 }

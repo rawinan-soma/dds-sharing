@@ -2391,7 +2391,7 @@ materialising `expired` · due mail send-retries · Deliveries past 24 **wall-cl
 hours with zero Attempts · pruning §15.4's tables.
 
 **Liveness: the tick writes a heartbeat row every pass; stale after 5 minutes**
-(five missed passes — unambiguous, and well inside the 15-minute stall window).
+(five missed passes — unambiguous).
 In-band alerting is circular, so one fact feeds two consumers:
 
 - **A Thai banner on the Reviewer queue**, stating plainly that automatic

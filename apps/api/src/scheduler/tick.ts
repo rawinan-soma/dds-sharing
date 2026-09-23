@@ -1,5 +1,5 @@
 import { Logger, type LoggerService } from '@nestjs/common';
-import { and, eq, lte, notExists, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { type Pool } from 'pg';
 import { writeRequestEvent } from '../audit/write-request-event';
 import { type Db } from '../db/database.module';
@@ -25,7 +25,10 @@ import { type Clock } from '../reviewer/clock';
 import { type LoginThrottle } from '../reviewer/login-throttle';
 import { type ReviewerSessions } from '../reviewer/reviewer-sessions';
 import { collectionLapse } from './collection-lapse';
-import { settledDeletion } from './scheduler-health';
+import {
+  type ObjectDeletedOutcome,
+  objectsStillHeld,
+} from './scheduler-health';
 
 /** Every pass takes this one lock (spec §15.3). Distinct from the app's other advisory keys. */
 export const TICK_LOCK_KEY = 7_215_003;
@@ -90,6 +93,7 @@ interface LiveToken {
  */
 export class Tick {
   private readonly logger: LoggerService;
+  private failedSteps = 0;
 
   constructor(private readonly deps: TickDeps) {
     this.logger = deps.logger ?? new Logger('Tick');
@@ -116,6 +120,7 @@ export class Tick {
 
   private async pass(mode: TickMode): Promise<PassReport> {
     const now = this.deps.clock.now();
+    this.failedSteps = 0;
     const startup = mode === 'startup';
     const report: PassReport = {
       extractionsReenqueued: await this.step('extractions', 0, () =>
@@ -154,13 +159,16 @@ export class Tick {
         this.deps.loginThrottle.pruneDecayed(now),
       );
     }
-    await this.beat(now);
+    // The heartbeat means the whole pass did its work. A pass with a failed
+    // job does not beat: four ways to be half-alive is what one pass exists
+    // to rule out (§15.3), and five such passes put the banner up.
+    if (this.failedSteps === 0) await this.beat(now);
     return report;
   }
 
   // One job failing must not stop the others: a broken MinIO is no reason to
-  // stop expiring Requests. The failure is loud in the log, and the ones that
-  // matter are loud on /health too (the overdue-object signal).
+  // stop expiring Requests. The failure is loud in the log, and withholds the
+  // heartbeat, so it is loud on the banner and /health too.
   private async step<T>(
     name: string,
     nothingDone: T,
@@ -172,6 +180,7 @@ export class Tick {
       this.logger.error(
         `tick step ${name} failed: ${(error as Error).message}`,
       );
+      this.failedSteps += 1;
       return nothingDone;
     }
   }
@@ -216,11 +225,12 @@ export class Tick {
 
   /**
    * Object deletion at token expiry (§9.5), by the application, on the
-   * record. A revoked token's object goes at the token's own expiry, like any
-   * other (ADR 0012). An object already gone — the lifecycle backstop got
-   * there first — is recorded as such, never skipped. A failed delete writes
-   * nothing and is tried again next pass; an hour of that raises the banner
-   * and /health (`OBJECT_OVERDUE_MS`).
+   * record. A token a Re-run superseded has its object deleted on the next
+   * pass rather than at its own expiry (ADR 0012). An object already gone —
+   * the lifecycle backstop got there first — is recorded as such, never
+   * skipped. A failed delete writes no record and is tried again next pass;
+   * it fails the step, so the heartbeat is withheld, and an hour of it also
+   * trips the overdue-object signal.
    */
   private async deleteExpiredObjects(now: Date): Promise<number> {
     const { db, archiveStore } = this.deps;
@@ -230,39 +240,32 @@ export class Tick {
         objectKey: downloadToken.archiveFilename,
       })
       .from(downloadToken)
-      .where(
-        and(
-          lte(downloadToken.expiresAt, now),
-          notExists(
-            db
-              .select({ one: sql`1` })
-              .from(requestEvent)
-              .where(settledDeletion(downloadToken.archiveFilename)),
-          ),
-        ),
-      );
+      .where(objectsStillHeld(db, now));
     let deleted = 0;
+    let failed = 0;
     for (const { requestId, objectKey } of due) {
       try {
         const present = (await archiveStore.stat(objectKey)) !== null;
         if (present) await archiveStore.remove(objectKey);
+        const outcome: ObjectDeletedOutcome = present
+          ? 'deleted'
+          : 'already_absent';
         await writeRequestEvent(db, {
           requestId,
           type: 'object_deleted',
           occurredAt: now,
           actor: { actorType: 'system' },
-          payload: {
-            objectKey,
-            outcome: present ? 'deleted' : 'already_absent',
-          },
+          payload: { objectKey, outcome },
         });
         deleted += 1;
       } catch (error) {
+        failed += 1;
         this.logger.error(
           `could not delete object ${objectKey}: ${(error as Error).message}`,
         );
       }
     }
+    if (failed > 0) throw new Error(`${failed} object(s) not deleted`);
     return deleted;
   }
 
@@ -355,7 +358,7 @@ export class Tick {
         abandoned += 1;
       }
     }
-    for (const mail of await mailDeliveries.queuedSince(dueBefore)) {
+    for (const mail of await mailDeliveries.queuedBefore(dueBefore)) {
       if (await mailQueue.isLive(mail.id)) continue;
       await this.abandonLostMail(mail, now);
       abandoned += 1;
@@ -461,26 +464,24 @@ export class Tick {
   }
 
   /**
-   * A Request whose current token has expired is over (ADR 0016). Uncollected,
-   * it ends in `expired_uncollected` — its own terminal state, and the only
-   * number that measures whether email is working (§11.5). Collected, it is
-   * `collected`: a first Attempt already moves it there, and this only catches
-   * a Request that somehow still reads `approved`.
+   * A Request whose current token expired with no Attempt ends in
+   * `expired_uncollected` (ADR 0016) — its own terminal state, and the only
+   * number that measures whether email is working (§11.5). A collected one is
+   * already `collected`: the first Attempt moved it there.
    */
   private async endExpiredDeliveries(now: Date): Promise<number> {
     let ended = 0;
     for (const token of await this.liveTokens()) {
-      if (token.expiresAt > now) continue;
-      const uncollected = token.attempts === 0;
+      if (token.expiresAt > now || token.attempts > 0) continue;
       await this.deps.db.transaction(async (tx) => {
         const moved = await tx
           .update(request)
-          .set({ state: uncollected ? 'expired_uncollected' : 'collected' })
+          .set({ state: 'expired_uncollected' })
           .where(
             sql`${request.id} = ${token.requestId} AND ${request.state} = 'approved'`,
           )
           .returning({ id: request.id });
-        if (moved.length === 0 || !uncollected) return;
+        if (moved.length === 0) return;
         await writeRequestEvent(tx, {
           requestId: token.requestId,
           type: 'expired_uncollected',
@@ -488,8 +489,8 @@ export class Tick {
           actor: { actorType: 'system' },
           payload: {},
         });
+        ended += 1;
       });
-      ended += 1;
     }
     return ended;
   }

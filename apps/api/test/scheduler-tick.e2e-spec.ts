@@ -205,18 +205,17 @@ describe('the tick (e2e)', () => {
       expect(event.payload).toEqual({ objectKey, outcome: 'already_absent' });
     });
 
-    it('deletes a revoked token’s object at its own expiry, not at revocation (ADR 0012)', async () => {
+    it('deletes a superseded token’s object on the next pass, not at its own expiry (ADR 0012)', async () => {
       const id = await insertRequest('approved');
-      const { objectKey } = await insertToken(id, ict('2026-09-22T09:00'), {
-        revokedAt: ict('2026-09-23T09:00'),
+      const { objectKey } = await insertToken(id, ict('2026-09-23T09:00'), {
+        revokedAt: ict('2026-09-24T09:00'),
       });
 
       await tick.runPass();
-      expect(await archiveStore.stat(objectKey)).not.toBeNull();
 
-      now = ict('2026-09-25T09:00');
-      await tick.runPass();
       expect(await archiveStore.stat(objectKey)).toBeNull();
+      const [event] = await eventsOf(id, 'object_deleted');
+      expect(event.payload).toEqual({ objectKey, outcome: 'deleted' });
     });
 
     it('leaves a live token’s object alone and writes the record exactly once', async () => {
@@ -409,13 +408,15 @@ describe('the tick (e2e)', () => {
       expect(event.occurred_at).toEqual(ict('2026-09-23T09:00'));
     });
 
-    it('ends a collected Request as collected, never expired_uncollected', async () => {
+    it('never ends a Request that had an Attempt as expired_uncollected', async () => {
+      // The Attempt itself moves a Request to collected (delivery.e2e-spec);
+      // this row skips that path, so only the tick's own rule is under test.
       const req = await delivered(ict('2026-09-20T09:00'));
       await recordAttempt(req.id, req.tokenId);
 
       await tick.runPass();
 
-      expect(await stateOf(req.id)).toBe('collected');
+      expect(await stateOf(req.id)).toBe('approved');
       expect(await eventsOf(req.id, 'expired_uncollected')).toHaveLength(0);
     });
   });
@@ -563,6 +564,28 @@ describe('the tick (e2e)', () => {
       expect((await app.get(ReviewQueue).list()).automaticProcessing).toBe(
         'stopped',
       );
+    });
+
+    it('does not beat when a job on the pass failed: a half-alive tick is a stopped one', async () => {
+      await tick.runPass();
+      const beatAt = async () =>
+        (await q('SELECT beat_at FROM scheduler_heartbeat'))[0].beat_at;
+      const before = await beatAt();
+
+      const id = await insertRequest('expired_uncollected');
+      await insertToken(id, ict('2026-09-21T09:00'));
+      const remove = archiveStore.remove.bind(archiveStore);
+      archiveStore.remove = () => Promise.reject(new Error('minio down'));
+      now = new Date(now.getTime() + 60_000);
+      try {
+        await tick.runPass();
+      } finally {
+        archiveStore.remove = remove;
+      }
+      expect(await beatAt()).toEqual(before);
+
+      await tick.runPass();
+      expect(await beatAt()).toEqual(now);
     });
 
     it('skips the whole pass while another process holds the advisory lock', async () => {

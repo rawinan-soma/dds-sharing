@@ -41,8 +41,8 @@ export class MailDeliveries {
       );
   }
 
-  /** Sends still `queued` since before `queuedBefore` — checked against Redis by the tick. */
-  async queuedSince(
+  /** Sends queued before `queuedBefore` and still not sent — checked against Redis by the tick. */
+  async queuedBefore(
     queuedBefore: Date,
   ): Promise<{ id: string; requestId: string }[]> {
     return this.db
