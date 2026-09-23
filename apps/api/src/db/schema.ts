@@ -21,6 +21,7 @@ import {
 } from 'drizzle-orm/pg-core';
 import {
   ACTOR_TYPES,
+  MAIL_KINDS,
   REQUEST_EVENT_TYPES,
   REVIEWER_EVENT_TYPES,
   UNAUTHENTICATED_ACTOR_TYPES,
@@ -287,4 +288,109 @@ export const extractionJob = pgTable(
     failureCause: text('failure_cause'),
   },
   (t) => [index('extraction_job_request_id_idx').on(t.requestId)],
+);
+
+// The Download token (spec §9.2, §9.3): operational, like `extraction_job` —
+// updated in place (only `revoked_at`, by a future Re-run, ADR 0012), never
+// deleted. The raw token is never stored, only its hash (mirrors
+// `reviewer_session.token_hash`); `archive_filename` is the object key in
+// MinIO so the archive route never has to re-derive it.
+export const downloadToken = pgTable(
+  'download_token',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    requestId: uuid('request_id')
+      .notNull()
+      .references(() => request.id),
+    tokenHash: text('token_hash').notNull().unique(),
+    archiveFilename: text('archive_filename').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull(),
+    // 72 hours from job completion (§9.3), never extended by use or resend.
+    expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
+  },
+  (t) => [index('download_token_request_id_idx').on(t.requestId)],
+);
+
+export const tokenLookupKind = pgEnum('token_lookup_kind', ['page', 'archive']);
+export const tokenLookupOutcome = pgEnum('token_lookup_outcome', [
+  'success',
+  'unknown_token',
+  'expired',
+  'revoked',
+  'attempts_exhausted',
+  'object_missing',
+]);
+
+// Every presentation of a Download token (spec §12.3): append-only, like the
+// audit spine — the application role holds SELECT/INSERT only. `request_id`
+// is nullable because an unknown token resolves to no Request; `token_prefix`
+// is the presented token's first 8 characters, never the full token.
+export const tokenLookup = pgTable(
+  'token_lookup',
+  {
+    id: bigserial('id', { mode: 'number' }).primaryKey(),
+    downloadTokenId: uuid('download_token_id').references(
+      () => downloadToken.id,
+    ),
+    requestId: uuid('request_id').references(() => request.id),
+    tokenPrefix: text('token_prefix').notNull(),
+    kind: tokenLookupKind('kind').notNull(),
+    outcome: tokenLookupOutcome('outcome').notNull(),
+    ip: inet('ip').notNull(),
+    userAgent: text('user_agent').notNull(),
+    occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull(),
+  },
+  (t) => [
+    index('token_lookup_download_token_id_idx').on(t.downloadTokenId),
+    index('token_lookup_ip_idx').on(t.ip),
+  ],
+);
+
+// One IP's failure counter for the download-lookup throttle (spec §9.2):
+// operational state, genuinely deletable, like `login_throttle` — but a flat
+// 20/hour-then-1-hour-block counter, a different policy from login's
+// exponential backoff, so it gets its own table rather than a shared shape.
+export const downloadThrottle = pgTable('download_throttle', {
+  ip: inet('ip').primaryKey(),
+  failureCount: integer('failure_count').notNull(),
+  windowStart: timestamp('window_start', { withTimezone: true }).notNull(),
+  blockedUntil: timestamp('blocked_until', { withTimezone: true }),
+});
+
+export const mailKind = pgEnum('mail_kind', MAIL_KINDS);
+export const mailDeliveryStatus = pgEnum('mail_delivery_status', [
+  'queued',
+  'sent',
+  'failed',
+  'abandoned',
+]);
+
+// One row per logical email — one per Request per kind, so retries of the
+// same email correlate under one row. This is what the `mail` health
+// component (spec §11.3) reads: the closed event catalogue's
+// `mail_send_failed`/`mail_send_abandoned` payloads carry no `kind`, so they
+// cannot answer "is a queue notification currently failing" on their own.
+export const mailDelivery = pgTable(
+  'mail_delivery',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    requestId: uuid('request_id')
+      .notNull()
+      .references(() => request.id),
+    kind: mailKind('kind').notNull(),
+    status: mailDeliveryStatus('status').notNull().default('queued'),
+    attempts: integer('attempts').notNull().default(0),
+    lastError: text('last_error'),
+    createdAt: timestamp('created_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index('mail_delivery_request_id_idx').on(t.requestId),
+    index('mail_delivery_status_idx').on(t.status),
+  ],
 );

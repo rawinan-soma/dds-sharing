@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-call --
    rows from pg and JSON bodies over HTTP are untyped by nature; the assertions are the types. */
+import { API_PREFIX, API_PREFIX_EXCLUDE } from '../src/global-prefix';
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { drizzle } from 'drizzle-orm/node-postgres';
@@ -76,7 +77,7 @@ describe('the Reviewer queue (e2e)', () => {
       .useValue(clock)
       .compile();
     app = moduleRef.createNestApplication({ logger: false });
-    app.setGlobalPrefix('api');
+    app.setGlobalPrefix(API_PREFIX, { exclude: API_PREFIX_EXCLUDE });
     await app.listen(0);
     server = app.getHttpServer() as App;
 

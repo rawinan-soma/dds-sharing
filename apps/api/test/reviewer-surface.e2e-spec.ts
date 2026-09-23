@@ -1,4 +1,5 @@
 import { cpSync, mkdtempSync, rmSync } from 'node:fs';
+import { API_PREFIX, API_PREFIX_EXCLUDE } from '../src/global-prefix';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { INestApplication } from '@nestjs/common';
@@ -29,7 +30,7 @@ describe('the /reviewer surface (e2e)', () => {
 
   async function boot() {
     const built = await NestFactory.create(AppModule, { logger: false });
-    built.setGlobalPrefix('api');
+    built.setGlobalPrefix(API_PREFIX, { exclude: API_PREFIX_EXCLUDE });
     await built.init();
     return built as INestApplication<App>;
   }

@@ -1,4 +1,5 @@
 import { INestApplication } from '@nestjs/common';
+import { API_PREFIX, API_PREFIX_EXCLUDE } from '../src/global-prefix';
 import { NestFactory } from '@nestjs/core';
 import request from 'supertest';
 import { App } from 'supertest/types';
@@ -27,7 +28,7 @@ describe('AppModule (e2e)', () => {
     process.env.APP_DATABASE_URL = db.appUrl;
 
     app = await NestFactory.create(AppModule, { logger: false });
-    app.setGlobalPrefix('api');
+    app.setGlobalPrefix(API_PREFIX, { exclude: API_PREFIX_EXCLUDE });
     await app.init();
   });
 

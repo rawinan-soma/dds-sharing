@@ -1,4 +1,5 @@
 import { INestApplication } from '@nestjs/common';
+import { API_PREFIX, API_PREFIX_EXCLUDE } from '../src/global-prefix';
 import { NestFactory } from '@nestjs/core';
 import { Pool } from 'pg';
 import request from 'supertest';
@@ -61,7 +62,7 @@ describe('submit a Request (e2e)', () => {
     process.env.APP_DATABASE_URL = db.appUrl;
 
     app = await NestFactory.create(AppModule, { logger: false });
-    app.setGlobalPrefix('api');
+    app.setGlobalPrefix(API_PREFIX, { exclude: API_PREFIX_EXCLUDE });
     (
       app.getHttpAdapter().getInstance() as {
         set: (k: string, v: unknown) => void;

@@ -10,7 +10,10 @@ import {
   type JobFailureCause,
   type RequestEventPayloads,
 } from '../audit/event-catalogue';
-import { request, requestEvent } from '../db/schema';
+import { request, requestContact, requestEvent, reviewer } from '../db/schema';
+import { generateToken } from '../delivery/token';
+import { type DownloadTokens } from '../delivery/download-tokens.repository';
+import { type MailSender } from '../mail/mail-sender';
 import { type ProvinceLookup } from '../reference/province-lookup.service';
 import { type ArchiveStore } from './archive-store';
 import { buildExtractArchive } from './build-extract-archive';
@@ -50,6 +53,12 @@ export interface ExtractionWorkerDeps {
   freeDiskBytes: (path: string) => Promise<number>;
   /** Where the finished archive uploads in one operation (spec §7.8). */
   archiveStore: ArchiveStore;
+  /** Issues the Download token at completion (spec §9.3). */
+  downloadTokens: DownloadTokens;
+  /** Sends the Delivery email on completion and the extraction-failure email on failure (spec §11). */
+  mailSender: MailSender;
+  /** The Download token's absolute base URL — explicit configuration, never derived from `Host` (spec §9.1). */
+  frontendUrl: string;
   /** BullMQ's Redis key prefix — see `extraction.module.ts` for why. */
   prefix?: string;
   now?: () => Date;
@@ -70,6 +79,8 @@ interface ExtractionTargetWithSubmittedAt extends ExtractionTarget {
   /** The archive filename's anchor (spec §8.3) — irrelevant to the pipeline
    * itself, so it rides along on the same row rather than a second query. */
   submittedAt: Date;
+  /** For the Delivery/extraction-failure emails — rides along for the same reason. */
+  reference: string;
 }
 
 /** The Request's stored parameters — read fresh per job, never cached
@@ -85,6 +96,7 @@ async function loadTarget(
       endDate: request.endDate,
       provinces: request.provinces,
       submittedAt: request.submittedAt,
+      reference: request.reference,
     })
     .from(request)
     .where(eq(request.id, requestId));
@@ -134,7 +146,7 @@ async function publishExtract(
   target: ExtractionTargetWithSubmittedAt,
   result: ExtractionResult,
   now: () => Date,
-): Promise<void> {
+): Promise<{ archiveFilename: string }> {
   const archive = await buildExtractArchive({
     rowsByCode: result.rowsByCode,
     codes: result.summary.reportCodes,
@@ -164,6 +176,78 @@ async function publishExtract(
       impossibleDerivationInputs: result.summary.impossibleDerivationInputs,
       drift: { probe: probeTotals, run: result.summary.totalItemsByCode },
     },
+  });
+
+  return { archiveFilename: archive.archiveFilename };
+}
+
+/**
+ * Issues the Download token and sends the Delivery email (spec §9.3, §11.3).
+ * The token is generated here, at completion — never earlier — because it is
+ * anchored on job completion, not on approval.
+ */
+async function sendDeliveryMail(
+  deps: Pick<
+    ExtractionWorkerDeps,
+    'db' | 'downloadTokens' | 'mailSender' | 'frontendUrl'
+  >,
+  requestId: string,
+  reference: string,
+  archiveFilename: string,
+  now: () => Date,
+): Promise<void> {
+  const [contact] = await deps.db
+    .select({
+      name: requestContact.name,
+      surname: requestContact.surname,
+      email: requestContact.email,
+    })
+    .from(requestContact)
+    .where(eq(requestContact.requestId, requestId));
+
+  const rawToken = generateToken();
+  await deps.downloadTokens.create(requestId, rawToken, archiveFilename, now());
+  await deps.mailSender.send(requestId, contact.email, {
+    kind: 'delivery',
+    name: `${contact.name} ${contact.surname}`,
+    reference,
+    downloadUrl: `${deps.frontendUrl}/d/${rawToken}`,
+  });
+}
+
+/**
+ * Sends the extraction-failure email to the Reviewer who approved the Request
+ * (spec §11.3) — the "not your fault" notice, since a Reviewer cannot fix a
+ * failed extraction. Silently does nothing if no approving Reviewer is on
+ * record, which cannot happen on the ordinary path (a job never runs without
+ * an `approved` event) but must not crash the worker if it somehow did.
+ */
+async function sendExtractionFailureMail(
+  deps: Pick<ExtractionWorkerDeps, 'db' | 'mailSender'>,
+  requestId: string,
+  reference: string,
+): Promise<void> {
+  const [approval] = await deps.db
+    .select({ reviewerId: requestEvent.reviewerId })
+    .from(requestEvent)
+    .where(
+      and(
+        eq(requestEvent.requestId, requestId),
+        eq(requestEvent.type, 'approved'),
+      ),
+    );
+  if (!approval?.reviewerId) return;
+
+  const [approver] = await deps.db
+    .select({ email: reviewer.email, displayName: reviewer.displayName })
+    .from(reviewer)
+    .where(eq(reviewer.id, approval.reviewerId));
+  if (!approver) return;
+
+  await deps.mailSender.send(requestId, approver.email, {
+    kind: 'extraction_failure',
+    name: approver.displayName,
+    reference,
   });
 }
 
@@ -283,8 +367,21 @@ export async function processExtractionJob(
 
     const result = await Promise.race([pipeline, stallGuard.promise]);
     raiseOperationalAlerts(logger, jobId, result.summary);
-    await publishExtract(deps, requestId, target, result, now);
+    const { archiveFilename } = await publishExtract(
+      deps,
+      requestId,
+      target,
+      result,
+      now,
+    );
     await deps.extractionJobs.markSucceeded(jobId, now(), result.summary);
+    await sendDeliveryMail(
+      deps,
+      requestId,
+      target.reference,
+      archiveFilename,
+      now,
+    );
   } catch (error) {
     const failure = toFailure(error);
     logger.warn(
@@ -299,6 +396,7 @@ export async function processExtractionJob(
       actor: { actorType: 'system' },
       payload: { cause: failure.cause, xRequestId: failure.xRequestId },
     });
+    await sendExtractionFailureMail(deps, requestId, target.reference);
   } finally {
     stallGuard.dispose();
   }

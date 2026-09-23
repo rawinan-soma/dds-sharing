@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-member-access --
    rows from pg are untyped by nature; the assertions are the types. */
 import { randomUUID } from 'node:crypto';
+import { API_PREFIX, API_PREFIX_EXCLUDE } from '../src/global-prefix';
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import request from 'supertest';
@@ -79,7 +80,7 @@ describe('the Probe (e2e)', () => {
       imports: [AppModule],
     }).compile();
     app = moduleRef.createNestApplication({ logger: false });
-    app.setGlobalPrefix('api');
+    app.setGlobalPrefix(API_PREFIX, { exclude: API_PREFIX_EXCLUDE });
     await app.init();
     probeService = moduleRef.get(ProbeService);
   });

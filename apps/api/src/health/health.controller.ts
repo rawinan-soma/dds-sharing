@@ -7,13 +7,13 @@ export class HealthController {
   constructor(private readonly healthService: HealthService) {}
 
   @Get()
-  check(): HealthDocument {
+  check(): Promise<HealthDocument> {
     return this.healthService.check();
   }
 
   // Alias kept for the scheduler-specific health checks earlier tooling expects.
   @Get('scheduler')
-  checkSchedulerAlias(): HealthDocument {
+  checkSchedulerAlias(): Promise<HealthDocument> {
     return this.healthService.check();
   }
 }

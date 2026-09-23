@@ -1,5 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { type InsecureFlagName, InsecureFlags } from '../config/insecure-flags';
+import { DB, type Db } from '../db/database.module';
+import { mailHealth } from '../mail/mail-health';
 
 // The single source of truth for which components the health document names.
 // Later tickets give each one real thresholds; specs should read this list
@@ -11,12 +13,12 @@ export const HEALTH_COMPONENT_NAMES = [
   'mail',
 ] as const;
 
-export interface ComponentHealth {
-  status: 'ok';
-}
+export type ComponentHealth =
+  { status: 'ok' } | { status: 'degraded'; reason: string };
 
 export type HealthDocument = {
-  status: 'ok';
+  /** `degraded` whenever any component is — the operator-facing summary (spec §11.3, §15.3). */
+  status: 'ok' | 'degraded';
   components: Record<(typeof HEALTH_COMPONENT_NAMES)[number], ComponentHealth>;
   /** The insecure flags that are on; empty when the deployment is secure. */
   insecureFlags: InsecureFlagName[];
@@ -24,14 +26,27 @@ export type HealthDocument = {
 
 @Injectable()
 export class HealthService {
-  constructor(private readonly flags: InsecureFlags) {}
+  constructor(
+    private readonly flags: InsecureFlags,
+    @Inject(DB) private readonly db: Db,
+  ) {}
 
-  check(): HealthDocument {
+  async check(): Promise<HealthDocument> {
     const stub: ComponentHealth = { status: 'ok' };
-    const components = Object.fromEntries(
-      HEALTH_COMPONENT_NAMES.map((name) => [name, stub]),
-    ) as HealthDocument['components'];
+    const components = {
+      scheduler: stub,
+      extraction: stub,
+      disk: stub,
+      // The one real check this ticket adds (spec §11.3's operator banner);
+      // the other three stay stubbed until #75.
+      mail: await mailHealth(this.db),
+    };
+    const status = Object.values(components).some(
+      (c) => c.status === 'degraded',
+    )
+      ? 'degraded'
+      : 'ok';
 
-    return { status: 'ok', components, insecureFlags: [...this.flags.active] };
+    return { status, components, insecureFlags: [...this.flags.active] };
   }
 }
