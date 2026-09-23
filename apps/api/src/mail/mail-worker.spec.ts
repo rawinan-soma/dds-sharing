@@ -28,9 +28,12 @@ function fakeDb() {
   return { db, inserted };
 }
 
-function fakeMailDeliveries(): MailDeliveries {
+// `priorTries` is what Postgres says: the try number is the record's, never
+// BullMQ's attempt counter, because the tick — not BullMQ — schedules retries.
+function fakeMailDeliveries(priorTries = 0): MailDeliveries {
   return {
     create: vi.fn(),
+    attempts: vi.fn().mockResolvedValue(priorTries),
     markSent: vi.fn().mockResolvedValue(undefined),
     markFailed: vi.fn().mockResolvedValue(undefined),
     markAbandoned: vi.fn().mockResolvedValue(undefined),
@@ -46,9 +49,7 @@ const DATA: MailJobData = {
   html: '<p>html</p>',
 };
 
-function fakeJob(attemptsMade: number, attempts = 5): MailJobLike {
-  return { data: DATA, attemptsMade, opts: { attempts } };
-}
+const JOB: MailJobLike = { data: DATA };
 
 describe('processMailJob', () => {
   it('writes mail_sent and marks the delivery sent on success', async () => {
@@ -66,7 +67,7 @@ describe('processMailJob', () => {
       now: () => new Date('2026-01-01T00:00:00Z'),
     };
 
-    await processMailJob(fakeJob(0), deps);
+    await processMailJob(JOB, deps);
 
     expect(inserted).toHaveLength(1);
     expect(inserted[0].values).toMatchObject({
@@ -79,9 +80,9 @@ describe('processMailJob', () => {
     );
   });
 
-  it('on a non-final failure, writes mail_send_failed, marks the delivery failed, and rethrows for BullMQ to retry', async () => {
+  it('on a non-final failure, writes mail_send_failed, marks the delivery failed, and rethrows so the job waits in the failed set for the tick', async () => {
     const { db, inserted } = fakeDb();
-    const mailDeliveries = fakeMailDeliveries();
+    const mailDeliveries = fakeMailDeliveries(1);
     const transport: MailTransport = {
       send: vi.fn().mockRejectedValue(new Error('relay refused')),
     };
@@ -94,9 +95,7 @@ describe('processMailJob', () => {
       now: () => new Date('2026-01-01T00:15:00Z'),
     };
 
-    await expect(processMailJob(fakeJob(1), deps)).rejects.toThrow(
-      'relay refused',
-    );
+    await expect(processMailJob(JOB, deps)).rejects.toThrow('relay refused');
 
     expect(inserted).toHaveLength(1);
     expect(inserted[0].values).toMatchObject({
@@ -114,7 +113,7 @@ describe('processMailJob', () => {
 
   it('on the final failure, writes mail_send_failed and mail_send_abandoned, marks the delivery abandoned, and does not rethrow', async () => {
     const { db, inserted } = fakeDb();
-    const mailDeliveries = fakeMailDeliveries();
+    const mailDeliveries = fakeMailDeliveries(4);
     const transport: MailTransport = {
       send: vi.fn().mockRejectedValue(new Error('still refused')),
     };
@@ -127,7 +126,7 @@ describe('processMailJob', () => {
       now: () => new Date('2026-01-01T01:00:00Z'),
     };
 
-    await expect(processMailJob(fakeJob(4), deps)).resolves.toBeUndefined();
+    await expect(processMailJob(JOB, deps)).resolves.toBeUndefined();
 
     expect(inserted.map((e) => e.values.type)).toEqual([
       'mail_send_failed',

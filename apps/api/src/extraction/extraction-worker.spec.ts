@@ -141,6 +141,7 @@ function fakeArchiveStore(): ArchiveStore & {
     }),
     stat: vi.fn(() => Promise.resolve(null)),
     download: vi.fn(() => Promise.reject(new Error('not used by this spec'))),
+    remove: vi.fn(() => Promise.reject(new Error('not used by this spec'))),
   };
 }
 

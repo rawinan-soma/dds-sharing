@@ -10,6 +10,7 @@ import { HealthModule } from './health/health.module';
 import { MailModule } from './mail/mail.module';
 import { ReferenceDataModule } from './reference/reference-data.module';
 import { RequestsModule } from './requests/requests.module';
+import { SchedulerModule } from './scheduler/scheduler.module';
 import { ReviewerModule } from './reviewer/reviewer.module';
 import { keepReviewerSurfaceOutOfSearch } from './reviewer/noindex';
 
@@ -40,6 +41,7 @@ const staticRoot = (root: string) =>
     ReviewerModule,
     MailModule,
     DeliveryModule,
+    SchedulerModule,
   ],
 })
 export class AppModule {}

@@ -1,10 +1,4 @@
-import {
-  Injectable,
-  Logger,
-  Module,
-  OnApplicationShutdown,
-  OnModuleInit,
-} from '@nestjs/common';
+import { Injectable, Module, OnApplicationShutdown } from '@nestjs/common';
 import { type ConfigType } from '@nestjs/config';
 import { Queue, Worker } from 'bullmq';
 import type Redis from 'ioredis';
@@ -29,11 +23,11 @@ import {
   createMinioArchiveStore,
   createMinioClient,
 } from './archive-store';
+import { prepareExtractBucket } from './bucket-lifecycle';
 import { freeDiskBytes } from './disk-space';
 import { EXTRACTION_QUEUE_NAME } from './extraction.config';
 import { ExtractionJobs } from './extraction-jobs.repository';
 import { ExtractionQueue, type ExtractionJobData } from './extraction-queue';
-import { reconcileExtractionJobs } from './extraction-reconcile';
 import { createExtractionWorker } from './extraction-worker';
 import { createRedisConnection } from './redis-connection';
 
@@ -48,22 +42,22 @@ const BULLMQ_WORKER = Symbol('EXTRACTION_BULLMQ_WORKER');
  * in CI runs a real MinIO (spec §7.8's upload is exercised at the unit layer
  * instead, in `extraction-worker.spec.ts`). */
 export const ARCHIVE_STORE = Symbol('EXTRACTION_ARCHIVE_STORE');
+/** `() => Promise<void>`: makes the bucket and applies the lifecycle backstop.
+ * Called once from `main.ts`, never on module init, so a test boot never
+ * reaches for a MinIO it does not have. */
+export const PREPARE_EXTRACT_BUCKET = Symbol('PREPARE_EXTRACT_BUCKET');
 
+// The reconcile (spec §7.7) is not here: it is the tick's startup pass
+// (`scheduler/tick.ts`), the same pass as every other, so there is one code
+// path for "a job Postgres has and BullMQ does not".
 @Injectable()
-class ExtractionLifecycle implements OnModuleInit, OnApplicationShutdown {
-  private readonly logger = new Logger('ExtractionModule');
-
+class ExtractionLifecycle implements OnApplicationShutdown {
   constructor(
-    private readonly jobs: ExtractionJobs,
     private readonly queue: ExtractionQueue,
     private readonly worker: Worker<ExtractionJobData>,
     private readonly queueConnection: Redis,
     private readonly workerConnection: Redis,
   ) {}
-
-  async onModuleInit() {
-    await reconcileExtractionJobs(this.jobs, this.queue, this.logger);
-  }
 
   async onApplicationShutdown() {
     await this.worker.close();
@@ -127,6 +121,13 @@ class ExtractionLifecycle implements OnModuleInit, OnApplicationShutdown {
         createMinioArchiveStore(createMinioClient(minio), minio.bucket),
     },
     {
+      provide: PREPARE_EXTRACT_BUCKET,
+      inject: [minioConfig.KEY],
+      useFactory:
+        (minio: ConfigType<typeof minioConfig>) => (): Promise<void> =>
+          prepareExtractBucket(createMinioClient(minio), minio.bucket),
+    },
+    {
       provide: BULLMQ_WORKER,
       inject: [
         DB,
@@ -170,21 +171,18 @@ class ExtractionLifecycle implements OnModuleInit, OnApplicationShutdown {
     {
       provide: ExtractionLifecycle,
       inject: [
-        ExtractionJobs,
         ExtractionQueue,
         BULLMQ_WORKER,
         QUEUE_REDIS_CONNECTION,
         WORKER_REDIS_CONNECTION,
       ],
       useFactory: (
-        jobs: ExtractionJobs,
         queue: ExtractionQueue,
         worker: Worker<ExtractionJobData>,
         queueConnection: Redis,
         workerConnection: Redis,
       ) =>
         new ExtractionLifecycle(
-          jobs,
           queue,
           worker,
           queueConnection,
@@ -192,6 +190,11 @@ class ExtractionLifecycle implements OnModuleInit, OnApplicationShutdown {
         ),
     },
   ],
-  exports: [ExtractionJobs, ExtractionQueue, ARCHIVE_STORE],
+  exports: [
+    ExtractionJobs,
+    ExtractionQueue,
+    ARCHIVE_STORE,
+    PREPARE_EXTRACT_BUCKET,
+  ],
 })
 export class ExtractionModule {}

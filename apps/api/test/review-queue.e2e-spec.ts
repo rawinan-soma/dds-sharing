@@ -126,6 +126,9 @@ describe('the Reviewer queue (e2e)', () => {
     expect(res.status).toBe(200);
     expect(res.body).toEqual({
       generatedAt: clock.now().toISOString(),
+      // Nothing has run the tick in this app, so there is no heartbeat and the
+      // banner is up (§15.3) — scheduler-tick.e2e-spec.ts covers it running.
+      automaticProcessing: 'stopped',
       requests: [],
     });
   });

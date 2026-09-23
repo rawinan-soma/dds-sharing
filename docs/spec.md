@@ -2387,7 +2387,7 @@ Redis loss silently cancels.
   **insert**, per §12.2.
 
 **The work on the pass:** object deletion at token expiry · stall detection ·
-materialising `expired` · due mail send-retries · Deliveries past 24 business
+materialising `expired` · due mail send-retries · Deliveries past 24 **wall-clock**
 hours with zero Attempts · pruning §15.4's tables.
 
 **Liveness: the tick writes a heartbeat row every pass; stale after 5 minutes**

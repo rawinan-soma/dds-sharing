@@ -56,6 +56,13 @@ import { THAI_HOLIDAYS_SET } from './thai-holidays';
     CsrfGuard,
     ReviewerAuthGuard,
   ],
-  exports: [ReviewerSessions, ReviewerAuthGuard, CLOCK, ReviewerAuth],
+  exports: [
+    ReviewerSessions,
+    ReviewerAuthGuard,
+    CLOCK,
+    ReviewerAuth,
+    HOLIDAYS,
+    LoginThrottle,
+  ],
 })
 export class ReviewerModule {}

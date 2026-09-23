@@ -78,6 +78,15 @@ export function addBusinessHours(
   throw new Error('No working day found: the holiday list closes every day');
 }
 
+/**
+ * `at` itself when the clock is running then, otherwise the next 08:30 on a
+ * working day. This is the clock's second question (§15.2): not how much
+ * attention time has elapsed, only whether anyone is there to be told.
+ */
+export function nextOpening(at: Date, holidays: Holidays): Date {
+  return addBusinessHours(at, 0, holidays);
+}
+
 export interface RequestExpiry {
   /** True at exactly 24 business hours: past this a Request is not actionable. */
   expired: boolean;

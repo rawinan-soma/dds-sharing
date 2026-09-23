@@ -22,8 +22,12 @@ const row = (id: string, over: Partial<QueueRow> = {}): QueueRow => ({
   ...over,
 });
 
-const list = (requests: QueueRow[]): QueueList => ({
+const list = (
+  requests: QueueRow[],
+  automaticProcessing: QueueList['automaticProcessing'] = 'running',
+): QueueList => ({
   generatedAt: '2026-09-21T05:00:00.000Z',
+  automaticProcessing,
   requests,
 });
 
@@ -173,6 +177,24 @@ describe('QueuePage', () => {
     expect(text()).toContain(m.reviewer_queue_load_failed());
     expect(text()).not.toContain(m.reviewer_empty_clear_title());
     expect(refresh()).not.toBeNull();
+  });
+
+  it('says plainly, with no error code, that automatic processing has stopped', async () => {
+    http.expectOne('/api/reviewer/queue').flush(list([row('a')], 'stopped'));
+    await settle();
+
+    const banner = el.querySelector('[role="alert"].scheduler-stopped');
+    expect(banner).not.toBeNull();
+    expect(banner!.textContent).toContain(m.reviewer_scheduler_stopped_title());
+    expect(banner!.textContent).toContain(
+      m.reviewer_scheduler_stopped_detail(),
+    );
+    expect(banner!.textContent).not.toMatch(/\b\d{3}\b|error|code/i);
+  });
+
+  it('shows no banner while automatic processing is running', async () => {
+    await firstLoad([row('a')]);
+    expect(el.querySelector('.scheduler-stopped')).toBeNull();
   });
 
   it('shows no drain estimate and no history anywhere', async () => {

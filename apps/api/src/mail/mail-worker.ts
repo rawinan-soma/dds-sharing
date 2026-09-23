@@ -25,8 +25,6 @@ export interface MailWorkerDeps {
 /** What the processor needs from a BullMQ `Job` — narrowed for testability. */
 export interface MailJobLike {
   data: MailJobData;
-  attemptsMade: number;
-  opts: { attempts?: number };
 }
 
 function errorMessage(error: unknown): string {
@@ -34,11 +32,13 @@ function errorMessage(error: unknown): string {
 }
 
 /**
- * One send attempt (spec §11.3). On failure it writes `mail_send_failed`
- * itself and rethrows so BullMQ schedules the next try; on the final failure
- * it writes `mail_send_abandoned` too and does **not** rethrow — the same
- * catch-and-record-rather-than-hand-to-BullMQ shape as
- * `processExtractionJob`'s own failure path.
+ * One send attempt (spec §11.3). The try number is Postgres's, not BullMQ's:
+ * retries are scheduled by the tick, which re-queues this same job out of the
+ * failed set (`MailQueue.retry`), so BullMQ's own counter says nothing about
+ * how many tries the record holds. On failure it writes `mail_send_failed`
+ * itself and rethrows, leaving the job — and the rendered message only it
+ * holds — in BullMQ's failed set for the tick; on the final failure it writes
+ * `mail_send_abandoned` too and does **not** rethrow.
  */
 export async function processMailJob(
   job: MailJobLike,
@@ -47,8 +47,8 @@ export async function processMailJob(
   const now = deps.now ?? (() => new Date());
   const logger = deps.logger ?? new Logger('MailWorker');
   const { data } = job;
-  const tryNumber = job.attemptsMade + 1;
-  const maxAttempts = job.opts.attempts ?? MAIL_MAX_ATTEMPTS;
+  const tryNumber =
+    (await deps.mailDeliveries.attempts(data.mailDeliveryId)) + 1;
 
   try {
     const result = await deps.transport.send({
@@ -79,7 +79,7 @@ export async function processMailJob(
       payload: { tryNumber, relayError: message },
     });
 
-    if (tryNumber >= maxAttempts) {
+    if (tryNumber >= MAIL_MAX_ATTEMPTS) {
       await deps.mailDeliveries.markAbandoned(
         data.mailDeliveryId,
         tryNumber,

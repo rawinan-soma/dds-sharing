@@ -2,19 +2,41 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { describe, expect, it } from 'vitest';
 import { InsecureFlagName, InsecureFlags } from '../config/insecure-flags';
 import { DB } from '../db/database.module';
+import { mailDelivery, schedulerHeartbeat } from '../db/schema';
+import { CLOCK } from '../reviewer/clock';
 import { HealthController } from './health.controller';
 import { HEALTH_COMPONENT_NAMES, HealthService } from './health.service';
 
-// No currently-failing `mail_delivery` rows — the mail-health branch of
-// `check()` is `mail-health.spec.ts`'s job; this file only needs it to not
-// blow up.
-const emptyDb = {
-  select: () => ({ from: () => ({ where: () => Promise.resolve([]) }) }),
-};
+const NOW = new Date('2026-09-21T03:00:00Z');
+
+// Answers the three reads `check()` makes: the heartbeat (fresh unless told
+// otherwise), the overdue-object count, and the unresolved `mail_delivery`
+// rows. Each component's own rules are its own spec's job; this file only
+// needs the document's shape.
+function fakeDb(
+  options: { failingMail?: { kind: string }[]; beatAt?: Date | null } = {},
+) {
+  const rowsFor = (table: unknown) => {
+    if (table === schedulerHeartbeat) {
+      const beatAt = options.beatAt === undefined ? NOW : options.beatAt;
+      return beatAt ? [{ beatAt }] : [];
+    }
+    if (table === mailDelivery) return options.failingMail ?? [];
+    return [{ overdue: 0 }];
+  };
+  return {
+    select: () => ({
+      from: (table: unknown) => {
+        const rows = Promise.resolve(rowsFor(table));
+        return Object.assign(rows, { where: () => rows });
+      },
+    }),
+  };
+}
 
 async function controllerWith(
   active: InsecureFlagName[],
-  db: unknown = emptyDb,
+  db: unknown = fakeDb(),
 ) {
   const module: TestingModule = await Test.createTestingModule({
     controllers: [HealthController],
@@ -22,6 +44,7 @@ async function controllerWith(
       HealthService,
       { provide: InsecureFlags, useValue: { active } },
       { provide: DB, useValue: db },
+      { provide: CLOCK, useValue: { now: () => NOW } },
     ],
   }).compile();
   return module.get(HealthController);
@@ -50,17 +73,21 @@ describe('HealthController', () => {
   });
 
   it('reports the top-level status as degraded when any component is', async () => {
-    const failingDb = {
-      select: () => ({
-        from: () => ({
-          where: () => Promise.resolve([{ kind: 'queue_notification' }]),
-        }),
-      }),
-    };
+    const failingDb = fakeDb({
+      failingMail: [{ kind: 'queue_notification' }],
+    });
     const document = await (await controllerWith([], failingDb)).check();
 
     expect(document.status).toBe('degraded');
     expect(document.components.mail.status).toBe('degraded');
+  });
+
+  it('reports the scheduler degraded when the tick has never beaten', async () => {
+    const document = await (
+      await controllerWith([], fakeDb({ beatAt: null }))
+    ).check();
+    expect(document.status).toBe('degraded');
+    expect(document.components.scheduler.status).toBe('degraded');
   });
 
   it('names each insecure flag that is on', async () => {

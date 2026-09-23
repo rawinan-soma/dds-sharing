@@ -174,11 +174,11 @@ export class Decisions {
 
     // Fired after commit, so a lost enqueue never leaves a job row Postgres
     // does not yet know about; a lost enqueue itself is recovered by the
-    // worker-startup reconcile (spec §7.7), not by anything here.
+    // tick's reconcile (spec §7.7, §15.3), not by anything here.
     if (queuedJobId) {
       const jobId = queuedJobId;
-      // A lost enqueue is recovered by the worker-startup reconcile (spec
-      // §7.7); it must never crash the process that just approved a Request.
+      // A lost enqueue is recovered by the tick's reconcile (spec §7.7,
+      // §15.3); it must never crash the process that just approved a Request.
       this.extractionQueue.enqueue(jobId, id).catch((error: unknown) => {
         this.logger.error(
           `Failed to enqueue extraction job ${jobId}: ${(error as Error).message}`,

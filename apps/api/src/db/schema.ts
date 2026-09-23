@@ -248,7 +248,8 @@ export const province = pgTable(
 
 // The extraction job (spec §7.7): BullMQ executes, this table is the system of
 // record. A row is written at approval and moves queued -> running -> one of
-// succeeded/failed; the reconcile on worker startup re-enqueues any row left
+// succeeded/failed; the tick's reconcile — at startup, and on every pass once a
+// row has shown no progress for the stall window — re-enqueues any row left
 // `queued`/`running` with no live BullMQ job (never touching `pending` — that
 // state does not exist here at all).
 //
@@ -393,4 +394,17 @@ export const mailDelivery = pgTable(
     index('mail_delivery_request_id_idx').on(t.requestId),
     index('mail_delivery_status_idx').on(t.status),
   ],
+);
+
+// The tick's heartbeat (spec §15.3): one row, overwritten every pass, stale
+// after 5 minutes. A single row rather than an append-only log, so liveness
+// costs no growth and needs no pruning — the application role holds no DELETE
+// here (grants: migration 0009).
+export const schedulerHeartbeat = pgTable(
+  'scheduler_heartbeat',
+  {
+    id: smallint('id').primaryKey().default(1),
+    beatAt: timestamp('beat_at', { withTimezone: true }).notNull(),
+  },
+  (t) => [check('scheduler_heartbeat_single_row', sql`${t.id} = 1`)],
 );

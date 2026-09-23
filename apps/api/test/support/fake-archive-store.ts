@@ -35,5 +35,9 @@ export function fakeArchiveStore(): ArchiveStore & {
         range: range ?? null,
       });
     },
+    remove(objectKey) {
+      objects.delete(objectKey);
+      return Promise.resolve();
+    },
   };
 }

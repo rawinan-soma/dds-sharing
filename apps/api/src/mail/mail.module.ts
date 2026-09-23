@@ -125,6 +125,6 @@ class MailLifecycle implements OnApplicationShutdown {
     },
     MailSender,
   ],
-  exports: [MailSender],
+  exports: [MailSender, MailQueue, MailDeliveries],
 })
 export class MailModule {}

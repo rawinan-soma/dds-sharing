@@ -1,5 +1,5 @@
 import { Injectable, inject, signal } from '@angular/core';
-import { type QueueRow, QueueApi } from './queue-api';
+import { type QueueList, type QueueRow, QueueApi } from './queue-api';
 import { countChanges } from './queue-format';
 
 /**
@@ -18,6 +18,9 @@ export class QueueStore {
   readonly failed = signal(false);
   readonly loadedAt = signal(0);
   readonly changes = signal(0);
+  /** As of the last read, like the rows: the page never polls for it either. */
+  readonly automaticProcessing =
+    signal<QueueList['automaticProcessing']>('running');
 
   /** The only way the list is read again: the Reviewer asks for it. */
   async reload(): Promise<void> {
@@ -29,6 +32,7 @@ export class QueueStore {
       const before = this.rows();
       this.changes.set(before ? countChanges(before, list.requests) : 0);
       this.rows.set(list.requests);
+      this.automaticProcessing.set(list.automaticProcessing);
       this.loadedAt.set(Date.now());
     } catch {
       // The old list stays on screen, and the staleness line says how old it is.

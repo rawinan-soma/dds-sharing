@@ -28,6 +28,8 @@ export interface ArchiveStore {
   stat(objectKey: string): Promise<number | null>;
   /** `range` unset streams the whole object; set, it streams only that inclusive byte span (§9.1's range-request support). */
   download(objectKey: string, range?: ObjectRange): Promise<RangedObject>;
+  /** Deletes the object at its token's expiry (spec §9.5); the tick records it. */
+  remove(objectKey: string): Promise<void>;
 }
 
 export function createMinioClient(config: {
@@ -96,6 +98,10 @@ export function createMinioArchiveStore(
         size: info.size,
         range,
       };
+    },
+
+    async remove(objectKey) {
+      await client.removeObject(bucket, objectKey);
     },
   };
 }

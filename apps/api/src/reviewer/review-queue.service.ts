@@ -4,6 +4,7 @@ import { type RequestEventPayloads } from '../audit/event-catalogue';
 import { DB, type Db } from '../db/database.module';
 import { request, requestContact, requestEvent } from '../db/schema';
 import { ProvinceLookup } from '../reference/province-lookup.service';
+import { schedulerHealth } from '../scheduler/scheduler-health';
 import { CLOCK, type Clock } from './clock';
 import { type Holidays } from './business-hours';
 import {
@@ -31,6 +32,13 @@ export interface QueueRow {
 export interface QueueList {
   /** When this list was read: the screen shows how stale it has become. */
   generatedAt: string;
+  /**
+   * `stopped` puts the banner on the queue (spec §15.3): the tick has missed
+   * five passes, or an Extract has outlived its token by an hour. The Reviewer
+   * is the guaranteed reader, so the screen says what that means for their
+   * work; the operator reads the same fact on `/health`.
+   */
+  automaticProcessing: 'running' | 'stopped';
   requests: QueueRow[];
 }
 
@@ -81,8 +89,10 @@ export class ReviewQueue {
       .from(request)
       .innerJoin(requestContact, eq(requestContact.requestId, request.id))
       .where(eq(request.state, 'pending'));
+    const scheduler = await schedulerHealth(this.db, now);
     return {
       generatedAt: now.toISOString(),
+      automaticProcessing: scheduler.status === 'ok' ? 'running' : 'stopped',
       requests: rankPending(rows, now, this.holidays).map(toRow),
     };
   }
