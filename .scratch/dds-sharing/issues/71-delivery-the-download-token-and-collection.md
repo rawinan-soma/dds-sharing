@@ -1,6 +1,6 @@
 # Delivery, the Download token and collection
 
-Status: ready-for-agent
+Status: closed
 Blocked by: 70, 85
 Source: https://github.com/rawinan-soma/dds-sharing/issues/71 (migrated 2026-09-21)
 
@@ -121,3 +121,7 @@ Treat the design as the source of **visual layout only**. Structure, ordering an
 **Why:** mail-security scanners and link previewers open links in incoming mail automatically. With the old route each one spent an Attempt and received the case-level archive before the Requester clicked. Now they receive HTML.
 
 The page is screen 7 (and 7m at 390px) in the design; `docs/design/handoff.md` §7–8 has the spec, and the counter is labelled *ดาวน์โหลดแล้ว*. Spec §9.1, §9.2, §16.2 and SRS FR-19 are amended. The E2E range test now targets `/d/<token>/archive`.
+
+**rawinan-soma** — 2026-09-23
+
+Merged in #112 (47012c56d95b04d0195c37cc16bad0f8d5781268).
