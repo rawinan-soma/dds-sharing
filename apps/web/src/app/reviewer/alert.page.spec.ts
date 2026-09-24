@@ -227,4 +227,49 @@ describe('AlertPage', () => {
     await settle();
     expect(text()).toContain(m.reviewer_alert_gone());
   });
+
+  describe('Re-run on an extraction failure (§10.9)', () => {
+    const rerunButton = () =>
+      el.querySelector<HTMLButtonElement>('button.rerun');
+
+    it('offers Re-run beside the clearing outcomes, and never on a delivery Alert', async () => {
+      await load([failure(), lapse({ kind: 'send_abandoned' })]);
+      expect(el.querySelectorAll('button.rerun')).toHaveLength(1);
+      expect(text()).toContain(m.reviewer_rerun_note());
+    });
+
+    it('defers the Alert once pressed: nothing to choose until the Re-run settles', async () => {
+      await load([failure()]);
+      rerunButton()!.click();
+      await fixture.whenStable();
+      expect(rerunButton()!.textContent!.trim()).toBe(
+        m.reviewer_rerun_loading(),
+      );
+      const req = http.expectOne('/api/reviewer/requests/r1/rerun');
+      expect(req.request.body).toEqual({});
+      req.flush({ queuedAt: '2026-09-22T03:00:00.000Z' });
+      await settle();
+      expect(text()).toContain(m.reviewer_alert_rerunning({ attempts: 1 }));
+      expect(buttons()).toEqual([]);
+      expect(rerunButton()).toBeNull();
+    });
+
+    it('offers no Re-run while one is already under way', async () => {
+      await load([
+        failure({ deferred: true, rerunAttempts: 1, clearable: false }),
+      ]);
+      expect(rerunButton()).toBeNull();
+    });
+
+    it('says so when the Re-run could not be started', async () => {
+      await load([failure()]);
+      rerunButton()!.click();
+      http
+        .expectOne('/api/reviewer/requests/r1/rerun')
+        .flush('', { status: 500, statusText: 'Error' });
+      await settle();
+      expect(text()).toContain(m.reviewer_rerun_failed());
+      expect(buttons()).toHaveLength(2);
+    });
+  });
 });

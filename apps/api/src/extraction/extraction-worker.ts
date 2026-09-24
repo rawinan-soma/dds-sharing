@@ -39,11 +39,8 @@ import {
   type UpstreamPager,
 } from './extraction-pipeline';
 import { raiseExtractionAlert } from '../reviewer/alert-records';
+import { supersedeAtReady } from './re-run-ready';
 import { StallError, StallGuard } from './stall-guard';
-
-// A Re-run (#74) will pass a run number above 1, which is what earns an
-// archive its `-rN` suffix (spec §8.3). Nothing produces one yet.
-const FIRST_RUN = 1;
 
 export interface ExtractionWorkerDeps {
   db: NodePgDatabase;
@@ -88,7 +85,7 @@ interface ExtractionTargetWithSubmittedAt extends ExtractionTarget {
 }
 
 /** The Request's stored parameters — read fresh per job, never cached
- * outside it: a Re-run (a later ticket) must see whatever is stored now. */
+ * outside it: a Re-run must see whatever is stored now. */
 async function loadTarget(
   db: NodePgDatabase,
   requestId: string,
@@ -149,13 +146,14 @@ async function publishExtract(
   requestId: string,
   target: ExtractionTargetWithSubmittedAt,
   result: ExtractionResult,
+  runNumber: number,
   now: () => Date,
 ): Promise<{ archiveFilename: string }> {
   const archive = await buildExtractArchive({
     rowsByCode: result.rowsByCode,
     codes: result.summary.reportCodes,
     submittedAt: target.submittedAt,
-    runNumber: FIRST_RUN,
+    runNumber,
   });
   const scratchPath = join(deps.scratchDir, archive.archiveFilename);
   await writeFile(scratchPath, archive.archiveBytes);
@@ -188,7 +186,9 @@ async function publishExtract(
 /**
  * Issues the Download token and sends the Delivery email (spec §9.3, §11.3).
  * The token is generated here, at completion — never earlier — because it is
- * anchored on job completion, not on approval.
+ * anchored on job completion, not on approval. A Re-run's new token is the
+ * moment its Extract is ready: the earlier one is revoked then (ADR 0012),
+ * before the Delivery goes, so a resend can never pick up a superseded link.
  */
 async function sendDeliveryMail(
   deps: Pick<
@@ -198,6 +198,7 @@ async function sendDeliveryMail(
   requestId: string,
   reference: string,
   archiveFilename: string,
+  runNumber: number,
   now: () => Date,
 ): Promise<void> {
   const [contact] = await deps.db
@@ -210,13 +211,25 @@ async function sendDeliveryMail(
     .where(eq(requestContact.requestId, requestId));
 
   const rawToken = generateToken();
-  await deps.downloadTokens.create(requestId, rawToken, archiveFilename, now());
-  await deps.mailSender.send(requestId, contact.email, {
-    kind: 'delivery',
-    name: `${contact.name} ${contact.surname}`,
-    reference,
-    downloadUrl: `${deps.frontendUrl}/d/${rawToken}`,
-  });
+  const token = await deps.downloadTokens.create(
+    requestId,
+    rawToken,
+    archiveFilename,
+    now(),
+  );
+  if (runNumber > 1)
+    await supersedeAtReady(deps.db, requestId, token.id, now());
+  await deps.mailSender.send(
+    requestId,
+    contact.email,
+    {
+      kind: 'delivery',
+      name: `${contact.name} ${contact.surname}`,
+      reference,
+      downloadUrl: `${deps.frontendUrl}/d/${rawToken}`,
+    },
+    { downloadTokenId: token.id },
+  );
 }
 
 /**
@@ -340,6 +353,7 @@ export async function processExtractionJob(
   }
 
   const target = await loadTarget(deps.db, requestId);
+  const runNumber = await deps.extractionJobs.runNumber(jobId);
   await deps.extractionJobs.markRunning(jobId, now());
   await writeRequestEvent(deps.db, {
     requestId,
@@ -388,6 +402,7 @@ export async function processExtractionJob(
       requestId,
       target,
       result,
+      runNumber,
       now,
     );
     await deps.extractionJobs.markSucceeded(jobId, now(), result.summary);
@@ -396,6 +411,7 @@ export async function processExtractionJob(
       requestId,
       target.reference,
       archiveFilename,
+      runNumber,
       now,
     );
   } catch (error) {

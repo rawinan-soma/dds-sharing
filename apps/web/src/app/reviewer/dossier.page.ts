@@ -12,9 +12,9 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
 import * as m from '../../paraglide/messages.js';
 import { formatDay } from '../requester/format-day';
+import { areaHeadline, areaProvinces } from './area-copy';
 import { Field } from './field';
 import {
-  type Area,
   type DecisionOutcome,
   type Dossier,
   type DossierOutcome,
@@ -589,26 +589,8 @@ export class DossierPage {
     return m.reviewer_dossier_codes_disclosure({ count });
   }
 
-  protected areaHeadline(area: Area): string {
-    if (area.kind === 'national') return m.requester_area_national();
-    return area.region === null
-      ? this.areaProvinceNames(area)
-      : m.requester_area_region_selected({ region: area.region });
-  }
-
-  // A named region shows the provinces it stands for beneath it; a hand-picked
-  // list already is the provinces, so there is nothing to repeat under it.
-  protected areaProvinces(area: Area): string | null {
-    return area.kind === 'provinces' && area.region !== null
-      ? this.areaProvinceNames(area)
-      : null;
-  }
-
-  private areaProvinceNames(
-    area: Extract<Area, { kind: 'provinces' }>,
-  ): string {
-    return area.provinces.map((p) => p.name).join(', ');
-  }
+  protected areaHeadline = areaHeadline;
+  protected areaProvinces = areaProvinces;
 
   // --- The Decision (spec §10.3) ------------------------------------------
 

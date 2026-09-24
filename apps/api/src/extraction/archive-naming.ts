@@ -2,8 +2,7 @@
 // Asia/Bangkok, from the Request's submit moment. The CSV inside shares the
 // stem with `.csv`. No reference number ever appears here (spec §8.4's
 // no-marker rule) — that leaves the timestamp as the only thing that could
-// collide two archives, which is why a Re-run (a later ticket, #74) carries a
-// `-rN` suffix: without it, a second run over the same Request would produce
+// collide two archives, which is why a Re-run carries a `-rN` suffix: without it, a second run over the same Request would produce
 // different rows under the identical filename, silently replacing the first
 // on the Requester's disk.
 

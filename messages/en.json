@@ -339,5 +339,16 @@
   "reviewer_queue_load_failed": "The list could not be loaded. You can try again.",
   "reviewer_dossier_dates_inclusive": "Both days included",
   "reviewer_scheduler_stopped_title": "Automatic processing has stopped",
-  "reviewer_scheduler_stopped_detail": "Approved requests may not be extracted or delivered, emails that failed to send are not being tried again, and expired files are not being deleted on time. Your decisions are still recorded as normal. Please tell the person who looks after this system."
+  "reviewer_scheduler_stopped_detail": "Approved requests may not be extracted or delivered, emails that failed to send are not being tried again, and expired files are not being deleted on time. Your decisions are still recorded as normal. Please tell the person who looks after this system.",
+  "reviewer_inflight_failed_note": "The extraction failed, so there is no email to send again. Extracting again is the only thing that can be done.",
+  "reviewer_file_none": "No file has been made yet.",
+  "reviewer_file_attempts_value": "{count} of 10",
+  "reviewer_resend_sent": "Sent again to the same address. The link and the time left on it have not changed.",
+  "reviewer_resend_unavailable": "The email can no longer be sent again, because the system no longer holds it. Extracting again sends a new link.",
+  "reviewer_resend_failed": "The email could not be sent again. Try again.",
+  "reviewer_rerun_started": "Extraction has started again. The current link keeps working until the new file is ready.",
+  "reviewer_rerun_failed": "The extraction could not be started. Try again.",
+  "reviewer_inflight_gone": "This request is no longer in progress. It may have finished, or it may now be listed under Needs attention.",
+  "reviewer_inflight_load_failed": "The request could not be loaded. Pick it again to retry.",
+  "reviewer_file_name": "File name"
 }

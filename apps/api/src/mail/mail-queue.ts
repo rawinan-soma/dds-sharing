@@ -16,7 +16,17 @@ export interface MailJobData {
   to: string;
   subject: string;
   html: string;
+  /** A Delivery's token — its id, never the token (§10.8). */
+  downloadTokenId?: string;
 }
+
+/**
+ * How long a sent Delivery's job is kept: the life of the token it carries.
+ * The rendered message is the only place the raw Download token exists, so
+ * keeping it is what lets a Reviewer resend the same link (§10.8) — and
+ * nothing else keeps it. Every other kind is dropped once sent.
+ */
+const SENT_DELIVERY_KEPT_SECONDS = 72 * 60 * 60;
 
 /**
  * A thin wrapper over the BullMQ `Queue`, mirroring `ExtractionQueue`: the
@@ -35,7 +45,8 @@ export class MailQueue {
     await this.queue.add('send', data, {
       jobId: data.mailDeliveryId,
       attempts: 1,
-      removeOnComplete: true,
+      removeOnComplete:
+        data.kind === 'delivery' ? { age: SENT_DELIVERY_KEPT_SECONDS } : true,
       removeOnFail: { count: 1000 },
     });
   }
@@ -51,6 +62,16 @@ export class MailQueue {
     if (!job || (await job.getState()) !== 'failed') return 'lost';
     await job.retry('failed');
     return 'retried';
+  }
+
+  /**
+   * A sent message, as it was sent, while its job is kept; null once it is
+   * not — Redis lost it, or it was never sent.
+   */
+  async sentMessage(mailDeliveryId: string): Promise<MailJobData | null> {
+    const job = await this.queue.getJob(mailDeliveryId);
+    if (!job || (await job.getState()) !== 'completed') return null;
+    return job.data;
   }
 
   async isLive(mailDeliveryId: string): Promise<boolean> {

@@ -77,6 +77,24 @@ export interface UnfinishedJob {
 export class ExtractionJobs {
   constructor(private readonly db: NodePgDatabase) {}
 
+  /**
+   * Which run of its Request this job is: 1 for the one approval queued, 2
+   * and on for each Re-run (spec §8.3). Counted from the job rows rather than
+   * carried on the BullMQ job, so a job the reconcile re-enqueues keeps its
+   * number. A failed run makes no archive but still spends its number, so no
+   * two archives of one Request can ever share a name.
+   */
+  async runNumber(jobId: string): Promise<number> {
+    const { rows } = await this.db.execute<{ run: number }>(sql`
+      SELECT count(*)::int AS run
+      FROM ${extractionJob} j
+      JOIN ${extractionJob} me ON me.request_id = j.request_id
+      WHERE me.id = ${jobId}
+        AND (j.created_at < me.created_at OR j.id = me.id)
+    `);
+    return rows[0]?.run || 1;
+  }
+
   async markRunning(jobId: string, now: Date): Promise<void> {
     await this.db
       .update(extractionJob)

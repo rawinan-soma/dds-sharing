@@ -7,7 +7,12 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import * as m from '../../paraglide/messages.js';
 import { getLocale, overwriteGetLocale } from '../../paraglide/runtime.js';
-import { type AlertRow, type QueueList, type QueueRow } from './queue-api';
+import {
+  type AlertRow,
+  type InFlightRow,
+  type QueueList,
+  type QueueRow,
+} from './queue-api';
 import { QueuePage } from './queue.page';
 
 const row = (id: string, over: Partial<QueueRow> = {}): QueueRow => ({
@@ -42,15 +47,32 @@ const alert = (requestId: string, over: Partial<AlertRow> = {}): AlertRow => ({
   ...over,
 });
 
+const inFlightRow = (
+  requestId: string,
+  over: Partial<InFlightRow> = {},
+): InFlightRow => ({
+  requestId,
+  reference: `REQ-${requestId}`,
+  submittedAt: '2026-09-20T02:00:00.000Z',
+  requesterName: `Name ${requestId}`,
+  diseaseGroupName: 'โรคซิลิโคสิส',
+  extraction: 'ready',
+  linkExpiresAt: null,
+  actions: { rerun: true, resend: true },
+  ...over,
+});
+
 const list = (
   requests: QueueRow[],
   automaticProcessing: QueueList['automaticProcessing'] = 'running',
   alerts: AlertRow[] = [],
+  inFlight: InFlightRow[] = [],
 ): QueueList => ({
   generatedAt: '2026-09-21T05:00:00.000Z',
   automaticProcessing,
   requests,
   alerts,
+  inFlight,
 });
 
 describe('QueuePage', () => {
@@ -174,6 +196,75 @@ describe('QueuePage', () => {
       expect(text()).toContain(m.reviewer_empty_alerts_title({ count: 2 }));
       expect(text()).toContain(m.reviewer_empty_alerts_note());
       expect(text()).not.toContain(m.reviewer_empty_clear_detail());
+    });
+  });
+
+  describe('the in-flight zone (§10.9)', () => {
+    async function loadInFlight(inFlight: InFlightRow[]) {
+      http
+        .expectOne('/api/reviewer/queue')
+        .flush(list([row('a')], 'running', [], inFlight));
+      await settle();
+    }
+    const zone = () =>
+      el.querySelector<HTMLElement>(
+        `section[aria-label="${m.reviewer_inflight_heading()}"]`,
+      );
+    const entries = () => [...(zone()?.querySelectorAll('li a') ?? [])];
+
+    it('lists approved Requests in the order the server gave, apart from the queue', async () => {
+      await loadInFlight([inFlightRow('x'), inFlightRow('y')]);
+      expect(
+        entries().map((e) => e.querySelector('.ref')?.textContent),
+      ).toEqual(['REQ-x', 'REQ-y']);
+      expect(entries()[0].textContent).toContain('Name x');
+      expect(rows().some((r) => r.textContent!.includes('REQ-x'))).toBe(false);
+      expect(zone()!.textContent).toContain(
+        m.reviewer_inflight_suppression_note(),
+      );
+    });
+
+    it('reads a queued or running job as extracting, and a failure as failed', async () => {
+      await loadInFlight([
+        inFlightRow('x', {
+          extraction: 'extracting',
+          actions: { rerun: false, resend: false },
+        }),
+        inFlightRow('y', {
+          extraction: 'failed',
+          actions: { rerun: true, resend: false },
+        }),
+      ]);
+      expect(entries()[0].textContent).toContain(m.reviewer_state_extracting());
+      expect(entries()[1].textContent).toContain(m.reviewer_state_failed());
+    });
+
+    it('shows the wall-clock time left on a ready link, ticking without asking the server', async () => {
+      const expires = new Date(Date.now() + (47 * 60 + 5) * 60_000);
+      await loadInFlight([
+        inFlightRow('x', { linkExpiresAt: expires.toISOString() }),
+      ]);
+      expect(entries()[0].textContent).toContain(
+        m.reviewer_inflight_link_left({ time: '47 h 05 m' }),
+      );
+      vi.advanceTimersByTime(60 * 60 * 1000);
+      await settle();
+      expect(entries()[0].textContent).toContain(
+        m.reviewer_inflight_link_left({ time: '46 h 05 m' }),
+      );
+      http.expectNone(() => true);
+    });
+
+    it('never names the approving Reviewer on the row', async () => {
+      await loadInFlight([inFlightRow('x')]);
+      expect(zone()!.textContent).not.toContain(
+        m.reviewer_approved_by({ reviewer: '' }).trim(),
+      );
+    });
+
+    it('shows no zone when nothing is in flight', async () => {
+      await loadInFlight([]);
+      expect(zone()).toBeNull();
     });
   });
 

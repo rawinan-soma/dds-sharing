@@ -2,7 +2,8 @@ import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import * as m from '../../paraglide/messages.js';
 import { alertAssignedTo, alertRaisedAgo, alertTitle } from './alert-copy';
-import { type AlertRow, type QueueRow } from './queue-api';
+import { type AlertRow, type InFlightRow, type QueueRow } from './queue-api';
+import { inFlightState } from './in-flight-copy';
 import { formatDuration, minutesSince } from './queue-format';
 import { QueueStore } from './queue-store';
 import { ReviewerSession } from './reviewer-session';
@@ -12,11 +13,11 @@ import { ReviewerSession } from './reviewer-session';
 // idle timeout that never fires is no timeout (§10.5).
 const STALENESS_TICK_MS = 30_000;
 
-// The split queue (§10.1): the list on the left, the Request on the right. The
-// Queue zone and the Alerts zone (§10.6) are built here; the In-progress zone
-// (#74) is a sibling landmark below them. A Request is in exactly one zone at
-// a time — an open Alert takes it out of the in-flight list — so each zone is
-// a list of its own and never a badge on another's.
+// The split queue (§10.1): the list on the left, the Request on the right,
+// with the Alerts zone (§10.6) and the In-progress zone (§10.9) below the
+// queue. A Request is in exactly one zone at a time — an open Alert takes it
+// out of the in-flight list — so each zone is a list of its own and never a
+// badge on another's.
 @Component({
   selector: 'app-reviewer-queue',
   imports: [RouterLink, RouterLinkActive, RouterOutlet],
@@ -119,6 +120,39 @@ const STALENESS_TICK_MS = 30_000;
                       <span class="name">{{ alert.requesterName }}</span>
                       <span class="group muted">{{ assignedTo(alert) }}</span>
                       <span class="group muted">{{ raisedAgo(alert) }}</span>
+                    </a>
+                  </li>
+                }
+              </ul>
+            </section>
+          }
+
+          <!-- Approved and not yet terminal (§10.9), in submit order and
+               nothing more urgent: only the Alerts zone may shout. -->
+          @if (inFlight()?.length) {
+            <section
+              class="inflight-zone"
+              [attr.aria-label]="copy.inFlightHeading"
+            >
+              <h2 class="zone-heading">{{ copy.inFlightHeading }}</h2>
+              <p class="zone-note muted">{{ copy.inFlightSuppressionNote }}</p>
+              <ul class="plain-list">
+                @for (entry of inFlight(); track entry.requestId) {
+                  <li>
+                    <a
+                      class="row"
+                      [routerLink]="['in-flight', entry.requestId]"
+                      routerLinkActive="selected"
+                      ariaCurrentWhenActive="page"
+                    >
+                      <span class="ref figure">{{ entry.reference }}</span>
+                      <span class="name">{{ entry.requesterName }}</span>
+                      <span class="group muted">{{
+                        entry.diseaseGroupName
+                      }}</span>
+                      <span class="left figure">{{
+                        inFlightState(entry)
+                      }}</span>
                     </a>
                   </li>
                 }
@@ -305,6 +339,13 @@ const STALENESS_TICK_MS = 30_000;
       font-weight: 600;
       color: var(--pending);
     }
+    .inflight-zone {
+      border-bottom: 1px solid var(--border);
+    }
+    .zone-note {
+      padding: 0 20px 8px;
+      font-size: 0.875rem;
+    }
     .pane {
       min-width: 0;
     }
@@ -332,6 +373,7 @@ export class QueuePage {
 
   protected readonly rows = this.store.rows;
   protected readonly alerts = this.store.alerts;
+  protected readonly inFlight = this.store.inFlight;
   protected readonly loading = this.store.loading;
   protected readonly failed = this.store.failed;
   protected readonly automaticProcessing = this.store.automaticProcessing;
@@ -364,6 +406,8 @@ export class QueuePage {
     emptyDetail: m.reviewer_empty_clear_detail(),
     emptyNote: m.reviewer_empty_clear_note(),
     alertsHeading: m.reviewer_alerts_heading(),
+    inFlightHeading: m.reviewer_inflight_heading(),
+    inFlightSuppressionNote: m.reviewer_inflight_suppression_note(),
     alertsEmptyKicker: m.reviewer_empty_alerts_kicker(),
     alertsEmptyDetail: m.reviewer_empty_alerts_detail(),
     alertsEmptyAction: m.reviewer_empty_alerts_action(),
@@ -393,6 +437,9 @@ export class QueuePage {
     m.reviewer_time_left({
       time: formatDuration(row.minutesLeft),
     });
+
+  protected inFlightState = (entry: InFlightRow) =>
+    inFlightState(entry, this.now());
 
   protected staleness = () =>
     m.reviewer_queue_staleness({

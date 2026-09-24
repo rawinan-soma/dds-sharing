@@ -87,7 +87,7 @@ function fakeDb(
 
 function fakeDownloadTokens(): ExtractionWorkerDeps['downloadTokens'] {
   return {
-    create: vi.fn().mockResolvedValue(undefined),
+    create: vi.fn().mockResolvedValue({ id: 'token-1' }),
   } as unknown as ExtractionWorkerDeps['downloadTokens'];
 }
 
@@ -106,6 +106,7 @@ function fakeMailSender(): ExtractionWorkerDeps['mailSender'] & {
 
 function fakeJobs(): ExtractionJobs {
   return {
+    runNumber: vi.fn().mockResolvedValue(1),
     markRunning: vi.fn().mockResolvedValue(undefined),
     touch: vi.fn().mockResolvedValue(undefined),
     markSucceeded: vi.fn().mockResolvedValue(undefined),

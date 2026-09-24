@@ -131,6 +131,7 @@ describe('the Reviewer queue (e2e)', () => {
       automaticProcessing: 'stopped',
       requests: [],
       alerts: [],
+      inFlight: [],
     });
   });
 

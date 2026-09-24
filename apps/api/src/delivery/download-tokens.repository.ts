@@ -53,12 +53,4 @@ export class DownloadTokens {
       );
     return count;
   }
-
-  /** For a future Re-run (#74, ADR 0012): revokes at the moment a new Extract is ready. */
-  async revoke(id: string, now: Date): Promise<void> {
-    await this.db
-      .update(downloadToken)
-      .set({ revokedAt: now })
-      .where(eq(downloadToken.id, id));
-  }
 }
