@@ -2,6 +2,7 @@ import { isAbsolute, join } from 'node:path';
 import { Module } from '@nestjs/common';
 import { type ConfigType } from '@nestjs/config';
 import { ServeStaticModule } from '@nestjs/serve-static';
+import { BullBoardModule } from './bull-board/bull-board.module';
 import { ClockModule } from './clock/clock.module';
 import { AppConfigModule } from './config/app-config.module';
 import { appConfig } from './config/namespaces';
@@ -44,6 +45,7 @@ const staticRoot = (root: string) =>
     MailModule,
     DeliveryModule,
     SchedulerModule,
+    BullBoardModule,
   ],
 })
 export class AppModule {}

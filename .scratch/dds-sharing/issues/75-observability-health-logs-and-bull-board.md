@@ -1,6 +1,6 @@
 # Observability: health, logs and Bull Board
 
-Status: ready-for-agent
+Status: closed
 Blocked by: 72, 85
 Source: https://github.com/rawinan-soma/dds-sharing/issues/75 (migrated 2026-09-21)
 
@@ -55,3 +55,7 @@ One health document an external checker can watch without a login, a log discipl
 
 - #72 — The tick: scheduled work, the business-hours clock and object deletion
 
+
+## Comments
+
+Merged in #114 (7d2c12697c90c2ba42974d82a0f664a62bd79a90).

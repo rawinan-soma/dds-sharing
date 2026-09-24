@@ -28,6 +28,7 @@ import {
   type MailQueue,
 } from '../mail/mail-queue';
 import { requestExpiry } from '../clock/business-hours';
+import { pruneLogFiles } from '../logging/log-files';
 import { type Clock } from '../clock/clock';
 import { moveRequestState } from '../requests/move-request-state';
 import { type LoginThrottle } from '../reviewer/login-throttle';
@@ -62,6 +63,7 @@ export interface PassReport {
   requestsEnded: number;
   sessionsPruned: number;
   throttleRowsPruned: number;
+  logFilesPruned: number;
 }
 
 export interface TickDeps {
@@ -76,6 +78,8 @@ export interface TickDeps {
   mailDeliveries: MailDeliveries;
   sessions: ReviewerSessions;
   loginThrottle: LoginThrottle;
+  /** Where the application's hour files live, for the 72-hour expiry (§14.5). */
+  logDir: string;
   logger?: LoggerService;
 }
 
@@ -177,6 +181,7 @@ export class Tick {
       requestsEnded: 0,
       sessionsPruned: 0,
       throttleRowsPruned: 0,
+      logFilesPruned: 0,
     };
     if (!startup) {
       report.requestsExpired = await step('expiry', 0, () =>
@@ -199,6 +204,11 @@ export class Tick {
       );
       report.throttleRowsPruned = await step('throttle', 0, () =>
         this.deps.loginThrottle.pruneDecayed(now),
+      );
+      // Logs die on the Extract's clock (§14.5). A failure withholds the
+      // heartbeat like any other step: logs outliving 72 hours is a fault.
+      report.logFilesPruned = await step('logs', 0, () =>
+        pruneLogFiles(this.deps.logDir, now),
       );
     }
     // The heartbeat means the whole pass did its work. A pass with a failed

@@ -89,7 +89,11 @@ export class ReviewQueue {
       .from(request)
       .innerJoin(requestContact, eq(requestContact.requestId, request.id))
       .where(eq(request.state, 'pending'));
-    const scheduler = await schedulerHealth(this.db, now);
+    const scheduler = await schedulerHealth(
+      this.db,
+      now,
+      this.provinces.checksum,
+    );
     return {
       generatedAt: now.toISOString(),
       automaticProcessing: scheduler.status === 'ok' ? 'running' : 'stopped',

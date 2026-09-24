@@ -198,6 +198,28 @@ function baseDeps(
   };
 }
 
+/** One page holding one row, for a job over a single Report code. */
+function oneRowPager(row: Record<string, unknown>): UpstreamPager {
+  return {
+    // eslint-disable-next-line @typescript-eslint/require-await
+    async *pages(): AsyncGenerator<UpstreamPage> {
+      yield {
+        rows: [row],
+        meta: {
+          page: 1,
+          pageSize: 10_000,
+          totalItems: 1,
+          totalPages: 1,
+          hasNext: false,
+          hasPrevious: false,
+        },
+        requestId: null,
+        processTimeMs: null,
+      };
+    },
+  };
+}
+
 describe('processExtractionJob', () => {
   it('defers below the disk floor: writes job_deferred_low_disk and moves the job to delayed, touching no other state', async () => {
     const { db, inserted } = fakeDb(undefined);
@@ -438,6 +460,82 @@ describe('processExtractionJob', () => {
     );
     const failedEvent = inserted.find((i) => i.values.type === 'job_failed');
     expect(failedEvent?.values).toMatchObject({ payload: { cause: 'stall' } });
+  });
+
+  it('records the province checksum on a job failed by an unrecognised province code (§6.3)', async () => {
+    const jobs = fakeJobs();
+    const { db, inserted } = fakeDb({ ...REQUEST_ROW, reportCodes: ['201'] });
+    const upstreamWithUnknownProvince = oneRowPager({
+      epidem_report_guid: 'GUID-1',
+      epidem_chw_code: '57',
+    });
+
+    await processExtractionJob(
+      fakeJob(),
+      undefined,
+      baseDeps({
+        db,
+        extractionJobs: jobs,
+        upstream: upstreamWithUnknownProvince,
+      }),
+    );
+
+    expect(jobs.markFailed).toHaveBeenCalledWith(
+      'job-1',
+      expect.any(Date),
+      'internal',
+      {
+        unrecognisedProvinceCode: {
+          provincesChecksum: 'fake-province-checksum',
+        },
+      },
+    );
+    // job_failed's cause set stays closed (§12.4).
+    const failedEvent = inserted.find((i) => i.values.type === 'job_failed');
+    expect(failedEvent?.values).toMatchObject({
+      payload: { cause: 'internal' },
+    });
+  });
+
+  it('never writes a fetched field to its log or its records when a job fails (§14.5)', async () => {
+    const SENTINEL = 'SENTINEL-5be071';
+    const lines: string[] = [];
+    const capture: LoggerService = {
+      log: (m: unknown) => void lines.push(String(m)),
+      warn: (m: unknown) => void lines.push(String(m)),
+      error: (m: unknown) => void lines.push(String(m)),
+    };
+    const jobs = fakeJobs();
+    const { db, inserted } = fakeDb({ ...REQUEST_ROW, reportCodes: ['201'] });
+    const sentinelRows = oneRowPager({
+      epidem_report_guid: `guid-${SENTINEL}`,
+      first_name: `name-${SENTINEL}`,
+      birth_date: `birth-${SENTINEL}`,
+      // Outside the (empty) province table: the job fails.
+      epidem_chw_code: '57',
+    });
+
+    await processExtractionJob(
+      fakeJob(),
+      undefined,
+      baseDeps({
+        db,
+        extractionJobs: jobs,
+        upstream: sentinelRows,
+        logger: capture,
+      }),
+    );
+
+    expect(lines.join('\n')).toContain('failed cause=internal');
+    const everything = JSON.stringify([
+      lines,
+      inserted,
+      vi.mocked(jobs.markFailed).mock.calls,
+    ]);
+    expect(everything).not.toContain(SENTINEL);
+    // The province code is a field of a row too, quoted or bare. (The failure's
+    // own message, `code … row N: …`, is log-discipline.spec.ts's to check.)
+    expect(everything).not.toMatch(/\b57\b/);
   });
 
   it('raises the operational alert and still succeeds for a missing epidem_chw_code', async () => {

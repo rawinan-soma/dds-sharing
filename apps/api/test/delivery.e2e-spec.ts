@@ -288,7 +288,7 @@ describe('delivery and collection (e2e)', () => {
 
     const response = await request(app.getHttpServer())
       .get('/api/health')
-      .expect(200);
+      .expect(503);
 
     expect(response.body.components.mail.status).toBe('degraded');
     expect(response.body.status).toBe('degraded');
