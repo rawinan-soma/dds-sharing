@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { and, asc, eq, sql } from 'drizzle-orm';
 import { type Db } from '../db/database.module';
 import { request, requestEvent } from '../db/schema';
-import { type CliOutput } from './cli-io';
+import { type CliOutput, plural } from './cli-io';
 import { extractsIn, NotAnExtractError } from './extracts-in';
 
 // Fingerprint verification (spec §8.4, ADR 0005): a file arrives — an Extract
@@ -74,6 +74,21 @@ export async function runVerifyExtractCli(
   io: CliOutput,
   deps: VerifyExtractDeps,
 ): Promise<number> {
+  try {
+    return await verify(argv, io, deps);
+  } finally {
+    // Every run, whatever became of it: a file that would not even open is
+    // when a reader most needs telling what a mismatch does not mean.
+    io.out('');
+    for (const line of HOW_TO_READ) io.out(line);
+  }
+}
+
+async function verify(
+  argv: string[],
+  io: CliOutput,
+  deps: VerifyExtractDeps,
+): Promise<number> {
   if (argv.length !== 1 || argv[0].startsWith('-')) {
     io.err(USAGE);
     return 1;
@@ -111,16 +126,12 @@ export async function runVerifyExtractCli(
       io.out('NO MATCH: no Extract with this checksum was released here.');
       continue;
     }
-    io.out(
-      `MATCH: released for ${releases.length} ${releases.length === 1 ? 'Request' : 'Requests'}:`,
-    );
-    for (const r of releases) {
+    io.out(`MATCH: released for ${plural(releases.length, 'Request')}:`);
+    for (const release of releases) {
       io.out(
-        `  ${r.reference}  completed ${BANGKOK.format(r.completedAt)} (Bangkok)  ${r.archiveFilename}  ${r.rowCount} rows`,
+        `  ${release.reference}  completed ${BANGKOK.format(release.completedAt)} (Bangkok)  ${release.archiveFilename}  ${plural(release.rowCount, 'row')}`,
       );
     }
   }
-  io.out('');
-  for (const line of HOW_TO_READ) io.out(line);
   return 0;
 }

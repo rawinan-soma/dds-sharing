@@ -209,7 +209,7 @@ export class ReviewerAccounts {
       'password_reset',
       username,
       { passwordHash, mustChangePassword: true },
-      (sessionsEnded) => ({ status: 'reset', password, sessionsEnded }),
+      ({ sessionsEnded }) => ({ status: 'reset', password, sessionsEnded }),
     );
   }
 
@@ -224,11 +224,11 @@ export class ReviewerAccounts {
       'totp_reset',
       username,
       { totpSecret, totpConfirmedAt: null, totpLastUsedStep: null },
-      (sessionsEnded) => ({
+      (replaced) => ({
         status: 're_enrolled',
         totpSecret,
-        enrolmentUri: enrolmentUri(username.trim(), totpSecret),
-        sessionsEnded,
+        enrolmentUri: enrolmentUri(replaced.username, totpSecret),
+        sessionsEnded: replaced.sessionsEnded,
       }),
     );
   }
@@ -239,7 +239,7 @@ export class ReviewerAccounts {
     type: 'password_reset' | 'totp_reset',
     username: string,
     set: Partial<typeof reviewer.$inferInsert>,
-    done: (sessionsEnded: number) => T,
+    toOutcome: (replaced: { username: string; sessionsEnded: number }) => T,
   ): Promise<T | CredentialRefusal> {
     return this.db.transaction(async (tx) => {
       const [target] = await tx
@@ -265,7 +265,10 @@ export class ReviewerAccounts {
         actor: { actorType: 'system' },
         payload: { username: target.username, sessionsEnded: ended.length },
       });
-      return done(ended.length);
+      return toOutcome({
+        username: target.username,
+        sessionsEnded: ended.length,
+      });
     });
   }
 }

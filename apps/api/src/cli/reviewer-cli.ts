@@ -1,14 +1,12 @@
 import { parseArgs } from 'node:util';
 import QRCode from 'qrcode';
-import { type CliIo, isArgumentError } from './cli-io';
+import { type CliIo, isArgumentError, plural } from './cli-io';
 import {
   type CredentialRefusal,
   MIN_ACTIVE_REVIEWERS,
   type ReviewerAccounts,
   ReviewerInputError,
 } from '../reviewer/reviewer-accounts';
-
-export type { CliIo } from './cli-io';
 
 const USAGE = `Usage:
   reviewer seed --username <name> --email <address>
@@ -157,7 +155,7 @@ async function deactivate(
         );
       }
       io.out(
-        `"${username}" is deactivated; ${outcome.sessionsEnded} live session(s) ended. Their name stays on every Decision they made.`,
+        `"${username}" is deactivated; ${plural(outcome.sessionsEnded, 'live session')} ended. Their name stays on every Decision they made.`,
       );
       return 0;
   }
@@ -193,7 +191,7 @@ function oneUsername(args: string[], io: CliIo): string | null {
   return positionals[0];
 }
 
-function refused(
+function reportRefusal(
   io: CliIo,
   username: string,
   status: CredentialRefusal['status'],
@@ -214,10 +212,11 @@ async function resetPassword(
   const username = oneUsername(args, io);
   if (username === null) return 1;
   const outcome = await accounts.resetPassword(username);
-  if (outcome.status !== 'reset') return refused(io, username, outcome.status);
+  if (outcome.status !== 'reset')
+    return reportRefusal(io, username, outcome.status);
 
   io.out(
-    `Password for "${username}" reset; ${outcome.sessionsEnded} live session(s) ended.`,
+    `Password for "${username}" reset; ${plural(outcome.sessionsEnded, 'live session')} ended.`,
   );
   io.out('');
   io.out(
@@ -240,11 +239,11 @@ async function reenrolTotp(
   if (username === null) return 1;
   const outcome = await accounts.reenrolTotp(username);
   if (outcome.status !== 're_enrolled') {
-    return refused(io, username, outcome.status);
+    return reportRefusal(io, username, outcome.status);
   }
 
   io.out(
-    `Authenticator for "${username}" replaced; ${outcome.sessionsEnded} live session(s) ended. Codes from the old one no longer work.`,
+    `Authenticator for "${username}" replaced; ${plural(outcome.sessionsEnded, 'live session')} ended. Codes from the old one no longer work.`,
   );
   io.out('');
   await printEnrolment(io, outcome);

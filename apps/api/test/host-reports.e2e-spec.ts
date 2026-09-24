@@ -191,6 +191,8 @@ describe('the host report commands', () => {
         1,
       );
       expect(cli.err.join('\n')).toMatch(/missing\.csv/);
+      // Every run: an unreadable file is when the reminder matters most.
+      caveats(cli.text());
     });
 
     it('needs exactly one file', async () => {

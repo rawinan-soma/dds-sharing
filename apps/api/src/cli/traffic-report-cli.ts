@@ -2,7 +2,7 @@ import { parseArgs } from 'node:util';
 import { and, gte, inArray, lt, sql } from 'drizzle-orm';
 import { type Db } from '../db/database.module';
 import { requestEvent } from '../db/schema';
-import { type CliOutput, isArgumentError } from './cli-io';
+import { type CliOutput, isArgumentError, plural } from './cli-io';
 import {
   DateRangeError,
   type InstantRange,
@@ -43,26 +43,30 @@ export async function countUpstreamTraffic(
   range: InstantRange,
 ): Promise<UpstreamTraffic> {
   const { type, payload, requestId } = requestEvent;
-  const n = (expression: ReturnType<typeof sql>) =>
+  const intOrZero = (expression: ReturnType<typeof sql>) =>
     sql<number>`coalesce(${expression}, 0)::int`;
   const [row] = await db
     .select({
-      probesPerformed: n(
+      probesPerformed: intOrZero(
         sql`count(*) filter (where ${type} = 'probe_performed')`,
       ),
-      probePerformedCalls: n(
+      probePerformedCalls: intOrZero(
         sql`sum((${payload}->>'callsMade')::int) filter (where ${type} = 'probe_performed')`,
       ),
-      probesAbandoned: n(sql`count(*) filter (where ${type} = 'probe_failed')`),
+      probesAbandoned: intOrZero(
+        sql`count(*) filter (where ${type} = 'probe_failed')`,
+      ),
       // Every attempt that reached upstream is one error on the record.
-      probeAbandonedCalls: n(
+      probeAbandonedCalls: intOrZero(
         sql`sum(jsonb_array_length(${payload}->'errors')) filter (where ${type} = 'probe_failed')`,
       ),
-      codeFetches: n(sql`count(*) filter (where ${type} = 'code_fetched')`),
-      fetchCalls: n(
+      codeFetches: intOrZero(
+        sql`count(*) filter (where ${type} = 'code_fetched')`,
+      ),
+      fetchCalls: intOrZero(
         sql`sum((${payload}->>'pageCount')::int) filter (where ${type} = 'code_fetched')`,
       ),
-      requestsFetched: n(
+      requestsFetched: intOrZero(
         sql`count(distinct ${requestId}) filter (where ${type} = 'code_fetched')`,
       ),
     })
@@ -76,9 +80,6 @@ export async function countUpstreamTraffic(
     );
   return row;
 }
-
-const plural = (count: number, one: string, many = `${one}s`) =>
-  `${count} ${count === 1 ? one : many}`;
 
 export async function runTrafficReportCli(
   argv: string[],
@@ -110,23 +111,23 @@ export async function runTrafficReportCli(
     throw error;
   }
 
-  const t = await source.count(range);
-  const probeCalls = t.probePerformedCalls + t.probeAbandonedCalls;
+  const traffic = await source.count(range);
+  const probeCalls = traffic.probePerformedCalls + traffic.probeAbandonedCalls;
   io.out(`Upstream traffic, ${from} to ${to} inclusive (Bangkok time)`);
   io.out('');
   io.out(`Probe calls:  ${probeCalls}`);
   io.out(
-    `  ${plural(t.probesPerformed, 'Probe')} performed, ${plural(t.probePerformedCalls, 'call')} (rejected and expired Requests included)`,
+    `  ${plural(traffic.probesPerformed, 'Probe')} performed, ${plural(traffic.probePerformedCalls, 'call')} (rejected and expired Requests included)`,
   );
   io.out(
-    `  ${plural(t.probesAbandoned, 'Probe')} abandoned, ${plural(t.probeAbandonedCalls, 'call')} spent before giving up`,
+    `  ${plural(traffic.probesAbandoned, 'Probe')} abandoned, ${plural(traffic.probeAbandonedCalls, 'call')} spent before giving up`,
   );
-  io.out(`Fetch calls:  ${t.fetchCalls}`);
+  io.out(`Fetch calls:  ${traffic.fetchCalls}`);
   io.out(
-    `  ${plural(t.codeFetches, 'Report code fetch', 'Report code fetches')} for ${plural(t.requestsFetched, 'Request')}`,
+    `  ${plural(traffic.codeFetches, 'Report code fetch', 'Report code fetches')} for ${plural(traffic.requestsFetched, 'Request')}`,
   );
   io.out('');
-  io.out(`Total upstream calls:  ${probeCalls + t.fetchCalls}`);
+  io.out(`Total upstream calls:  ${probeCalls + traffic.fetchCalls}`);
   io.out('');
   io.out(
     'Every figure is a floor: it counts the calls the record holds, and retries that ended in success are not recorded.',

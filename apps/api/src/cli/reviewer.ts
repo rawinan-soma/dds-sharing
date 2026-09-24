@@ -1,10 +1,7 @@
 import { createInterface } from 'node:readline/promises';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { Pool } from 'pg';
-import { hostCliSchema, validateEnvOrExit } from '../config/env.schema';
 import { systemClock } from '../clock/clock';
 import { ReviewerAccounts } from '../reviewer/reviewer-accounts';
-import { type CliIo, runMain, terminalOutput } from './cli-io';
+import { type CliIo, runMain, terminalOutput, withAppDb } from './cli-io';
 import { runReviewerCli } from './reviewer-cli';
 import { loadRetentionNotice } from './retention-notice';
 
@@ -14,26 +11,25 @@ import { loadRetentionNotice } from './retention-notice';
 // migrations bind it too: it can no more delete a Reviewer or rewrite a display
 // name than the running application can.
 
-async function main(): Promise<number> {
-  const { APP_DATABASE_URL: connectionString } =
-    validateEnvOrExit(hostCliSchema);
-  const pool = new Pool({ connectionString });
-  const rl = createInterface({ input: process.stdin, output: process.stdout });
-  const io: CliIo = {
-    ...terminalOutput,
-    prompt: (question) => rl.question(question),
-  };
-  try {
-    return await runReviewerCli(
-      process.argv.slice(2),
-      io,
-      new ReviewerAccounts(drizzle(pool), systemClock),
-      loadRetentionNotice(),
-    );
-  } finally {
-    rl.close();
-    await pool.end();
-  }
-}
-
-runMain(main);
+runMain(() =>
+  withAppDb(async (db) => {
+    const rl = createInterface({
+      input: process.stdin,
+      output: process.stdout,
+    });
+    const io: CliIo = {
+      ...terminalOutput,
+      prompt: (question) => rl.question(question),
+    };
+    try {
+      return await runReviewerCli(
+        process.argv.slice(2),
+        io,
+        new ReviewerAccounts(db, systemClock),
+        loadRetentionNotice(),
+      );
+    } finally {
+      rl.close();
+    }
+  }),
+);

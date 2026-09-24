@@ -12,10 +12,13 @@ What the record misses today:
 - **An abandoned Probe's earlier codes.** `probe_failed` relays only the failing code's attempts, not the calls already spent on the codes probed before it.
 - **A failed job's fetches.** An extraction that fails partway writes no `code_fetched` for the code it was on, so the pages it walked are never counted.
 
+And one count that may run the other way: an abandoned Probe's calls are counted as its relayed errors, but a local timeout, DNS failure or other error raised before a request left the host is relayed as an error too, and counted as traffic DDC never saw.
+
 Found in the #76 review; kept out of #76 because it changes what #69–#71's events record.
 
 ## Acceptance criteria
 
 - [ ] Every upstream call the Probe makes, retries included, is counted on `probe_performed` or `probe_failed`
 - [ ] Every upstream call the extraction job makes, retries and a failed job's partial work included, is counted on a request event
+- [ ] An error raised before a request reached upstream is not counted as a call
 - [ ] The traffic report sums those counts and no longer prints that its figures are a floor
