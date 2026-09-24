@@ -1,22 +1,35 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return --
    rows from pg are untyped by nature; the assertions are the types. */
 import { randomUUID } from 'node:crypto';
+import { mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
 import { Client } from 'pg';
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+} from 'vitest';
 import { AppModule } from '../src/app.module';
 import { ARCHIVE_STORE } from '../src/extraction/extraction.module';
 import { ExtractionQueue } from '../src/extraction/extraction-queue';
 import { HealthService } from '../src/health/health.service';
 import { MailQueue } from '../src/mail/mail-queue';
 import { CLOCK } from '../src/clock/clock';
+import { ProvinceLookup } from '../src/reference/province-lookup.service';
 import { ReviewQueue } from '../src/reviewer/review-queue.service';
 import { DB, PG_POOL } from '../src/db/database.module';
 import { ExtractionJobs } from '../src/extraction/extraction-jobs.repository';
 import { MailDeliveries } from '../src/mail/mail-delivery.repository';
 import { LoginThrottle } from '../src/reviewer/login-throttle';
 import { ReviewerSessions } from '../src/reviewer/reviewer-sessions';
+import { LOG_RETENTION_MS, logFileName } from '../src/logging/log-files';
 import { TICK_LOCK_KEY, Tick, type TickDeps } from '../src/scheduler/tick';
 import { fakeArchiveStore } from './support/fake-archive-store';
 import {
@@ -36,6 +49,8 @@ describe('the tick (e2e)', () => {
   let archiveStore: ReturnType<typeof fakeArchiveStore>;
   let now: Date;
   const originalDbUrl = process.env.APP_DATABASE_URL;
+  const originalLogDir = process.env.LOG_DIR;
+  const logDir = mkdtempSync(join(tmpdir(), 'tick-logs-'));
 
   // Only BullMQ is faked: Postgres is the truth, and it is real here.
   const reenqueued: string[] = [];
@@ -152,6 +167,7 @@ describe('the tick (e2e)', () => {
     mailDeliveries: app.get(MailDeliveries),
     sessions: app.get(ReviewerSessions),
     loginThrottle: app.get(LoginThrottle),
+    logDir,
   });
 
   const eventsOf = (requestId: string, type: string) =>
@@ -167,6 +183,7 @@ describe('the tick (e2e)', () => {
   beforeAll(async () => {
     scratch = await createScratchDatabase();
     process.env.APP_DATABASE_URL = scratch.appUrl;
+    process.env.LOG_DIR = logDir;
     archiveStore = fakeArchiveStore();
     const moduleRef = await Test.createTestingModule({ imports: [AppModule] })
       .overrideProvider(ARCHIVE_STORE)
@@ -186,7 +203,9 @@ describe('the tick (e2e)', () => {
   afterAll(async () => {
     await app.close();
     process.env.APP_DATABASE_URL = originalDbUrl;
+    process.env.LOG_DIR = originalLogDir;
     await scratch.drop();
+    rmSync(logDir, { recursive: true, force: true });
   });
 
   beforeEach(() => {
@@ -742,6 +761,87 @@ describe('the tick (e2e)', () => {
         [events],
       );
       expect(columnUpdates).toEqual([]);
+    });
+  });
+
+  // The `extraction` and province signals read `extraction_job` (§14.1, §6.3).
+  describe('the extraction-job health signals', () => {
+    const inserted: string[] = [];
+
+    async function finishedJob(
+      status: 'succeeded' | 'failed',
+      finishedAt: Date,
+      result: unknown = null,
+    ): Promise<void> {
+      const requestId = await insertRequest('approved');
+      const [row] = await q(
+        `INSERT INTO extraction_job (request_id, status, created_at, finished_at, result, failure_cause)
+         VALUES ($1, $2, $3, $3, $4, $5) RETURNING id`,
+        [
+          requestId,
+          status,
+          finishedAt,
+          result === null ? null : JSON.stringify(result),
+          status === 'failed' ? 'internal' : null,
+        ],
+      );
+      inserted.push(row.id as string);
+    }
+
+    afterEach(async () => {
+      await q('DELETE FROM extraction_job WHERE id = ANY($1)', [inserted]);
+      inserted.length = 0;
+    });
+
+    const components = async () =>
+      (await app.get(HealthService).check()).components;
+
+    it('reddens `extraction` on two consecutive failures, and a success resets it', async () => {
+      await finishedJob('failed', ict('2026-09-21T09:00'));
+      expect((await components()).extraction.status).toBe('ok');
+
+      await finishedJob('failed', ict('2026-09-21T10:00'));
+      expect((await components()).extraction.status).toBe('degraded');
+
+      await finishedJob('succeeded', ict('2026-09-21T11:00'));
+      expect((await components()).extraction.status).toBe('ok');
+    });
+
+    it('reddens `scheduler` for a province code the current table does not know, until the table changes', async () => {
+      await tick.runPass();
+      const checksum = app.get(ProvinceLookup).checksum;
+
+      await finishedJob('failed', ict('2026-09-21T09:00'), {
+        unrecognisedProvinceCode: { provincesChecksum: 'an-older-table' },
+      });
+      expect((await components()).scheduler.status).toBe('ok');
+
+      await finishedJob('failed', ict('2026-09-21T10:00'), {
+        unrecognisedProvinceCode: { provincesChecksum: checksum },
+      });
+      expect((await components()).scheduler.status).toBe('degraded');
+      expect((await app.get(ReviewQueue).list()).automaticProcessing).toBe(
+        'stopped',
+      );
+    });
+  });
+
+  describe('log expiry (§14.5)', () => {
+    afterEach(() => {
+      for (const name of readdirSync(logDir)) rmSync(join(logDir, name));
+    });
+
+    it('deletes an hour file 72 hours after its first line, and keeps a newer one', async () => {
+      const expired = logFileName(new Date(now.getTime() - LOG_RETENTION_MS));
+      const kept = logFileName(
+        new Date(now.getTime() - LOG_RETENTION_MS + HOUR),
+      );
+      writeFileSync(join(logDir, expired), 'line\n');
+      writeFileSync(join(logDir, kept), 'line\n');
+
+      await tick.runPass();
+
+      expect(readdirSync(logDir)).toEqual([kept]);
     });
   });
 });

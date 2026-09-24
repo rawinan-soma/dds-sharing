@@ -1,9 +1,9 @@
 import { inArray } from 'drizzle-orm';
 import { type Db } from '../db/database.module';
 import { mailDelivery } from '../db/schema';
+import { type PassFailHealth } from '../health/component-health';
 
-export type MailHealth =
-  { status: 'ok' } | { status: 'degraded'; reason: string };
+export type MailHealth = PassFailHealth;
 
 const UNRESOLVED = ['failed', 'abandoned'] as const;
 
@@ -33,7 +33,7 @@ export async function mailHealth(db: Db): Promise<MailHealth> {
   if (rows.length >= 2) {
     return {
       status: 'degraded',
-      reason: `${rows.length} emails are currently failing to send`,
+      reason: 'emails are failing to send',
     };
   }
   return { status: 'ok' };

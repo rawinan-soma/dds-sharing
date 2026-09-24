@@ -1,3 +1,4 @@
+import { inspect } from 'node:util';
 import { describe, expect, it, vi } from 'vitest';
 import { type UpstreamPage } from '../upstream/upstream-client';
 import { UpstreamError } from '../upstream/upstream-error';
@@ -262,6 +263,49 @@ describe('runExtraction', () => {
 
     expect(error).toBeInstanceOf(ExtractionFailure);
     expect((error as ExtractionFailure).cause).toBe('internal');
+    // Raises the scheduler signal (§6.3) without widening job_failed's causes.
+    expect((error as ExtractionFailure).unrecognisedProvinceCode).toBe(true);
+  });
+
+  it('names the row index of a projection error, never the row or its code (§14.5)', async () => {
+    const upstream = new FakeUpstream();
+    const rows = page(3, 3);
+    rows.rows[2].epidem_chw_code = 57; // not in PROVINCES
+    upstream.plan_for('202', [{ pages: [rows] }]);
+
+    const error = (await runExtraction(
+      { ...target, reportCodes: ['202'] },
+      makeDeps(upstream),
+    ).catch((e: unknown) => e)) as ExtractionFailure;
+
+    expect(error.message).toContain('row 2');
+    expect(error.message).not.toContain('57');
+    expect(error.message).not.toContain('GUID');
+  });
+
+  it('never chains an unexpected projection error: its message could quote the row', async () => {
+    const upstream = new FakeUpstream();
+    const rows = page(1, 1);
+    Object.defineProperty(rows.rows[0], 'onset_date', {
+      enumerable: true,
+      get() {
+        throw new Error('choked on SECRET-VALUE');
+      },
+    });
+    upstream.plan_for('202', [{ pages: [rows] }]);
+
+    const error = (await runExtraction(
+      { ...target, reportCodes: ['202'] },
+      makeDeps(upstream),
+    ).catch((e: unknown) => e)) as ExtractionFailure;
+
+    expect(error).toBeInstanceOf(ExtractionFailure);
+    expect(error.cause).toBe('internal');
+    expect(error.unrecognisedProvinceCode).toBe(false);
+    expect(error.message).toContain('row 0');
+    expect(inspect(error, { showHidden: true, depth: 10 })).not.toContain(
+      'SECRET-VALUE',
+    );
   });
 
   it('counts a missing epidem_chw_code across the job, without dropping it from a national Request', async () => {

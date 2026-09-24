@@ -1,9 +1,10 @@
 import { and, eq, lte, notExists, or, sql, type SQL } from 'drizzle-orm';
 import { type Db } from '../db/database.module';
+import { failedOnUnrecognisedProvinceCode } from '../extraction/extraction-jobs.repository';
+import { type PassFailHealth } from '../health/component-health';
 import { downloadToken, requestEvent, schedulerHeartbeat } from '../db/schema';
 
-export type SchedulerHealth =
-  { status: 'ok' } | { status: 'degraded'; reason: string };
+export type SchedulerHealth = PassFailHealth;
 
 /** Five missed 60-second passes: unambiguous (§15.3). */
 export const HEARTBEAT_STALE_MS = 5 * 60 * 1000;
@@ -13,6 +14,8 @@ export const OBJECT_OVERDUE_MS = 60 * 60 * 1000;
 export interface SchedulerFacts {
   lastBeatAt: Date | null;
   overdueObjects: number;
+  /** A job met an `epidem_chw_code` outside the province table it holds now. */
+  unrecognisedProvinceCode: boolean;
 }
 
 /**
@@ -35,6 +38,9 @@ export function schedulerStatus(
       status: 'degraded',
       reason: 'an Extract outlived its Download token by over an hour',
     };
+  }
+  if (facts.unrecognisedProvinceCode) {
+    return { status: 'degraded', reason: 'the province table is stale' };
   }
   return { status: 'ok' };
 }
@@ -69,6 +75,7 @@ export function objectsStillHeld(db: Db, dueBy: Date): SQL | undefined {
 export async function readSchedulerFacts(
   db: Db,
   now: Date,
+  provincesChecksum: string,
 ): Promise<SchedulerFacts> {
   const [beat] = await db
     .select({ beatAt: schedulerHeartbeat.beatAt })
@@ -77,12 +84,23 @@ export async function readSchedulerFacts(
     .select({ overdue: sql<number>`count(*)::int` })
     .from(downloadToken)
     .where(objectsStillHeld(db, new Date(now.getTime() - OBJECT_OVERDUE_MS)));
-  return { lastBeatAt: beat?.beatAt ?? null, overdueObjects: overdue };
+  return {
+    lastBeatAt: beat?.beatAt ?? null,
+    overdueObjects: overdue,
+    unrecognisedProvinceCode: await failedOnUnrecognisedProvinceCode(
+      db,
+      provincesChecksum,
+    ),
+  };
 }
 
 export async function schedulerHealth(
   db: Db,
   now: Date,
+  provincesChecksum: string,
 ): Promise<SchedulerHealth> {
-  return schedulerStatus(await readSchedulerFacts(db, now), now);
+  return schedulerStatus(
+    await readSchedulerFacts(db, now, provincesChecksum),
+    now,
+  );
 }

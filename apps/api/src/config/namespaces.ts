@@ -30,6 +30,8 @@ export const mapApp = (v: Vars) => ({
   staticRoot: v.STATIC_ROOT,
   frontendUrl: v.FRONTEND_URL,
   scratchDir: v.SCRATCH_DIR,
+  logDir: v.LOG_DIR,
+  bullBoard: { host: v.BULL_BOARD_HOST, port: Number(v.BULL_BOARD_PORT) },
 });
 
 export const mapDb = (v: Vars) => ({ url: v.APP_DATABASE_URL });

@@ -11,6 +11,9 @@
 services:
   app:
     image: dds-sharing-dev
+    # `docker compose logs` in development; the hour files are still written.
+    logging:
+      driver: json-file
     environment:
       TRUST_PROXY: 'false'
       FRONTEND_URL: http://localhost:3000

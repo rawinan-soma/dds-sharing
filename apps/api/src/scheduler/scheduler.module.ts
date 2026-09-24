@@ -4,8 +4,10 @@ import {
   Module,
   OnApplicationShutdown,
 } from '@nestjs/common';
+import { type ConfigType } from '@nestjs/config';
 import { ScheduleModule, SchedulerRegistry } from '@nestjs/schedule';
 import { type Pool } from 'pg';
+import { appConfig } from '../config/namespaces';
 import { DB, PG_POOL, type Db } from '../db/database.module';
 import { type ArchiveStore } from '../extraction/archive-store';
 import {
@@ -87,6 +89,7 @@ export class TickScheduler implements OnApplicationShutdown {
         MailDeliveries,
         ReviewerSessions,
         LoginThrottle,
+        appConfig.KEY,
       ],
       useFactory: (
         db: Db,
@@ -99,6 +102,7 @@ export class TickScheduler implements OnApplicationShutdown {
         mailDeliveries: MailDeliveries,
         sessions: ReviewerSessions,
         loginThrottle: LoginThrottle,
+        app: ConfigType<typeof appConfig>,
       ) =>
         new Tick({
           db,
@@ -111,6 +115,7 @@ export class TickScheduler implements OnApplicationShutdown {
           mailDeliveries,
           sessions,
           loginThrottle,
+          logDir: app.logDir,
         }),
     },
     TickScheduler,

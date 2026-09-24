@@ -29,6 +29,45 @@ export async function insertQueuedJob(
   return id;
 }
 
+/**
+ * What a failed job's `result` holds: identifiers only, never a row. Today
+ * that is §6.3's stale-province case — keyed by the province checksum the job
+ * ran under, so the signal clears when the table is reseeded rather than on
+ * the next success, which proves nothing about a province that job never saw.
+ */
+export interface FailedJobResult {
+  unrecognisedProvinceCode: { provincesChecksum: string };
+}
+
+// The JSON path `failedOnUnrecognisedProvinceCode` reads, checked against the
+// type above so a rename cannot silently break the signal.
+const UNRECOGNISED_PROVINCE_KEY =
+  'unrecognisedProvinceCode' satisfies keyof FailedJobResult;
+const CHECKSUM_KEY =
+  'provincesChecksum' satisfies keyof FailedJobResult[typeof UNRECOGNISED_PROVINCE_KEY];
+
+/**
+ * Whether a job has failed on an `epidem_chw_code` outside the province table
+ * whose checksum is given — §6.3's "our table is stale", which the
+ * scheduler signal carries (§14.1, §15.3).
+ */
+export async function failedOnUnrecognisedProvinceCode(
+  db: Executor,
+  provincesChecksum: string,
+): Promise<boolean> {
+  const [row] = await db
+    .select({ one: sql`1` })
+    .from(extractionJob)
+    .where(
+      and(
+        eq(extractionJob.status, 'failed'),
+        sql`${extractionJob.result}->${UNRECOGNISED_PROVINCE_KEY}->>${CHECKSUM_KEY} = ${provincesChecksum}`,
+      ),
+    )
+    .limit(1);
+  return row !== undefined;
+}
+
 /** An unfinished job, as the tick checks it against BullMQ. */
 export interface UnfinishedJob {
   id: string;
@@ -67,7 +106,7 @@ export class ExtractionJobs {
     jobId: string,
     now: Date,
     cause: JobFailureCause,
-    summary: ExtractionSummary | null,
+    result: FailedJobResult | null,
   ): Promise<void> {
     await this.db
       .update(extractionJob)
@@ -75,7 +114,7 @@ export class ExtractionJobs {
         status: 'failed',
         finishedAt: now,
         failureCause: cause,
-        result: summary,
+        result,
       })
       .where(eq(extractionJob.id, jobId));
   }

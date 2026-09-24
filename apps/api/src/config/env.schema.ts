@@ -2,16 +2,20 @@ import { isIP } from 'node:net';
 import Joi from 'joi';
 
 // The environment holds deployment facts, not policy (NFR-31). Every variable
-// is required and has no default, except the three that name a safe choice.
+// is required and has no default, except the few that name a safe choice.
 //
 // Nothing here may echo a value. A failure lists variable names and the rule
 // they broke, so a secret that fails a rule never reaches a log.
 
 export type Env = Record<string, string | undefined>;
 
-/** The three variables with a default: each one is the safe setting. */
+/** The variables with a default: each one is the safe setting. */
 export const ENV_DEFAULTS = {
   PORT: '3000',
+  // Bull Board has no auth of its own: loopback unless the operator says
+  // otherwise, which inside a container they must (spec §14.4).
+  BULL_BOARD_HOST: '127.0.0.1',
+  BULL_BOARD_PORT: '3100',
   ALLOW_INSECURE_TRANSPORT: 'false',
   SMTP_ALLOW_PLAINTEXT: 'false',
 } as const;
@@ -36,6 +40,7 @@ const MESSAGES: Record<string, string> = {
   'env.bucket':
     'must be an S3 bucket name: 3-63 lowercase letters, digits or hyphens',
   'env.origin': 'must be an origin only: no path, query or trailing slash',
+  'env.ip': 'must be an IP address',
   'env.https': 'must be https unless ALLOW_INSECURE_TRANSPORT is true',
   'env.trustProxy':
     'must be true, false, a hop count, or a list of proxy addresses',
@@ -51,6 +56,11 @@ const port = S.custom((value: string, helpers) => {
   if (!/^\d{1,5}$/.test(value)) return helpers.error('env.port');
   const n = Number(value);
   return n >= 1 && n <= 65535 ? value : helpers.error('env.port');
+});
+
+const ipAddress = S.ip({ cidr: 'forbidden' }).messages({
+  'string.ip': MESSAGES['env.ip'],
+  'string.ipVersion': MESSAGES['env.ip'],
 });
 
 const boolean = S.valid('true', 'false').messages({
@@ -117,6 +127,15 @@ export const appGroup: Group = {
   // The local scratch volume the extraction job's disk floor checks (spec
   // §7.8) and, from a later ticket, writes each Report code's output to.
   SCRATCH_DIR: secret.required(),
+  // Where the application's hour files are written and, after 72 hours,
+  // deleted by the tick (spec §14.5). Relative to the working directory
+  // unless absolute.
+  LOG_DIR: secret.required(),
+  // Bull Board's own listener, never the public port (spec §14.4). Compose
+  // binds it to 0.0.0.0 inside the container and publishes it on the host's
+  // loopback only, for an SSH port-forward.
+  BULL_BOARD_HOST: ipAddress.default(ENV_DEFAULTS.BULL_BOARD_HOST),
+  BULL_BOARD_PORT: port.default(ENV_DEFAULTS.BULL_BOARD_PORT),
 };
 
 /** What the HTTP app connects as. Never the owner (§6.4). */
