@@ -1749,8 +1749,12 @@ recipient's.
 - On the fifth failure the send is **abandoned** and raises a must-clear Reviewer
   Alert for that Request.
 - ⚠️ **Two or more concurrent send failures raise the operator banner and the
-  `mail` health component instead of N useless per-Request Alerts.** *One failure
-  is a Requester's problem; two at once is an outage.*
+  `mail` health component.** *One failure is a Requester's problem; two at once
+  is an outage.* **The per-Request Alert is still raised during an outage**
+  (decided 2026-09-24, #73): the Requester still has no link, and someone must
+  still telephone them — a suppressed Alert is a call nobody is prompted to
+  make, and its link expires unseen. This line formerly said the banner
+  replaced the Alerts.
 
 **The class covers every email the system sends**, but handling differs by kind:
 
