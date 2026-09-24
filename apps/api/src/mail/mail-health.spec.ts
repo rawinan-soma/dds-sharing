@@ -34,4 +34,15 @@ describe('mailHealth', () => {
     );
     expect(result.status).toBe('degraded');
   });
+
+  it('never carries a count in its reason: the health document is statuses only', async () => {
+    const result = await mailHealth(
+      fakeDb([
+        { kind: 'delivery' },
+        { kind: 'rejection' },
+        { kind: 'delivery' },
+      ]),
+    );
+    expect(JSON.stringify(result)).not.toMatch(/\d/);
+  });
 });

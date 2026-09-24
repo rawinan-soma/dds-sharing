@@ -56,12 +56,18 @@ describe('AppModule (e2e)', () => {
       .get('/api/health')
       .expect(200);
 
+    // `disk` measures this machine's real volume, so it may warn here; a
+    // warning alone never makes the document non-200.
+    const body = response.body as {
+      components: { disk: { status: string } };
+    };
+    expect(['ok', 'warn']).toContain(body.components.disk.status);
     expect(response.body).toEqual({
-      status: 'ok',
+      status: body.components.disk.status,
       components: {
         scheduler: { status: 'ok' },
         extraction: { status: 'ok' },
-        disk: { status: 'ok' },
+        disk: body.components.disk,
         mail: { status: 'ok' },
       },
       insecureFlags: [],
@@ -77,6 +83,20 @@ describe('AppModule (e2e)', () => {
       .expect(200);
 
     expect(alias.body).toEqual(health.body);
+  });
+
+  it.each(['/', '/queues', '/bull-board', '/api/bull-board'])(
+    'never serves Bull Board on the public port (spec §14.4): %s',
+    async (path) => {
+      const response = await request(app.getHttpServer()).get(path);
+
+      // The board's page embeds its UI config under this id.
+      expect(response.text).not.toContain('__UI_CONFIG__');
+    },
+  );
+
+  it("never answers Bull Board's own API on the public port", async () => {
+    await request(app.getHttpServer()).get('/api/queues').expect(404);
   });
 
   it('never lets the SPA shell swallow an unmatched API route', async () => {

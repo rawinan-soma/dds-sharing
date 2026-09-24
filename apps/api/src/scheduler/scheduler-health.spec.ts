@@ -8,14 +8,25 @@ const MINUTE = 60_000;
 describe('schedulerStatus', () => {
   it('is ok with a heartbeat inside five minutes and nothing overdue', () => {
     expect(
-      schedulerStatus({ lastBeatAt: ago(5 * MINUTE), overdueObjects: 0 }, now),
+      schedulerStatus(
+        {
+          lastBeatAt: ago(5 * MINUTE),
+          overdueObjects: 0,
+          unrecognisedProvinceCode: false,
+        },
+        now,
+      ),
     ).toEqual({ status: 'ok' });
   });
 
   it('is degraded once the heartbeat is more than five minutes old', () => {
     expect(
       schedulerStatus(
-        { lastBeatAt: ago(5 * MINUTE + 1), overdueObjects: 0 },
+        {
+          lastBeatAt: ago(5 * MINUTE + 1),
+          overdueObjects: 0,
+          unrecognisedProvinceCode: false,
+        },
         now,
       ),
     ).toMatchObject({ status: 'degraded' });
@@ -23,19 +34,50 @@ describe('schedulerStatus', () => {
 
   it('is degraded when the tick has never beaten at all', () => {
     expect(
-      schedulerStatus({ lastBeatAt: null, overdueObjects: 0 }, now),
+      schedulerStatus(
+        {
+          lastBeatAt: null,
+          overdueObjects: 0,
+          unrecognisedProvinceCode: false,
+        },
+        now,
+      ),
     ).toMatchObject({ status: 'degraded' });
   });
 
   it('is degraded by an object still present an hour past its token, even with a fresh heartbeat', () => {
     expect(
-      schedulerStatus({ lastBeatAt: ago(MINUTE), overdueObjects: 1 }, now),
+      schedulerStatus(
+        {
+          lastBeatAt: ago(MINUTE),
+          overdueObjects: 1,
+          unrecognisedProvinceCode: false,
+        },
+        now,
+      ),
+    ).toMatchObject({ status: 'degraded' });
+  });
+
+  it('is degraded by an unrecognised province code, even with a fresh heartbeat (§6.3)', () => {
+    expect(
+      schedulerStatus(
+        {
+          lastBeatAt: ago(MINUTE),
+          overdueObjects: 0,
+          unrecognisedProvinceCode: true,
+        },
+        now,
+      ),
     ).toMatchObject({ status: 'degraded' });
   });
 
   it('never carries a count in its reason: the health document is statuses only', () => {
     const health = schedulerStatus(
-      { lastBeatAt: ago(MINUTE), overdueObjects: 7 },
+      {
+        lastBeatAt: ago(MINUTE),
+        overdueObjects: 7,
+        unrecognisedProvinceCode: false,
+      },
       now,
     );
     expect(JSON.stringify(health)).not.toContain('7');

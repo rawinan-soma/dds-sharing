@@ -193,6 +193,19 @@ describe('projectRow', () => {
         StaleProvinceTableError,
       );
     });
+
+    it('never quotes the code it did not recognise: it is a field of a row (§14.5)', () => {
+      const counters = newProjectCounters();
+      const row = baseRow({ epidem_chw_code: 57 });
+      let message = '';
+      try {
+        projectRow(row, '201', PROVINCES, NOW, counters);
+      } catch (error) {
+        message = (error as Error).message;
+      }
+      expect(message).not.toBe('');
+      expect(message).not.toContain('57');
+    });
   });
 
   describe('unknown field names', () => {

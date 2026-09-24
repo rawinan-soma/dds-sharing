@@ -12,6 +12,14 @@ services:
     build: .
     ports:
       - '3000:3000'
+      # Bull Board (spec §14.4): the host's loopback only — never the public
+      # ingress. Reach it with `ssh -L 3100:127.0.0.1:3100 <docker-host>`.
+      - '127.0.0.1:3100:3100'
+    # The app writes its own hour files to LOG_DIR and the tick deletes each
+    # after 72 hours (spec §14.5). Docker's drivers expire by size, never by
+    # age, so a second copy here would outlive them: there is none.
+    logging:
+      driver: none
     environment:
       # Migrations run as the owner; the application runs as a read-only member of dds_app.
       DATABASE_URL: ${DATABASE_URL:?}
@@ -20,6 +28,10 @@ services:
       TRUST_PROXY: ${TRUST_PROXY:?}
       FRONTEND_URL: ${FRONTEND_URL:?}
       SCRATCH_DIR: ${SCRATCH_DIR:?}
+      LOG_DIR: ${LOG_DIR:?}
+      # Inside the container, so the published loopback port above can reach
+      # it; the host binding is what keeps it private.
+      BULL_BOARD_HOST: 0.0.0.0
       MINIO_ENDPOINT: ${MINIO_ENDPOINT:?}
       MINIO_PORT: ${MINIO_PORT:?}
       MINIO_USE_SSL: ${MINIO_USE_SSL:?}
@@ -41,6 +53,7 @@ services:
       SMTP_ALLOW_PLAINTEXT: ${SMTP_ALLOW_PLAINTEXT:-false}
     volumes:
       - scratch-data:/scratch
+      - app-logs:/logs
     depends_on:
       postgres:
         condition: service_healthy
@@ -82,8 +95,13 @@ services:
     volumes:
       - minio-data:/data
 
+# Every named volume lives on the Docker host's one filesystem (the default
+# `local` driver), which is what lets the app's `disk` health component
+# (spec §13.5) measure PostgreSQL, logs, MinIO and the images through its own
+# scratch volume. Moving any of these to another disk needs its own alarm.
 volumes:
   postgres-data:
   redis-data:
   minio-data:
   scratch-data:
+  app-logs:
