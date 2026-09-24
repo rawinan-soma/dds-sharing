@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { buildExtractArchive } from './build-extract-archive';
 import { PROJECT_COLUMNS, type ProjectedRow } from './project';
-import { readZipEntries as readEntries } from './test-support/read-zip-entries';
+import { readZipEntries as readEntries } from './read-zip-entries';
 
 function row(overrides: Partial<Record<string, string>>): ProjectedRow {
   const base = Object.fromEntries(PROJECT_COLUMNS.map((c) => [c, '']));

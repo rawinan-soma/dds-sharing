@@ -38,6 +38,21 @@ export type DeactivateOutcome =
   | { status: 'not_found' }
   | { status: 'already_deactivated' };
 
+/** Neither a reset nor a re-enrolment revives a deactivated account. */
+type NotResettable = { status: 'not_found' } | { status: 'deactivated' };
+
+export type ResetPasswordOutcome =
+  { status: 'reset'; password: string; sessionsEnded: number } | NotResettable;
+
+export type ReenrolTotpOutcome =
+  | {
+      status: 're_enrolled';
+      totpSecret: string;
+      enrolmentUri: string;
+      sessionsEnded: number;
+    }
+  | NotResettable;
+
 export class ReviewerInputError extends Error {}
 
 // What the host commands do, without any of their I/O. Host commands name no
@@ -68,13 +83,8 @@ export class ReviewerAccounts {
       throw new ReviewerInputError('The email address is not valid.');
     }
 
-    const password = generatePassword();
-    // One rule set, one place; a generator drifting from it must not ship.
-    if (validatePassword(password).length > 0) {
-      throw new Error('generated password violates the password policy');
-    }
+    const { password, passwordHash } = await newPassword();
     const totpSecret = generateTotpSecret();
-    const passwordHash = await hashPassword(password);
 
     const reviewerId = await this.db.transaction(async (tx) => {
       const inserted = await tx
@@ -185,4 +195,74 @@ export class ReviewerAccounts {
       };
     });
   }
+
+  /**
+   * "I think someone saw me type it" when they cannot sign in to change it.
+   * The next sign-in forces a change, and that change writes the Reviewer's
+   * own `password_changed`: the catalogue is closed, and the reset itself names
+   * no one (ADR 0020).
+   */
+  async resetPassword(username: string): Promise<ResetPasswordOutcome> {
+    const { password, passwordHash } = await newPassword();
+    return this.replaceCredential(
+      username,
+      { passwordHash, mustChangePassword: true },
+      (sessionsEnded) => ({ status: 'reset', password, sessionsEnded }),
+    );
+  }
+
+  /**
+   * A lost or replaced phone. The account is inert again until one code from
+   * the new enrolment confirms it, and that sign-in writes `totp_enrolled`.
+   */
+  async reenrolTotp(username: string): Promise<ReenrolTotpOutcome> {
+    const totpSecret = generateTotpSecret();
+    return this.replaceCredential(
+      username,
+      { totpSecret, totpConfirmedAt: null, totpLastUsedStep: null },
+      (sessionsEnded) => ({
+        status: 're_enrolled',
+        totpSecret,
+        enrolmentUri: enrolmentUri(username.trim(), totpSecret),
+        sessionsEnded,
+      }),
+    );
+  }
+
+  // Replacing a credential ends every live session: whoever held the old one
+  // may be the reason for the replacement.
+  private replaceCredential<T>(
+    username: string,
+    set: Partial<typeof reviewer.$inferInsert>,
+    done: (sessionsEnded: number) => T,
+  ): Promise<T | NotResettable> {
+    return this.db.transaction(async (tx) => {
+      const [target] = await tx
+        .select({ id: reviewer.id, deactivatedAt: reviewer.deactivatedAt })
+        .from(reviewer)
+        .where(eq(reviewer.username, username.trim()))
+        .for('update');
+      if (!target) return { status: 'not_found' as const };
+      if (target.deactivatedAt) return { status: 'deactivated' as const };
+
+      await tx.update(reviewer).set(set).where(eq(reviewer.id, target.id));
+      const ended = await tx
+        .delete(reviewerSession)
+        .where(eq(reviewerSession.reviewerId, target.id))
+        .returning({ id: reviewerSession.id });
+      return done(ended.length);
+    });
+  }
+}
+
+async function newPassword(): Promise<{
+  password: string;
+  passwordHash: string;
+}> {
+  const password = generatePassword();
+  // One rule set, one place; a generator drifting from it must not ship.
+  if (validatePassword(password).length > 0) {
+    throw new Error('generated password violates the password policy');
+  }
+  return { password, passwordHash: await hashPassword(password) };
 }

@@ -1,23 +1,26 @@
 import { parseArgs } from 'node:util';
 import QRCode from 'qrcode';
+import { type CliIo, isArgumentError } from './cli-io';
 import {
   MIN_ACTIVE_REVIEWERS,
   type ReviewerAccounts,
   ReviewerInputError,
 } from '../reviewer/reviewer-accounts';
 
-export interface CliIo {
-  out(line: string): void;
-  err(line: string): void;
-  prompt(question: string): Promise<string>;
-}
+export type { CliIo } from './cli-io';
 
 const USAGE = `Usage:
   reviewer seed --username <name> --email <address>
       Seeds a named Reviewer. Prompts for their real name.
   reviewer deactivate <username> [--force]
       Deactivates a Reviewer. Refuses to leave fewer than two active
-      Reviewers unless --force is given.`;
+      Reviewers unless --force is given.
+  reviewer reset-password <username>
+      Prints a new password once and forces a change at the next sign-in.
+      Ends their live sessions. There is no email reset: this is the path.
+  reviewer reenrol-totp <username>
+      Prints a new authenticator QR. The account is inert until one code
+      from it confirms the enrolment. Ends their live sessions.`;
 
 /** What a Reviewer is told at seeding: the same words first login shows. */
 export type RetentionNotice = string[];
@@ -35,13 +38,16 @@ export async function runReviewerCli(
   try {
     if (command === 'seed') return await seed(rest, io, accounts, notice);
     if (command === 'deactivate') return await deactivate(rest, io, accounts);
+    if (command === 'reset-password')
+      return await resetPassword(rest, io, accounts);
+    if (command === 'reenrol-totp')
+      return await reenrolTotp(rest, io, accounts);
   } catch (error) {
     if (error instanceof ReviewerInputError) {
       io.err(error.message);
       return 1;
     }
-    // Unknown flags, missing values: parseArgs's own messages are readable.
-    if (error instanceof TypeError && 'code' in error) {
+    if (isArgumentError(error)) {
       io.err(error.message);
       io.err(USAGE);
       return 1;
@@ -89,10 +95,6 @@ async function seed(
     email: values.email,
   });
 
-  const qr = await QRCode.toString(seeded.enrolmentUri, {
-    type: 'terminal',
-    small: true,
-  });
   io.out(`Reviewer "${values.username}" seeded.`);
   io.out('');
   io.out(
@@ -100,11 +102,7 @@ async function seed(
   );
   io.out(`Password: ${seeded.password}`);
   io.out('');
-  io.out('Have them scan this with Google Authenticator:');
-  io.out(qr);
-  io.out(
-    `If the QR will not scan, type this key in by hand: ${seeded.totpSecret}`,
-  );
+  await printEnrolment(io, seeded);
   io.out('');
   io.out(
     'The account is inert until they sign in once with a code, and their first sign-in makes them choose a new password.',
@@ -162,4 +160,96 @@ async function deactivate(
       );
       return 0;
   }
+}
+
+async function printEnrolment(
+  io: CliIo,
+  enrolment: { enrolmentUri: string; totpSecret: string },
+): Promise<void> {
+  const qr = await QRCode.toString(enrolment.enrolmentUri, {
+    type: 'terminal',
+    small: true,
+  });
+  io.out('Have them scan this with Google Authenticator:');
+  io.out(qr);
+  io.out(
+    `If the QR will not scan, type this key in by hand: ${enrolment.totpSecret}`,
+  );
+}
+
+function oneUsername(args: string[], io: CliIo): string | null {
+  const { positionals } = parseArgs({
+    args,
+    options: {},
+    allowPositionals: true,
+    strict: true,
+  });
+  if (positionals.length !== 1) {
+    io.err('Give exactly one username.');
+    io.err(USAGE);
+    return null;
+  }
+  return positionals[0];
+}
+
+function refused(
+  io: CliIo,
+  username: string,
+  status: 'not_found' | 'deactivated',
+): number {
+  io.err(
+    status === 'not_found'
+      ? `No Reviewer named "${username}".`
+      : `"${username}" is deactivated, and a deactivated account stays deactivated. Seed a new one instead.`,
+  );
+  return 1;
+}
+
+async function resetPassword(
+  args: string[],
+  io: CliIo,
+  accounts: ReviewerAccounts,
+): Promise<number> {
+  const username = oneUsername(args, io);
+  if (username === null) return 1;
+  const outcome = await accounts.resetPassword(username);
+  if (outcome.status !== 'reset') return refused(io, username, outcome.status);
+
+  io.out(
+    `Password for "${username}" reset; ${outcome.sessionsEnded} live session(s) ended.`,
+  );
+  io.out('');
+  io.out(
+    'Give the Reviewer this password now. It is shown once and cannot be shown again.',
+  );
+  io.out(`Password: ${outcome.password}`);
+  io.out('');
+  io.out(
+    'Their next sign-in, with their existing authenticator, makes them choose a new password.',
+  );
+  return 0;
+}
+
+async function reenrolTotp(
+  args: string[],
+  io: CliIo,
+  accounts: ReviewerAccounts,
+): Promise<number> {
+  const username = oneUsername(args, io);
+  if (username === null) return 1;
+  const outcome = await accounts.reenrolTotp(username);
+  if (outcome.status !== 're_enrolled') {
+    return refused(io, username, outcome.status);
+  }
+
+  io.out(
+    `Authenticator for "${username}" replaced; ${outcome.sessionsEnded} live session(s) ended. Codes from the old one no longer work.`,
+  );
+  io.out('');
+  await printEnrolment(io, outcome);
+  io.out('');
+  io.out(
+    'The account is inert until they sign in once with a code from this enrolment. Their password is unchanged.',
+  );
+  return 0;
 }

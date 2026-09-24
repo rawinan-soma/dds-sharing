@@ -4,7 +4,8 @@ import { Pool } from 'pg';
 import { hostCliSchema, validateEnvOrExit } from '../config/env.schema';
 import { systemClock } from '../clock/clock';
 import { ReviewerAccounts } from '../reviewer/reviewer-accounts';
-import { runReviewerCli, type CliIo } from './reviewer-cli';
+import { type CliIo, runMain } from './cli-io';
+import { runReviewerCli } from './reviewer-cli';
 import { loadRetentionNotice } from './retention-notice';
 
 // `docker compose exec app node dist/cli/reviewer.js <command>`
@@ -36,12 +37,4 @@ async function main(): Promise<number> {
   }
 }
 
-main().then(
-  (code) => {
-    process.exitCode = code;
-  },
-  (error: unknown) => {
-    console.error(error);
-    process.exitCode = 1;
-  },
-);
+runMain(main);
