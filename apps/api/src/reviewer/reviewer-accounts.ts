@@ -200,13 +200,13 @@ export class ReviewerAccounts {
 
   /**
    * "I think someone saw me type it" when they cannot sign in to change it.
-   * The next sign-in forces a change, and that change writes the Reviewer's
-   * own `password_changed`: the catalogue is closed, and the reset itself names
-   * no one (ADR 0020).
+   * The next sign-in forces a change. Recorded as `password_reset`, naming the
+   * account and never who ran it (ADR 0020).
    */
   async resetPassword(username: string): Promise<ResetPasswordOutcome> {
     const { password, passwordHash } = await newPassword();
     return this.replaceCredential(
+      'password_reset',
       username,
       { passwordHash, mustChangePassword: true },
       (sessionsEnded) => ({ status: 'reset', password, sessionsEnded }),
@@ -216,10 +216,12 @@ export class ReviewerAccounts {
   /**
    * A lost or replaced phone. The account is inert again until one code from
    * the new enrolment confirms it, and that sign-in writes `totp_enrolled`.
+   * Recorded as `totp_reset` the moment it runs.
    */
   async reenrolTotp(username: string): Promise<ReenrolTotpOutcome> {
     const totpSecret = generateTotpSecret();
     return this.replaceCredential(
+      'totp_reset',
       username,
       { totpSecret, totpConfirmedAt: null, totpLastUsedStep: null },
       (sessionsEnded) => ({
@@ -234,13 +236,18 @@ export class ReviewerAccounts {
   // Replacing a credential ends every live session: whoever held the old one
   // may be the reason for the replacement.
   private replaceCredential<T>(
+    type: 'password_reset' | 'totp_reset',
     username: string,
     set: Partial<typeof reviewer.$inferInsert>,
     done: (sessionsEnded: number) => T,
   ): Promise<T | CredentialRefusal> {
     return this.db.transaction(async (tx) => {
       const [target] = await tx
-        .select({ id: reviewer.id, deactivatedAt: reviewer.deactivatedAt })
+        .select({
+          id: reviewer.id,
+          username: reviewer.username,
+          deactivatedAt: reviewer.deactivatedAt,
+        })
         .from(reviewer)
         .where(eq(reviewer.username, username.trim()))
         .for('update');
@@ -252,6 +259,12 @@ export class ReviewerAccounts {
         .delete(reviewerSession)
         .where(eq(reviewerSession.reviewerId, target.id))
         .returning({ id: reviewerSession.id });
+      await writeReviewerEvent(tx, {
+        type,
+        occurredAt: this.clock.now(),
+        actor: { actorType: 'system' },
+        payload: { username: target.username, sessionsEnded: ended.length },
+      });
       return done(ended.length);
     });
   }

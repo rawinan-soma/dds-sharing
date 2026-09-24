@@ -65,6 +65,8 @@ export const REVIEWER_EVENT_TYPES = [
   'seeded',
   'totp_enrolled',
   'deactivated',
+  'password_reset',
+  'totp_reset',
 ] as const;
 export type ReviewerEventType = (typeof REVIEWER_EVENT_TYPES)[number];
 
@@ -260,6 +262,19 @@ export interface ReviewerEventPayloads {
   totp_enrolled: Record<string, never>;
   /** Whether `--force` was passed, i.e. the two-Reviewer floor was overridden. */
   deactivated: { force: boolean };
+  /**
+   * Host commands replacing one credential. The account is named here because
+   * a `system` actor carries no reviewer id, and the record must say which
+   * account was reset the moment it happened, not at the next sign-in.
+   */
+  password_reset: CredentialReset;
+  totp_reset: CredentialReset;
+}
+
+interface CredentialReset {
+  username: string;
+  /** Live sessions the reset ended. */
+  sessionsEnded: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -304,6 +319,8 @@ interface ReviewerEventActors {
   seeded: 'system';
   totp_enrolled: 'reviewer';
   deactivated: 'system';
+  password_reset: 'system';
+  totp_reset: 'system';
 }
 
 // Compile-time proof that each map lists exactly the catalogue: a type added to

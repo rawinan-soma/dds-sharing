@@ -329,6 +329,19 @@ describe('the reviewer host commands', () => {
       expect(row.totp_confirmed_at).not.toBeNull();
       expect(await sessionsOf('somchai')).toBe(0);
       expect(cli.text()).toMatch(/1 live session/);
+      // Recorded the moment it runs, naming the account and nobody else.
+      const events = (
+        await scratch.owner.query(
+          `SELECT actor_type, reviewer_id, payload FROM reviewer_event WHERE type = 'password_reset'`,
+        )
+      ).rows;
+      expect(events).toEqual([
+        {
+          actor_type: 'system',
+          reviewer_id: null,
+          payload: { username: 'somchai', sessionsEnded: 1 },
+        },
+      ]);
     });
 
     it('refuses a deactivated Reviewer', async () => {
@@ -343,6 +356,10 @@ describe('the reviewer host commands', () => {
       ).toBe(1);
       expect(cli.err.join('\n')).toMatch(/deactivated/);
       expect(cli.text()).not.toMatch(/Password:/);
+      const { rowCount } = await scratch.owner.query(
+        `SELECT 1 FROM reviewer_event WHERE type = 'password_reset' AND payload->>'username' = 'malee'`,
+      );
+      expect(rowCount).toBe(0);
     });
 
     it('reports an unknown Reviewer', async () => {
@@ -404,6 +421,18 @@ describe('the reviewer host commands', () => {
       );
       expect(rowCount).toBe(0);
       expect(cli.text()).toMatch(/inert/);
+      const events = (
+        await scratch.owner.query(
+          `SELECT actor_type, reviewer_id, payload FROM reviewer_event WHERE type = 'totp_reset'`,
+        )
+      ).rows;
+      expect(events).toEqual([
+        {
+          actor_type: 'system',
+          reviewer_id: null,
+          payload: { username: 'somchai', sessionsEnded: 1 },
+        },
+      ]);
     });
 
     it('refuses a deactivated Reviewer', async () => {

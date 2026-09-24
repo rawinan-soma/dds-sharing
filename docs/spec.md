@@ -1993,7 +1993,8 @@ the data's size; the archive's is what the disk bound and the edge argument reas
 about.
 
 **`reviewer_event`** — `login_succeeded`, `login_failed`, `logged_out`,
-`session_expired`, `password_changed`, `seeded`, `totp_enrolled`, `deactivated`.
+`session_expired`, `password_changed`, `seeded`, `totp_enrolled`, `deactivated`,
+`password_reset`, `totp_reset`.
 
 - **Actors and payloads** (settled with #61): `login_succeeded`, `logged_out`,
   `session_expired`, `password_changed` and `totp_enrolled` have a `reviewer`
@@ -2004,6 +2005,12 @@ about.
   are written by a host command and so have a `system` actor and name no one
   (ADR 0020). `seeded` has an empty payload; `deactivated` carries only
   `{force}`, whether `--force` overrode the two-Reviewer floor.
+  `password_reset` and `totp_reset` are the host password reset and TOTP
+  re-enrolment (§17.5), also `system`, and carry `{username, sessions_ended}`:
+  a `system` actor has no reviewer id, and a reset must be on the record the
+  moment it runs — not only when the Reviewer next signs in, which may be never.
+  The Reviewer's own follow-up still writes `password_changed` or
+  `totp_enrolled`.
 - Failed logins carry IP and user agent and **never the submitted password or
   TOTP code** — the pattern is the signal, not the credential.
 - **A `login_failed` whose code was valid one or two TOTP steps ago is recorded
