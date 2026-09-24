@@ -31,8 +31,8 @@ export class ReviewQueueController {
   ) {}
 
   @Get()
-  list() {
-    return this.queue.list();
+  list(@Req() req: ReviewerRequest) {
+    return this.queue.list(reviewerOf(req).reviewerId);
   }
 
   @Get(':id')

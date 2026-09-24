@@ -6,6 +6,8 @@ import { ExtractionModule } from '../extraction/extraction.module';
 import { MailModule } from '../mail/mail.module';
 import { ReferenceDataModule } from '../reference/reference-data.module';
 import { CLOCK, type Clock } from '../clock/clock';
+import { AlertsController } from './alerts.controller';
+import { Alerts } from './alerts.service';
 import { LoginThrottle } from './login-throttle';
 import { CsrfGuard } from './csrf.guard';
 import { DecisionsController } from './decisions.controller';
@@ -20,10 +22,16 @@ import { ReviewerSessions } from './reviewer-sessions';
 
 @Module({
   imports: [ReferenceDataModule, ExtractionModule, MailModule],
-  controllers: [ReviewerController, ReviewQueueController, DecisionsController],
+  controllers: [
+    ReviewerController,
+    ReviewQueueController,
+    DecisionsController,
+    AlertsController,
+  ],
   providers: [
     ReviewQueue,
     Decisions,
+    Alerts,
     {
       provide: REVIEWER_CONFIG,
       inject: [transportConfig.KEY],

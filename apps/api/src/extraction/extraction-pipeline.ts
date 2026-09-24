@@ -67,14 +67,56 @@ export interface ExtractionResult {
 
 /** The job fails and publishes nothing (spec §7.5, §7.6). */
 export class ExtractionFailure extends Error {
+  /** §6.3's stale-table case: `internal` to `job_failed`'s closed cause set,
+   * but the scheduler signal must still hear of it (§14.1). Named at the call
+   * site, never a bare positional boolean. */
+  readonly unrecognisedProvinceCode: boolean;
+
   constructor(
     readonly cause: JobFailureCause,
     readonly xRequestId: string | null,
     message: string,
+    options: { unrecognisedProvinceCode?: boolean } = {},
   ) {
     super(message);
     this.name = 'ExtractionFailure';
+    this.unrecognisedProvinceCode = options.unrecognisedProvinceCode ?? false;
   }
+}
+
+/** A row that passed the Filter, with its position among the code's fetched
+ * rows — all a projection error may name (§14.5). */
+interface IndexedRow {
+  row: Record<string, unknown>;
+  index: number;
+}
+
+/**
+ * Projects a code's kept rows, turning any failure into one that names the
+ * **row index** and never the row (spec §14.5). Nothing caught is chained or
+ * quoted: an unexpected error's message can hold a slice of the value it
+ * choked on. `index` counts the code's fetched rows, before the Filter.
+ */
+function projectAll(
+  kept: readonly IndexedRow[],
+  groupCode: string,
+  deps: ExtractionPipelineDeps,
+  counters: ProjectCounters,
+): ProjectedRow[] {
+  return kept.map(({ row, index }) => {
+    try {
+      return projectRow(row, groupCode, deps.provinces, deps.now(), counters);
+    } catch (error) {
+      const stale = error instanceof StaleProvinceTableError;
+      throw new ExtractionFailure(
+        'internal',
+        null,
+        `code ${groupCode} row ${index}: ` +
+          (stale ? error.message : 'projection failed'),
+        { unrecognisedProvinceCode: stale },
+      );
+    }
+  });
 }
 
 function causeOf(kind: UpstreamErrorKind): JobFailureCause {
@@ -161,15 +203,13 @@ async function fetchOneCode(
     }
 
     let missing = 0;
-    const kept: Record<string, unknown>[] = [];
-    for (const row of rawRows) {
+    const kept: IndexedRow[] = [];
+    rawRows.forEach((row, index) => {
       const outcome = filterRow(row, provinces);
       if (outcome.epidemChwCodeMissing) missing += 1;
-      if (outcome.kept) kept.push(row);
-    }
-    const rows = kept.map((row) =>
-      projectRow(row, groupCode, deps.provinces, deps.now(), counters),
-    );
+      if (outcome.kept) kept.push({ row, index });
+    });
+    const rows = projectAll(kept, groupCode, deps, counters);
 
     return {
       rows,
@@ -212,25 +252,13 @@ export async function runExtraction(
   };
 
   for (const groupCode of codes) {
-    let outcome: Awaited<ReturnType<typeof fetchOneCode>>;
-    try {
-      outcome = await fetchOneCode(
-        groupCode,
-        span,
-        target.provinces,
-        deps,
-        counters,
-      );
-    } catch (error) {
-      if (error instanceof StaleProvinceTableError) {
-        throw new ExtractionFailure(
-          'internal',
-          null,
-          `code ${groupCode}: ${error.message}`,
-        );
-      }
-      throw error;
-    }
+    const outcome = await fetchOneCode(
+      groupCode,
+      span,
+      target.provinces,
+      deps,
+      counters,
+    );
 
     rowsByCode[groupCode] = outcome.rows;
     summary.rowsByCode[groupCode] = outcome.rows.length;

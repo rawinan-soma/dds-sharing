@@ -7,6 +7,7 @@ import { mailDelivery } from '../db/schema';
 export interface PendingSend {
   id: string;
   requestId: string;
+  kind: MailKind;
 }
 
 export class MailDeliveries {
@@ -36,7 +37,11 @@ export class MailDeliveries {
     maxAttempts: number,
   ): Promise<PendingSend[]> {
     return this.db
-      .select({ id: mailDelivery.id, requestId: mailDelivery.requestId })
+      .select({
+        id: mailDelivery.id,
+        requestId: mailDelivery.requestId,
+        kind: mailDelivery.kind,
+      })
       .from(mailDelivery)
       .where(
         and(
@@ -50,7 +55,11 @@ export class MailDeliveries {
   /** Sends queued before `queuedBefore` and still not sent — checked against Redis by the tick. */
   async queuedBefore(queuedBefore: Date): Promise<PendingSend[]> {
     return this.db
-      .select({ id: mailDelivery.id, requestId: mailDelivery.requestId })
+      .select({
+        id: mailDelivery.id,
+        requestId: mailDelivery.requestId,
+        kind: mailDelivery.kind,
+      })
       .from(mailDelivery)
       .where(
         and(

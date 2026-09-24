@@ -28,10 +28,12 @@ import {
   type MailQueue,
 } from '../mail/mail-queue';
 import { requestExpiry } from '../clock/business-hours';
+import { pruneLogFiles } from '../logging/log-files';
 import { type Clock } from '../clock/clock';
 import { moveRequestState } from '../requests/move-request-state';
 import { type LoginThrottle } from '../reviewer/login-throttle';
 import { type ReviewerSessions } from '../reviewer/reviewer-sessions';
+import { writeSendAbandoned } from '../mail/send-abandoned';
 import { collectionLapse } from './collection-lapse';
 import { objectsStillHeld } from './scheduler-health';
 import { withTimeout } from './with-timeout';
@@ -61,6 +63,7 @@ export interface PassReport {
   requestsEnded: number;
   sessionsPruned: number;
   throttleRowsPruned: number;
+  logFilesPruned: number;
 }
 
 export interface TickDeps {
@@ -75,6 +78,8 @@ export interface TickDeps {
   mailDeliveries: MailDeliveries;
   sessions: ReviewerSessions;
   loginThrottle: LoginThrottle;
+  /** Where the application's hour files live, for the 72-hour expiry (§14.5). */
+  logDir: string;
   logger?: LoggerService;
 }
 
@@ -176,6 +181,7 @@ export class Tick {
       requestsEnded: 0,
       sessionsPruned: 0,
       throttleRowsPruned: 0,
+      logFilesPruned: 0,
     };
     if (!startup) {
       report.requestsExpired = await step('expiry', 0, () =>
@@ -198,6 +204,11 @@ export class Tick {
       );
       report.throttleRowsPruned = await step('throttle', 0, () =>
         this.deps.loginThrottle.pruneDecayed(now),
+      );
+      // Logs die on the Extract's clock (§14.5). A failure withholds the
+      // heartbeat like any other step: logs outliving 72 hours is a fault.
+      report.logFilesPruned = await step('logs', 0, () =>
+        pruneLogFiles(this.deps.logDir, now),
       );
     }
     // The heartbeat means the whole pass did its work. A pass with a failed
@@ -418,13 +429,7 @@ export class Tick {
       'the queued send was lost from Redis',
       now,
     );
-    await writeRequestEvent(db, {
-      requestId: mail.requestId,
-      type: 'mail_send_abandoned',
-      occurredAt: now,
-      actor: { actorType: 'system' },
-      payload: {},
-    });
+    await writeSendAbandoned(db, mail.requestId, mail.kind, now);
     this.logger.warn(`mail ${mail.id} abandoned: its queued job was lost`);
   }
 

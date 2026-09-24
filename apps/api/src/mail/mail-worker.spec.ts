@@ -111,7 +111,7 @@ describe('processMailJob', () => {
     expect(mailDeliveries.markAbandoned).not.toHaveBeenCalled();
   });
 
-  it('on the final failure, writes mail_send_failed and mail_send_abandoned, marks the delivery abandoned, and does not rethrow', async () => {
+  it('on the final failure, writes mail_send_failed and mail_send_abandoned, and raises the send-abandoned Alert for a Delivery, marks the delivery abandoned, and does not rethrow', async () => {
     const { db, inserted } = fakeDb();
     const mailDeliveries = fakeMailDeliveries(4);
     const transport: MailTransport = {
@@ -131,6 +131,7 @@ describe('processMailJob', () => {
     expect(inserted.map((e) => e.values.type)).toEqual([
       'mail_send_failed',
       'mail_send_abandoned',
+      'delivery_alert_raised',
     ]);
     expect(mailDeliveries.markAbandoned).toHaveBeenCalledWith(
       'md-1',
@@ -140,4 +141,26 @@ describe('processMailJob', () => {
     );
     expect(mailDeliveries.markFailed).not.toHaveBeenCalled();
   });
+
+  // §10.6's Send abandoned Alert is the Delivery's: its action is phoning the
+  // Requester the approving Reviewer vouched for, about a file they never got.
+  it.each(['rejection', 'extraction_failure', 'queue_notification'] as const)(
+    'raises no Alert when a %s send is abandoned',
+    async (kind) => {
+      const { db, inserted } = fakeDb();
+      const deps: MailWorkerDeps = {
+        db,
+        transport: { send: vi.fn().mockRejectedValue(new Error('refused')) },
+        mailDeliveries: fakeMailDeliveries(4),
+        from: 'noreply@dds.test',
+        connection: {} as never,
+      };
+
+      await processMailJob({ data: { ...DATA, kind } }, deps);
+
+      expect(inserted.map((e) => e.values.type)).not.toContain(
+        'delivery_alert_raised',
+      );
+    },
+  );
 });

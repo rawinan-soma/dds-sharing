@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-member-access --
+/* eslint-disable @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-assignment --
    rows from pg and JSON bodies over HTTP are untyped by nature; the assertions are the types. */
 import { randomUUID } from 'node:crypto';
 import { INestApplication } from '@nestjs/common';
@@ -183,6 +183,54 @@ describe('delivery and collection (e2e)', () => {
     expect(await stateOf()).toBe('collected');
   });
 
+  it('clears an open collection lapse as system on a late collection, crediting no Reviewer (§10.6)', async () => {
+    const { id } = await insertRequest();
+    const { rawToken } = await insertLiveToken(id);
+    const {
+      rows: [approver],
+    } = await scratch.owner.query(
+      `INSERT INTO reviewer (username, display_name, email, password_hash, totp_secret)
+       VALUES ($1, 'Lapse Approver', 'lapse@example.go.th', 'x', 'x') RETURNING id`,
+      [`lapse-${randomUUID().slice(0, 8)}`],
+    );
+    await scratch.owner.query(
+      `INSERT INTO request_event (request_id, type, actor_type, reviewer_id, occurred_at, payload)
+       VALUES ($1, 'approved', 'reviewer', $2, now() - interval '2 days', '{}')`,
+      [id, approver.id],
+    );
+    await scratch.owner.query(
+      `INSERT INTO request_event (request_id, type, actor_type, occurred_at, payload)
+       VALUES ($1, 'collection_lapse_raised', 'system', now() - interval '1 hour',
+               '{"wallClockHoursElapsed": 24}')`,
+      [id],
+    );
+
+    await request(app.getHttpServer())
+      .get(`/d/${rawToken}/archive`)
+      .expect(200);
+    // A second Attempt clears nothing more.
+    await request(app.getHttpServer())
+      .get(`/d/${rawToken}/archive`)
+      .expect(200);
+
+    const { rows } = await scratch.owner.query(
+      `SELECT actor_type, reviewer_id, payload FROM request_event
+       WHERE request_id = $1 AND type = 'collection_lapse_cleared'`,
+      [id],
+    );
+    expect(rows).toEqual([
+      {
+        actor_type: 'system',
+        reviewer_id: null,
+        payload: {
+          outcome: null,
+          assignedReviewerId: approver.id,
+          clearingReviewerId: null,
+        },
+      },
+    ]);
+  });
+
   it('honours a Range request with a 206 and Content-Range', async () => {
     const { id } = await insertRequest();
     const { rawToken } = await insertLiveToken(id);
@@ -240,7 +288,7 @@ describe('delivery and collection (e2e)', () => {
 
     const response = await request(app.getHttpServer())
       .get('/api/health')
-      .expect(200);
+      .expect(503);
 
     expect(response.body.components.mail.status).toBe('degraded');
     expect(response.body.status).toBe('degraded');

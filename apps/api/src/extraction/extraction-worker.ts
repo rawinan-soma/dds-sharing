@@ -26,7 +26,10 @@ import {
   EXTRACTION_QUEUE_NAME,
 } from './extraction.config';
 import { type ExtractionJobData } from './extraction-queue';
-import { ExtractionJobs } from './extraction-jobs.repository';
+import {
+  ExtractionJobs,
+  type FailedJobResult,
+} from './extraction-jobs.repository';
 import {
   ExtractionFailure,
   runExtraction,
@@ -35,6 +38,7 @@ import {
   type ExtractionTarget,
   type UpstreamPager,
 } from './extraction-pipeline';
+import { raiseExtractionAlert } from '../reviewer/alert-records';
 import { StallError, StallGuard } from './stall-guard';
 
 // A Re-run (#74) will pass a run number above 1, which is what earns an
@@ -251,15 +255,27 @@ async function sendExtractionFailureMail(
   });
 }
 
-function toFailure(error: unknown): {
+function toFailure(
+  error: unknown,
+  provincesChecksum: string,
+): {
   cause: JobFailureCause;
   xRequestId: string | null;
+  result: FailedJobResult | null;
 } {
   if (error instanceof ExtractionFailure) {
-    return { cause: error.cause, xRequestId: error.xRequestId };
+    return {
+      cause: error.cause,
+      xRequestId: error.xRequestId,
+      result: error.unrecognisedProvinceCode
+        ? { unrecognisedProvinceCode: { provincesChecksum } }
+        : null,
+    };
   }
-  if (error instanceof StallError) return { cause: 'stall', xRequestId: null };
-  return { cause: 'internal', xRequestId: null };
+  if (error instanceof StallError) {
+    return { cause: 'stall', xRequestId: null, result: null };
+  }
+  return { cause: 'internal', xRequestId: null, result: null };
 }
 
 /**
@@ -383,12 +399,17 @@ export async function processExtractionJob(
       now,
     );
   } catch (error) {
-    const failure = toFailure(error);
+    const failure = toFailure(error, deps.provinceLookup.checksum);
     logger.warn(
       `extraction job ${jobId} failed cause=${failure.cause}` +
         (failure.xRequestId ? ` request_id=${failure.xRequestId}` : ''),
     );
-    await deps.extractionJobs.markFailed(jobId, now(), failure.cause, null);
+    await deps.extractionJobs.markFailed(
+      jobId,
+      now(),
+      failure.cause,
+      failure.result,
+    );
     await writeRequestEvent(deps.db, {
       requestId,
       type: 'job_failed',
@@ -396,6 +417,9 @@ export async function processExtractionJob(
       actor: { actorType: 'system' },
       payload: { cause: failure.cause, xRequestId: failure.xRequestId },
     });
+    // The second watcher (§14.2): the operator reads the fault on /health;
+    // the approving Reviewer gets the broken promise as a must-clear Alert.
+    await raiseExtractionAlert(deps.db, requestId, now());
     await sendExtractionFailureMail(deps, requestId, target.reference);
   } finally {
     stallGuard.dispose();

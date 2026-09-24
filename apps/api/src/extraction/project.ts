@@ -57,17 +57,15 @@ const PASSTHROUGH_COLUMNS = PROJECT_COLUMNS.filter(
 /**
  * A `epidem_chw_code` present but not one of the 77 known provinces means the
  * province table is stale, not that the row is malformed (spec §6.3). This is
- * the one case that is not a blank: it must fail the job loudly rather than
- * publish an Extract with a column a regional analyst is about to group by
- * silently wrong. `§15.3`'s scheduler banner does not exist yet (a later
- * ticket); failing the job — audible via `job_failed` — is the fail-loud
- * substitute until it does, never a silent skip.
+ * the one case that is not a blank: it fails the job loudly and raises the
+ * scheduler signal (§15.3) rather than publish an Extract with a column a
+ * regional analyst is about to group by silently wrong. The message never
+ * quotes the code — it is a field of a row (§14.5); the pipeline adds the
+ * row index.
  */
 export class StaleProvinceTableError extends Error {
-  constructor(readonly epidemChwCode: string) {
-    super(
-      `epidem_chw_code "${epidemChwCode}" is not one of the 77 known provinces`,
-    );
+  constructor() {
+    super('epidem_chw_code is not one of the 77 known provinces');
     this.name = 'StaleProvinceTableError';
   }
 }
@@ -161,7 +159,7 @@ function deriveHealthZone(
   const code = normalizeGeographyCode(row.epidem_chw_code);
   if (code === null) return '';
   const region = provinces.get(code);
-  if (region === undefined) throw new StaleProvinceTableError(code);
+  if (region === undefined) throw new StaleProvinceTableError();
   return String(region);
 }
 
