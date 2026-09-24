@@ -1,7 +1,8 @@
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import * as m from '../../paraglide/messages.js';
-import { type QueueRow } from './queue-api';
+import { alertTitle } from './alert-copy';
+import { type AlertRow, type QueueRow } from './queue-api';
 import { formatDuration, minutesSince } from './queue-format';
 import { QueueStore } from './queue-store';
 import { ReviewerSession } from './reviewer-session';
@@ -11,10 +12,11 @@ import { ReviewerSession } from './reviewer-session';
 // idle timeout that never fires is no timeout (§10.5).
 const STALENESS_TICK_MS = 30_000;
 
-// The split queue (§10.1): the list on the left, the Request on the right. Only
-// the Queue zone is built here. The Alerts zone (#73) and the In-progress zone
-// (#74) are sibling landmarks in the sidebar, below this one, and a Request is
-// in exactly one zone at a time — so adding them needs no rework of this one.
+// The split queue (§10.1): the list on the left, the Request on the right. The
+// Queue zone and the Alerts zone (§10.6) are built here; the In-progress zone
+// (#74) is a sibling landmark below them. A Request is in exactly one zone at
+// a time — an open Alert takes it out of the in-flight list — so each zone is
+// a list of its own and never a badge on another's.
 @Component({
   selector: 'app-reviewer-queue',
   imports: [RouterLink, RouterLinkActive, RouterOutlet],
@@ -97,6 +99,32 @@ const STALENESS_TICK_MS = 30_000;
               </ul>
             }
           </nav>
+
+          <!-- Must-clear items (§10.6): the one part of the surface allowed
+               to shout, and never a badge on a list that does not refresh. -->
+          @if (alerts()?.length) {
+            <section class="alerts-zone" [attr.aria-label]="copy.alertsHeading">
+              <h2 class="zone-heading">{{ copy.alertsHeading }}</h2>
+              <ul class="plain-list">
+                @for (alert of alerts(); track alert.requestId + alert.kind) {
+                  <li>
+                    <a
+                      class="row alert-card"
+                      [routerLink]="['alerts', alert.requestId]"
+                      routerLinkActive="selected"
+                      ariaCurrentWhenActive="page"
+                    >
+                      <span class="kind">{{ alertTitle(alert.kind) }}</span>
+                      <span class="ref figure">{{ alert.reference }}</span>
+                      <span class="name">{{ alert.requesterName }}</span>
+                      <span class="group muted">{{ assignedTo(alert) }}</span>
+                      <span class="group muted">{{ raisedAgo(alert) }}</span>
+                    </a>
+                  </li>
+                }
+              </ul>
+            </section>
+          }
         </aside>
 
         <main class="pane">
@@ -104,6 +132,18 @@ const STALENESS_TICK_MS = 30_000;
             <p class="empty failed-text" role="alert">
               {{ copy.loadFailed }}
             </p>
+          } @else if (rows()?.length === 0 && alerts()?.length) {
+            <section class="empty">
+              <p class="kicker-line">{{ copy.alertsEmptyKicker }}</p>
+              <h2>{{ alertsEmptyTitle() }}</h2>
+              <p class="prose">{{ copy.alertsEmptyDetail }}</p>
+              <p class="prose">
+                <a [routerLink]="['alerts', alerts()![0].requestId]">{{
+                  copy.alertsEmptyAction
+                }}</a>
+              </p>
+              <p class="prose muted">{{ copy.alertsEmptyNote }}</p>
+            </section>
           } @else if (rows()?.length === 0) {
             <section class="empty">
               <p class="kicker-line">{{ copy.emptyKicker }}</p>
@@ -244,6 +284,27 @@ const STALENESS_TICK_MS = 30_000;
       color: var(--failed);
       font-weight: 600;
     }
+    /* handoff.md screen 5: the Alerts zone on pending-wash between rules. */
+    .alerts-zone {
+      background: var(--pending-wash);
+      border-top: 1px solid var(--border-strong);
+      border-bottom: 1px solid var(--border-strong);
+    }
+    .zone-heading {
+      padding: 16px 20px 4px;
+      font-size: 1rem;
+      font-weight: 600;
+    }
+    .alert-card {
+      grid-template-columns: 1fr;
+    }
+    .alert-card:hover {
+      background: var(--card);
+    }
+    .kind {
+      font-weight: 600;
+      color: var(--pending);
+    }
     .pane {
       min-width: 0;
     }
@@ -270,6 +331,7 @@ export class QueuePage {
   private readonly session = inject(ReviewerSession);
 
   protected readonly rows = this.store.rows;
+  protected readonly alerts = this.store.alerts;
   protected readonly loading = this.store.loading;
   protected readonly failed = this.store.failed;
   protected readonly automaticProcessing = this.store.automaticProcessing;
@@ -301,6 +363,11 @@ export class QueuePage {
     emptyTitle: m.reviewer_empty_clear_title(),
     emptyDetail: m.reviewer_empty_clear_detail(),
     emptyNote: m.reviewer_empty_clear_note(),
+    alertsHeading: m.reviewer_alerts_heading(),
+    alertsEmptyKicker: m.reviewer_empty_alerts_kicker(),
+    alertsEmptyDetail: m.reviewer_empty_alerts_detail(),
+    alertsEmptyAction: m.reviewer_empty_alerts_action(),
+    alertsEmptyNote: m.reviewer_empty_alerts_note(),
     schedulerStoppedTitle: m.reviewer_scheduler_stopped_title(),
     schedulerStoppedDetail: m.reviewer_scheduler_stopped_detail(),
   };
@@ -317,6 +384,17 @@ export class QueuePage {
     });
 
   protected countLabel = (count: number) => m.reviewer_queue_count({ count });
+  protected alertTitle = alertTitle;
+  protected alertsEmptyTitle = () =>
+    m.reviewer_empty_alerts_title({ count: this.alerts()?.length ?? 0 });
+  protected assignedTo = (alert: AlertRow) =>
+    m.reviewer_alert_assigned_to({ reviewer: alert.assignedTo.displayName });
+  protected raisedAgo = (alert: AlertRow) =>
+    m.reviewer_alert_raised_ago({
+      time: formatDuration(
+        minutesSince(new Date(alert.raisedAt).getTime(), this.now()),
+      ),
+    });
   protected timeLeft = (row: QueueRow) =>
     m.reviewer_time_left({
       time: formatDuration(row.minutesLeft),

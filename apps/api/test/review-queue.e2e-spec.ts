@@ -130,6 +130,7 @@ describe('the Reviewer queue (e2e)', () => {
       // banner is up (§15.3) — scheduler-tick.e2e-spec.ts covers it running.
       automaticProcessing: 'stopped',
       requests: [],
+      alerts: [],
     });
   });
 

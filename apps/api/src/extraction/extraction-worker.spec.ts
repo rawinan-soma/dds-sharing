@@ -55,6 +55,10 @@ function fakeDb(
       from: () => ({
         where: () => {
           const keys = Object.keys(shape);
+          // The Request's Alert history, read before raising one: none here.
+          if ('type' in shape && 'occurredAt' in shape) {
+            return { orderBy: () => Promise.resolve([]) };
+          }
           if (keys.length === 1 && 'payload' in shape) {
             return Promise.resolve(probeRow ? [probeRow] : []);
           }

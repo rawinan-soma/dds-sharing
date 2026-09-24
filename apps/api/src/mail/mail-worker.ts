@@ -10,6 +10,7 @@ import {
   type MailJobData,
 } from './mail-queue';
 import { type MailTransport } from './mail-transport';
+import { writeSendAbandoned } from './send-abandoned';
 
 export interface MailWorkerDeps {
   db: Db;
@@ -38,7 +39,8 @@ function errorMessage(error: unknown): string {
  * how many tries the record holds. On failure it writes `mail_send_failed`
  * itself and rethrows, leaving the job — and the rendered message only it
  * holds — in BullMQ's failed set for the tick; on the final failure it writes
- * `mail_send_abandoned` too and does **not** rethrow.
+ * `mail_send_abandoned` too — and, for a Delivery, raises its Alert — and
+ * does **not** rethrow.
  */
 export async function processMailJob(
   job: MailJobLike,
@@ -86,13 +88,7 @@ export async function processMailJob(
         message,
         now(),
       );
-      await writeRequestEvent(deps.db, {
-        requestId: data.requestId,
-        type: 'mail_send_abandoned',
-        occurredAt: now(),
-        actor: { actorType: 'system' },
-        payload: {},
-      });
+      await writeSendAbandoned(deps.db, data.requestId, data.kind, now());
       logger.warn(
         `mail ${data.kind} for request ${data.requestId} abandoned after ${tryNumber} tries`,
       );

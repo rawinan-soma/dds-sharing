@@ -495,12 +495,13 @@ describe('the tick (e2e)', () => {
       status: string,
       attempts: number,
       updatedAt: Date,
+      kind = 'delivery',
     ): Promise<{ id: string; requestId: string }> {
       const requestId = await insertRequest('approved');
       const [row] = await q(
         `INSERT INTO mail_delivery (request_id, kind, status, attempts, updated_at)
-         VALUES ($1, 'delivery', $2, $3, $4) RETURNING id`,
-        [requestId, status, attempts, updatedAt],
+         VALUES ($1, $5, $2, $3, $4) RETURNING id`,
+        [requestId, status, attempts, updatedAt, kind],
       );
       return { id: row.id as string, requestId };
     }
@@ -554,6 +555,32 @@ describe('the tick (e2e)', () => {
       ).toHaveLength(1);
       expect(await statusOf(stranded.id)).toBe('abandoned');
       expect(await statusOf(waiting.id)).toBe('queued');
+    });
+
+    it('raises the send-abandoned Alert for a lost Delivery, and none for another kind (§10.6)', async () => {
+      const delivery = await insertMail(
+        'queued',
+        0,
+        new Date(now.getTime() - 16 * 60 * 1000),
+      );
+      const rejection = await insertMail(
+        'queued',
+        0,
+        new Date(now.getTime() - 16 * 60 * 1000),
+        'rejection',
+      );
+
+      await tick.runPass();
+
+      expect(
+        await eventsOf(delivery.requestId, 'delivery_alert_raised'),
+      ).toHaveLength(1);
+      expect(
+        await eventsOf(rejection.requestId, 'mail_send_abandoned'),
+      ).toHaveLength(1);
+      expect(
+        await eventsOf(rejection.requestId, 'delivery_alert_raised'),
+      ).toHaveLength(0);
     });
   });
 

@@ -7,7 +7,7 @@ import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import * as m from '../../paraglide/messages.js';
 import { getLocale, overwriteGetLocale } from '../../paraglide/runtime.js';
-import { type QueueList, type QueueRow } from './queue-api';
+import { type AlertRow, type QueueList, type QueueRow } from './queue-api';
 import { QueuePage } from './queue.page';
 
 const row = (id: string, over: Partial<QueueRow> = {}): QueueRow => ({
@@ -23,13 +23,34 @@ const row = (id: string, over: Partial<QueueRow> = {}): QueueRow => ({
   ...over,
 });
 
+const alert = (requestId: string, over: Partial<AlertRow> = {}): AlertRow => ({
+  requestId,
+  reference: `REQ-${requestId}`,
+  requesterName: `Name ${requestId}`,
+  kind: 'collection_lapse',
+  raisedAt: '2026-09-21T02:00:00.000Z',
+  deferred: false,
+  rerunAttempts: 0,
+  assignedTo: { displayName: 'Alice Reviewer', active: true },
+  outcomes: [
+    'reached_requester',
+    'could_not_reach_requester',
+    'no_action_needed',
+  ],
+  clearable: true,
+  silentHours: 26,
+  ...over,
+});
+
 const list = (
   requests: QueueRow[],
   automaticProcessing: QueueList['automaticProcessing'] = 'running',
+  alerts: AlertRow[] = [],
 ): QueueList => ({
   generatedAt: '2026-09-21T05:00:00.000Z',
   automaticProcessing,
   requests,
+  alerts,
 });
 
 describe('QueuePage', () => {
@@ -102,6 +123,58 @@ describe('QueuePage', () => {
     await firstLoad([]);
     expect(text()).toContain(m.reviewer_empty_clear_title());
     expect(text()).toContain(m.reviewer_empty_clear_note());
+  });
+
+  describe('the Alerts zone (§10.6)', () => {
+    async function loadWithAlerts(requests: QueueRow[], alerts: AlertRow[]) {
+      http
+        .expectOne('/api/reviewer/queue')
+        .flush(list(requests, 'running', alerts));
+      await settle();
+    }
+    const zone = () =>
+      el.querySelector<HTMLElement>(
+        `section[aria-label="${m.reviewer_alerts_heading()}"]`,
+      );
+    const cards = () => [...(zone()?.querySelectorAll('li a') ?? [])];
+
+    it('puts one card per Alert in its own zone, apart from the queue', async () => {
+      await loadWithAlerts(
+        [row('a')],
+        [
+          alert('x'),
+          alert('y', {
+            kind: 'extraction_failure',
+            outcomes: ['contacted_requester', 'abandoned'],
+          }),
+        ],
+      );
+      expect(cards()).toHaveLength(2);
+      const first = cards()[0].textContent!;
+      expect(first).toContain(m.reviewer_alert_lapse_title());
+      expect(first).toContain('REQ-x');
+      expect(first).toContain('Name x');
+      expect(first).toContain(
+        m.reviewer_alert_assigned_to({ reviewer: 'Alice Reviewer' }),
+      );
+      expect(cards()[1].textContent).toContain(
+        m.reviewer_alert_extraction_title(),
+      );
+      // Never on the queue's own list as well.
+      expect(rows().some((r) => r.textContent!.includes('REQ-x'))).toBe(false);
+    });
+
+    it('shows no zone at all when nothing is outstanding', async () => {
+      await loadWithAlerts([row('a')], []);
+      expect(zone()).toBeNull();
+    });
+
+    it('says the work is not finished when the queue is empty but Alerts are open', async () => {
+      await loadWithAlerts([], [alert('x'), alert('y')]);
+      expect(text()).toContain(m.reviewer_empty_alerts_title({ count: 2 }));
+      expect(text()).toContain(m.reviewer_empty_alerts_note());
+      expect(text()).not.toContain(m.reviewer_empty_clear_detail());
+    });
   });
 
   it('says plainly that the page does not update itself', async () => {

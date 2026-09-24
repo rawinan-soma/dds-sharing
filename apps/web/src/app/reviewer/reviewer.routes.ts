@@ -1,6 +1,7 @@
 import { inject } from '@angular/core';
 import { type CanActivateFn, type Routes, Router } from '@angular/router';
 import * as m from '../../paraglide/messages.js';
+import { AlertPage } from './alert.page';
 import { DossierPage } from './dossier.page';
 import { PasswordGatePage } from './password-gate.page';
 import { QueuePage } from './queue.page';
@@ -70,7 +71,10 @@ export const reviewerRoutes: Routes = [
         component: QueuePage,
         title: () => m.reviewer_queue_heading(),
         canActivate: [requireSession],
-        children: [{ path: ':id', component: DossierPage }],
+        children: [
+          { path: 'alerts/:id', component: AlertPage },
+          { path: ':id', component: DossierPage },
+        ],
       },
       { path: '**', redirectTo: '' },
     ],

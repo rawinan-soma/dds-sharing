@@ -35,6 +35,7 @@ import {
   type ExtractionTarget,
   type UpstreamPager,
 } from './extraction-pipeline';
+import { raiseExtractionAlert } from '../reviewer/alert-records';
 import { StallError, StallGuard } from './stall-guard';
 
 // A Re-run (#74) will pass a run number above 1, which is what earns an
@@ -396,6 +397,9 @@ export async function processExtractionJob(
       actor: { actorType: 'system' },
       payload: { cause: failure.cause, xRequestId: failure.xRequestId },
     });
+    // The second watcher (§14.2): the operator reads the fault on /health;
+    // the approving Reviewer gets the broken promise as a must-clear Alert.
+    await raiseExtractionAlert(deps.db, requestId, now());
     await sendExtractionFailureMail(deps, requestId, target.reference);
   } finally {
     stallGuard.dispose();
