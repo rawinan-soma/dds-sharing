@@ -20,10 +20,8 @@ import {
 } from './alerts';
 import { Alerts } from './alerts.service';
 import { CsrfGuard } from './csrf.guard';
-import { reviewerOf } from './decision-http';
+import { reviewerOf, UUID } from './decision-http';
 import { ReviewerAuthGuard, type ReviewerRequest } from './reviewer-auth.guard';
-
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // Alerts on the queue (§10.6). The list itself arrives with the queue's, in
 // one read; this is the one Request's detail and the one way to clear.

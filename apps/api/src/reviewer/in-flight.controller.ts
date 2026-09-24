@@ -12,11 +12,9 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { CsrfGuard } from './csrf.guard';
-import { reviewerOf } from './decision-http';
+import { reviewerOf, UUID } from './decision-http';
 import { InFlight } from './in-flight.service';
 import { ReviewerAuthGuard, type ReviewerRequest } from './reviewer-auth.guard';
-
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // What a Reviewer can do to an approved Request (§10.7, §10.8, §10.9). Any
 // active Reviewer may act on any of them: the approver's name is

@@ -121,7 +121,7 @@ export async function clearLapseOnLateCollection(
  * resolved it (ADR 0014). A Re-run over a healthy Extract deferred nothing,
  * and writes nothing here.
  */
-export async function clearAlertOnReRun(
+export async function clearAlertOnRerun(
   db: Executor,
   requestId: string,
   occurredAt: Date,

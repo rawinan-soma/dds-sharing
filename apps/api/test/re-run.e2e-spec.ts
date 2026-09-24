@@ -108,6 +108,12 @@ describe('Re-run and resend (e2e)', () => {
     return row.id as string;
   }
 
+  const deliveriesOf = (id: string) =>
+    q(
+      `SELECT payload FROM request_event WHERE request_id = $1
+       AND type = 'mail_sent' AND payload->>'kind' = 'delivery' ORDER BY id`,
+      [id],
+    );
   const rerun = (id: string, body: unknown = {}) =>
     browser.post(`/api/reviewer/requests/${id}/rerun`, body);
 
@@ -262,6 +268,41 @@ describe('Re-run and resend (e2e)', () => {
       expect(tokens[0].revoked_at).toBeNull();
       expect(await eventsOf(id, 'download_token_revoked')).toEqual([]);
     }, 45_000);
+
+    it.each([
+      ['collected', `UPDATE request SET state = 'collected' WHERE id = $1`],
+      [
+        'its link lapsed',
+        `UPDATE download_token SET expires_at = now() - interval '1 minute'
+         WHERE request_id = $1`,
+      ],
+    ])(
+      'revives nothing when the Request ended while the Re-run ran (%s, ADR 0016)',
+      async (_, ending) => {
+        const id = await approvedAndExtracted();
+        await waitFor(async () => (await deliveriesOf(id)).length === 1);
+        upstream.setFault({
+          kind: 'slow-page',
+          page: 1,
+          delayMs: 1_500,
+          times: 1,
+        });
+        await rerun(id);
+        await q(ending, [id]);
+        await settled(id, 2);
+        await waitFor(
+          async () => (await eventsOf(id, 'object_deleted')).length === 1,
+        );
+
+        const tokens = await tokensOf(id);
+        expect(tokens).toHaveLength(1);
+        expect(tokens[0].revoked_at).toBeNull();
+        expect(await eventsOf(id, 'download_token_revoked')).toEqual([]);
+        await new Promise((resolve) => setTimeout(resolve, 300));
+        expect(await deliveriesOf(id)).toHaveLength(1);
+      },
+      45_000,
+    );
 
     it('refuses a second Re-run while one is extracting', async () => {
       const id = await approvedAndExtracted();

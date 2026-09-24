@@ -97,10 +97,9 @@ export interface InFlightDetail extends InFlightRow {
   area: Area;
   approvedBy: string;
   approvedAt: string;
-  /** The current file, never its token. Null until one is ready. */
+  /** The current file, never its token; it expires at `linkExpiresAt`. */
   file: {
     archiveFilename: string;
-    linkExpiresAt: string;
     attempts: number;
   } | null;
 }

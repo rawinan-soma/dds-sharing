@@ -12,12 +12,10 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { CsrfGuard } from './csrf.guard';
-import { noteFrom, reviewerOf } from './decision-http';
+import { noteFrom, reviewerOf, UUID } from './decision-http';
 import { Decisions, type DecisionOutcome } from './decisions.service';
 import { ReviewerAuthGuard, type ReviewerRequest } from './reviewer-auth.guard';
 import { ReviewQueue } from './review-queue.service';
-
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // Everything here is a user-initiated request, so it slides the idle window
 // (§10.5) — which is why the page asks only when the Reviewer does, and never

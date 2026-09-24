@@ -1,3 +1,4 @@
+import { type extractionJobStatus } from '../db/schema';
 import { type RequestState, TERMINAL_REQUEST_STATES } from './request-state';
 
 // The in-flight list (spec §10.9): approved, and not yet terminal. This is the
@@ -7,7 +8,7 @@ import { type RequestState, TERMINAL_REQUEST_STATES } from './request-state';
 // there.
 
 /** The newest `extraction_job` row's status. */
-export type JobStatus = 'queued' | 'running' | 'succeeded' | 'failed';
+export type JobStatus = (typeof extractionJobStatus.enumValues)[number];
 
 /** How the row reads. */
 export type ExtractionState = 'extracting' | 'ready' | 'failed';

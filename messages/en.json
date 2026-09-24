@@ -350,5 +350,6 @@
   "reviewer_rerun_failed": "The extraction could not be started. Try again.",
   "reviewer_inflight_gone": "This request is no longer in progress. It may have finished, or it may now be listed under Needs attention.",
   "reviewer_inflight_load_failed": "The request could not be loaded. Pick it again to retry.",
-  "reviewer_file_name": "File name"
+  "reviewer_file_name": "File name",
+  "reviewer_resend_not_possible": "There is nothing to send again yet: the email with this link has not been sent. Reload the list to see where it stands."
 }

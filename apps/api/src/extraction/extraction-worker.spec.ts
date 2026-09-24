@@ -87,7 +87,7 @@ function fakeDb(
 
 function fakeDownloadTokens(): ExtractionWorkerDeps['downloadTokens'] {
   return {
-    create: vi.fn().mockResolvedValue({ id: 'token-1' }),
+    issueAtReady: vi.fn().mockResolvedValue({ id: 'token-1' }),
   } as unknown as ExtractionWorkerDeps['downloadTokens'];
 }
 
@@ -280,7 +280,7 @@ describe('processExtractionJob', () => {
       baseDeps({ db, extractionJobs: jobs, downloadTokens, mailSender }),
     );
 
-    expect(downloadTokens.create).toHaveBeenCalledTimes(1);
+    expect(downloadTokens.issueAtReady).toHaveBeenCalledTimes(1);
     expect(mailSender.sent).toHaveLength(1);
     expect(mailSender.sent[0]).toMatchObject({
       requestId: 'req-1',
@@ -291,6 +291,37 @@ describe('processExtractionJob', () => {
         name: 'Somchai Devkul',
       },
     });
+  });
+
+  it('delivers nothing, and removes the object at once, when the Request ended while the job ran (ADR 0016)', async () => {
+    const jobs = fakeJobs();
+    const { db, inserted } = fakeDb(REQUEST_ROW);
+    const downloadTokens = fakeDownloadTokens();
+    vi.mocked(downloadTokens.issueAtReady).mockResolvedValue(null);
+    const mailSender = fakeMailSender();
+    const archiveStore = fakeArchiveStore();
+    vi.mocked(archiveStore.remove).mockResolvedValue(undefined);
+
+    await processExtractionJob(
+      fakeJob(),
+      undefined,
+      baseDeps({
+        db,
+        extractionJobs: jobs,
+        downloadTokens,
+        mailSender,
+        archiveStore,
+      }),
+    );
+
+    expect(jobs.markSucceeded).toHaveBeenCalledTimes(1);
+    expect(mailSender.sent).toEqual([]);
+    const [uploaded] = archiveStore.uploads;
+    expect(archiveStore.remove).toHaveBeenCalledWith(uploaded.objectKey);
+    expect(
+      inserted.find((i) => i.values.type === 'object_deleted')?.values.payload,
+    ).toEqual({ objectKey: uploaded.objectKey, outcome: 'deleted' });
+    expect(inserted.map((i) => i.values.type)).not.toContain('job_failed');
   });
 
   it('sends the extraction-failure email to the approving Reviewer on failure, and is a no-op with none on record', async () => {

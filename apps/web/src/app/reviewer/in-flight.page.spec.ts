@@ -40,7 +40,6 @@ const ready = (over: Partial<InFlightDetail> = {}): InFlightDetail => ({
   approvedAt: '2026-09-20T03:00:00.000Z',
   file: {
     archiveFilename: 'dds-envocc-sharing-20260920-090000.zip',
-    linkExpiresAt: new Date(Date.now() + 30 * 60 * 60_000).toISOString(),
     attempts: 2,
   },
   ...over,
@@ -223,6 +222,33 @@ describe('InFlightPage', () => {
     expect(rerunButton().getAttribute('aria-disabled')).toBe('true');
     expect(resendButton().getAttribute('aria-disabled')).toBe('true');
     expect(store.inFlight()![0].extraction).toBe('extracting');
+  });
+
+  it('says a refused resend means nothing has been sent yet, not that it is extracting', async () => {
+    await load(ready());
+    resendButton().click();
+    http
+      .expectOne('/api/reviewer/requests/r1/resend')
+      .flush(
+        { error: 'nothing_to_resend' },
+        { status: 409, statusText: 'Conflict' },
+      );
+    await settle();
+    expect(text()).toContain(m.reviewer_resend_not_possible());
+    expect(text()).not.toContain(m.reviewer_inflight_extracting_note());
+  });
+
+  it('drops the row from the list when a press finds the Request gone', async () => {
+    const store = TestBed.inject(QueueStore);
+    store.inFlight.set([ready(), ready({ requestId: 'r2' })]);
+    await load(ready());
+    rerunButton().click();
+    http
+      .expectOne('/api/reviewer/requests/r1/rerun')
+      .flush({ error: 'not_found' }, { status: 404, statusText: 'Not Found' });
+    await settle();
+    expect(text()).toContain(m.reviewer_inflight_gone());
+    expect(store.inFlight()!.map((r) => r.requestId)).toEqual(['r2']);
   });
 
   it('says so when the Request is no longer in flight', async () => {

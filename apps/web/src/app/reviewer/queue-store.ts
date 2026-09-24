@@ -75,6 +75,12 @@ export class QueueStore {
     }
   }
 
+  /** The Request has left the in-flight list: finished, or now an Alert. */
+  removeInFlight(requestId: string): void {
+    const rows = this.inFlight();
+    if (rows) this.inFlight.set(rows.filter((r) => r.requestId !== requestId));
+  }
+
   /** A Decision landed on this Request: it is no longer pending. */
   removePending(id: string): void {
     const rows = this.rows();

@@ -14,8 +14,9 @@ export type RequestState = (typeof REQUEST_STATES)[number];
 
 // The one place *terminal* is defined (spec §10.9): a Request that is terminal
 // has nothing left to be done to it. `settledState` in `in-flight.ts` only
-// reads a lapsed link as the `expired_uncollected` the tick is about to write. Duplicate suppression asks the opposite
-// question — is there an unfinished Request? — and answers it from this list.
+// reads a lapsed link as the `expired_uncollected` the tick is about to write.
+// Duplicate suppression asks the opposite question — is there an unfinished
+// Request? — and answers it from this list.
 export const TERMINAL_REQUEST_STATES = [
   'rejected',
   'expired',

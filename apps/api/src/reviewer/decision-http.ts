@@ -7,6 +7,10 @@ import { type ReviewerRequest } from './reviewer-auth.guard';
 // "what they typed", so the two controllers under /reviewer/queue and
 // /reviewer/decisions cannot drift on either.
 
+/** A Request id as the routes take it: anything else is simply not found. */
+export const UUID =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export function reviewerOf(req: ReviewerRequest): DecidingReviewer {
   const reviewer = req.reviewer!;
   return { reviewerId: reviewer.reviewerId, displayName: reviewer.displayName };

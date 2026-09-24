@@ -1,17 +1,14 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
-import { and, asc, desc, eq, isNull, sql } from 'drizzle-orm';
-import { writeRequestEvent, type Executor } from '../audit/write-request-event';
+import { and, asc, desc, eq, sql } from 'drizzle-orm';
+import { type Executor, writeRequestEvent } from '../audit/write-request-event';
 import { CLOCK, type Clock } from '../clock/clock';
 import { DB, type Db } from '../db/database.module';
 import {
-  downloadToken,
-  extractionJob,
   mailDelivery,
   request,
   requestContact,
   requestEvent,
   reviewer,
-  tokenLookup,
 } from '../db/schema';
 import { insertQueuedJob } from '../extraction/extraction-jobs.repository';
 import { ExtractionQueue } from '../extraction/extraction-queue';
@@ -21,11 +18,10 @@ import { ProvinceLookup } from '../reference/province-lookup.service';
 import {
   type ExtractionState,
   type InFlightActions,
-  type InFlightFacts,
+  type InFlightRow,
   inFlightRow,
-  settledState,
 } from '../requests/in-flight';
-import { surfaceZone } from '../requests/surface-zone';
+import { type CurrentToken, factsOf } from '../requests/in-flight-records';
 import { alertEventsOf } from './alert-records';
 import { openAlerts } from './alerts';
 import { type Area, describeArea } from './review-queue';
@@ -59,16 +55,18 @@ export interface InFlightDetail extends InFlightListRow {
   /** The decision line: accountability, not permission. */
   approvedBy: string;
   approvedAt: string;
-  /** The current Extract's file, never its token. Null until one is ready. */
+  /**
+   * The current link's file, never its token; it expires at `linkExpiresAt`.
+   * Null until one is ready.
+   */
   file: {
     archiveFilename: string;
-    linkExpiresAt: string;
     /** Archive presentations — Attempts, as the cap counts them (§9.2). */
     attempts: number;
   } | null;
 }
 
-export type ReRunOutcome =
+export type RerunOutcome =
   | { status: 'queued'; queuedAt: string }
   /** Not in flight — never approved, or terminal (ADR 0016). */
   | { status: 'not_in_flight' }
@@ -83,8 +81,18 @@ export type ResendOutcome =
   /** The sent Delivery is no longer held — Redis lost it — so it cannot be rebuilt. */
   | { status: 'unavailable' };
 
-/** How far back a resend looks for the current link's Delivery. */
+/**
+ * How many of the newest sent Deliveries a resend looks through for the
+ * current link's. A Re-run's own Delivery is always among the newest; a
+ * handful covers any resends of it made since.
+ */
 const DELIVERIES_SEARCHED = 5;
+
+/** A Request as it stands now, when it is in flight. */
+interface Standing {
+  row: InFlightRow;
+  token: CurrentToken | null;
+}
 
 // Re-run and resend (spec §10.7, §10.8): the two things a Reviewer can do to
 // a Request already approved. Neither is a new Decision — neither can change
@@ -126,23 +134,9 @@ export class InFlight {
 
     const rows: InFlightListRow[] = [];
     for (const r of approved) {
-      const facts = await factsOf(this.db, r.requestId, 'approved');
-      const state = settledState(facts.state, facts.token, now);
-      if (surfaceZone(state, alerted.has(r.requestId)) !== 'in_flight') {
-        continue;
-      }
-      const row = inFlightRow(facts, now);
-      if (!row) continue;
-      rows.push({
-        requestId: r.requestId,
-        reference: r.reference,
-        submittedAt: r.submittedAt.toISOString(),
-        requesterName: `${r.name} ${r.surname}`,
-        diseaseGroupName: r.diseaseGroupName,
-        extraction: row.extraction,
-        linkExpiresAt: row.linkExpiresAt?.toISOString() ?? null,
-        actions: row.actions,
-      });
+      if (alerted.has(r.requestId)) continue;
+      const standing = await standingOf(this.db, r.requestId, 'approved', now);
+      if (standing) rows.push(listRow(r, standing.row));
     }
     return rows;
   }
@@ -152,6 +146,7 @@ export class InFlight {
     const now = this.clock.now();
     const [r] = await this.db
       .select({
+        requestId: request.id,
         state: request.state,
         reference: request.reference,
         submittedAt: request.submittedAt,
@@ -170,41 +165,14 @@ export class InFlight {
       .innerJoin(requestContact, eq(requestContact.requestId, request.id))
       .where(eq(request.id, requestId));
     if (!r) return null;
-    const facts = await factsOf(this.db, requestId, r.state);
-    const state = settledState(facts.state, facts.token, now);
-    const alerted = await this.withOpenAlerts([requestId]);
-    if (surfaceZone(state, alerted.has(requestId)) !== 'in_flight') return null;
-    const row = inFlightRow(facts, now);
-    if (!row) return null;
-
-    const [decision] = await this.db
-      .select({
-        approvedBy: reviewer.displayName,
-        approvedAt: requestEvent.occurredAt,
-      })
-      .from(requestEvent)
-      .innerJoin(reviewer, eq(reviewer.id, sql`${requestEvent.reviewerId}`))
-      .where(
-        and(
-          eq(requestEvent.requestId, requestId),
-          eq(requestEvent.type, 'approved'),
-        ),
-      )
-      .limit(1);
-    if (!decision) return null;
-    const file = facts.token
-      ? await this.fileOf(facts.token.id, facts.token.attempts)
-      : null;
+    if ((await this.withOpenAlerts([requestId])).has(requestId)) return null;
+    const standing = await standingOf(this.db, requestId, r.state, now);
+    const decision = await decisionOf(this.db, requestId);
+    if (!standing || !decision) return null;
+    const { token } = standing;
 
     return {
-      requestId,
-      reference: r.reference,
-      submittedAt: r.submittedAt.toISOString(),
-      requesterName: `${r.name} ${r.surname}`,
-      diseaseGroupName: r.diseaseGroupName,
-      extraction: row.extraction,
-      linkExpiresAt: row.linkExpiresAt?.toISOString() ?? null,
-      actions: row.actions,
+      ...listRow(r, standing.row),
       contact: {
         name: r.name,
         surname: r.surname,
@@ -218,7 +186,9 @@ export class InFlight {
       area: describeArea(r.provinces, this.provinces.provinces),
       approvedBy: decision.approvedBy,
       approvedAt: decision.approvedAt.toISOString(),
-      file,
+      file: token
+        ? { archiveFilename: token.archiveFilename, attempts: token.attempts }
+        : null,
     };
   }
 
@@ -230,34 +200,22 @@ export class InFlight {
    * Pressing it defers an open extraction-failure Alert (ADR 0014): that is
    * read off this event, so nothing more is written here.
    */
-  async rerun(requestId: string, reviewerId: string): Promise<ReRunOutcome> {
+  async rerun(requestId: string, reviewerId: string): Promise<RerunOutcome> {
     const now = this.clock.now();
     let jobId: string | undefined;
     const outcome = await this.db.transaction(
-      async (tx): Promise<ReRunOutcome> => {
+      async (tx): Promise<RerunOutcome> => {
         // Locked first, so two Reviewers pressing at once queue one job.
         const [row] = await tx
           .select({ state: request.state })
           .from(request)
           .where(eq(request.id, requestId))
           .for('update');
-        if (!row) return { status: 'not_in_flight' };
-        const facts = await factsOf(tx, requestId, row.state);
-        const inFlight = inFlightRow(facts, now);
-        if (!inFlight) return { status: 'not_in_flight' };
-        if (!inFlight.actions.rerun) return { status: 'not_possible' };
-
-        const [decision] = await tx
-          .select({ id: requestEvent.id })
-          .from(requestEvent)
-          .where(
-            and(
-              eq(requestEvent.requestId, requestId),
-              eq(requestEvent.type, 'approved'),
-            ),
-          )
-          .limit(1);
-        if (!decision) return { status: 'not_in_flight' };
+        const standing =
+          row && (await standingOf(tx, requestId, row.state, now));
+        const decision = await decisionOf(tx, requestId);
+        if (!standing || !decision) return { status: 'not_in_flight' };
+        if (!standing.row.actions.rerun) return { status: 'not_possible' };
 
         jobId = await insertQueuedJob(tx, requestId);
         await writeRequestEvent(tx, {
@@ -307,14 +265,13 @@ export class InFlight {
       .select({ state: request.state })
       .from(request)
       .where(eq(request.id, requestId));
-    if (!row) return { status: 'not_in_flight' };
-    const facts = await factsOf(this.db, requestId, row.state);
-    const inFlight = inFlightRow(facts, now);
-    if (!inFlight) return { status: 'not_in_flight' };
-    if (!inFlight.actions.resend || !facts.token) {
+    const standing =
+      row && (await standingOf(this.db, requestId, row.state, now));
+    if (!standing) return { status: 'not_in_flight' };
+    const { token } = standing;
+    if (!standing.row.actions.resend || !token) {
       return { status: 'not_possible' };
     }
-    const tokenId = facts.token.id;
 
     const sentDeliveries = await this.db
       .select({ id: mailDelivery.id })
@@ -331,7 +288,7 @@ export class InFlight {
     if (sentDeliveries.length === 0) return { status: 'not_possible' };
     for (const { id } of sentDeliveries) {
       const message = await this.mailQueue.sentMessage(id);
-      if (message?.downloadTokenId !== tokenId) continue;
+      if (message?.downloadTokenId !== token.id) continue;
       const mailDeliveryId = await this.mailDeliveries.create(
         requestId,
         'delivery',
@@ -361,73 +318,62 @@ export class InFlight {
         .map(([id]) => id),
     );
   }
-
-  private async fileOf(
-    tokenId: string,
-    attempts: number,
-  ): Promise<InFlightDetail['file']> {
-    const [token] = await this.db
-      .select({
-        archiveFilename: downloadToken.archiveFilename,
-        expiresAt: downloadToken.expiresAt,
-      })
-      .from(downloadToken)
-      .where(eq(downloadToken.id, tokenId));
-    return {
-      archiveFilename: token.archiveFilename,
-      linkExpiresAt: token.expiresAt.toISOString(),
-      attempts,
-    };
-  }
 }
 
-/** What `inFlightRow` needs to know about one Request, read now. */
-export async function factsOf(
+/** Null unless the Request is in flight — never approved, or terminal. */
+async function standingOf(
   db: Executor,
   requestId: string,
-  state: InFlightFacts['state'],
-): Promise<InFlightFacts & { token: CurrentToken | null }> {
-  const [job] = await db
-    .select({ status: extractionJob.status })
-    .from(extractionJob)
-    .where(eq(extractionJob.requestId, requestId))
-    .orderBy(desc(extractionJob.createdAt))
-    .limit(1);
-  return {
-    state,
-    job: job?.status ?? null,
-    token: await currentToken(db, requestId),
-  };
+  state: Parameters<typeof factsOf>[2],
+  now: Date,
+): Promise<Standing | null> {
+  const facts = await factsOf(db, requestId, state);
+  const row = inFlightRow(facts, now);
+  return row ? { row, token: facts.token } : null;
 }
 
-type CurrentToken = NonNullable<InFlightFacts['token']> & { id: string };
-
-/** The newest Download token no Re-run revoked, and its Attempts so far. */
-export async function currentToken(
+/** The one Decision on an approved Request, and who made it. */
+async function decisionOf(
   db: Executor,
   requestId: string,
-): Promise<CurrentToken | null> {
-  const [token] = await db
-    .select({ id: downloadToken.id, expiresAt: downloadToken.expiresAt })
-    .from(downloadToken)
+): Promise<{ id: number; approvedBy: string; approvedAt: Date } | null> {
+  const [decision] = await db
+    .select({
+      id: requestEvent.id,
+      approvedBy: reviewer.displayName,
+      approvedAt: requestEvent.occurredAt,
+    })
+    .from(requestEvent)
+    .innerJoin(reviewer, eq(reviewer.id, sql`${requestEvent.reviewerId}`))
     .where(
       and(
-        eq(downloadToken.requestId, requestId),
-        isNull(downloadToken.revokedAt),
+        eq(requestEvent.requestId, requestId),
+        eq(requestEvent.type, 'approved'),
       ),
     )
-    .orderBy(desc(downloadToken.createdAt))
     .limit(1);
-  if (!token) return null;
-  const attempts = await db
-    .select({ id: tokenLookup.id })
-    .from(tokenLookup)
-    .where(
-      and(
-        eq(tokenLookup.downloadTokenId, token.id),
-        eq(tokenLookup.kind, 'archive'),
-        eq(tokenLookup.outcome, 'success'),
-      ),
-    );
-  return { ...token, attempts: attempts.length };
+  return decision ?? null;
+}
+
+function listRow(
+  r: {
+    requestId: string;
+    reference: string;
+    submittedAt: Date;
+    diseaseGroupName: string;
+    name: string;
+    surname: string;
+  },
+  row: InFlightRow,
+): InFlightListRow {
+  return {
+    requestId: r.requestId,
+    reference: r.reference,
+    submittedAt: r.submittedAt.toISOString(),
+    requesterName: `${r.name} ${r.surname}`,
+    diseaseGroupName: r.diseaseGroupName,
+    extraction: row.extraction,
+    linkExpiresAt: row.linkExpiresAt?.toISOString() ?? null,
+    actions: row.actions,
+  };
 }

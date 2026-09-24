@@ -13,7 +13,7 @@ import { ActivatedRoute } from '@angular/router';
 import * as m from '../../paraglide/messages.js';
 import { formatDay } from '../requester/format-day';
 import { areaHeadline, areaProvinces } from './area-copy';
-import { linkLeft } from './in-flight-copy';
+import { extractionWord, linkLeft } from './in-flight-copy';
 import {
   type ActionOutcome,
   type InFlightDetail,
@@ -118,8 +118,8 @@ type Acting =
                   <dd class="figure">{{ f.archiveFilename }}</dd>
                   <dt>{{ copy.expiresIn }}</dt>
                   <dd class="figure">
-                    <time [attr.datetime]="f.linkExpiresAt">{{
-                      left(f.linkExpiresAt)
+                    <time [attr.datetime]="d.linkExpiresAt">{{
+                      left(d.linkExpiresAt!)
                     }}</time>
                   </dd>
                   <dt>{{ copy.attempts }}</dt>
@@ -368,7 +368,8 @@ export class InFlightPage {
       action === 'rerun'
         ? await this.api.rerun(d.requestId)
         : await this.api.resend(d.requestId);
-    if (outcome.kind === 'done' && action === 'rerun') this.startedReRun(d);
+    if (outcome.kind === 'done' && action === 'rerun') this.startedRerun(d);
+    if (outcome.kind === 'gone') this.store.removeInFlight(d.requestId);
     this.acting.set({
       kind: 'said',
       message: this.message(action, outcome),
@@ -380,7 +381,7 @@ export class InFlightPage {
    * A Re-run is extracting now: both actions are held until it finishes,
    * here and on the row, without a re-read — the list does not refresh.
    */
-  private startedReRun(d: InFlightDetail): void {
+  private startedRerun(d: InFlightDetail): void {
     const held = {
       extraction: 'extracting' as const,
       actions: { rerun: false, resend: false },
@@ -398,7 +399,9 @@ export class InFlightPage {
       case 'gone':
         return m.reviewer_inflight_gone();
       case 'not_possible':
-        return m.reviewer_inflight_extracting_note();
+        return action === 'rerun'
+          ? m.reviewer_inflight_extracting_note()
+          : m.reviewer_resend_not_possible();
       case 'unavailable':
         return m.reviewer_resend_unavailable();
       case 'failed':
@@ -408,16 +411,7 @@ export class InFlightPage {
     }
   }
 
-  protected stateWord(d: InFlightDetail): string {
-    switch (d.extraction) {
-      case 'extracting':
-        return m.reviewer_state_extracting();
-      case 'failed':
-        return m.reviewer_state_failed();
-      case 'ready':
-        return m.reviewer_state_ready();
-    }
-  }
+  protected stateWord = (d: InFlightDetail) => extractionWord(d.extraction);
 
   protected heldReason(d: InFlightDetail): string {
     return d.extraction === 'failed'

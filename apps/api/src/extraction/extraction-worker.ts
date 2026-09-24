@@ -39,7 +39,6 @@ import {
   type UpstreamPager,
 } from './extraction-pipeline';
 import { raiseExtractionAlert } from '../reviewer/alert-records';
-import { supersedeAtReady } from './re-run-ready';
 import { StallError, StallGuard } from './stall-guard';
 
 export interface ExtractionWorkerDeps {
@@ -184,23 +183,50 @@ async function publishExtract(
 }
 
 /**
- * Issues the Download token and sends the Delivery email (spec §9.3, §11.3).
- * The token is generated here, at completion — never earlier — because it is
- * anchored on job completion, not on approval. A Re-run's new token is the
- * moment its Extract is ready: the earlier one is revoked then (ADR 0012),
- * before the Delivery goes, so a resend can never pick up a superseded link.
+ * The Extract is ready: issues its Download token and sends the Delivery
+ * (spec §9.3, §11.3). The token is generated here, at completion — never
+ * earlier — because it is anchored on job completion, not on approval. For a
+ * Re-run, `issueAtReady` also revokes the earlier token in the same breath
+ * (ADR 0012), before the Delivery goes, so a resend can never pick up a
+ * superseded link.
+ *
+ * A Request that ended while the job ran gets no token and no Delivery
+ * (ADR 0016): the object just uploaded is removed at once, on the record,
+ * rather than left for the lifecycle backstop.
  */
-async function sendDeliveryMail(
+async function deliver(
   deps: Pick<
     ExtractionWorkerDeps,
-    'db' | 'downloadTokens' | 'mailSender' | 'frontendUrl'
+    'db' | 'downloadTokens' | 'mailSender' | 'frontendUrl' | 'archiveStore'
   >,
   requestId: string,
   reference: string,
   archiveFilename: string,
-  runNumber: number,
   now: () => Date,
+  logger: LoggerService,
 ): Promise<void> {
+  const rawToken = generateToken();
+  const token = await deps.downloadTokens.issueAtReady(
+    requestId,
+    rawToken,
+    archiveFilename,
+    now(),
+  );
+  if (!token) {
+    logger.warn(
+      `extraction for request ${requestId} finished after the request ended; nothing delivered`,
+    );
+    await deps.archiveStore.remove(archiveFilename);
+    await writeRequestEvent(deps.db, {
+      requestId,
+      type: 'object_deleted',
+      occurredAt: now(),
+      actor: { actorType: 'system' },
+      payload: { objectKey: archiveFilename, outcome: 'deleted' },
+    });
+    return;
+  }
+
   const [contact] = await deps.db
     .select({
       name: requestContact.name,
@@ -209,16 +235,6 @@ async function sendDeliveryMail(
     })
     .from(requestContact)
     .where(eq(requestContact.requestId, requestId));
-
-  const rawToken = generateToken();
-  const token = await deps.downloadTokens.create(
-    requestId,
-    rawToken,
-    archiveFilename,
-    now(),
-  );
-  if (runNumber > 1)
-    await supersedeAtReady(deps.db, requestId, token.id, now());
   await deps.mailSender.send(
     requestId,
     contact.email,
@@ -366,6 +382,7 @@ export async function processExtractionJob(
   const stallGuard = new StallGuard(
     deps.stallMs ?? EXTRACTION_DEFAULTS.stallMs,
   );
+  let published: string | null = null;
   try {
     // Read once, here, and held for the rest of this job (spec §6.4): a
     // per-row join would let a mid-job edit put two regions for one
@@ -406,14 +423,7 @@ export async function processExtractionJob(
       now,
     );
     await deps.extractionJobs.markSucceeded(jobId, now(), result.summary);
-    await sendDeliveryMail(
-      deps,
-      requestId,
-      target.reference,
-      archiveFilename,
-      runNumber,
-      now,
-    );
+    published = archiveFilename;
   } catch (error) {
     const failure = toFailure(error, deps.provinceLookup.checksum);
     logger.warn(
@@ -439,6 +449,15 @@ export async function processExtractionJob(
     await sendExtractionFailureMail(deps, requestId, target.reference);
   } finally {
     stallGuard.dispose();
+  }
+
+  // Outside the failure path on purpose: the Extract is published and the job
+  // succeeded, so nothing after this point is an extraction failure. A send
+  // that goes wrong is the Delivery's own (§11.3: retried, then an Alert); a
+  // Request left ready with no link reads so on the in-flight list, where a
+  // Re-run is offered.
+  if (published) {
+    await deliver(deps, requestId, target.reference, published, now, logger);
   }
 }
 

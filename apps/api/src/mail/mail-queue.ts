@@ -1,6 +1,7 @@
 import { Queue } from 'bullmq';
 import { type MailKind } from '../audit/event-catalogue';
 import { LIVE_JOB_STATES } from '../db/bull-job-states';
+import { DOWNLOAD_TOKEN_LIFETIME_HOURS } from '../delivery/download-tokens.repository';
 
 export const MAIL_QUEUE_NAME = 'mail';
 
@@ -26,7 +27,7 @@ export interface MailJobData {
  * keeping it is what lets a Reviewer resend the same link (§10.8) — and
  * nothing else keeps it. Every other kind is dropped once sent.
  */
-const SENT_DELIVERY_KEPT_SECONDS = 72 * 60 * 60;
+const SENT_DELIVERY_KEPT_SECONDS = DOWNLOAD_TOKEN_LIFETIME_HOURS * 60 * 60;
 
 /**
  * A thin wrapper over the BullMQ `Queue`, mirroring `ExtractionQueue`: the
