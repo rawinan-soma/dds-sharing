@@ -39,10 +39,12 @@ export type DeactivateOutcome =
   | { status: 'already_deactivated' };
 
 /** Neither a reset nor a re-enrolment revives a deactivated account. */
-type NotResettable = { status: 'not_found' } | { status: 'deactivated' };
+export type CredentialRefusal =
+  { status: 'not_found' } | { status: 'deactivated' };
 
 export type ResetPasswordOutcome =
-  { status: 'reset'; password: string; sessionsEnded: number } | NotResettable;
+  | { status: 'reset'; password: string; sessionsEnded: number }
+  | CredentialRefusal;
 
 export type ReenrolTotpOutcome =
   | {
@@ -51,7 +53,7 @@ export type ReenrolTotpOutcome =
       enrolmentUri: string;
       sessionsEnded: number;
     }
-  | NotResettable;
+  | CredentialRefusal;
 
 export class ReviewerInputError extends Error {}
 
@@ -235,7 +237,7 @@ export class ReviewerAccounts {
     username: string,
     set: Partial<typeof reviewer.$inferInsert>,
     done: (sessionsEnded: number) => T,
-  ): Promise<T | NotResettable> {
+  ): Promise<T | CredentialRefusal> {
     return this.db.transaction(async (tx) => {
       const [target] = await tx
         .select({ id: reviewer.id, deactivatedAt: reviewer.deactivatedAt })

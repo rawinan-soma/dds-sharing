@@ -12,7 +12,7 @@ import { extractsIn, NotAnExtractError } from './extracts-in';
 
 const USAGE = `Usage:
   verify-extract <file>
-      Reports which Request released this Extract, or that nothing matched.
+      Lists every Request whose Extract has this checksum, or reports no match.
       Takes an Extract archive (.zip) or a bare CSV, whichever arrived.`;
 
 // Printed on every run, match or not, so nobody has to remember either.
@@ -108,7 +108,7 @@ export async function runVerifyExtractCli(
     );
     io.out(`SHA-256: ${checksum}`);
     if (releases.length === 0) {
-      io.out('NO MATCH: no Extract with this fingerprint was released here.');
+      io.out('NO MATCH: no Extract with this checksum was released here.');
       continue;
     }
     io.out(

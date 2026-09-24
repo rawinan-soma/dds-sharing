@@ -127,5 +127,9 @@ export async function runTrafficReportCli(
   );
   io.out('');
   io.out(`Total upstream calls:  ${probeCalls + t.fetchCalls}`);
+  io.out('');
+  io.out(
+    'Every figure is a floor: it counts the calls the record holds, and retries that ended in success are not recorded.',
+  );
   return 0;
 }

@@ -2,6 +2,7 @@ import { parseArgs } from 'node:util';
 import QRCode from 'qrcode';
 import { type CliIo, isArgumentError } from './cli-io';
 import {
+  type CredentialRefusal,
   MIN_ACTIVE_REVIEWERS,
   type ReviewerAccounts,
   ReviewerInputError,
@@ -195,7 +196,7 @@ function oneUsername(args: string[], io: CliIo): string | null {
 function refused(
   io: CliIo,
   username: string,
-  status: 'not_found' | 'deactivated',
+  status: CredentialRefusal['status'],
 ): number {
   io.err(
     status === 'not_found'

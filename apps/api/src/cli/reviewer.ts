@@ -4,7 +4,7 @@ import { Pool } from 'pg';
 import { hostCliSchema, validateEnvOrExit } from '../config/env.schema';
 import { systemClock } from '../clock/clock';
 import { ReviewerAccounts } from '../reviewer/reviewer-accounts';
-import { type CliIo, runMain } from './cli-io';
+import { type CliIo, runMain, terminalOutput } from './cli-io';
 import { runReviewerCli } from './reviewer-cli';
 import { loadRetentionNotice } from './retention-notice';
 
@@ -20,8 +20,7 @@ async function main(): Promise<number> {
   const pool = new Pool({ connectionString });
   const rl = createInterface({ input: process.stdin, output: process.stdout });
   const io: CliIo = {
-    out: (line) => console.log(line),
-    err: (line) => console.error(line),
+    ...terminalOutput,
     prompt: (question) => rl.question(question),
   };
   try {
