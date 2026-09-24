@@ -1756,10 +1756,14 @@ recipient's.
 
 | Email kind | On repeated failure |
 |---|---|
-| **Delivery** (carries the Download token) | must-clear Reviewer Alert; also the only kind with a collection lapse |
-| **Rejection** | must-clear Reviewer Alert |
-| **Extraction failure** | must-clear Reviewer Alert |
+| **Delivery** (carries the Download token) | must-clear Reviewer Alert (**Send abandoned**, §10.6); also the only kind with a collection lapse |
+| **Rejection** | **no Alert** — the Request is terminal at the Decision and has no approving Reviewer to assign one to (§10.9) |
+| **Extraction failure** | **no second Alert** — the Request's open extraction-failure Alert already asks for the same contact (§10.6) |
 | **Reviewer queue notification** | ⚠️ **operator banner on the FIRST failure**, not the fifth |
+
+*Rejection and extraction-failure rows narrowed 2026-09-24 (#73): both
+formerly read "must-clear Reviewer Alert". An abandoned send of either is
+still on the record as `mail_send_abandoned`.*
 
 **Why the queue notification is different, and why it is the sharpest failure in
 the system:** there is no Reviewer alert available, because the whole point is
