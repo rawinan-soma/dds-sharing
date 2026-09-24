@@ -158,3 +158,7 @@ Your screens: **6** แจ้งเตือนและการส่งซ้
 **Copy comes from the catalogue, not from templates.** Every string is keyed in `messages/en.json` and `messages/th.json`. The English is authored and is the source (ADR 0010); the Thai in the catalogue and on the design canvas is an agent-written layout proxy, replaced by #96. Build against the keys, and do not hand-write a sentence into a template.
 
 Treat the design as the source of **visual layout only**. Structure, ordering and copy are settled by this ticket and the spec, and they outrank the design wherever they disagree.
+
+**rawinan-soma** — 2026-09-24
+
+From #73: an extraction-failure Alert is **deferred** while a Re-run is under way, and a Reviewer cannot clear it (the clear endpoint answers 409) until the re-run settles. Deferral is derived in `apps/api/src/reviewer/alerts.ts` (`openAlerts`): `extraction_rerun_queued` starts it, and only `job_failed` or `extraction_alert_cleared` ends it. **This ticket must make every way a re-run ends settle the Alert** — a completed re-run writes `extraction_alert_cleared` (`system`, `re_ran`), and a failed, lost or stalled one must reach `job_failed` — or the Alert stays deferred and becomes a must-clear item nobody can clear.
