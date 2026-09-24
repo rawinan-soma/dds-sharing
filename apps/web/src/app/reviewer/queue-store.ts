@@ -1,5 +1,11 @@
 import { Injectable, inject, signal } from '@angular/core';
-import { type QueueList, type QueueRow, QueueApi } from './queue-api';
+import {
+  type AlertKind,
+  type AlertRow,
+  type QueueList,
+  type QueueRow,
+  QueueApi,
+} from './queue-api';
 import { countChanges } from './queue-format';
 
 /**
@@ -14,6 +20,8 @@ export class QueueStore {
 
   /** Null until the first list arrives. Kept, never blanked, while a reload runs. */
   readonly rows = signal<QueueRow[] | null>(null);
+  /** The must-clear items (§10.6), read with the rows and never on their own. */
+  readonly alerts = signal<AlertRow[] | null>(null);
   readonly loading = signal(false);
   readonly failed = signal(false);
   readonly loadedAt = signal(0);
@@ -32,6 +40,7 @@ export class QueueStore {
       const before = this.rows();
       this.changes.set(before ? countChanges(before, list.requests) : 0);
       this.rows.set(list.requests);
+      this.alerts.set(list.alerts);
       this.automaticProcessing.set(list.automaticProcessing);
       this.loadedAt.set(Date.now());
     } catch {
@@ -39,6 +48,16 @@ export class QueueStore {
       this.failed.set(true);
     } finally {
       this.loading.set(false);
+    }
+  }
+
+  /** An Alert was cleared: its card leaves the zone, without a re-read. */
+  removeAlert(requestId: string, kind: AlertKind): void {
+    const alerts = this.alerts();
+    if (alerts) {
+      this.alerts.set(
+        alerts.filter((a) => a.requestId !== requestId || a.kind !== kind),
+      );
     }
   }
 

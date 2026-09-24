@@ -1,4 +1,5 @@
 import { type Db } from '../db/database.module';
+import { clearLapseOnLateCollection } from '../reviewer/alert-records';
 import { tokenLookup } from '../db/schema';
 import { moveRequestState } from '../requests/move-request-state';
 import { writeRequestEvent } from '../audit/write-request-event';
@@ -52,7 +53,9 @@ export async function recordLookup(
   ) {
     const requestId = params.requestId;
     await db.transaction(async (tx) => {
-      await moveRequestState(tx, requestId, 'approved', 'collected');
+      if (await moveRequestState(tx, requestId, 'approved', 'collected')) {
+        await clearLapseOnLateCollection(tx, requestId, params.now);
+      }
       await writeRequestEvent(tx, {
         requestId,
         type: 'download_attempted',

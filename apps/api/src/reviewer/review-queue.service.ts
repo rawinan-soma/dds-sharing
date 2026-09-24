@@ -6,6 +6,7 @@ import { request, requestContact, requestEvent } from '../db/schema';
 import { ProvinceLookup } from '../reference/province-lookup.service';
 import { schedulerHealth } from '../scheduler/scheduler-health';
 import { CLOCK, type Clock } from '../clock/clock';
+import { type AlertRow, Alerts } from './alerts.service';
 import {
   type Area,
   type PendingRow,
@@ -37,6 +38,8 @@ export interface QueueList {
    */
   automaticProcessing: 'running' | 'stopped';
   requests: QueueRow[];
+  /** The must-clear items (§10.6), read in the same breath as the queue. */
+  alerts: AlertRow[];
 }
 
 /** The summed count, or the Probe's still-pending or abandoned state (§5.4). */
@@ -66,12 +69,13 @@ export class ReviewQueue {
     @Inject(DB) private readonly db: Db,
     @Inject(CLOCK) private readonly clock: Clock,
     private readonly provinces: ProvinceLookup,
+    private readonly alerts: Alerts,
   ) {}
 
   // The list shows a name and a group, never the rest of the dossier (§10.2),
   // so it reads only those columns: the Reviewer's browsing view has no reason
   // to pull tel, email, workplace or the Request's parameters off disk.
-  async list(): Promise<QueueList> {
+  async list(viewerId: string): Promise<QueueList> {
     const now = this.clock.now();
     const rows = await this.db
       .select({
@@ -94,6 +98,7 @@ export class ReviewQueue {
       generatedAt: now.toISOString(),
       automaticProcessing: scheduler.status === 'ok' ? 'running' : 'stopped',
       requests: rankPending(rows, now).map(toRow),
+      alerts: await this.alerts.list(viewerId),
     };
   }
 

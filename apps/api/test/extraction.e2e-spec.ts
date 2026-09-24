@@ -240,8 +240,17 @@ describe('the extraction pipeline (e2e)', () => {
     expect(job?.status).toBe('failed');
     expect(job?.failureCause).toBe('internal');
 
+    // The job row is marked failed first; its events land just after.
+    await waitFor(async () =>
+      (await eventsOf(id)).some((e) => e.type === 'extraction_alert_raised'),
+    );
     const events = await eventsOf(id);
     const failed = events.find((e) => e.type === 'job_failed')!;
     expect(failed.payload).toMatchObject({ cause: 'internal' });
+    // The broken promise goes to the approving Reviewer as a must-clear
+    // Alert (§14.2) — one, however the job failed.
+    expect(
+      events.filter((e) => e.type === 'extraction_alert_raised'),
+    ).toHaveLength(1);
   }, 10_000);
 });

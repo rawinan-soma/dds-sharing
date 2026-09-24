@@ -33,6 +33,7 @@ import { type Clock } from '../clock/clock';
 import { moveRequestState } from '../requests/move-request-state';
 import { type LoginThrottle } from '../reviewer/login-throttle';
 import { type ReviewerSessions } from '../reviewer/reviewer-sessions';
+import { writeSendAbandoned } from '../mail/send-abandoned';
 import { collectionLapse } from './collection-lapse';
 import { objectsStillHeld } from './scheduler-health';
 import { withTimeout } from './with-timeout';
@@ -428,13 +429,7 @@ export class Tick {
       'the queued send was lost from Redis',
       now,
     );
-    await writeRequestEvent(db, {
-      requestId: mail.requestId,
-      type: 'mail_send_abandoned',
-      occurredAt: now,
-      actor: { actorType: 'system' },
-      payload: {},
-    });
+    await writeSendAbandoned(db, mail.requestId, mail.kind, now);
     this.logger.warn(`mail ${mail.id} abandoned: its queued job was lost`);
   }
 
