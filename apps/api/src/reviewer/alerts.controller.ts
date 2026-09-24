@@ -12,7 +12,12 @@ import {
   Req,
   UseGuards,
 } from '@nestjs/common';
-import { ALERT_KINDS, type AlertKind } from './alerts';
+import {
+  ALERT_KINDS,
+  ALERT_OUTCOMES,
+  type AlertKind,
+  type AlertOutcome,
+} from './alerts';
 import { Alerts } from './alerts.service';
 import { CsrfGuard } from './csrf.guard';
 import { reviewerOf } from './decision-http';
@@ -56,8 +61,6 @@ export class AlertsController {
         return { clearedAt: result.clearedAt, zone: result.zone };
       case 'not_open':
         throw new NotFoundException({ error: 'not_found' });
-      case 'invalid_outcome':
-        throw new BadRequestException({ error: 'invalid_outcome' });
       case 'deferred':
         throw new ConflictException({ error: 'deferred' });
       case 'not_permitted':
@@ -67,22 +70,26 @@ export class AlertsController {
 }
 
 /**
- * A kind and an outcome, and nothing else. Any other field is refused rather
- * than ignored: there is no free text on any clear path (§10.6), and a note
- * the server quietly dropped would read to its writer as though it were kept.
+ * A kind and an outcome from that kind's closed set, and nothing else. Any
+ * other field is refused rather than ignored: there is no free text on any
+ * clear path (§10.6), and a note the server quietly dropped would read to its
+ * writer as though it were kept.
  */
-function clearingFrom(body: unknown): { kind: AlertKind; outcome: string } {
+function clearingFrom(body: unknown): {
+  kind: AlertKind;
+  outcome: AlertOutcome;
+} {
   const fields = (body ?? {}) as Record<string, unknown>;
   const { kind, outcome } = fields;
   const onlyThose = Object.keys(fields).every(
     (key) => key === 'kind' || key === 'outcome',
   );
-  if (
-    !onlyThose ||
-    typeof outcome !== 'string' ||
-    !(ALERT_KINDS as readonly unknown[]).includes(kind)
-  ) {
+  if (!onlyThose || !(ALERT_KINDS as readonly unknown[]).includes(kind)) {
     throw new BadRequestException({ error: 'bad_request' });
   }
-  return { kind: kind as AlertKind, outcome };
+  const closedSet: readonly unknown[] = ALERT_OUTCOMES[kind as AlertKind];
+  if (!closedSet.includes(outcome)) {
+    throw new BadRequestException({ error: 'invalid_outcome' });
+  }
+  return { kind: kind as AlertKind, outcome: outcome as AlertOutcome };
 }

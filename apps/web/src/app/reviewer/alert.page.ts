@@ -11,7 +11,12 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
 import * as m from '../../paraglide/messages.js';
-import { alertTitle, outcomeLabel } from './alert-copy';
+import {
+  alertAssignedTo,
+  alertRaisedAgo,
+  alertTitle,
+  outcomeLabel,
+} from './alert-copy';
 import {
   type AlertDetail,
   type AlertDetailOutcome,
@@ -19,7 +24,6 @@ import {
   type AlertRow,
   QueueApi,
 } from './queue-api';
-import { formatDuration, minutesSince } from './queue-format';
 import { QueueStore } from './queue-store';
 
 type View =
@@ -31,8 +35,10 @@ type View =
 // an extraction failure and a delivery Alert at once, cleared separately.
 type Clearing =
   | { kind: 'idle' }
-  | { kind: 'saving' }
+  | { kind: 'saving'; outcome: AlertOutcome }
   | { kind: 'cleared'; zone: 'in_flight' | null }
+  // A Re-run started after this screen was read (ADR 0014): not gone, waiting.
+  | { kind: 'deferred' }
   | { kind: 'problem'; message: string };
 
 // An open Alert (spec §10.6, handoff screen 6): the silence in words, the
@@ -57,17 +63,19 @@ type Clearing =
             <h2 #heading tabindex="-1" class="figure">
               {{ d.alerts[0].reference }}
             </h2>
-            <dl class="contact">
-              <dt>{{ copy.requester }}</dt>
-              <dd>{{ d.contact.name }} {{ d.contact.surname }}</dd>
-              <dt>{{ copy.telephone }}</dt>
-              <dd class="figure">{{ d.contact.tel }}</dd>
-              <dt>{{ copy.email }}</dt>
-              <dd>{{ d.contact.email }}</dd>
-              <dt>{{ copy.workplace }}</dt>
-              <dd>{{ d.contact.workplace }}</dd>
-            </dl>
-            <p class="muted">{{ copy.contactVisible }}</p>
+            @if (d.contact; as c) {
+              <dl class="contact">
+                <dt>{{ copy.requester }}</dt>
+                <dd>{{ c.name }} {{ c.surname }}</dd>
+                <dt>{{ copy.telephone }}</dt>
+                <dd class="figure">{{ c.tel }}</dd>
+                <dt>{{ copy.email }}</dt>
+                <dd>{{ c.email }}</dd>
+                <dt>{{ copy.workplace }}</dt>
+                <dd>{{ c.workplace }}</dd>
+              </dl>
+              <p class="muted">{{ copy.contactVisible }}</p>
+            }
 
             @for (alert of d.alerts; track alert.kind) {
               <section class="alert-card" [attr.aria-label]="title(alert)">
@@ -91,25 +99,37 @@ type Clearing =
                       {{ clearedText(alert) }}
                     </p>
                   }
+                  @case ('deferred') {
+                    <p class="rerunning" role="status">
+                      {{ rerunning(alert, 1) }}
+                    </p>
+                  }
                   @default {
                     @if (alert.deferred) {
-                      <p class="rerunning">{{ rerunning(alert) }}</p>
+                      <p class="rerunning">{{ rerunning(alert, 0) }}</p>
                     } @else if (alert.clearable) {
                       <div class="outcomes">
                         @for (outcome of alert.outcomes; track outcome) {
+                          <!-- Button's loading form (handoff.md "Loading
+                               states"): the pressed one says it is saving and
+                               keeps its size; a second press is ignored. -->
                           <button
                             class="btn btn-secondary"
                             type="button"
                             [disabled]="clearingOf(alert).kind === 'saving'"
+                            [attr.aria-busy]="
+                              savingWith(alert, outcome) || null
+                            "
                             (click)="clear(alert, outcome)"
                           >
-                            {{ label(outcome) }}
+                            {{
+                              savingWith(alert, outcome)
+                                ? copy.saving
+                                : label(outcome)
+                            }}
                           </button>
                         }
                       </div>
-                      @if (clearingOf(alert).kind === 'saving') {
-                        <p class="muted" role="status">{{ copy.saving }}</p>
-                      }
                       @if (problemOf(alert); as problem) {
                         <p class="problem" role="alert">{{ problem }}</p>
                       }
@@ -248,6 +268,11 @@ export class AlertPage {
     return this.clearing()[alert.kind] ?? { kind: 'idle' };
   }
 
+  protected savingWith(alert: AlertRow, outcome: AlertOutcome): boolean {
+    const clearing = this.clearingOf(alert);
+    return clearing.kind === 'saving' && clearing.outcome === outcome;
+  }
+
   protected problemOf(alert: AlertRow): string | null {
     const clearing = this.clearingOf(alert);
     return clearing.kind === 'problem' ? clearing.message : null;
@@ -255,7 +280,7 @@ export class AlertPage {
 
   protected async clear(alert: AlertRow, outcome: AlertOutcome): Promise<void> {
     if (this.clearingOf(alert).kind === 'saving') return;
-    this.set(alert, { kind: 'saving' });
+    this.setClearing(alert, { kind: 'saving', outcome });
     const result = await this.api.clearAlert(
       alert.requestId,
       alert.kind,
@@ -264,27 +289,33 @@ export class AlertPage {
     switch (result.kind) {
       case 'cleared':
         this.store.removeAlert(alert.requestId, alert.kind);
-        this.set(alert, { kind: 'cleared', zone: result.zone });
+        this.setClearing(alert, { kind: 'cleared', zone: result.zone });
         return;
       case 'gone':
         this.store.removeAlert(alert.requestId, alert.kind);
-        this.set(alert, { kind: 'problem', message: m.reviewer_alert_gone() });
+        this.setClearing(alert, {
+          kind: 'problem',
+          message: m.reviewer_alert_gone(),
+        });
+        return;
+      case 'deferred':
+        this.setClearing(alert, { kind: 'deferred' });
         return;
       case 'refused':
-        this.set(alert, {
+        this.setClearing(alert, {
           kind: 'problem',
           message: m.reviewer_alert_clear_refused(),
         });
         return;
       case 'failed':
-        this.set(alert, {
+        this.setClearing(alert, {
           kind: 'problem',
           message: m.reviewer_alert_clear_failed(),
         });
     }
   }
 
-  private set(alert: AlertRow, clearing: Clearing): void {
+  private setClearing(alert: AlertRow, clearing: Clearing): void {
     this.clearing.update((all) => ({ ...all, [alert.kind]: clearing }));
   }
 
@@ -295,7 +326,7 @@ export class AlertPage {
     switch (alert.kind) {
       case 'collection_lapse':
         return m.reviewer_alert_lapse_detail({
-          hours: alert.silentHours ?? 24,
+          hours: String(alert.silentHours),
         });
       case 'send_abandoned':
         return m.reviewer_alert_send_abandoned_detail();
@@ -310,22 +341,17 @@ export class AlertPage {
       : m.reviewer_alert_lapse_instruction();
   }
 
-  protected assignedTo = (alert: AlertRow) =>
-    m.reviewer_alert_assigned_to({ reviewer: alert.assignedTo.displayName });
+  protected assignedTo = alertAssignedTo;
   protected assignedOnly = (alert: AlertRow) =>
     m.reviewer_alert_assigned_only({ reviewer: alert.assignedTo.displayName });
   protected assignedInactive = (alert: AlertRow) =>
     m.reviewer_alert_assigned_inactive({
       reviewer: alert.assignedTo.displayName,
     });
-  protected rerunning = (alert: AlertRow) =>
-    m.reviewer_alert_rerunning({ attempts: alert.rerunAttempts });
-  protected raisedAgo = (alert: AlertRow) =>
-    m.reviewer_alert_raised_ago({
-      time: formatDuration(
-        minutesSince(new Date(alert.raisedAt).getTime(), Date.now()),
-      ),
-    });
+  /** `started` counts a Re-run begun since this screen was read. */
+  protected rerunning = (alert: AlertRow, started: number) =>
+    m.reviewer_alert_rerunning({ attempts: alert.rerunAttempts + started });
+  protected raisedAgo = (alert: AlertRow) => alertRaisedAgo(alert, Date.now());
 
   protected clearedText(alert: AlertRow): string {
     const clearing = this.clearingOf(alert);

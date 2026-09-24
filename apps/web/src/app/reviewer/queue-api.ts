@@ -50,7 +50,8 @@ export interface AlertRow {
 
 export interface AlertDetail {
   alerts: AlertRow[];
-  contact: Dossier['contact'];
+  /** Null once the Request is terminal: contact leaves with it (ADR 0015). */
+  contact: Dossier['contact'] | null;
 }
 
 export type AlertDetailOutcome =
@@ -60,6 +61,8 @@ export type AlertDetailOutcome =
 export type ClearOutcome =
   | { kind: 'cleared'; zone: 'in_flight' | null }
   | { kind: 'gone' }
+  /** A Re-run started since this was read: nothing to choose until it settles. */
+  | { kind: 'deferred' }
   | { kind: 'refused' }
   | { kind: 'failed' };
 
@@ -107,7 +110,7 @@ export type DecisionOutcome =
   | { kind: 'failed' };
 
 const BASE = '/api/reviewer/queue';
-const ALERTS = '/api/reviewer/alerts';
+const ALERTS_BASE = '/api/reviewer/alerts';
 
 // Every call here is one the Reviewer asked for. Nothing calls it on a timer:
 // only user-initiated requests extend the session (§10.5).
@@ -144,7 +147,7 @@ export class QueueApi {
     try {
       const detail = await firstValueFrom(
         this.http.get<AlertDetail>(
-          `${ALERTS}/${encodeURIComponent(requestId)}`,
+          `${ALERTS_BASE}/${encodeURIComponent(requestId)}`,
         ),
       );
       return { kind: 'ok', detail };
@@ -164,15 +167,15 @@ export class QueueApi {
     try {
       const res = await firstValueFrom(
         this.http.post<{ zone: 'in_flight' | null }>(
-          `${ALERTS}/${encodeURIComponent(requestId)}/clear`,
+          `${ALERTS_BASE}/${encodeURIComponent(requestId)}/clear`,
           { kind, outcome },
         ),
       );
       return { kind: 'cleared', zone: res.zone };
     } catch (error) {
       if (!(error instanceof HttpErrorResponse)) return { kind: 'failed' };
-      // 409: a Re-run started since the list was read — nothing to clear yet.
-      if (error.status === 404 || error.status === 409) return { kind: 'gone' };
+      if (error.status === 404) return { kind: 'gone' };
+      if (error.status === 409) return { kind: 'deferred' };
       if (error.status === 403) return { kind: 'refused' };
       return { kind: 'failed' };
     }

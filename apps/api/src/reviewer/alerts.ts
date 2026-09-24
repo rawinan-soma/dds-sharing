@@ -65,11 +65,14 @@ export function openAlerts(events: readonly AlertEvent[]): OpenAlert[] {
   });
   for (const event of events.toSorted((a, b) => a.id - b.id)) {
     switch (event.type) {
+      // A raise while one is open never replaces it: the Requester still
+      // has no file either way, and the open one must be cleared by an
+      // outcome, not by being overwritten.
       case 'delivery_alert_raised':
-        delivery = opened('send_abandoned', event.occurredAt);
+        delivery ??= opened('send_abandoned', event.occurredAt);
         break;
       case 'collection_lapse_raised':
-        delivery = opened('collection_lapse', event.occurredAt);
+        delivery ??= opened('collection_lapse', event.occurredAt);
         break;
       case 'collection_lapse_cleared':
         delivery = null;

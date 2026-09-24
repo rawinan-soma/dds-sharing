@@ -91,3 +91,26 @@ export async function raiseExtractionAlert(
   });
   return true;
 }
+
+/**
+ * A late collection clears its open collection lapse (§10.6) — as `system`,
+ * never `reviewer`: nobody gets credit for a call they did not make, and the
+ * lapse count must stay honest.
+ */
+export async function clearLapseOnLateCollection(
+  db: Executor,
+  requestId: string,
+  occurredAt: Date,
+): Promise<void> {
+  const open = await openAlertsOf(db, requestId);
+  if (!open.some((a) => a.kind === 'collection_lapse')) return;
+  const assignedReviewerId = await approvingReviewerId(db, requestId);
+  if (!assignedReviewerId) return;
+  await writeRequestEvent(db, {
+    requestId,
+    type: 'collection_lapse_cleared',
+    occurredAt,
+    actor: { actorType: 'system' },
+    payload: { outcome: null, assignedReviewerId, clearingReviewerId: null },
+  });
+}

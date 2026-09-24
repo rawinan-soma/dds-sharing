@@ -1,7 +1,7 @@
 import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 import * as m from '../../paraglide/messages.js';
-import { alertTitle } from './alert-copy';
+import { alertAssignedTo, alertRaisedAgo, alertTitle } from './alert-copy';
 import { type AlertRow, type QueueRow } from './queue-api';
 import { formatDuration, minutesSince } from './queue-format';
 import { QueueStore } from './queue-store';
@@ -109,7 +109,7 @@ const STALENESS_TICK_MS = 30_000;
                 @for (alert of alerts(); track alert.requestId + alert.kind) {
                   <li>
                     <a
-                      class="row alert-card"
+                      class="row alert-row"
                       [routerLink]="['alerts', alert.requestId]"
                       routerLinkActive="selected"
                       ariaCurrentWhenActive="page"
@@ -295,10 +295,10 @@ const STALENESS_TICK_MS = 30_000;
       font-size: 1rem;
       font-weight: 600;
     }
-    .alert-card {
+    .alert-row {
       grid-template-columns: 1fr;
     }
-    .alert-card:hover {
+    .alert-row:hover {
       background: var(--card);
     }
     .kind {
@@ -387,14 +387,8 @@ export class QueuePage {
   protected alertTitle = alertTitle;
   protected alertsEmptyTitle = () =>
     m.reviewer_empty_alerts_title({ count: this.alerts()?.length ?? 0 });
-  protected assignedTo = (alert: AlertRow) =>
-    m.reviewer_alert_assigned_to({ reviewer: alert.assignedTo.displayName });
-  protected raisedAgo = (alert: AlertRow) =>
-    m.reviewer_alert_raised_ago({
-      time: formatDuration(
-        minutesSince(new Date(alert.raisedAt).getTime(), this.now()),
-      ),
-    });
+  protected assignedTo = alertAssignedTo;
+  protected raisedAgo = (alert: AlertRow) => alertRaisedAgo(alert, this.now());
   protected timeLeft = (row: QueueRow) =>
     m.reviewer_time_left({
       time: formatDuration(row.minutesLeft),

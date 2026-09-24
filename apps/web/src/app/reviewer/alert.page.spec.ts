@@ -149,6 +149,41 @@ describe('AlertPage', () => {
     expect(store.alerts()!.map((a) => a.requestId)).toEqual(['r2']);
   });
 
+  it('puts the pressed button into its loading form while it saves', async () => {
+    await load([lapse()]);
+    const pressed = () =>
+      el.querySelectorAll<HTMLButtonElement>('.outcomes button')[0];
+    pressed().click();
+    await settle();
+    expect(pressed().textContent!.trim()).toBe(m.reviewer_alert_clearing());
+    expect(pressed().getAttribute('aria-busy')).toBe('true');
+    http
+      .expectOne('/api/reviewer/alerts/r1/clear')
+      .flush({ clearedAt: '2026-09-22T03:00:00.000Z', zone: 'in_flight' });
+    await settle();
+  });
+
+  it('says a Re-run is under way, not that the Alert is gone, when one started meanwhile', async () => {
+    await load([failure()]);
+    el.querySelectorAll<HTMLButtonElement>('.outcomes button')[0].click();
+    http
+      .expectOne('/api/reviewer/alerts/r1/clear')
+      .flush({ error: 'deferred' }, { status: 409, statusText: 'Conflict' });
+    await settle();
+    expect(text()).toContain(m.reviewer_alert_rerunning({ attempts: 1 }));
+    expect(text()).not.toContain(m.reviewer_alert_gone());
+    expect(buttons()).toEqual([]);
+  });
+
+  it('shows no contact fields once the Request is terminal (ADR 0015)', async () => {
+    http
+      .expectOne('/api/reviewer/alerts/r1')
+      .flush({ ...detail([lapse()]), contact: null });
+    await settle();
+    expect(text()).not.toContain('081 234 5678');
+    expect(text()).toContain(m.reviewer_alert_lapse_title());
+  });
+
   it('says when clearing was the last thing to do', async () => {
     await load([failure()]);
     el.querySelectorAll<HTMLButtonElement>('.outcomes button')[1].click();

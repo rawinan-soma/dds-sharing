@@ -6,7 +6,10 @@ import { CLOCK, type Clock } from '../clock/clock';
 import { DB, type Db } from '../db/database.module';
 import { request, requestContact, requestEvent, reviewer } from '../db/schema';
 import { moveRequestState } from '../requests/move-request-state';
-import { type RequestState } from '../requests/request-state';
+import {
+  type RequestState,
+  TERMINAL_REQUEST_STATES,
+} from '../requests/request-state';
 import { type SurfaceZone, surfaceZone } from '../requests/surface-zone';
 import {
   alertEventsOf,
@@ -46,20 +49,23 @@ export interface AlertRow {
 
 export interface AlertDetail {
   alerts: AlertRow[];
-  /** Live, from the Request, never the Snapshot: phoning needs them (ADR 0015). */
+  /**
+   * Live, from the Request, never the Snapshot: phoning needs them. Null once
+   * the Request is terminal — a lapse can outlive its token — because contact
+   * details leave the surface when a Request stops being in flight (ADR 0015).
+   */
   contact: {
     name: string;
     surname: string;
     tel: string;
     email: string;
     workplace: string;
-  };
+  } | null;
 }
 
 export type ClearOutcome =
   | { status: 'cleared'; clearedAt: string; zone: SurfaceZone | null }
   | { status: 'not_open' }
-  | { status: 'invalid_outcome' }
   | { status: 'deferred' }
   | { status: 'not_permitted' };
 
@@ -99,17 +105,23 @@ export class Alerts {
   ): Promise<AlertDetail | null> {
     const alerts = await this.rowsFor([requestId], viewerId);
     if (alerts.length === 0) return null;
-    const [contact] = await this.db
+    const [row] = await this.db
       .select({
+        state: request.state,
         name: requestContact.name,
         surname: requestContact.surname,
         tel: requestContact.tel,
         email: requestContact.email,
         workplace: requestContact.workplace,
       })
-      .from(requestContact)
-      .where(eq(requestContact.requestId, requestId));
-    return { alerts, contact };
+      .from(request)
+      .innerJoin(requestContact, eq(requestContact.requestId, request.id))
+      .where(eq(request.id, requestId));
+    const { state, ...contact } = row;
+    const terminal = (
+      TERMINAL_REQUEST_STATES as readonly RequestState[]
+    ).includes(state);
+    return { alerts, contact: terminal ? null : contact };
   }
 
   /**
@@ -118,10 +130,10 @@ export class Alerts {
    * once. Both the assigned and the clearing Reviewer go on the event — they
    * differ whenever someone else cleared it (§10.6).
    */
-  async clear(
+  async clear<K extends AlertKind>(
     requestId: string,
-    kind: AlertKind,
-    outcome: string,
+    kind: K,
+    outcome: AlertOutcome<K>,
     viewerId: string,
   ): Promise<ClearOutcome> {
     const now = this.clock.now();
@@ -137,7 +149,6 @@ export class Alerts {
       const alert = open.find((a) => a.kind === kind);
       const assignedId = await approvingReviewerId(tx, requestId);
       if (!alert || !assignedId) return { status: 'not_open' };
-      if (!isOutcomeOf(kind, outcome)) return { status: 'invalid_outcome' };
       if (alert.deferred) return { status: 'deferred' };
 
       const [assigned] = await tx
@@ -253,10 +264,6 @@ export class Alerts {
       .innerJoin(reviewer, eq(reviewer.id, sql`${requestEvent.reviewerId}`))
       .where(inArray(request.id, ids));
   }
-}
-
-function isOutcomeOf(kind: AlertKind, outcome: string): boolean {
-  return (ALERT_OUTCOMES[kind] as readonly string[]).includes(outcome);
 }
 
 function toRow(

@@ -1,6 +1,5 @@
-import { type Executor } from '../audit/write-request-event';
 import { type Db } from '../db/database.module';
-import { approvingReviewerId, openAlertsOf } from '../reviewer/alert-records';
+import { clearLapseOnLateCollection } from '../reviewer/alert-records';
 import { tokenLookup } from '../db/schema';
 import { moveRequestState } from '../requests/move-request-state';
 import { writeRequestEvent } from '../audit/write-request-event';
@@ -73,27 +72,4 @@ export async function recordLookup(
       });
     });
   }
-}
-
-/**
- * A late collection clears its open collection lapse (§10.6) — as `system`,
- * never `reviewer`: nobody gets credit for a call they did not make, and the
- * lapse count must stay honest. Only the first Attempt gets here.
- */
-async function clearLapseOnLateCollection(
-  tx: Executor,
-  requestId: string,
-  now: Date,
-): Promise<void> {
-  const open = await openAlertsOf(tx, requestId);
-  if (!open.some((a) => a.kind === 'collection_lapse')) return;
-  const assignedReviewerId = await approvingReviewerId(tx, requestId);
-  if (!assignedReviewerId) return;
-  await writeRequestEvent(tx, {
-    requestId,
-    type: 'collection_lapse_cleared',
-    occurredAt: now,
-    actor: { actorType: 'system' },
-    payload: { outcome: null, assignedReviewerId, clearingReviewerId: null },
-  });
 }

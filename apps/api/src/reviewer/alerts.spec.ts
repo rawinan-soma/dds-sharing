@@ -83,6 +83,23 @@ describe('openAlerts (§10.6)', () => {
     ).toEqual([]);
   });
 
+  it('never lets a later delivery raise replace an open Alert uncleared', () => {
+    const alerts = openAlerts(
+      stream(
+        ['delivery_alert_raised', '2026-09-21T10:00'],
+        ['collection_lapse_raised', '2026-09-22T10:00'],
+      ),
+    );
+    expect(alerts).toEqual([
+      {
+        kind: 'send_abandoned',
+        raisedAt: ict('2026-09-21T10:00'),
+        deferred: false,
+        rerunAttempts: 0,
+      },
+    ]);
+  });
+
   it('never opens one for a stalled or abandoned Probe', () => {
     const alerts = openAlerts(
       stream(

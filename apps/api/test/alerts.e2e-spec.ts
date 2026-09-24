@@ -213,6 +213,32 @@ describe('Alerts on the queue (e2e)', () => {
     });
   });
 
+  describe('the detail (ADR 0015)', () => {
+    it('shows the live contact fields while the Request is in flight', async () => {
+      const id = await withLapse('alice');
+      const res = await reviewers.alice.browser.get(
+        `/api/reviewer/alerts/${id}`,
+      );
+      expect(res.status).toBe(200);
+      expect(res.body.contact).toMatchObject({ tel: '081 234 5678' });
+    });
+
+    it('withholds them once the Request is terminal, though its lapse is still open', async () => {
+      const id = await withLapse('alice');
+      await q(
+        `UPDATE request SET state = 'expired_uncollected' WHERE id = $1`,
+        [id],
+      );
+      const res = await reviewers.alice.browser.get(
+        `/api/reviewer/alerts/${id}`,
+      );
+      expect(res.status).toBe(200);
+      expect(res.body.alerts).toHaveLength(1);
+      expect(res.body.contact).toBeNull();
+      expect(JSON.stringify(res.body)).not.toContain('081 234 5678');
+    });
+  });
+
   describe('clearing a collection lapse', () => {
     it('by the approving Reviewer, naming both Reviewers, back to in flight', async () => {
       const id = await withLapse('alice');
