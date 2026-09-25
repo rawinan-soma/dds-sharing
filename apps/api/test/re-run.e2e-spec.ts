@@ -105,6 +105,11 @@ describe('Re-run and resend (e2e)', () => {
     const res = await browser.post(`/api/reviewer/queue/${row.id}/approve`);
     expect(res.status).toBe(200);
     await settled(row.id, 1);
+    // The token is issued just after the job row reads `succeeded`.
+    const [job] = await jobsOf(row.id);
+    if (job.status === 'succeeded') {
+      await waitFor(async () => (await tokensOf(row.id)).length === 1);
+    }
     return row.id as string;
   }
 
