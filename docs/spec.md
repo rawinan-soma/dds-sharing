@@ -1588,6 +1588,20 @@ exists to hold.
 
 - **Resend to the same address**: free, audited, and **never moves the 72 h
   clock**. The token is never extended by use, and a resend is not use.
+- **What is resent is the sent Delivery itself** (decided with the repo owner
+  2026-09-24, #74). The raw token is stored nowhere but in the rendered message,
+  so a sent Delivery's BullMQ job is **kept in Redis for 72 hours** — the life of
+  the token it carries — where every other kind is dropped once sent. A resend
+  copies that message into a new send, so the link, the address and the clock
+  are exactly what they were; it takes the **current** link's Delivery, never a
+  superseded one's. If Redis no longer holds it, the resend is refused and the
+  remedy is a Re-run. **The audit is the second `mail_sent` `{kind: delivery}`**;
+  who pressed resend is not recorded, and the catalogue gains no type for it,
+  because a resend changes nothing a Decision was about. Storing the raw token
+  in Postgres, even encrypted, was declined. **Accepted:** for those 72 hours the
+  link is readable to whoever can read Redis — the operator, and Bull Board
+  (§14.4), which is localhost-only and never on the Reviewer surface — as a
+  failed send's already was.
 > ⚠️ **A Reviewer never corrects a Requester's email address. The resend control
 > takes no address field.**
 > [ADR 0017](adr/0017-a-reviewer-never-corrects-a-requesters-email-address.md)

@@ -2,6 +2,7 @@ import { Injectable, inject, signal } from '@angular/core';
 import {
   type AlertKind,
   type AlertRow,
+  type InFlightRow,
   type QueueList,
   type QueueRow,
   QueueApi,
@@ -22,6 +23,8 @@ export class QueueStore {
   readonly rows = signal<QueueRow[] | null>(null);
   /** The must-clear items (§10.6), read with the rows and never on their own. */
   readonly alerts = signal<AlertRow[] | null>(null);
+  /** Approved and not yet terminal (§10.9), read with the rows too. */
+  readonly inFlight = signal<InFlightRow[] | null>(null);
   readonly loading = signal(false);
   readonly failed = signal(false);
   readonly loadedAt = signal(0);
@@ -41,6 +44,7 @@ export class QueueStore {
       this.changes.set(before ? countChanges(before, list.requests) : 0);
       this.rows.set(list.requests);
       this.alerts.set(list.alerts);
+      this.inFlight.set(list.inFlight);
       this.automaticProcessing.set(list.automaticProcessing);
       this.loadedAt.set(Date.now());
     } catch {
@@ -59,6 +63,22 @@ export class QueueStore {
         alerts.filter((a) => a.requestId !== requestId || a.kind !== kind),
       );
     }
+  }
+
+  /** Something pressed on an in-flight Request changed how its row reads. */
+  updateInFlight(requestId: string, change: Partial<InFlightRow>): void {
+    const rows = this.inFlight();
+    if (rows) {
+      this.inFlight.set(
+        rows.map((r) => (r.requestId === requestId ? { ...r, ...change } : r)),
+      );
+    }
+  }
+
+  /** The Request has left the in-flight list: finished, or now an Alert. */
+  removeInFlight(requestId: string): void {
+    const rows = this.inFlight();
+    if (rows) this.inFlight.set(rows.filter((r) => r.requestId !== requestId));
   }
 
   /** A Decision landed on this Request: it is no longer pending. */

@@ -3,6 +3,7 @@ import { type CanActivateFn, type Routes, Router } from '@angular/router';
 import * as m from '../../paraglide/messages.js';
 import { AlertPage } from './alert.page';
 import { DossierPage } from './dossier.page';
+import { InFlightPage } from './in-flight.page';
 import { PasswordGatePage } from './password-gate.page';
 import { QueuePage } from './queue.page';
 import { signInQueryFor } from './return-to';
@@ -73,6 +74,7 @@ export const reviewerRoutes: Routes = [
         canActivate: [requireSession],
         children: [
           { path: 'alerts/:id', component: AlertPage },
+          { path: 'in-flight/:id', component: InFlightPage },
           { path: ':id', component: DossierPage },
         ],
       },

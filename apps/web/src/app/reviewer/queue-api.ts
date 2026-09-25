@@ -66,12 +66,67 @@ export type ClearOutcome =
   | { kind: 'refused' }
   | { kind: 'failed' };
 
+/** How an approved Request's row reads: its newest job, in words. */
+export type ExtractionState = 'extracting' | 'ready' | 'failed';
+
+/** What can physically be done to it now (spec §10.9). */
+export interface InFlightActions {
+  rerun: boolean;
+  resend: boolean;
+}
+
+/** An approved Request not yet terminal. Never names who approved it. */
+export interface InFlightRow {
+  requestId: string;
+  reference: string;
+  submittedAt: string;
+  requesterName: string;
+  diseaseGroupName: string;
+  extraction: ExtractionState;
+  /** Wall-clock: a timestamp the system acts on. Null until a link exists. */
+  linkExpiresAt: string | null;
+  actions: InFlightActions;
+}
+
+/** One in-flight Request, opened (ADR 0015: live contact fields). */
+export interface InFlightDetail extends InFlightRow {
+  contact: Dossier['contact'];
+  reportCodes: string[];
+  startDate: string;
+  endDate: string;
+  area: Area;
+  approvedBy: string;
+  approvedAt: string;
+  /** The current file, never its token; it expires at `linkExpiresAt`. */
+  file: {
+    archiveFilename: string;
+    attempts: number;
+  } | null;
+}
+
+export type InFlightDetailOutcome =
+  | { kind: 'ok'; detail: InFlightDetail }
+  | { kind: 'gone' }
+  | { kind: 'failed' };
+
+/** What pressing Re-run or resend came back with. */
+export type ActionOutcome =
+  | { kind: 'done' }
+  /** No longer in flight: finished, or now under Needs attention. */
+  | { kind: 'gone' }
+  /** Refused as not possible now: extracting, or nothing to resend. */
+  | { kind: 'not_possible' }
+  /** The sent Delivery is no longer held, so it cannot be resent. */
+  | { kind: 'unavailable' }
+  | { kind: 'failed' };
+
 export interface QueueList {
   generatedAt: string;
   /** `stopped` puts the banner up: the tick has stopped (spec §15.3). */
   automaticProcessing: 'running' | 'stopped';
   requests: QueueRow[];
   alerts: AlertRow[];
+  inFlight: InFlightRow[];
 }
 
 export type Area =
@@ -111,6 +166,8 @@ export type DecisionOutcome =
 
 const BASE = '/api/reviewer/queue';
 const ALERTS_BASE = '/api/reviewer/alerts';
+const IN_FLIGHT_BASE = '/api/reviewer/in-flight';
+const REQUESTS_BASE = '/api/reviewer/requests';
 
 // Every call here is one the Reviewer asked for. Nothing calls it on a timer:
 // only user-initiated requests extend the session (§10.5).
@@ -177,6 +234,50 @@ export class QueueApi {
       if (error.status === 404) return { kind: 'gone' };
       if (error.status === 409) return { kind: 'deferred' };
       if (error.status === 403) return { kind: 'refused' };
+      return { kind: 'failed' };
+    }
+  }
+
+  async inFlightDetail(requestId: string): Promise<InFlightDetailOutcome> {
+    try {
+      const detail = await firstValueFrom(
+        this.http.get<InFlightDetail>(
+          `${IN_FLIGHT_BASE}/${encodeURIComponent(requestId)}`,
+        ),
+      );
+      return { kind: 'ok', detail };
+    } catch (error) {
+      return error instanceof HttpErrorResponse && error.status === 404
+        ? { kind: 'gone' }
+        : { kind: 'failed' };
+    }
+  }
+
+  /** A second extraction of what was approved. The body carries nothing. */
+  rerun(requestId: string): Promise<ActionOutcome> {
+    return this.act(`${REQUESTS_BASE}/${encodeURIComponent(requestId)}/rerun`);
+  }
+
+  /**
+   * The same email to the same address. The body carries nothing, and there
+   * is deliberately no way to name another address (ADR 0017).
+   */
+  resend(requestId: string): Promise<ActionOutcome> {
+    return this.act(`${REQUESTS_BASE}/${encodeURIComponent(requestId)}/resend`);
+  }
+
+  private async act(path: string): Promise<ActionOutcome> {
+    try {
+      await firstValueFrom(this.http.post(path, {}));
+      return { kind: 'done' };
+    } catch (error) {
+      if (!(error instanceof HttpErrorResponse)) return { kind: 'failed' };
+      const code = (error.error as { error?: string } | null)?.error;
+      if (error.status === 404) return { kind: 'gone' };
+      if (error.status === 409 && code === 'resend_unavailable') {
+        return { kind: 'unavailable' };
+      }
+      if (error.status === 409) return { kind: 'not_possible' };
       return { kind: 'failed' };
     }
   }

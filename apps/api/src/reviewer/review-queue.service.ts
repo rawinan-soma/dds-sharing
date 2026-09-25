@@ -7,6 +7,7 @@ import { ProvinceLookup } from '../reference/province-lookup.service';
 import { schedulerHealth } from '../scheduler/scheduler-health';
 import { CLOCK, type Clock } from '../clock/clock';
 import { type AlertRow, Alerts } from './alerts.service';
+import { InFlight, type InFlightListRow } from './in-flight.service';
 import {
   type Area,
   type PendingRow,
@@ -40,6 +41,8 @@ export interface QueueList {
   requests: QueueRow[];
   /** The must-clear items (§10.6), read in the same breath as the queue. */
   alerts: AlertRow[];
+  /** Approved and not yet terminal (§10.9), read in the same breath too. */
+  inFlight: InFlightListRow[];
 }
 
 /** The summed count, or the Probe's still-pending or abandoned state (§5.4). */
@@ -70,6 +73,7 @@ export class ReviewQueue {
     @Inject(CLOCK) private readonly clock: Clock,
     private readonly provinces: ProvinceLookup,
     private readonly alerts: Alerts,
+    private readonly inFlight: InFlight,
   ) {}
 
   // The list shows a name and a group, never the rest of the dossier (§10.2),
@@ -99,6 +103,7 @@ export class ReviewQueue {
       automaticProcessing: scheduler.status === 'ok' ? 'running' : 'stopped',
       requests: rankPending(rows, now).map(toRow),
       alerts: await this.alerts.list(viewerId),
+      inFlight: await this.inFlight.list(),
     };
   }
 

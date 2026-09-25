@@ -18,7 +18,7 @@ export interface BuildExtractArchiveInput {
   codes: readonly string[];
   /** The Request's submit moment — the archive name's anchor (spec §8.3). */
   submittedAt: Date;
-  /** 1 for the original run; a Re-run (#74) passes 2, 3, ... */
+  /** 1 for the original run; a Re-run passes 2, 3, ... */
   runNumber: number;
 }
 

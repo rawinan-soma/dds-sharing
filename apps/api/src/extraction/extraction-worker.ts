@@ -41,10 +41,6 @@ import {
 import { raiseExtractionAlert } from '../reviewer/alert-records';
 import { StallError, StallGuard } from './stall-guard';
 
-// A Re-run (#74) will pass a run number above 1, which is what earns an
-// archive its `-rN` suffix (spec §8.3). Nothing produces one yet.
-const FIRST_RUN = 1;
-
 export interface ExtractionWorkerDeps {
   db: NodePgDatabase;
   connection: Redis;
@@ -88,7 +84,7 @@ interface ExtractionTargetWithSubmittedAt extends ExtractionTarget {
 }
 
 /** The Request's stored parameters — read fresh per job, never cached
- * outside it: a Re-run (a later ticket) must see whatever is stored now. */
+ * outside it: a Re-run must see whatever is stored now. */
 async function loadTarget(
   db: NodePgDatabase,
   requestId: string,
@@ -149,13 +145,14 @@ async function publishExtract(
   requestId: string,
   target: ExtractionTargetWithSubmittedAt,
   result: ExtractionResult,
+  runNumber: number,
   now: () => Date,
 ): Promise<{ archiveFilename: string }> {
   const archive = await buildExtractArchive({
     rowsByCode: result.rowsByCode,
     codes: result.summary.reportCodes,
     submittedAt: target.submittedAt,
-    runNumber: FIRST_RUN,
+    runNumber,
   });
   const scratchPath = join(deps.scratchDir, archive.archiveFilename);
   await writeFile(scratchPath, archive.archiveBytes);
@@ -186,20 +183,50 @@ async function publishExtract(
 }
 
 /**
- * Issues the Download token and sends the Delivery email (spec §9.3, §11.3).
- * The token is generated here, at completion — never earlier — because it is
- * anchored on job completion, not on approval.
+ * The Extract is ready: issues its Download token and sends the Delivery
+ * (spec §9.3, §11.3). The token is generated here, at completion — never
+ * earlier — because it is anchored on job completion, not on approval. For a
+ * Re-run, `issueAtReady` also revokes the earlier token in the same breath
+ * (ADR 0012), before the Delivery goes, so a resend can never pick up a
+ * superseded link.
+ *
+ * A Request that ended while the job ran gets no token and no Delivery
+ * (ADR 0016): the object just uploaded is removed at once, on the record,
+ * rather than left for the lifecycle backstop.
  */
-async function sendDeliveryMail(
+async function deliver(
   deps: Pick<
     ExtractionWorkerDeps,
-    'db' | 'downloadTokens' | 'mailSender' | 'frontendUrl'
+    'db' | 'downloadTokens' | 'mailSender' | 'frontendUrl' | 'archiveStore'
   >,
   requestId: string,
   reference: string,
   archiveFilename: string,
   now: () => Date,
+  logger: LoggerService,
 ): Promise<void> {
+  const rawToken = generateToken();
+  const token = await deps.downloadTokens.issueAtReady(
+    requestId,
+    rawToken,
+    archiveFilename,
+    now(),
+  );
+  if (!token) {
+    logger.warn(
+      `extraction for request ${requestId} finished after the request ended; nothing delivered`,
+    );
+    await deps.archiveStore.remove(archiveFilename);
+    await writeRequestEvent(deps.db, {
+      requestId,
+      type: 'object_deleted',
+      occurredAt: now(),
+      actor: { actorType: 'system' },
+      payload: { objectKey: archiveFilename, outcome: 'deleted' },
+    });
+    return;
+  }
+
   const [contact] = await deps.db
     .select({
       name: requestContact.name,
@@ -208,15 +235,17 @@ async function sendDeliveryMail(
     })
     .from(requestContact)
     .where(eq(requestContact.requestId, requestId));
-
-  const rawToken = generateToken();
-  await deps.downloadTokens.create(requestId, rawToken, archiveFilename, now());
-  await deps.mailSender.send(requestId, contact.email, {
-    kind: 'delivery',
-    name: `${contact.name} ${contact.surname}`,
-    reference,
-    downloadUrl: `${deps.frontendUrl}/d/${rawToken}`,
-  });
+  await deps.mailSender.send(
+    requestId,
+    contact.email,
+    {
+      kind: 'delivery',
+      name: `${contact.name} ${contact.surname}`,
+      reference,
+      downloadUrl: `${deps.frontendUrl}/d/${rawToken}`,
+    },
+    { downloadTokenId: token.id },
+  );
 }
 
 /**
@@ -340,6 +369,7 @@ export async function processExtractionJob(
   }
 
   const target = await loadTarget(deps.db, requestId);
+  const runNumber = await deps.extractionJobs.runNumber(jobId);
   await deps.extractionJobs.markRunning(jobId, now());
   await writeRequestEvent(deps.db, {
     requestId,
@@ -352,6 +382,7 @@ export async function processExtractionJob(
   const stallGuard = new StallGuard(
     deps.stallMs ?? EXTRACTION_DEFAULTS.stallMs,
   );
+  let published: string | null = null;
   try {
     // Read once, here, and held for the rest of this job (spec §6.4): a
     // per-row join would let a mid-job edit put two regions for one
@@ -388,16 +419,11 @@ export async function processExtractionJob(
       requestId,
       target,
       result,
+      runNumber,
       now,
     );
     await deps.extractionJobs.markSucceeded(jobId, now(), result.summary);
-    await sendDeliveryMail(
-      deps,
-      requestId,
-      target.reference,
-      archiveFilename,
-      now,
-    );
+    published = archiveFilename;
   } catch (error) {
     const failure = toFailure(error, deps.provinceLookup.checksum);
     logger.warn(
@@ -423,6 +449,15 @@ export async function processExtractionJob(
     await sendExtractionFailureMail(deps, requestId, target.reference);
   } finally {
     stallGuard.dispose();
+  }
+
+  // Outside the failure path on purpose: the Extract is published and the job
+  // succeeded, so nothing after this point is an extraction failure. A send
+  // that goes wrong is the Delivery's own (§11.3: retried, then an Alert); a
+  // Request left ready with no link reads so on the in-flight list, where a
+  // Re-run is offered.
+  if (published) {
+    await deliver(deps, requestId, target.reference, published, now, logger);
   }
 }
 

@@ -11,6 +11,8 @@ import { Alerts } from './alerts.service';
 import { LoginThrottle } from './login-throttle';
 import { CsrfGuard } from './csrf.guard';
 import { DecisionsController } from './decisions.controller';
+import { InFlightController } from './in-flight.controller';
+import { InFlight } from './in-flight.service';
 import { Decisions } from './decisions.service';
 import { ReviewerAuth } from './reviewer-auth';
 import { ReviewerAuthGuard } from './reviewer-auth.guard';
@@ -27,11 +29,13 @@ import { ReviewerSessions } from './reviewer-sessions';
     ReviewQueueController,
     DecisionsController,
     AlertsController,
+    InFlightController,
   ],
   providers: [
     ReviewQueue,
     Decisions,
     Alerts,
+    InFlight,
     {
       provide: REVIEWER_CONFIG,
       inject: [transportConfig.KEY],

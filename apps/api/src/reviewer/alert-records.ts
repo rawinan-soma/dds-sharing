@@ -114,3 +114,33 @@ export async function clearLapseOnLateCollection(
     payload: { outcome: null, assignedReviewerId, clearingReviewerId: null },
   });
 }
+
+/**
+ * A Re-run's new Extract is ready: the extraction-failure Alert it deferred
+ * is cleared — as `system`, with `re_ran`, because the system is what
+ * resolved it (ADR 0014). A Re-run over a healthy Extract deferred nothing,
+ * and writes nothing here.
+ */
+export async function clearAlertOnRerun(
+  db: Executor,
+  requestId: string,
+  occurredAt: Date,
+): Promise<void> {
+  const open = await openAlertsOf(db, requestId);
+  const alert = open.find((a) => a.kind === 'extraction_failure');
+  if (!alert?.deferred) return;
+  const assignedReviewerId = await approvingReviewerId(db, requestId);
+  if (!assignedReviewerId) return;
+  await writeRequestEvent(db, {
+    requestId,
+    type: 'extraction_alert_cleared',
+    occurredAt,
+    actor: { actorType: 'system' },
+    payload: {
+      outcome: 're_ran',
+      assignedReviewerId,
+      clearingReviewerId: null,
+      rerunAttempts: alert.rerunAttempts,
+    },
+  });
+}

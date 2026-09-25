@@ -18,7 +18,16 @@ export class MailSender {
     private readonly queue: MailQueue,
   ) {}
 
-  async send(requestId: string, to: string, params: MailParams): Promise<void> {
+  /**
+   * `downloadTokenId` names the token a Delivery carries, so a resend can
+   * tell the current link's Delivery from a superseded one (§10.8).
+   */
+  async send(
+    requestId: string,
+    to: string,
+    params: MailParams,
+    { downloadTokenId }: { downloadTokenId?: string } = {},
+  ): Promise<void> {
     const { subject, html } = renderMail(catalogue, params);
     const mailDeliveryId = await this.mailDeliveries.create(
       requestId,
@@ -31,6 +40,7 @@ export class MailSender {
       to,
       subject,
       html,
+      downloadTokenId,
     });
   }
 }

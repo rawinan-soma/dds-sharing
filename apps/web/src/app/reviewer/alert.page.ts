@@ -36,6 +36,8 @@ type View =
 type Clearing =
   | { kind: 'idle' }
   | { kind: 'saving'; outcome: AlertOutcome }
+  // A Re-run pressed from this card, not yet answered.
+  | { kind: 'starting' }
   | { kind: 'cleared'; zone: 'in_flight' | null }
   // A Re-run started after this screen was read (ADR 0014): not gone, waiting.
   | { kind: 'deferred' }
@@ -116,7 +118,7 @@ type Clearing =
                           <button
                             class="btn btn-secondary"
                             type="button"
-                            [disabled]="clearingOf(alert).kind === 'saving'"
+                            [disabled]="busy(alert)"
                             [attr.aria-busy]="
                               savingWith(alert, outcome) || null
                             "
@@ -130,6 +132,28 @@ type Clearing =
                           </button>
                         }
                       </div>
+                      @if (alert.kind === 'extraction_failure') {
+                        <!-- §10.9: Re-run lives here while the Alert holds
+                             the Request; it defers the Alert, never clears
+                             it (ADR 0014). -->
+                        <div class="rerun-action">
+                          <button
+                            class="btn btn-secondary rerun"
+                            type="button"
+                            aria-describedby="alert-rerun-note"
+                            [disabled]="busy(alert)"
+                            [attr.aria-busy]="starting(alert) || null"
+                            (click)="rerun(alert)"
+                          >
+                            {{
+                              starting(alert) ? copy.rerunLoading : copy.rerun
+                            }}
+                          </button>
+                          <p id="alert-rerun-note" class="muted small">
+                            {{ copy.rerunNote }}
+                          </p>
+                        </div>
+                      }
                       @if (problemOf(alert); as problem) {
                         <p class="problem" role="alert">{{ problem }}</p>
                       }
@@ -206,6 +230,9 @@ type Clearing =
       gap: 12px;
       margin-top: 16px;
     }
+    .rerun-action {
+      margin-top: 16px;
+    }
     .problem {
       color: var(--failed);
       font-weight: 600;
@@ -235,6 +262,9 @@ export class AlertPage {
     contactVisible: m.reviewer_contact_visible_note(),
     closedSetNote: m.reviewer_alert_closed_set_note(),
     saving: m.reviewer_alert_clearing(),
+    rerun: m.reviewer_rerun(),
+    rerunLoading: m.reviewer_rerun_loading(),
+    rerunNote: m.reviewer_rerun_note(),
   };
 
   constructor() {
@@ -273,13 +303,51 @@ export class AlertPage {
     return clearing.kind === 'saving' && clearing.outcome === outcome;
   }
 
+  protected busy(alert: AlertRow): boolean {
+    const kind = this.clearingOf(alert).kind;
+    return kind === 'saving' || kind === 'starting';
+  }
+
+  protected starting(alert: AlertRow): boolean {
+    return this.clearingOf(alert).kind === 'starting';
+  }
+
+  /**
+   * Re-run from the card: the Alert is then deferred, waiting on the new job,
+   * so the card says so rather than offering outcomes (ADR 0014).
+   */
+  protected async rerun(alert: AlertRow): Promise<void> {
+    if (this.busy(alert)) return;
+    this.setClearing(alert, { kind: 'starting' });
+    const outcome = await this.api.rerun(alert.requestId);
+    switch (outcome.kind) {
+      // `not_possible`: already extracting — someone else pressed it first.
+      case 'done':
+      case 'not_possible':
+        this.setClearing(alert, { kind: 'deferred' });
+        return;
+      case 'gone':
+        this.store.removeAlert(alert.requestId, alert.kind);
+        this.setClearing(alert, {
+          kind: 'problem',
+          message: m.reviewer_alert_gone(),
+        });
+        return;
+      default:
+        this.setClearing(alert, {
+          kind: 'problem',
+          message: m.reviewer_rerun_failed(),
+        });
+    }
+  }
+
   protected problemOf(alert: AlertRow): string | null {
     const clearing = this.clearingOf(alert);
     return clearing.kind === 'problem' ? clearing.message : null;
   }
 
   protected async clear(alert: AlertRow, outcome: AlertOutcome): Promise<void> {
-    if (this.clearingOf(alert).kind === 'saving') return;
+    if (this.busy(alert)) return;
     this.setClearing(alert, { kind: 'saving', outcome });
     const result = await this.api.clearAlert(
       alert.requestId,

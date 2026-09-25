@@ -292,7 +292,7 @@ export const extractionJob = pgTable(
 );
 
 // The Download token (spec §9.2, §9.3): operational, like `extraction_job` —
-// updated in place (only `revoked_at`, by a future Re-run, ADR 0012), never
+// updated in place (only `revoked_at`, by a Re-run at ready, ADR 0012), never
 // deleted. The raw token is never stored, only its hash (mirrors
 // `reviewer_session.token_hash`); `archive_filename` is the object key in
 // MinIO so the archive route never has to re-derive it.
