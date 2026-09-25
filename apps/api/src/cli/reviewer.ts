@@ -1,10 +1,8 @@
 import { createInterface } from 'node:readline/promises';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { Pool } from 'pg';
-import { hostCliSchema, validateEnvOrExit } from '../config/env.schema';
 import { systemClock } from '../clock/clock';
 import { ReviewerAccounts } from '../reviewer/reviewer-accounts';
-import { runReviewerCli, type CliIo } from './reviewer-cli';
+import { type CliIo, runMain, terminalOutput, withAppDb } from './host-command';
+import { runReviewerCli } from './reviewer-cli';
 import { loadRetentionNotice } from './retention-notice';
 
 // `docker compose exec app node dist/cli/reviewer.js <command>`
@@ -13,35 +11,25 @@ import { loadRetentionNotice } from './retention-notice';
 // migrations bind it too: it can no more delete a Reviewer or rewrite a display
 // name than the running application can.
 
-async function main(): Promise<number> {
-  const { APP_DATABASE_URL: connectionString } =
-    validateEnvOrExit(hostCliSchema);
-  const pool = new Pool({ connectionString });
-  const rl = createInterface({ input: process.stdin, output: process.stdout });
-  const io: CliIo = {
-    out: (line) => console.log(line),
-    err: (line) => console.error(line),
-    prompt: (question) => rl.question(question),
-  };
-  try {
-    return await runReviewerCli(
-      process.argv.slice(2),
-      io,
-      new ReviewerAccounts(drizzle(pool), systemClock),
-      loadRetentionNotice(),
-    );
-  } finally {
-    rl.close();
-    await pool.end();
-  }
-}
-
-main().then(
-  (code) => {
-    process.exitCode = code;
-  },
-  (error: unknown) => {
-    console.error(error);
-    process.exitCode = 1;
-  },
+runMain(() =>
+  withAppDb(async (db) => {
+    const rl = createInterface({
+      input: process.stdin,
+      output: process.stdout,
+    });
+    const io: CliIo = {
+      ...terminalOutput,
+      prompt: (question) => rl.question(question),
+    };
+    try {
+      return await runReviewerCli(
+        process.argv.slice(2),
+        io,
+        new ReviewerAccounts(db, systemClock),
+        loadRetentionNotice(),
+      );
+    } finally {
+      rl.close();
+    }
+  }),
 );

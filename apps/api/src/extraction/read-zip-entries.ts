@@ -1,5 +1,5 @@
-// Test-only: reads back a zip's entries so a spec can assert on what
-// `buildArchive`/`buildExtractArchive` actually produced, byte for byte.
+// Reads back a zip's entries: the fingerprint command takes an Extract
+// archive, and the specs assert on what `buildArchive` actually produced.
 
 import yauzl, { type Entry } from 'yauzl';
 

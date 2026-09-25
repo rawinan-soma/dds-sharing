@@ -6,7 +6,8 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { loadRetentionNotice } from '../src/cli/retention-notice';
-import { runReviewerCli, type CliIo } from '../src/cli/reviewer-cli';
+import { type CliIo } from '../src/cli/host-command';
+import { runReviewerCli } from '../src/cli/reviewer-cli';
 import {
   validatePassword,
   verifyPassword,
@@ -271,6 +272,189 @@ describe('the reviewer host commands', () => {
           notice,
         ),
       ).toBe(1);
+    });
+  });
+
+  describe('reset-password', () => {
+    const sessionsOf = async (username: string) =>
+      (
+        await scratch.owner.query(
+          `SELECT 1 FROM reviewer_session s JOIN reviewer r ON r.id = s.reviewer_id
+           WHERE r.username = $1`,
+          [username],
+        )
+      ).rowCount;
+    const openSession = (username: string) =>
+      scratch.owner.query(
+        `INSERT INTO reviewer_session (reviewer_id, token_hash, created_at, last_seen_at)
+         SELECT id, md5(random()::text), now(), now()
+         FROM reviewer WHERE username = $1`,
+        [username],
+      );
+
+    it('prints a new password once, forces a change at next sign-in and ends live sessions', async () => {
+      await scratch.owner.query(
+        `UPDATE reviewer SET must_change_password = false WHERE username = 'somchai'`,
+      );
+      await openSession('somchai');
+      const before = (
+        await scratch.owner.query(
+          `SELECT password_hash, totp_secret FROM reviewer WHERE username = 'somchai'`,
+        )
+      ).rows[0];
+      const cli = fakeIo();
+
+      const code = await runReviewerCli(
+        ['reset-password', 'somchai'],
+        cli.io,
+        accounts,
+        notice,
+      );
+
+      expect(code).toBe(0);
+      const row = (
+        await scratch.owner.query(
+          `SELECT * FROM reviewer WHERE username = 'somchai'`,
+        )
+      ).rows[0];
+      const printed = /Password: (\S+)/.exec(cli.text());
+      expect(printed).not.toBeNull();
+      const password = printed![1];
+      expect(validatePassword(password)).toEqual([]);
+      expect(row.password_hash).not.toBe(before.password_hash);
+      expect(await verifyPassword(row.password_hash, password)).toBe(true);
+      expect(cli.text().split(password)).toHaveLength(2);
+      expect(row.must_change_password).toBe(true);
+      // A password reset leaves the authenticator alone.
+      expect(row.totp_secret).toBe(before.totp_secret);
+      expect(row.totp_confirmed_at).not.toBeNull();
+      expect(await sessionsOf('somchai')).toBe(0);
+      expect(cli.text()).toMatch(/1 live session/);
+      // Recorded the moment it runs, naming the account and nobody else.
+      const events = (
+        await scratch.owner.query(
+          `SELECT actor_type, reviewer_id, payload FROM reviewer_event WHERE type = 'password_reset'`,
+        )
+      ).rows;
+      expect(events).toEqual([
+        {
+          actor_type: 'system',
+          reviewer_id: null,
+          payload: { username: 'somchai', sessionsEnded: 1 },
+        },
+      ]);
+    });
+
+    it('refuses a deactivated Reviewer', async () => {
+      const cli = fakeIo();
+      expect(
+        await runReviewerCli(
+          ['reset-password', 'malee'],
+          cli.io,
+          accounts,
+          notice,
+        ),
+      ).toBe(1);
+      expect(cli.err.join('\n')).toMatch(/deactivated/);
+      expect(cli.text()).not.toMatch(/Password:/);
+      const { rowCount } = await scratch.owner.query(
+        `SELECT 1 FROM reviewer_event WHERE type = 'password_reset' AND payload->>'username' = 'malee'`,
+      );
+      expect(rowCount).toBe(0);
+    });
+
+    it('reports an unknown Reviewer', async () => {
+      const cli = fakeIo();
+      expect(
+        await runReviewerCli(
+          ['reset-password', 'ghost'],
+          cli.io,
+          accounts,
+          notice,
+        ),
+      ).toBe(1);
+      expect(cli.err.join('\n')).toMatch(/no reviewer/i);
+    });
+  });
+
+  describe('reenrol-totp', () => {
+    it('prints a new QR and key, makes the account inert until a code confirms it, and ends live sessions', async () => {
+      await scratch.owner.query(
+        `UPDATE reviewer SET totp_last_used_step = 123 WHERE username = 'somchai'`,
+      );
+      await scratch.owner.query(
+        `INSERT INTO reviewer_session (reviewer_id, token_hash, created_at, last_seen_at)
+         SELECT id, md5(random()::text), now(), now()
+         FROM reviewer WHERE username = 'somchai'`,
+      );
+      const before = (
+        await scratch.owner.query(
+          `SELECT password_hash, totp_secret, must_change_password FROM reviewer WHERE username = 'somchai'`,
+        )
+      ).rows[0];
+      const cli = fakeIo();
+
+      const code = await runReviewerCli(
+        ['reenrol-totp', 'somchai'],
+        cli.io,
+        accounts,
+        notice,
+      );
+
+      expect(code).toBe(0);
+      const row = (
+        await scratch.owner.query(
+          `SELECT * FROM reviewer WHERE username = 'somchai'`,
+        )
+      ).rows[0];
+      expect(row.totp_secret).not.toBe(before.totp_secret);
+      expect(cli.text()).toContain(row.totp_secret);
+      expect(cli.text()).toMatch(/[█▀▄]{4,}/);
+      expect(row.totp_confirmed_at).toBeNull();
+      expect(row.totp_last_used_step).toBeNull();
+      // The password is not touched, and none is printed.
+      expect(row.password_hash).toBe(before.password_hash);
+      expect(row.must_change_password).toBe(before.must_change_password);
+      expect(cli.text()).not.toMatch(/Password:/);
+      const { rowCount } = await scratch.owner.query(
+        `SELECT 1 FROM reviewer_session WHERE reviewer_id = $1`,
+        [row.id],
+      );
+      expect(rowCount).toBe(0);
+      expect(cli.text()).toMatch(/inert/);
+      const events = (
+        await scratch.owner.query(
+          `SELECT actor_type, reviewer_id, payload FROM reviewer_event WHERE type = 'totp_reset'`,
+        )
+      ).rows;
+      expect(events).toEqual([
+        {
+          actor_type: 'system',
+          reviewer_id: null,
+          payload: { username: 'somchai', sessionsEnded: 1 },
+        },
+      ]);
+    });
+
+    it('refuses a deactivated Reviewer', async () => {
+      const cli = fakeIo();
+      expect(
+        await runReviewerCli(
+          ['reenrol-totp', 'malee'],
+          cli.io,
+          accounts,
+          notice,
+        ),
+      ).toBe(1);
+      expect(cli.err.join('\n')).toMatch(/deactivated/);
+    });
+
+    it('needs exactly one username', async () => {
+      const cli = fakeIo();
+      expect(
+        await runReviewerCli(['reenrol-totp'], cli.io, accounts, notice),
+      ).toBe(1);
+      expect(cli.err.join('\n')).toMatch(/usage/i);
     });
   });
 
