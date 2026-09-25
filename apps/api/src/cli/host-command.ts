@@ -3,8 +3,8 @@ import { Pool } from 'pg';
 import { hostCliSchema, validateEnvOrExit } from '../config/env.schema';
 import { type Db } from '../db/database.module';
 
-// What a host command writes to; the entry script binds it to the terminal and
-// a spec to arrays.
+// What every host command shares: where it writes (the entry script binds it
+// to the terminal, a spec to arrays), its database handle and its exit code.
 export interface CliOutput {
   out(line: string): void;
   err(line: string): void;

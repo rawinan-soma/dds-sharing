@@ -1,8 +1,9 @@
 import { createHash } from 'node:crypto';
 import { and, asc, eq, sql } from 'drizzle-orm';
+import { formatIct } from '../clock/format-ict';
 import { type Db } from '../db/database.module';
 import { request, requestEvent } from '../db/schema';
-import { type CliOutput, plural } from './cli-io';
+import { type CliOutput, plural } from './host-command';
 import { extractsIn, NotAnExtractError } from './extracts-in';
 
 // Fingerprint verification (spec §8.4, ADR 0005): a file arrives — an Extract
@@ -62,12 +63,6 @@ export async function findReleases(
     .orderBy(asc(requestEvent.occurredAt), asc(requestEvent.id));
   return rows;
 }
-
-const BANGKOK = new Intl.DateTimeFormat('sv-SE', {
-  timeZone: 'Asia/Bangkok',
-  dateStyle: 'short',
-  timeStyle: 'short',
-});
 
 export async function runVerifyExtractCli(
   argv: string[],
@@ -129,7 +124,7 @@ async function verify(
     io.out(`MATCH: released for ${plural(releases.length, 'Request')}:`);
     for (const release of releases) {
       io.out(
-        `  ${release.reference}  completed ${BANGKOK.format(release.completedAt)} (Bangkok)  ${release.archiveFilename}  ${plural(release.rowCount, 'row')}`,
+        `  ${release.reference}  completed ${formatIct(release.completedAt)}  ${release.archiveFilename}  ${plural(release.rowCount, 'row')}`,
       );
     }
   }

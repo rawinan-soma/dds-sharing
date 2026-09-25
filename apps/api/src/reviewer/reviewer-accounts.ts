@@ -8,6 +8,7 @@ import {
   validatePassword,
 } from './password-policy';
 import { enrolmentUri, generateTotpSecret } from './totp';
+import { type CredentialReset } from '../audit/event-catalogue';
 import { writeReviewerEvent } from './reviewer-events';
 import { ADVISORY_LOCK } from '../db/advisory-locks';
 
@@ -239,7 +240,7 @@ export class ReviewerAccounts {
     type: 'password_reset' | 'totp_reset',
     username: string,
     set: Partial<typeof reviewer.$inferInsert>,
-    toOutcome: (replaced: { username: string; sessionsEnded: number }) => T,
+    toOutcome: (replaced: CredentialReset) => T,
   ): Promise<T | CredentialRefusal> {
     return this.db.transaction(async (tx) => {
       const [target] = await tx

@@ -1,7 +1,7 @@
 import { createInterface } from 'node:readline/promises';
 import { systemClock } from '../clock/clock';
 import { ReviewerAccounts } from '../reviewer/reviewer-accounts';
-import { type CliIo, runMain, terminalOutput, withAppDb } from './cli-io';
+import { type CliIo, runMain, terminalOutput, withAppDb } from './host-command';
 import { runReviewerCli } from './reviewer-cli';
 import { loadRetentionNotice } from './retention-notice';
 

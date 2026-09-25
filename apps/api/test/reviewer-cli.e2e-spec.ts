@@ -6,7 +6,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { loadRetentionNotice } from '../src/cli/retention-notice';
-import { type CliIo } from '../src/cli/cli-io';
+import { type CliIo } from '../src/cli/host-command';
 import { runReviewerCli } from '../src/cli/reviewer-cli';
 import {
   validatePassword,

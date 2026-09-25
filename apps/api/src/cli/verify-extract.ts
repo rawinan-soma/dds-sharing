@@ -1,5 +1,5 @@
 import { readFile } from 'node:fs/promises';
-import { runMain, terminalOutput, withAppDb } from './cli-io';
+import { runMain, terminalOutput, withAppDb } from './host-command';
 import { findReleases, runVerifyExtractCli } from './verify-extract-cli';
 
 // `docker compose exec app node dist/cli/verify-extract.js <file>`

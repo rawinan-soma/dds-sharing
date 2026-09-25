@@ -1,4 +1,4 @@
-import { runMain, terminalOutput, withAppDb } from './cli-io';
+import { runMain, terminalOutput, withAppDb } from './host-command';
 import {
   countUpstreamTraffic,
   runTrafficReportCli,

@@ -1,6 +1,6 @@
 import { parseArgs } from 'node:util';
 import QRCode from 'qrcode';
-import { type CliIo, isArgumentError, plural } from './cli-io';
+import { type CliIo, isArgumentError, plural } from './host-command';
 import {
   type CredentialRefusal,
   MIN_ACTIVE_REVIEWERS,
@@ -122,26 +122,21 @@ async function deactivate(
     allowPositionals: true,
     strict: true,
   });
-  const [username, ...extra] = positionals;
-  if (!username || extra.length > 0) {
-    io.err('Give exactly one username.');
-    io.err(USAGE);
-    return 1;
-  }
+  const username = exactlyOne(positionals, io);
+  if (username === null) return 1;
 
   const outcome = await accounts.deactivate(username, {
     force: values.force === true,
   });
   switch (outcome.status) {
     case 'not_found':
-      io.err(`No Reviewer named "${username}".`);
-      return 1;
+      return reportRefusal(io, username, 'not_found');
     case 'already_deactivated':
       io.err(`"${username}" is already deactivated.`);
       return 1;
     case 'refused_floor':
       io.err(
-        `Refused: that would leave ${outcome.activeAfter} active Reviewer(s), fewer than two. The service needs ${MIN_ACTIVE_REVIEWERS} reachable people.`,
+        `Refused: that would leave ${plural(outcome.activeAfter, 'active Reviewer')}, fewer than two. The service needs ${MIN_ACTIVE_REVIEWERS} reachable people.`,
       );
       io.err(
         "The second Reviewer is the first one's only recovery path, and requests expire while nobody can decide them.",
@@ -183,6 +178,10 @@ function oneUsername(args: string[], io: CliIo): string | null {
     allowPositionals: true,
     strict: true,
   });
+  return exactlyOne(positionals, io);
+}
+
+function exactlyOne(positionals: string[], io: CliIo): string | null {
   if (positionals.length !== 1) {
     io.err('Give exactly one username.');
     io.err(USAGE);

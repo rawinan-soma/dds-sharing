@@ -271,7 +271,7 @@ export interface ReviewerEventPayloads {
   totp_reset: CredentialReset;
 }
 
-interface CredentialReset {
+export interface CredentialReset {
   username: string;
   /** Live sessions the reset ended. */
   sessionsEnded: number;

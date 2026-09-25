@@ -1,8 +1,8 @@
 import { parseArgs } from 'node:util';
-import { and, gte, inArray, lt, sql } from 'drizzle-orm';
+import { and, gte, inArray, lt, type SQL, sql } from 'drizzle-orm';
 import { type Db } from '../db/database.module';
 import { requestEvent } from '../db/schema';
-import { type CliOutput, isArgumentError, plural } from './cli-io';
+import { type CliOutput, isArgumentError, plural } from './host-command';
 import {
   DateRangeError,
   type InstantRange,
@@ -38,42 +38,46 @@ export interface TrafficSource {
   count(range: InstantRange): Promise<UpstreamTraffic>;
 }
 
+type TrafficEvent = 'probe_performed' | 'probe_failed' | 'code_fetched';
+const TRAFFIC_EVENTS: TrafficEvent[] = [
+  'probe_performed',
+  'probe_failed',
+  'code_fetched',
+];
+
 export async function countUpstreamTraffic(
   db: Db,
   range: InstantRange,
 ): Promise<UpstreamTraffic> {
   const { type, payload, requestId } = requestEvent;
-  const intOrZero = (expression: ReturnType<typeof sql>) =>
-    sql<number>`coalesce(${expression}, 0)::int`;
+  // An aggregate over one event type's rows, zero when there were none.
+  const over = (event: TrafficEvent, aggregate: SQL) =>
+    sql<number>`coalesce(${aggregate} filter (where ${type} = ${event}), 0)::int`;
   const [row] = await db
     .select({
-      probesPerformed: intOrZero(
-        sql`count(*) filter (where ${type} = 'probe_performed')`,
+      probesPerformed: over('probe_performed', sql`count(*)`),
+      probePerformedCalls: over(
+        'probe_performed',
+        sql`sum((${payload}->>'callsMade')::int)`,
       ),
-      probePerformedCalls: intOrZero(
-        sql`sum((${payload}->>'callsMade')::int) filter (where ${type} = 'probe_performed')`,
+      probesAbandoned: over('probe_failed', sql`count(*)`),
+      // One relayed error per attempt (probe.service.ts); #99 has where that
+      // and upstream's own count part ways.
+      probeAbandonedCalls: over(
+        'probe_failed',
+        sql`sum(jsonb_array_length(${payload}->'errors'))`,
       ),
-      probesAbandoned: intOrZero(
-        sql`count(*) filter (where ${type} = 'probe_failed')`,
+      codeFetches: over('code_fetched', sql`count(*)`),
+      fetchCalls: over(
+        'code_fetched',
+        sql`sum((${payload}->>'pageCount')::int)`,
       ),
-      // Every attempt that reached upstream is one error on the record.
-      probeAbandonedCalls: intOrZero(
-        sql`sum(jsonb_array_length(${payload}->'errors')) filter (where ${type} = 'probe_failed')`,
-      ),
-      codeFetches: intOrZero(
-        sql`count(*) filter (where ${type} = 'code_fetched')`,
-      ),
-      fetchCalls: intOrZero(
-        sql`sum((${payload}->>'pageCount')::int) filter (where ${type} = 'code_fetched')`,
-      ),
-      requestsFetched: intOrZero(
-        sql`count(distinct ${requestId}) filter (where ${type} = 'code_fetched')`,
-      ),
+      requestsFetched: over('code_fetched', sql`count(distinct ${requestId})`),
     })
     .from(requestEvent)
     .where(
       and(
-        inArray(type, ['probe_performed', 'probe_failed', 'code_fetched']),
+        inArray(type, TRAFFIC_EVENTS),
         gte(requestEvent.occurredAt, range.start),
         lt(requestEvent.occurredAt, range.end),
       ),
@@ -130,7 +134,7 @@ export async function runTrafficReportCli(
   io.out(`Total upstream calls:  ${probeCalls + traffic.fetchCalls}`);
   io.out('');
   io.out(
-    'Every figure is a floor: it counts the calls the record holds, and retries that ended in success are not recorded.',
+    "Approximate: counted from the record, which misses retries that ended in success, an abandoned Probe's earlier codes and a failed job's pages, and counts a Probe error raised before a call left the host. See #99.",
   );
   return 0;
 }

@@ -7,7 +7,7 @@ import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { MAIL_KINDS } from '../src/audit/event-catalogue';
-import { type CliOutput } from '../src/cli/cli-io';
+import { type CliOutput } from '../src/cli/host-command';
 import {
   findReleases,
   runVerifyExtractCli,
