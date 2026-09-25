@@ -1,6 +1,6 @@
 # Re-run, resend and the in-flight list
 
-Status: ready-for-agent
+Status: closed
 Blocked by: 73
 Source: https://github.com/rawinan-soma/dds-sharing/issues/74 (migrated 2026-09-21)
 
@@ -162,3 +162,7 @@ Treat the design as the source of **visual layout only**. Structure, ordering an
 **rawinan-soma** — 2026-09-24
 
 From #73: an extraction-failure Alert is **deferred** while a Re-run is under way, and a Reviewer cannot clear it (the clear endpoint answers 409) until the re-run settles. Deferral is derived in `apps/api/src/reviewer/alerts.ts` (`openAlerts`): `extraction_rerun_queued` starts it, and only `job_failed` or `extraction_alert_cleared` ends it. **This ticket must make every way a re-run ends settle the Alert** — a completed re-run writes `extraction_alert_cleared` (`system`, `re_ran`), and a failed, lost or stalled one must reach `job_failed` — or the Alert stays deferred and becomes a must-clear item nobody can clear.
+
+**rawinan-soma** — 2026-09-25
+
+Merged in #117 (638368eb2714314a8fed426f301c470c82f7a2f2).
