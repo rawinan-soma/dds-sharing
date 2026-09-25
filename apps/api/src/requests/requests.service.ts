@@ -9,29 +9,11 @@ import { PG_POOL } from '../db/database.module';
 import { request, requestContact, requestEvent, reviewer } from '../db/schema';
 import { MailSender } from '../mail/mail-sender';
 import { requestExpiry } from '../clock/business-hours';
+import { formatIct } from '../clock/format-ict';
 import { type RequestPlan } from './plan-request';
 import { ProbeService } from './probe.service';
 import { formatReference } from './reference-number';
 import { TERMINAL_REQUEST_STATES } from './request-state';
-
-const ICT_FORMAT = new Intl.DateTimeFormat('en-CA', {
-  timeZone: 'Asia/Bangkok',
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit',
-  hour: '2-digit',
-  minute: '2-digit',
-  hour12: false,
-});
-
-/** `YYYY-MM-DD HH:mm ICT` — via `Intl`, not manual offset arithmetic: the
- * span builder is the only file allowed day arithmetic (§17.1's tripwire),
- * and this is display formatting, not a Request span. */
-function formatIct(date: Date): string {
-  const parts = ICT_FORMAT.formatToParts(date);
-  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '';
-  return `${get('year')}-${get('month')}-${get('day')} ${get('hour')}:${get('minute')} ICT`;
-}
 
 /** Who is asking, as far as the system can tell: network origin only (§3.3). */
 export interface Origin {

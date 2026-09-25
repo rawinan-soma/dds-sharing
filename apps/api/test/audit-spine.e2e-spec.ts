@@ -54,6 +54,8 @@ const REVIEWER_EVENT_TYPES = [
   'seeded',
   'totp_enrolled',
   'deactivated',
+  'password_reset',
+  'totp_reset',
 ];
 
 const REQUEST_ID = '11111111-1111-4111-8111-111111111111';

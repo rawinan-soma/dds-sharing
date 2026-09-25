@@ -34,6 +34,11 @@ The commands themselves stay — seeding, password reset, TOTP re-enrolment and
 deactivation — because they carry the checks: the Reviewer event, the
 two-Reviewer floor, ending live sessions, and password hashing.
 
+**Amended for #76 (2026-09-24).** Password reset and TOTP re-enrolment each
+write their own Reviewer event, `password_reset` and `totp_reset`, when they
+run. Like the others they name no one who ran them; they name the account, in
+the payload, because a `system` actor carries no reviewer id.
+
 ## Considered options
 
 - **A fifth Actor kind, or a required `--operator` on every command.** Rejected:

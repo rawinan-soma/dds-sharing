@@ -4,7 +4,7 @@ import {
   DATA_DICTIONARY_BYTES,
   DATA_DICTIONARY_FILENAME,
 } from './data-dictionary';
-import { readZipEntries as readEntries } from './test-support/read-zip-entries';
+import { readZipEntries as readEntries } from './read-zip-entries';
 
 describe('buildArchive', () => {
   it('carries exactly the Extract and the Data dictionary, byte for byte', async () => {
