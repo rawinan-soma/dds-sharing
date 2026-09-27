@@ -39,3 +39,9 @@ export function archiveFilename(submittedAt: Date, runNumber: number): string {
 export function extractFilename(submittedAt: Date, runNumber: number): string {
   return `${archiveStem(submittedAt, runNumber)}.csv`;
 }
+
+/** The run an archive name belongs to, read back off its `-rN` suffix. */
+export function runNumberOf(archiveFilename: string): number {
+  const suffix = /-r(\d+)\.zip$/.exec(archiveFilename);
+  return suffix ? Number(suffix[1]) : 1;
+}

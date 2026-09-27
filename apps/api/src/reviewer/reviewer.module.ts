@@ -13,6 +13,8 @@ import { CsrfGuard } from './csrf.guard';
 import { DecisionsController } from './decisions.controller';
 import { InFlightController } from './in-flight.controller';
 import { InFlight } from './in-flight.service';
+import { LookupController } from './lookup.controller';
+import { RequestLookup } from './lookup.service';
 import { Decisions } from './decisions.service';
 import { ReviewerAuth } from './reviewer-auth';
 import { ReviewerAuthGuard } from './reviewer-auth.guard';
@@ -30,12 +32,14 @@ import { ReviewerSessions } from './reviewer-sessions';
     DecisionsController,
     AlertsController,
     InFlightController,
+    LookupController,
   ],
   providers: [
     ReviewQueue,
     Decisions,
     Alerts,
     InFlight,
+    RequestLookup,
     {
       provide: REVIEWER_CONFIG,
       inject: [transportConfig.KEY],

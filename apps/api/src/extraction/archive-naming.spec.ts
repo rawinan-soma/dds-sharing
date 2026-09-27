@@ -3,6 +3,7 @@ import {
   archiveFilename,
   archiveStem,
   extractFilename,
+  runNumberOf,
 } from './archive-naming';
 
 describe('archive naming', () => {
@@ -42,5 +43,12 @@ describe('archive naming', () => {
     expect(archiveStem(submittedAt, 1)).toBe(
       'dds-envocc-sharing-20260115-013000',
     );
+  });
+
+  it('reads the run back out of an archive name, the original run carrying none', () => {
+    const submittedAt = new Date('2026-01-14T10:05:03.000Z');
+    expect(runNumberOf(archiveFilename(submittedAt, 1))).toBe(1);
+    expect(runNumberOf(archiveFilename(submittedAt, 2))).toBe(2);
+    expect(runNumberOf(archiveFilename(submittedAt, 12))).toBe(12);
   });
 });
