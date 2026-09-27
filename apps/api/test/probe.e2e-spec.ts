@@ -4,11 +4,14 @@ import { randomUUID } from 'node:crypto';
 import { API_PREFIX, API_PREFIX_EXCLUDE } from '../src/global-prefix';
 import { INestApplication } from '@nestjs/common';
 import { Test } from '@nestjs/testing';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { Pool } from 'pg';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { AppModule } from '../src/app.module';
 import { ProbeService } from '../src/requests/probe.service';
+import { UpstreamClient } from '../src/upstream/upstream-client';
 import {
   createFakeUpstream,
   FakeUpstream,
@@ -202,6 +205,74 @@ describe('the Probe (e2e)', () => {
       expect(errors).toHaveLength(3);
       expect(errors.every((e) => typeof e.xRequestId === 'string')).toBe(true);
       expect(new Set(errors.map((e) => e.xRequestId)).size).toBe(3);
+      expect(rows[0].payload.callsMade).toBe(3);
+    });
+
+    it('counts retries that ended in success on probe_performed, as upstream received them', async () => {
+      const id = await insertRequest(['202', '203']);
+      upstream.setFault({ kind: 'server-error', page: 1, times: 1 });
+
+      await probeService.run({
+        requestId: id,
+        reportCodes: ['202', '203'],
+        startDate: '2025-01-01',
+        endDate: '2025-01-31',
+      });
+
+      const [event] = await events(id);
+      expect(event.type).toBe('probe_performed');
+      expect(event.payload.callsMade).toBe(3);
+      expect(upstream.requests).toHaveLength(3);
+    });
+
+    it('counts the calls an abandoned Probe spent on the codes before the failing one', async () => {
+      const id = await insertRequest(['202', '203']);
+      // '202' is answered; the token dies for '203', which is not retried.
+      upstream.setFault({ kind: 'auth-expiry', afterRequests: 1 });
+
+      await probeService.run({
+        requestId: id,
+        reportCodes: ['202', '203'],
+        startDate: '2025-01-01',
+        endDate: '2025-01-31',
+      });
+
+      const [event] = await events(id);
+      expect(event.type).toBe('probe_failed');
+      expect(event.payload).toMatchObject({ groupCode: '203', callsMade: 2 });
+      expect(upstream.requests).toHaveLength(2);
+    });
+
+    it('relays an error raised before a call reached upstream, but does not count it as a call', async () => {
+      const dead = await createFakeUpstream({ rowsPerCode: 1 });
+      const deadUrl = dead.url;
+      await dead.close();
+      const pool = new Pool({ connectionString: scratch.appUrl });
+      const offline = new ProbeService(
+        drizzle(pool),
+        new UpstreamClient({
+          baseUrl: deadUrl,
+          token: 'unused',
+          sleep: () => Promise.resolve(),
+        }),
+      );
+      const id = await insertRequest(['202']);
+
+      try {
+        await offline.run({
+          requestId: id,
+          reportCodes: ['202'],
+          startDate: '2025-01-01',
+          endDate: '2025-01-31',
+        });
+      } finally {
+        await pool.end();
+      }
+
+      const [event] = await events(id);
+      expect(event.type).toBe('probe_failed');
+      expect(event.payload.errors).toHaveLength(1);
+      expect(event.payload.callsMade).toBe(0);
     });
 
     it('raises no Alert-shaped event on abandonment: only probe_failed', async () => {

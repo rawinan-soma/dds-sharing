@@ -218,17 +218,20 @@ describe('the host report commands', () => {
         totalItems: 0,
         xRequestIds: [],
       });
-      const fetched = (pageCount: number) => ({
+      // One page walked, however many calls it took: the calls are counted.
+      const fetched = (callsMade: number) => ({
         groupCode: '999',
         startDate: '2025-01-01',
         endDate: '2025-02-01',
-        pageCount,
+        pageCount: 1,
+        callsMade,
         xRequestId: null,
         rowsReceived: 0,
         totalItems: 0,
       });
       // In range (Bangkok April 2026): a rejected and an expired Request
-      // were still probed; an abandoned Probe spent three calls.
+      // were still probed; an abandoned Probe spent five calls, three on the
+      // code it gave up on and two on the one before.
       const rejected = await insertRequest('rejected');
       await insertEvent(
         rejected,
@@ -251,6 +254,7 @@ describe('the host report commands', () => {
           { message: 'Upstream error (status 500)', xRequestId: 'b' },
           { message: 'Upstream error (status 502)', xRequestId: null },
         ],
+        callsMade: 5,
       });
       const approved = await insertRequest('approved');
       await insertEvent(
@@ -278,7 +282,18 @@ describe('the host report commands', () => {
         '2026-04-30T16:30:00Z',
         fetched(1),
       );
+      const failed = await insertRequest('approved');
+      await insertEvent(failed, 'job_failed', '2026-04-20T02:00:00Z', {
+        cause: 'upstream_5xx',
+        xRequestId: null,
+        callsMade: 4,
+      });
       // Out of range: 2026-05-01 00:30 in Bangkok, and March.
+      await insertEvent(failed, 'job_failed', '2026-04-30T17:30:00Z', {
+        cause: 'stall',
+        xRequestId: null,
+        callsMade: 100,
+      });
       await insertEvent(
         approved,
         'code_fetched',
@@ -303,13 +318,17 @@ describe('the host report commands', () => {
         ),
       ).toBe(0);
       const text = cli.text();
-      expect(text).toMatch(/Probe calls:\s+9\b/);
+      expect(text).toMatch(/Probe calls:\s+11\b/);
       expect(text).toMatch(/3 Probes performed, 6 calls/);
-      expect(text).toMatch(/1 Probe abandoned, 3 calls/);
-      expect(text).toMatch(/Fetch calls:\s+10\b/);
-      expect(text).toMatch(/3 Report code fetches for 1 Request/);
-      expect(text).toMatch(/Total upstream calls:\s+19\b/);
+      expect(text).toMatch(/1 Probe abandoned, 5 calls/);
+      expect(text).toMatch(/Fetch calls:\s+14\b/);
+      expect(text).toMatch(/3 Report code fetches for 1 Request, 10 calls/);
+      expect(text).toMatch(/1 job failed, 4 calls/);
+      expect(text).toMatch(/Total upstream calls:\s+25\b/);
       expect(text).toMatch(/2026-04-01.*2026-04-30/);
+      // Every call is on the record now (#99): not a floor, not approximate.
+      expect(text).not.toMatch(/floor|approximate|#99/i);
+      expect(text).toMatch(/Retries included/);
     });
 
     it('reports zero for a quiet range', async () => {

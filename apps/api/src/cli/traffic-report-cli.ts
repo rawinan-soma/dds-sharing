@@ -17,7 +17,9 @@ import {
 // Counted from the record, whatever became of the Request: `probe_performed`
 // covers every submit, rejected and expired ones included; `probe_failed`
 // covers the calls an abandoned Probe spent; `code_fetched` covers running
-// jobs.
+// jobs, and `job_failed` the calls a failed job spent on its last code. Each
+// carries `callsMade`: every attempt that reached upstream, retries included,
+// and none that failed before it left the host (upstream-client.ts).
 
 const USAGE = `Usage:
   traffic-report --from <YYYY-MM-DD> --to <YYYY-MM-DD>
@@ -32,17 +34,21 @@ export interface UpstreamTraffic {
   codeFetches: number;
   fetchCalls: number;
   requestsFetched: number;
+  jobsFailed: number;
+  failedJobCalls: number;
 }
 
 export interface TrafficSource {
   count(range: InstantRange): Promise<UpstreamTraffic>;
 }
 
-type TrafficEvent = 'probe_performed' | 'probe_failed' | 'code_fetched';
+type TrafficEvent =
+  'probe_performed' | 'probe_failed' | 'code_fetched' | 'job_failed';
 const TRAFFIC_EVENTS: TrafficEvent[] = [
   'probe_performed',
   'probe_failed',
   'code_fetched',
+  'job_failed',
 ];
 
 export async function countUpstreamTraffic(
@@ -53,26 +59,18 @@ export async function countUpstreamTraffic(
   // An aggregate over one event type's rows, zero when there were none.
   const over = (event: TrafficEvent, aggregate: SQL) =>
     sql<number>`coalesce(${aggregate} filter (where ${type} = ${event}), 0)::int`;
+  const calls = sql`sum((${payload}->>'callsMade')::int)`;
   const [row] = await db
     .select({
       probesPerformed: over('probe_performed', sql`count(*)`),
-      probePerformedCalls: over(
-        'probe_performed',
-        sql`sum((${payload}->>'callsMade')::int)`,
-      ),
+      probePerformedCalls: over('probe_performed', calls),
       probesAbandoned: over('probe_failed', sql`count(*)`),
-      // One relayed error per attempt (probe.service.ts); #99 has where that
-      // and upstream's own count part ways.
-      probeAbandonedCalls: over(
-        'probe_failed',
-        sql`sum(jsonb_array_length(${payload}->'errors'))`,
-      ),
+      probeAbandonedCalls: over('probe_failed', calls),
       codeFetches: over('code_fetched', sql`count(*)`),
-      fetchCalls: over(
-        'code_fetched',
-        sql`sum((${payload}->>'pageCount')::int)`,
-      ),
+      fetchCalls: over('code_fetched', calls),
       requestsFetched: over('code_fetched', sql`count(distinct ${requestId})`),
+      jobsFailed: over('job_failed', sql`count(*)`),
+      failedJobCalls: over('job_failed', calls),
     })
     .from(requestEvent)
     .where(
@@ -117,6 +115,7 @@ export async function runTrafficReportCli(
 
   const traffic = await source.count(range);
   const probeCalls = traffic.probePerformedCalls + traffic.probeAbandonedCalls;
+  const fetchCalls = traffic.fetchCalls + traffic.failedJobCalls;
   io.out(`Upstream traffic, ${from} to ${to} inclusive (Bangkok time)`);
   io.out('');
   io.out(`Probe calls:  ${probeCalls}`);
@@ -126,15 +125,18 @@ export async function runTrafficReportCli(
   io.out(
     `  ${plural(traffic.probesAbandoned, 'Probe')} abandoned, ${plural(traffic.probeAbandonedCalls, 'call')} spent before giving up`,
   );
-  io.out(`Fetch calls:  ${traffic.fetchCalls}`);
+  io.out(`Fetch calls:  ${fetchCalls}`);
   io.out(
-    `  ${plural(traffic.codeFetches, 'Report code fetch', 'Report code fetches')} for ${plural(traffic.requestsFetched, 'Request')}`,
+    `  ${plural(traffic.codeFetches, 'Report code fetch', 'Report code fetches')} for ${plural(traffic.requestsFetched, 'Request')}, ${plural(traffic.fetchCalls, 'call')}`,
+  );
+  io.out(
+    `  ${plural(traffic.jobsFailed, 'job')} failed, ${plural(traffic.failedJobCalls, 'call')} spent on the code each failed on`,
   );
   io.out('');
-  io.out(`Total upstream calls:  ${probeCalls + traffic.fetchCalls}`);
+  io.out(`Total upstream calls:  ${probeCalls + fetchCalls}`);
   io.out('');
   io.out(
-    "Approximate: counted from the record, which misses retries that ended in success, an abandoned Probe's earlier codes and a failed job's pages, and counts a Probe error raised before a call left the host. See #99.",
+    'Retries included. A call is counted once it reached upstream: answered, or cut off while waiting for one. One refused before it left this host is not.',
   );
   return 0;
 }

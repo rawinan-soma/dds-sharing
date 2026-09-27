@@ -68,6 +68,21 @@ export interface ResponseInfo {
 
 export type OnResponse = (info: ResponseInfo) => void;
 
+/** What a caller hangs on one call, every retry of it included. */
+export interface CallOptions {
+  onResponse?: OnResponse;
+  /**
+   * Once per attempt that reached upstream (spec §13.6): answered, or stopped
+   * — by the timeout or by `signal` — while in flight. Not an attempt the
+   * network refused: a DNS failure or a refused connection is not traffic DDC
+   * saw. A timeout is taken as having reached upstream because the connect
+   * phase fails on its own, well inside the 60 s, as a network error.
+   */
+  onCall?: () => void;
+  /** Stops the call and every retry still to come; rejects with its reason. */
+  signal?: AbortSignal;
+}
+
 interface Envelope {
   data: Record<string, unknown>[];
   meta: UpstreamMeta;
@@ -179,14 +194,14 @@ export class UpstreamClient {
   async *pages(
     groupCode: string,
     span: Span,
-    onResponse?: OnResponse,
+    options: CallOptions = {},
   ): AsyncGenerator<UpstreamPage> {
     let page = 1;
     let totalPages = 1;
     while (page <= totalPages) {
       const result = await this.fetchPage(
         { groupCode, span, page, pageSize: FETCH_PAGE_SIZE },
-        onResponse,
+        options,
       );
       yield result;
       if (!result.meta.hasNext) return;
@@ -206,25 +221,26 @@ export class UpstreamClient {
   probe(
     groupCode: string,
     span: Span,
-    onResponse?: OnResponse,
+    options: CallOptions = {},
   ): Promise<UpstreamPage> {
     return this.fetchPage(
       { groupCode, span, page: 1, pageSize: PROBE_PAGE_SIZE },
-      onResponse,
+      options,
     );
   }
 
   /** One request, retried: 3 attempts, exponential backoff, 60 s each. */
   async fetchPage(
     query: PageQuery,
-    onResponse?: OnResponse,
+    options: CallOptions = {},
   ): Promise<UpstreamPage> {
     this.assertSendable(query);
 
     let lastError: UpstreamError | undefined;
     for (let attempt = 1; attempt <= this.maxAttempts; attempt++) {
+      options.signal?.throwIfAborted();
       try {
-        return await this.attempt(query, attempt, onResponse);
+        return await this.attempt(query, attempt, options);
       } catch (error) {
         if (!(error instanceof UpstreamError)) throw error;
         lastError = error;
@@ -270,10 +286,11 @@ export class UpstreamClient {
   private async attempt(
     query: PageQuery,
     attempt: number,
-    onResponse?: OnResponse,
+    { onResponse, onCall, signal: cancel }: CallOptions,
   ): Promise<UpstreamPage> {
     const { groupCode, page, pageSize } = query;
-    const signal = AbortSignal.timeout(this.timeoutMs);
+    const timeout = AbortSignal.timeout(this.timeoutMs);
+    const signal = cancel ? AbortSignal.any([timeout, cancel]) : timeout;
     const makeError = (
       kind: UpstreamErrorKind,
       extra: Partial<ConstructorParameters<typeof UpstreamError>[0]> = {},
@@ -305,8 +322,12 @@ export class UpstreamClient {
       });
     } catch {
       // Nothing caught is chained or logged: it can quote what it choked on.
-      throw makeError(signal.aborted ? 'timeout' : 'network');
+      if (!signal.aborted) throw makeError('network');
+      onCall?.();
+      cancel?.throwIfAborted();
+      throw makeError('timeout');
     }
+    onCall?.();
 
     const requestId = response.headers.get('x-request-id');
     const processTime = Number(response.headers.get('x-process-time-ms'));
@@ -324,6 +345,7 @@ export class UpstreamClient {
       readable = false;
       if (signal.aborted) {
         this.emitResponse(onResponse, { ...context, groupCode, page, attempt });
+        cancel?.throwIfAborted();
         throw makeError('timeout', context);
       }
     }

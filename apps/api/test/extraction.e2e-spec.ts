@@ -196,6 +196,8 @@ describe('the extraction pipeline (e2e)', () => {
     const fetched = events.find((e) => e.type === 'code_fetched')!;
     expect(fetched.payload).toMatchObject({
       groupCode: '999',
+      pageCount: 1,
+      callsMade: 1,
       rowsReceived: 0,
       totalItems: 0,
     });
@@ -246,7 +248,8 @@ describe('the extraction pipeline (e2e)', () => {
     );
     const events = await eventsOf(id);
     const failed = events.find((e) => e.type === 'job_failed')!;
-    expect(failed.payload).toMatchObject({ cause: 'internal' });
+    // The one page it fetched before the projection failed is still traffic.
+    expect(failed.payload).toMatchObject({ cause: 'internal', callsMade: 1 });
     // The broken promise goes to the approving Reviewer as a must-clear
     // Alert (§14.2) — one, however the job failed.
     expect(

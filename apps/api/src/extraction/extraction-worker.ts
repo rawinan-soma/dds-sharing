@@ -36,6 +36,7 @@ import {
   type ExtractionResult,
   type ExtractionSummary,
   type ExtractionTarget,
+  UnrecordedCalls,
   type UpstreamPager,
 } from './extraction-pipeline';
 import { raiseExtractionAlert } from '../reviewer/alert-records';
@@ -284,6 +285,29 @@ async function sendExtractionFailureMail(
   });
 }
 
+/**
+ * How long a stalled pipeline gets to wind down once cancelled. Cancelling
+ * aborts the upstream call in flight at once, and the longest wait left is a
+ * backoff sleep of 2 s; past this, whatever it is stuck on is not upstream,
+ * and the stall must still end the job.
+ */
+const STALL_SETTLE_MS = 5_000;
+
+/** Resolves when `promise` settles either way, or after `ms`, whichever is first. */
+async function settled(promise: Promise<unknown>, ms: number): Promise<void> {
+  let timer: NodeJS.Timeout | undefined;
+  await Promise.race([
+    promise.then(
+      () => undefined,
+      () => undefined,
+    ),
+    new Promise<void>((resolve) => {
+      timer = setTimeout(resolve, ms);
+    }),
+  ]);
+  clearTimeout(timer);
+}
+
 function toFailure(
   error: unknown,
   provincesChecksum: string,
@@ -382,6 +406,9 @@ export async function processExtractionJob(
   const stallGuard = new StallGuard(
     deps.stallMs ?? EXTRACTION_DEFAULTS.stallMs,
   );
+  const calls = new UnrecordedCalls();
+  const cancel = new AbortController();
+  let pipeline: Promise<ExtractionResult> | undefined;
   let published: string | null = null;
   try {
     // Read once, here, and held for the rest of this job (spec §6.4): a
@@ -390,7 +417,7 @@ export async function processExtractionJob(
     const provinces = new Map(
       deps.provinceLookup.provinces.map((p) => [p.provinceId, p.healthRegion]),
     );
-    const pipeline = runExtraction(target, {
+    pipeline = runExtraction(target, {
       upstream: deps.upstream,
       provinces,
       now,
@@ -406,10 +433,11 @@ export async function processExtractionJob(
         await deps.extractionJobs.touch(jobId, now());
       },
       touch: () => stallGuard.touch(),
+      calls,
+      signal: cancel.signal,
     });
-    // The loser of the race below keeps running in the background (there is
-    // nothing here to cancel it with); this stops an eventual rejection from
-    // it surfacing as an unhandled rejection.
+    // A pipeline that loses the race below is cancelled in the catch; this
+    // stops its rejection from surfacing as an unhandled rejection.
     pipeline.catch(() => undefined);
 
     const result = await Promise.race([pipeline, stallGuard.promise]);
@@ -425,6 +453,12 @@ export async function processExtractionJob(
     await deps.extractionJobs.markSucceeded(jobId, now(), result.summary);
     published = archiveFilename;
   } catch (error) {
+    if (error instanceof StallError && pipeline) {
+      // A stalled pipeline would otherwise go on calling upstream after its
+      // job has failed, beside the next job and uncounted (spec §13.2, §13.6).
+      cancel.abort(error);
+      await settled(pipeline, STALL_SETTLE_MS);
+    }
     const failure = toFailure(error, deps.provinceLookup.checksum);
     logger.warn(
       `extraction job ${jobId} failed cause=${failure.cause}` +
@@ -441,7 +475,11 @@ export async function processExtractionJob(
       type: 'job_failed',
       occurredAt: now(),
       actor: { actorType: 'system' },
-      payload: { cause: failure.cause, xRequestId: failure.xRequestId },
+      payload: {
+        cause: failure.cause,
+        xRequestId: failure.xRequestId,
+        callsMade: calls.take(),
+      },
     });
     // The second watcher (§14.2): the operator reads the fault on /health;
     // the approving Reviewer gets the broken promise as a must-clear Alert.

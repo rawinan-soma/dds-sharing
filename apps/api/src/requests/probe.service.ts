@@ -49,24 +49,30 @@ export class ProbeService {
     const span = buildSpan({ from: target.startDate, to: target.endDate });
     const totalItemsByCode: Record<string, number> = {};
     const xRequestIds: string[] = [];
+    // Every attempt on every code, retries included (spec §13.6): the traffic
+    // report reads this and nothing else.
+    let callsMade = 0;
+    const onCall = () => void (callsMade += 1);
 
     for (const groupCode of codes) {
       const attempts: ResponseInfo[] = [];
       let page;
       try {
-        page = await this.upstream.probe(groupCode, span, (info) =>
-          attempts.push(info),
-        );
+        page = await this.upstream.probe(groupCode, span, {
+          onResponse: (info) => attempts.push(info),
+          onCall,
+        });
       } catch (error) {
         if (!(error instanceof UpstreamError)) throw error;
         // A code's calls exhaust their retries: the whole Probe is abandoned.
         // Only this code's errors are relayed — the codes probed before it
         // succeeded, but recording a partial Probe is not what `probe_failed`
-        // means (spec §5.4, §12.4). Every attempt that reached upstream is
-        // relayed, not just the last: each one is traffic on the record, and
-        // each has its own `x-request-id` for DDC support. A pure network or
-        // pre-response timeout never reaches `onResponse`, so the caught
-        // error itself is the fallback when nothing else was seen.
+        // means (spec §5.4, §12.4). Their calls are still counted: traffic is
+        // spent either way. Every response is relayed, not just the last,
+        // each with its own `x-request-id` for DDC support. A network failure
+        // or pre-response timeout never reaches `onResponse`, so the caught
+        // error itself is the fallback when nothing else was seen — relayed,
+        // but counted only if it reached upstream.
         const failed = attempts.filter(
           (a) => a.status < 200 || a.status >= 300,
         );
@@ -82,7 +88,7 @@ export class ProbeService {
           type: 'probe_failed',
           occurredAt: now,
           actor: { actorType: 'system' },
-          payload: { groupCode, errors },
+          payload: { groupCode, errors, callsMade },
         });
         return;
       }
@@ -101,7 +107,7 @@ export class ProbeService {
       actor: { actorType: 'system' },
       payload: {
         reportCodes: codes,
-        callsMade: codes.length,
+        callsMade,
         spanStart: span.startDate,
         spanEnd: span.endDate,
         totalItemsByCode,

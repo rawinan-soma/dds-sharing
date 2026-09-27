@@ -15,7 +15,10 @@ import {
   type RequestDates,
   type Span,
 } from '../upstream/span-builder';
-import { type UpstreamPage } from '../upstream/upstream-client';
+import {
+  type CallOptions,
+  type UpstreamPage,
+} from '../upstream/upstream-client';
 import {
   UpstreamError,
   type UpstreamErrorKind,
@@ -84,6 +87,25 @@ export class ExtractionFailure extends Error {
   }
 }
 
+/**
+ * Upstream calls made and not yet on a `code_fetched` (spec §13.6). Each
+ * `code_fetched` takes its code's; the worker hands what is left to
+ * `job_failed`, so a failed job's partial work is counted too.
+ */
+export class UnrecordedCalls {
+  private count = 0;
+
+  add(): void {
+    this.count += 1;
+  }
+
+  take(): number {
+    const count = this.count;
+    this.count = 0;
+    return count;
+  }
+}
+
 /** A row that passed the Filter, with its position among the code's fetched
  * rows — all a projection error may name (§14.5). */
 interface IndexedRow {
@@ -130,7 +152,11 @@ function causeOf(kind: UpstreamErrorKind): JobFailureCause {
 /** What this module needs from `UpstreamClient` — narrow on purpose so a spec
  * can hand it a plain fake generator instead of the real class. */
 export interface UpstreamPager {
-  pages(groupCode: string, span: Span): AsyncGenerator<UpstreamPage>;
+  pages(
+    groupCode: string,
+    span: Span,
+    options?: Pick<CallOptions, 'onCall' | 'signal'>,
+  ): AsyncGenerator<UpstreamPage>;
 }
 
 export interface ExtractionPipelineDeps {
@@ -144,6 +170,10 @@ export interface ExtractionPipelineDeps {
   onCodeFetched: (payload: CodeFetchedPayload) => Promise<void>;
   /** Fires after each Report code — the stall guard's only progress signal. */
   touch: () => void;
+  /** Pass one to read, after a failure, the calls no `code_fetched` took. */
+  calls?: UnrecordedCalls;
+  /** Aborted, the pipeline makes no further upstream call and rejects. */
+  signal?: AbortSignal;
   config?: Partial<typeof EXTRACTION_DEFAULTS>;
 }
 
@@ -153,6 +183,7 @@ async function fetchOneCode(
   provinces: readonly string[],
   deps: ExtractionPipelineDeps,
   counters: ProjectCounters,
+  calls: UnrecordedCalls,
 ): Promise<{
   rows: ProjectedRow[];
   payload: CodeFetchedPayload;
@@ -170,7 +201,10 @@ async function fetchOneCode(
     try {
       // A fresh generator every attempt: no mid-code resume (spec §7.6) — a
       // partial walk plus a fresh tail is how a quietly-wrong file ships.
-      for await (const page of deps.upstream.pages(groupCode, span)) {
+      for await (const page of deps.upstream.pages(groupCode, span, {
+        onCall: () => calls.add(),
+        signal: deps.signal,
+      })) {
         pageCount += 1;
         totalItems = page.meta.totalItems;
         lastRequestId = page.requestId ?? lastRequestId;
@@ -219,6 +253,7 @@ async function fetchOneCode(
         startDate: span.startDate,
         endDate: span.endDate,
         pageCount,
+        callsMade: calls.take(),
         xRequestId: lastRequestId,
         rowsReceived: rawRows.length,
         totalItems,
@@ -239,6 +274,7 @@ export async function runExtraction(
     to: target.endDate,
   } satisfies RequestDates);
   const counters = newProjectCounters();
+  const calls = deps.calls ?? new UnrecordedCalls();
 
   const rowsByCode: Record<string, ProjectedRow[]> = {};
   const summary: ExtractionSummary = {
@@ -258,6 +294,7 @@ export async function runExtraction(
       target.provinces,
       deps,
       counters,
+      calls,
     );
 
     rowsByCode[groupCode] = outcome.rows;

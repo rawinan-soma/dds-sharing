@@ -1,6 +1,6 @@
 # Record every upstream call, so the traffic report is not a floor
 
-Status: needs-triage
+Status: ready-for-agent
 
 ## What to build
 
@@ -22,3 +22,17 @@ Found in the #76 review; kept out of #76 because it changes what #69–#71's eve
 - [ ] Every upstream call the extraction job makes, retries and a failed job's partial work included, is counted on a request event
 - [ ] An error raised before a request reached upstream is not counted as a call
 - [ ] The traffic report sums those counts and no longer prints that its figures are a floor
+
+## Comments
+
+**Claude** — 2026-09-27
+
+Triaged with the repo owner: fix fully, rather than keep the report's printed caveat. Checked against the code first: every gap listed above is real.
+
+Decisions taken while building it:
+
+- **A call is an attempt that reached upstream**: answered, or cut off while in flight, by the 60 s timeout or by a stall. It is not an attempt the network refused (DNS failure, refused connection). A 60 s timeout is taken as having reached upstream because the connect phase fails on its own, well inside 60 s, as a network error. `UpstreamClient` reports each one through a new `onCall` hook, and the tests hold the count against the fake upstream's own request log.
+- **Where the counts live**: `callsMade` on `probe_performed`, `probe_failed` (the whole Probe's, earlier codes included), `code_fetched` (every page of every attempt; `pageCount` still means the pages of the walk that succeeded) and `job_failed` (the failing code's calls, which no `code_fetched` carries).
+- **A stall now cancels the pipeline.** Before, a stalled pipeline kept calling upstream in the background after `job_failed`, uncounted and beside the next job. The worker now aborts it, gives it up to 5 s to settle, then writes `job_failed` with the calls it made. Spec §7.6 says so.
+- **No backfill.** Nothing is deployed yet (#77), so there are no old events without `callsMade` to fall back on.
+
