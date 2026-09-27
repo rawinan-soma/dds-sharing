@@ -1,6 +1,6 @@
 # Record every upstream call, so the traffic report is not a floor
 
-Status: ready-for-agent
+Status: closed
 
 ## What to build
 
@@ -47,3 +47,6 @@ Fixed the findings from `/code-review` on 714137b:
 - **Tests:** extraction counts are now checked against the fake upstream's log (a retried page; a failed job with a dropped call). The fake upstream gained `dropped` and `slow-body` faults. New tests cover a timeout after the headers, the stall's settle-timeout branch, and a stall landing mid-write.
 - **Standards:** `stallSettleMs` moved into `EXTRACTION_DEFAULTS`. One `CallCount` is shared by the Probe and the pipeline. The timeout-or-cancel check is one helper. The unrecorded count is a required dependency. "Attempt" became "call" in the new prose.
 
+**Claude** — 2026-09-27
+
+Merged in #118 (bcf7420).
