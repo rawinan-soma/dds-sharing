@@ -164,10 +164,98 @@ export type DecisionOutcome =
   | { kind: 'invalid_note' }
   | { kind: 'failed' };
 
+/** The three zones of the Reviewer surface: a Request is in one, or none. */
+export type SurfaceZone = 'queue' | 'alerts' | 'in_flight';
+
+/** The closed catalogue of what can happen to a Request (spec §12.4). */
+export type RequestEventType =
+  | 'submitted'
+  | 'probe_performed'
+  | 'probe_failed'
+  | 'approved'
+  | 'rejected'
+  | 'note_amended'
+  | 'expired'
+  | 'job_queued'
+  | 'job_deferred_low_disk'
+  | 'job_started'
+  | 'code_fetched'
+  | 'job_completed'
+  | 'job_failed'
+  | 'extraction_alert_raised'
+  | 'extraction_alert_cleared'
+  | 'extraction_rerun_queued'
+  | 'mail_sent'
+  | 'mail_send_failed'
+  | 'mail_send_abandoned'
+  | 'delivery_alert_raised'
+  | 'download_attempted'
+  | 'collection_lapse_raised'
+  | 'collection_lapse_cleared'
+  | 'download_token_revoked'
+  | 'expired_uncollected'
+  | 'object_deleted';
+
+/** How a file's link reads now. */
+export type LinkState = 'live' | 'used_up' | 'expired' | 'revoked';
+
+/** The ways a Request ends (spec §10.9). */
+export type TerminalState =
+  'rejected' | 'expired' | 'collected' | 'expired_uncollected' | 'abandoned';
+
+/**
+ * A terminal Request, read-only (spec §10.10). The record, never the contact
+ * fields (ADR 0015): the only workplace here is the Snapshot's.
+ */
+export interface RequestRecord {
+  requestId: string;
+  reference: string;
+  state: TerminalState;
+  submittedAt: string;
+  diseaseGroupName: string;
+  reportCodes: string[];
+  startDate: string;
+  endDate: string;
+  area: Area;
+  /** Null for a Request that expired with no Decision. */
+  decision: {
+    outcome: 'approved' | 'rejected';
+    reviewer: string;
+    decidedAt: string;
+    workplace: string;
+    /** As the Snapshot holds it: what the Reviewer had on screen. */
+    rowCount: number | 'pending' | 'failed';
+  } | null;
+  /** Every file, newest run first. Never a token. */
+  files: {
+    run: number;
+    archiveFilename: string;
+    link: LinkState;
+    expiresAt: string;
+    attempts: number;
+  }[];
+  /** Newest first. Never a payload. */
+  events: {
+    type: RequestEventType;
+    occurredAt: string;
+    actor: 'requester' | 'reviewer' | 'system' | 'anonymous';
+    /** The Reviewer's name, for a `reviewer` actor only. */
+    reviewer: string | null;
+  }[];
+}
+
+/** What a lookup by reference found: where it is, or its record. */
+export type LookupOutcome =
+  | { kind: 'zone'; zone: SurfaceZone; requestId: string }
+  | { kind: 'record'; record: RequestRecord }
+  | { kind: 'not_found' }
+  | { kind: 'failed' };
+
 const BASE = '/api/reviewer/queue';
 const ALERTS_BASE = '/api/reviewer/alerts';
 const IN_FLIGHT_BASE = '/api/reviewer/in-flight';
 const REQUESTS_BASE = '/api/reviewer/requests';
+const LOOKUP_BASE = '/api/reviewer/lookup';
 
 // Every call here is one the Reviewer asked for. Nothing calls it on a timer:
 // only user-initiated requests extend the session (§10.5).
@@ -249,6 +337,25 @@ export class QueueApi {
     } catch (error) {
       return error instanceof HttpErrorResponse && error.status === 404
         ? { kind: 'gone' }
+        : { kind: 'failed' };
+    }
+  }
+
+  /** Exact reference only (spec §10.10): there is no other way to search. */
+  async lookup(reference: string): Promise<LookupOutcome> {
+    try {
+      const found = await firstValueFrom(
+        this.http.get<
+          | { zone: SurfaceZone; requestId: string }
+          | { zone: null; record: RequestRecord }
+        >(LOOKUP_BASE, { params: { reference } }),
+      );
+      return found.zone === null
+        ? { kind: 'record', record: found.record }
+        : { kind: 'zone', zone: found.zone, requestId: found.requestId };
+    } catch (error) {
+      return error instanceof HttpErrorResponse && error.status === 404
+        ? { kind: 'not_found' }
         : { kind: 'failed' };
     }
   }

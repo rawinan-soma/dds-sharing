@@ -27,6 +27,7 @@
   --failed: #8c2b20;
   --failed-wash: #f6e6e3;
   --inert: #5a6862;
+  --inert-wash: #e6e9e6;
 
   /* Self-hosted through @fontsource (weights 400 and 600 only), loaded by the
      `styles` array in angular.json: no request leaves the ministry network. */

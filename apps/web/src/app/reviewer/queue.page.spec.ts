@@ -112,6 +112,17 @@ describe('QueuePage', () => {
   const rows = () => [...el.querySelectorAll('nav li a')];
   const refresh = () => el.querySelector<HTMLButtonElement>('button.refresh')!;
 
+  it('puts the lookup by reference in the sidebar header, above refresh', async () => {
+    await firstLoad([row('a')]);
+    const head = el.querySelector('.side-head')!;
+    const search = head.querySelector('app-lookup-search');
+    expect(search).not.toBeNull();
+    expect(
+      search!.compareDocumentPosition(refresh()) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
   it('lists pending Requests in the order the server gave, oldest first', async () => {
     await firstLoad([row('a'), row('b'), row('c')]);
     expect(rows().map((r) => r.querySelector('.ref')?.textContent)).toEqual([
