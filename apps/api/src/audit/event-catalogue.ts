@@ -109,7 +109,10 @@ export interface CodeFetchDetail {
   /** Half-open range. */
   startDate: string;
   endDate: string;
+  /** Pages of the walk that succeeded. */
   pageCount: number;
+  /** Every upstream call for this code, retried pages and walks included. */
+  callsMade: number;
   xRequestId: string | null;
 }
 
@@ -176,6 +179,7 @@ export interface RequestEventPayloads {
   submitted: Record<string, never>;
   probe_performed: {
     reportCodes: string[];
+    /** Every call that reached upstream, retries included (§13.6). */
     callsMade: number;
     spanStart: string;
     spanEnd: string;
@@ -186,6 +190,8 @@ export interface RequestEventPayloads {
   probe_failed: {
     groupCode: string;
     errors: UpstreamError[];
+    /** Every call the Probe spent, on the codes before this one too (§13.6). */
+    callsMade: number;
   };
   approved: { snapshot: Snapshot };
   rejected: { snapshot: Snapshot; internalNote: string };
@@ -222,6 +228,9 @@ export interface RequestEventPayloads {
   job_failed: {
     cause: JobFailureCause;
     xRequestId: string | null;
+    /** Upstream calls no `code_fetched` carries: those on a code it did not
+     * finish (§13.6). */
+    callsMade: number;
   };
   extraction_alert_raised: Record<string, never>;
   extraction_alert_cleared: ExtractionAlertClearedPayload;

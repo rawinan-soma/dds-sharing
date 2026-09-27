@@ -40,6 +40,7 @@ import {
 } from './extraction-pipeline';
 import { raiseExtractionAlert } from '../reviewer/alert-records';
 import { StallError, StallGuard } from './stall-guard';
+import { CallCount } from '../upstream/call-count';
 
 export interface ExtractionWorkerDeps {
   db: NodePgDatabase;
@@ -66,6 +67,8 @@ export interface ExtractionWorkerDeps {
   logger?: LoggerService;
   /** Overrides `EXTRACTION_DEFAULTS.stallMs` — a spec does not wait 2 minutes. */
   stallMs?: number;
+  /** Overrides `EXTRACTION_DEFAULTS.stallSettleMs`, for the same reason. */
+  stallSettleMs?: number;
 }
 
 /** What the processor needs from a BullMQ `Job` — narrowed for testability. */
@@ -284,6 +287,21 @@ async function sendExtractionFailureMail(
   });
 }
 
+/** Resolves when `promise` settles either way, or after `ms`, whichever is first. */
+async function settled(promise: Promise<unknown>, ms: number): Promise<void> {
+  let timer: NodeJS.Timeout | undefined;
+  await Promise.race([
+    promise.then(
+      () => undefined,
+      () => undefined,
+    ),
+    new Promise<void>((resolve) => {
+      timer = setTimeout(resolve, ms);
+    }),
+  ]);
+  clearTimeout(timer);
+}
+
 function toFailure(
   error: unknown,
   provincesChecksum: string,
@@ -382,6 +400,9 @@ export async function processExtractionJob(
   const stallGuard = new StallGuard(
     deps.stallMs ?? EXTRACTION_DEFAULTS.stallMs,
   );
+  const unrecordedCalls = new CallCount();
+  const cancel = new AbortController();
+  let pipeline: Promise<ExtractionResult> | undefined;
   let published: string | null = null;
   try {
     // Read once, here, and held for the rest of this job (spec §6.4): a
@@ -390,12 +411,16 @@ export async function processExtractionJob(
     const provinces = new Map(
       deps.provinceLookup.provinces.map((p) => [p.provinceId, p.healthRegion]),
     );
-    const pipeline = runExtraction(target, {
+    pipeline = runExtraction(target, {
       upstream: deps.upstream,
       provinces,
       now,
       sleep,
+      // The event is written last: once it is, the pipeline clears the calls
+      // it carries, and nothing after it may fail and hand them to
+      // `job_failed` as well (§13.6).
       onCodeFetched: async (payload) => {
+        await deps.extractionJobs.touch(jobId, now());
         await writeRequestEvent(deps.db, {
           requestId,
           type: 'code_fetched',
@@ -403,13 +428,13 @@ export async function processExtractionJob(
           actor: { actorType: 'system' },
           payload,
         });
-        await deps.extractionJobs.touch(jobId, now());
       },
       touch: () => stallGuard.touch(),
+      unrecordedCalls,
+      signal: cancel.signal,
     });
-    // The loser of the race below keeps running in the background (there is
-    // nothing here to cancel it with); this stops an eventual rejection from
-    // it surfacing as an unhandled rejection.
+    // A pipeline that loses the race below is cancelled in the catch; this
+    // stops its rejection from surfacing as an unhandled rejection.
     pipeline.catch(() => undefined);
 
     const result = await Promise.race([pipeline, stallGuard.promise]);
@@ -425,6 +450,15 @@ export async function processExtractionJob(
     await deps.extractionJobs.markSucceeded(jobId, now(), result.summary);
     published = archiveFilename;
   } catch (error) {
+    if (error instanceof StallError && pipeline) {
+      // A stalled pipeline would otherwise go on calling upstream after its
+      // job has failed, beside the next job and uncounted (spec §13.2, §13.6).
+      cancel.abort(error);
+      await settled(
+        pipeline,
+        deps.stallSettleMs ?? EXTRACTION_DEFAULTS.stallSettleMs,
+      );
+    }
     const failure = toFailure(error, deps.provinceLookup.checksum);
     logger.warn(
       `extraction job ${jobId} failed cause=${failure.cause}` +
@@ -441,7 +475,11 @@ export async function processExtractionJob(
       type: 'job_failed',
       occurredAt: now(),
       actor: { actorType: 'system' },
-      payload: { cause: failure.cause, xRequestId: failure.xRequestId },
+      payload: {
+        cause: failure.cause,
+        xRequestId: failure.xRequestId,
+        callsMade: unrecordedCalls.count,
+      },
     });
     // The second watcher (§14.2): the operator reads the fault on /health;
     // the approving Reviewer gets the broken promise as a must-clear Alert.

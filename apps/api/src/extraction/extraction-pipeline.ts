@@ -15,7 +15,11 @@ import {
   type RequestDates,
   type Span,
 } from '../upstream/span-builder';
-import { type UpstreamPage } from '../upstream/upstream-client';
+import { type CallCount } from '../upstream/call-count';
+import {
+  type CallOptions,
+  type UpstreamPage,
+} from '../upstream/upstream-client';
 import {
   UpstreamError,
   type UpstreamErrorKind,
@@ -130,7 +134,11 @@ function causeOf(kind: UpstreamErrorKind): JobFailureCause {
 /** What this module needs from `UpstreamClient` — narrow on purpose so a spec
  * can hand it a plain fake generator instead of the real class. */
 export interface UpstreamPager {
-  pages(groupCode: string, span: Span): AsyncGenerator<UpstreamPage>;
+  pages(
+    groupCode: string,
+    span: Span,
+    options?: Pick<CallOptions, 'onCall' | 'signal'>,
+  ): AsyncGenerator<UpstreamPage>;
 }
 
 export interface ExtractionPipelineDeps {
@@ -144,6 +152,14 @@ export interface ExtractionPipelineDeps {
   onCodeFetched: (payload: CodeFetchedPayload) => Promise<void>;
   /** Fires after each Report code — the stall guard's only progress signal. */
   touch: () => void;
+  /**
+   * Upstream calls not yet on a `code_fetched` (spec §13.6). Cleared only
+   * once a `code_fetched` carrying them is written, so what is left after a
+   * failure is exactly what `job_failed` owes the record.
+   */
+  unrecordedCalls: CallCount;
+  /** Aborted, the pipeline makes no further upstream call and rejects. */
+  signal?: AbortSignal;
   config?: Partial<typeof EXTRACTION_DEFAULTS>;
 }
 
@@ -155,7 +171,7 @@ async function fetchOneCode(
   counters: ProjectCounters,
 ): Promise<{
   rows: ProjectedRow[];
-  payload: CodeFetchedPayload;
+  payload: Omit<CodeFetchedPayload, 'callsMade'>;
   missing: number;
 }> {
   const cfg = { ...EXTRACTION_DEFAULTS, ...deps.config };
@@ -170,7 +186,10 @@ async function fetchOneCode(
     try {
       // A fresh generator every attempt: no mid-code resume (spec §7.6) — a
       // partial walk plus a fresh tail is how a quietly-wrong file ships.
-      for await (const page of deps.upstream.pages(groupCode, span)) {
+      for await (const page of deps.upstream.pages(groupCode, span, {
+        onCall: deps.unrecordedCalls.add,
+        signal: deps.signal,
+      })) {
         pageCount += 1;
         totalItems = page.meta.totalItems;
         lastRequestId = page.requestId ?? lastRequestId;
@@ -269,7 +288,11 @@ export async function runExtraction(
     }
 
     deps.touch();
-    await deps.onCodeFetched(outcome.payload);
+    await deps.onCodeFetched({
+      ...outcome.payload,
+      callsMade: deps.unrecordedCalls.count,
+    });
+    deps.unrecordedCalls.clear();
   }
 
   summary.impossibleDerivationInputs = counters.impossibleDerivationInputs;

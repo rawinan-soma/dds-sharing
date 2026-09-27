@@ -196,6 +196,8 @@ describe('the extraction pipeline (e2e)', () => {
     const fetched = events.find((e) => e.type === 'code_fetched')!;
     expect(fetched.payload).toMatchObject({
       groupCode: '999',
+      pageCount: 1,
+      callsMade: 1,
       rowsReceived: 0,
       totalItems: 0,
     });
@@ -246,11 +248,60 @@ describe('the extraction pipeline (e2e)', () => {
     );
     const events = await eventsOf(id);
     const failed = events.find((e) => e.type === 'job_failed')!;
-    expect(failed.payload).toMatchObject({ cause: 'internal' });
+    // The one page it fetched before the projection failed is still traffic.
+    expect(failed.payload).toMatchObject({ cause: 'internal', callsMade: 1 });
     // The broken promise goes to the approving Reviewer as a must-clear
     // Alert (§14.2) — one, however the job failed.
     expect(
       events.filter((e) => e.type === 'extraction_alert_raised'),
     ).toHaveLength(1);
   }, 10_000);
+
+  // §13.6: the record must agree with upstream's own log of what it was sent.
+  // Each test asks for a Report code no other test does, so a job still
+  // finishing from an earlier test cannot land in the tally.
+  describe('counting upstream calls against upstream’s own log', () => {
+    const sentFor = (code: string) =>
+      upstream.requests.filter((r) => r.query.group_code === code).length;
+
+    async function settle(id: string) {
+      await waitFor(async () =>
+        (await eventsOf(id)).some(
+          (e) =>
+            e.type === 'job_completed' || e.type === 'extraction_alert_raised',
+        ),
+      );
+      return eventsOf(id);
+    }
+
+    it('puts a retried page on code_fetched', async () => {
+      upstream.setFault({ kind: 'server-error', page: 1, times: 1 });
+      const id = await insertPendingRequest(['998']);
+      await decisions.approve(id, {
+        reviewerId,
+        displayName: 'Extraction Tester',
+      });
+
+      const events = await settle(id);
+      const fetched = events.find((e) => e.type === 'code_fetched')!;
+      expect(fetched.payload).toMatchObject({ pageCount: 1, callsMade: 2 });
+      expect(sentFor('998')).toBe(2);
+    }, 10_000);
+
+    it('puts a failed job’s calls, a dropped one included, on job_failed', async () => {
+      upstream.setFault({ kind: 'dropped', page: 1, times: 1 });
+      // Fetched, then failed in projection (see the test above).
+      const id = await insertPendingRequest(['202']);
+      await decisions.approve(id, {
+        reviewerId,
+        displayName: 'Extraction Tester',
+      });
+
+      const events = await settle(id);
+      expect(events.map((e) => e.type)).not.toContain('code_fetched');
+      const failed = events.find((e) => e.type === 'job_failed')!;
+      expect(failed.payload).toMatchObject({ cause: 'internal', callsMade: 2 });
+      expect(sentFor('202')).toBe(2);
+    }, 10_000);
+  });
 });

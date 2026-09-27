@@ -319,9 +319,9 @@ describe('retry discipline', () => {
     const seen: number[] = [];
     const client = makeClient({ backoffBaseMs: 10 });
     const pages = [];
-    for await (const p of client.pages('201', span, (info) =>
-      seen.push(info.status),
-    ))
+    for await (const p of client.pages('201', span, {
+      onResponse: (info) => seen.push(info.status),
+    }))
       pages.push(p);
 
     expect(pages).toHaveLength(3);
@@ -405,7 +405,9 @@ describe('capturing x-request-id and x-process-time-ms', () => {
   it('reports every response, failures included, to the caller', async () => {
     upstream.setFault({ kind: 'server-error', page: 1, times: 1 });
     const infos: ResponseInfo[] = [];
-    await makeClient().probe('201', span, (info) => infos.push(info));
+    await makeClient().probe('201', span, {
+      onResponse: (info) => infos.push(info),
+    });
     expect(infos).toHaveLength(2);
     expect(infos[0]).toMatchObject({
       status: 500,
@@ -426,6 +428,114 @@ describe('capturing x-request-id and x-process-time-ms', () => {
     );
     expect(error.requestId).toMatch(/[0-9a-f-]{36}/);
     expect(error.processTimeMs).toEqual(expect.any(Number));
+  });
+});
+
+// The traffic report's one source (spec §13.6): the count must agree with
+// upstream's own record of what it was sent.
+describe('counting calls that reached upstream', () => {
+  beforeEach(async () => {
+    upstream = await createFakeUpstream({ rowsPerCode: 25_000 });
+  });
+
+  it('counts every attempt upstream received, retries and failures included', async () => {
+    upstream.setFault({ kind: 'server-error', page: 2, times: 2 });
+    let calls = 0;
+    const pages = [];
+    for await (const p of makeClient().pages('201', span, {
+      onCall: () => (calls += 1),
+    }))
+      pages.push(p);
+    expect(pages).toHaveLength(3);
+    expect(calls).toBe(5);
+    expect(calls).toBe(upstream.requests.length);
+  });
+
+  it('counts a call that timed out waiting for an answer', async () => {
+    upstream.setFault({ kind: 'slow-page', page: 1, delayMs: 400, times: 99 });
+    let calls = 0;
+    await kindOf(
+      makeClient({ timeoutMs: 50 }).probe('201', span, {
+        onCall: () => (calls += 1),
+      }),
+    );
+    expect(calls).toBe(3);
+    expect(calls).toBe(upstream.requests.length);
+  });
+
+  it('counts a call dropped after it was sent, before any answer', async () => {
+    upstream.setFault({ kind: 'dropped', page: 1, times: 1 });
+    let calls = 0;
+    const page = await makeClient().probe('201', span, {
+      onCall: () => (calls += 1),
+    });
+    expect(page.meta.totalItems).toBe(25_000);
+    expect(calls).toBe(2);
+    expect(calls).toBe(upstream.requests.length);
+  });
+
+  it('counts a call once when it times out after the headers arrived', async () => {
+    upstream.setFault({ kind: 'slow-body', page: 1, delayMs: 400, times: 1 });
+    let calls = 0;
+    const infos: ResponseInfo[] = [];
+    const page = await makeClient({ timeoutMs: 100 }).probe('201', span, {
+      onResponse: (info) => infos.push(info),
+      onCall: () => (calls += 1),
+    });
+    expect(page.meta.totalItems).toBe(25_000);
+    expect(infos).toHaveLength(2);
+    expect(calls).toBe(2);
+    expect(calls).toBe(upstream.requests.length);
+  });
+
+  it('counts a call once when its body is cut off mid-JSON', async () => {
+    upstream.setFault({ kind: 'truncated-page', page: 1, times: 1 });
+    let calls = 0;
+    await makeClient().probe('201', span, { onCall: () => (calls += 1) });
+    expect(calls).toBe(2);
+    expect(calls).toBe(upstream.requests.length);
+  });
+
+  it('does not count a call the network refused before it left the host', async () => {
+    const url = upstream.url;
+    await upstream.close();
+    let calls = 0;
+    const error = await kindOf(
+      makeClient({ baseUrl: url }).probe('201', span, {
+        onCall: () => (calls += 1),
+      }),
+    );
+    expect(error.kind).toBe('network');
+    expect(error.attempts).toBe(3);
+    expect(calls).toBe(0);
+  });
+
+  it('stops on the signal: the call in flight is cut off and counted, and no retry follows', async () => {
+    upstream.setFault({ kind: 'slow-page', page: 1, delayMs: 400, times: 99 });
+    const cancel = new AbortController();
+    const reason = new Error('stalled');
+    let calls = 0;
+    const call = makeClient({ timeoutMs: 1_000 }).probe('201', span, {
+      onCall: () => (calls += 1),
+      signal: cancel.signal,
+    });
+    await vi.waitFor(() => expect(upstream.requests).toHaveLength(1));
+    cancel.abort(reason);
+
+    await expect(call).rejects.toBe(reason);
+    expect(calls).toBe(1);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(upstream.requests).toHaveLength(1);
+    expect(sleeps).toEqual([]);
+  });
+
+  it('makes no call at all once the signal has fired', async () => {
+    const cancel = new AbortController();
+    cancel.abort(new Error('stalled'));
+    await expect(
+      makeClient().probe('201', span, { signal: cancel.signal }),
+    ).rejects.toThrow('stalled');
+    expect(upstream.requests).toHaveLength(0);
   });
 });
 

@@ -6,6 +6,7 @@ import {
   createFakeUpstream,
   type FakeUpstream,
 } from '../../test/fake-upstream/fake-upstream';
+import { CallCount } from '../upstream/call-count';
 import { UpstreamClient } from '../upstream/upstream-client';
 import {
   ExtractionFailure,
@@ -85,6 +86,7 @@ function extract(pager: UpstreamPager, provinces = new Map<string, number>()) {
       sleep: () => Promise.resolve(),
       onCodeFetched: () => Promise.resolve(),
       touch: () => undefined,
+      unrecordedCalls: new CallCount(),
       config: { codeMaxAttempts: 1 },
     },
   );

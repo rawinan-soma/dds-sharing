@@ -1,6 +1,10 @@
 import { inspect } from 'node:util';
 import { describe, expect, it, vi } from 'vitest';
-import { type UpstreamPage } from '../upstream/upstream-client';
+import { CallCount } from '../upstream/call-count';
+import {
+  type CallOptions,
+  type UpstreamPage,
+} from '../upstream/upstream-client';
 import { UpstreamError } from '../upstream/upstream-error';
 import {
   type CodeFetchedPayload,
@@ -39,7 +43,8 @@ function page(
 }
 
 /** One `.pages()` call's worth of behaviour: either a sequence of pages to
- * yield, or an UpstreamError to throw partway through the generator. */
+ * yield, or an UpstreamError to throw partway through the generator. Each
+ * page, and the failing call, is one upstream call. */
 type Attempt = { pages: UpstreamPage[] } | { error: UpstreamError };
 
 class FakeUpstream implements UpstreamPager {
@@ -50,15 +55,25 @@ class FakeUpstream implements UpstreamPager {
     this.plan.set(groupCode, attempts);
   }
 
-  async *pages(groupCode: string): AsyncGenerator<UpstreamPage> {
+  async *pages(
+    groupCode: string,
+    _span: unknown,
+    { onCall }: CallOptions = {},
+  ): AsyncGenerator<UpstreamPage> {
     this.calls.push(groupCode);
     const attempts = this.plan.get(groupCode);
     if (!attempts || attempts.length === 0) {
       throw new Error(`no attempt planned for code ${groupCode}`);
     }
     const attempt = attempts.shift()!;
-    if ('error' in attempt) throw attempt.error;
-    for (const p of attempt.pages) yield await Promise.resolve(p);
+    if ('error' in attempt) {
+      onCall?.();
+      throw attempt.error;
+    }
+    for (const p of attempt.pages) {
+      onCall?.();
+      yield await Promise.resolve(p);
+    }
   }
 }
 
@@ -90,6 +105,7 @@ function makeDeps(
       return Promise.resolve();
     },
     touch: () => undefined,
+    unrecordedCalls: new CallCount(),
     ...overrides,
   };
 }
@@ -161,6 +177,88 @@ describe('runExtraction', () => {
       expect((error as ExtractionFailure).cause).toBe('completeness_mismatch');
       // The job stops at the first failing code and never reaches the next.
       expect(upstream.calls).toEqual(['202']);
+    });
+  });
+
+  describe('counting upstream calls (§13.6)', () => {
+    it('puts every call for a code on its code_fetched, a failed walk included', async () => {
+      const upstream = new FakeUpstream();
+      upstream.plan_for('202', [
+        { error: upstreamErr('server_error') },
+        { pages: [page(1, 1)] },
+      ]);
+      upstream.plan_for('203', [{ pages: [page(1, 1)] }]);
+      const fetched: CodeFetchedPayload[] = [];
+
+      await runExtraction(
+        target,
+        makeDeps(upstream, {
+          onCodeFetched: (payload) => {
+            fetched.push(payload);
+            return Promise.resolve();
+          },
+        }),
+      );
+      expect(fetched.map((f) => [f.pageCount, f.callsMade])).toEqual([
+        [1, 2],
+        [1, 1],
+      ]);
+    });
+
+    it('leaves the failing code’s calls unrecorded, for job_failed', async () => {
+      const upstream = new FakeUpstream();
+      upstream.plan_for('202', [{ pages: [page(1, 1)] }]);
+      upstream.plan_for('203', [
+        { error: upstreamErr('server_error') },
+        { error: upstreamErr('server_error') },
+        { error: upstreamErr('server_error') },
+      ]);
+      const unrecordedCalls = new CallCount();
+      const fetched: CodeFetchedPayload[] = [];
+
+      await runExtraction(
+        target,
+        makeDeps(upstream, {
+          unrecordedCalls,
+          onCodeFetched: (payload) => {
+            fetched.push(payload);
+            return Promise.resolve();
+          },
+          config: { codeMaxAttempts: 3, codeBackoffBaseMs: 1 },
+        }),
+      ).catch(() => undefined);
+      expect(fetched.map((f) => f.callsMade)).toEqual([1]);
+      expect(unrecordedCalls.count).toBe(3);
+    });
+
+    it('leaves a walk’s calls unrecorded when the code fails its completeness check', async () => {
+      const upstream = new FakeUpstream();
+      upstream.plan_for('202', [{ pages: [page(1, 5)] }]);
+      const unrecordedCalls = new CallCount();
+
+      await runExtraction(
+        target,
+        makeDeps(upstream, { unrecordedCalls }),
+      ).catch(() => undefined);
+      expect(unrecordedCalls.count).toBe(1);
+    });
+
+    it('leaves a code’s calls unrecorded when its code_fetched cannot be written', async () => {
+      const upstream = new FakeUpstream();
+      upstream.plan_for('202', [
+        { error: upstreamErr('server_error') },
+        { pages: [page(1, 1)] },
+      ]);
+      const unrecordedCalls = new CallCount();
+
+      await runExtraction(
+        target,
+        makeDeps(upstream, {
+          unrecordedCalls,
+          onCodeFetched: () => Promise.reject(new Error('database gone')),
+        }),
+      ).catch(() => undefined);
+      expect(unrecordedCalls.count).toBe(2);
     });
   });
 

@@ -946,6 +946,9 @@ stopped chunking. A 504 is expected, not exceptional.
 - A stall is killed **automatically, not flagged for a human**, because a stalled
   job holds the single upstream slot and blocks every Request behind it. Waiting
   costs more than being wrong.
+- **Killing a stall cancels it.** The call in flight is aborted and no retry
+  follows, so a failed job never goes on calling upstream beside the next one,
+  and every call it made is counted before `job_failed` is written (§13.6).
 
 ### 7.7 Queue mechanics
 
@@ -1959,8 +1962,8 @@ Snapshot exists to make the Decision legible on its own years later.
 | Type | Actor | Notes |
 |---|---|---|
 | `submitted` | `requester` | carries IP, user agent |
-| `probe_performed` | `system` | Report codes probed, calls made (**one per code**, §5.4), the probed span, **per-code and total `total_items`**, upstream `x-request-id`s. **Fires when the Probe finishes — after submit, and usually but not necessarily before any Decision**, since approve no longer waits on it (§5.4) — this is what makes the reject path's upstream traffic accountable |
-| `probe_failed` | `system` | a Report code's Probe calls exhausted their 3 attempts (§5.4). Carries the code, the relay of upstream errors and their `x-request-id`s. **Terminal for the Probe** — the count never lands. It gates nothing: the job runs regardless (§7.8), and only the zero-row catch is lost |
+| `probe_performed` | `system` | Report codes probed, calls made (**every call, retries included**, §13.6), the probed span, **per-code and total `total_items`**, upstream `x-request-id`s. **Fires when the Probe finishes — after submit, and usually but not necessarily before any Decision**, since approve no longer waits on it (§5.4) — this is what makes the reject path's upstream traffic accountable |
+| `probe_failed` | `system` | a Report code's Probe calls exhausted their 3 attempts (§5.4). Carries the code, the relay of upstream errors and their `x-request-id`s, and the calls the whole Probe spent, the codes before this one included (§13.6). **Terminal for the Probe** — the count never lands. It gates nothing: the job runs regardless (§7.8), and only the zero-row catch is lost |
 | `approved` | `reviewer` | carries the Snapshot |
 | `rejected` | `reviewer` | carries the Snapshot and the **mandatory internal note** |
 | `note_amended` | `reviewer` | cites the event it corrects |
@@ -1975,9 +1978,9 @@ reading the ticket record alone would find `job_queued` and nothing else.
 | `job_queued` | `system` | |
 | `job_deferred_low_disk` | `system` | free space below the 1 GB floor (§7.8) |
 | `job_started` | `system` | |
-| `code_fetched` | `system` | one per Report code: exact upstream params, page count, `x-request-id`, rows received vs `total_items` |
+| `code_fetched` | `system` | one per Report code: exact upstream params, page count, calls made (every page of every attempt, §13.6), `x-request-id`, rows received vs `total_items` |
 | `job_completed` | `system` | the two-group payload below, plus the **Probe-vs-run drift**: the Probe's per-code totals against the run's. **Recorded, never asserted** (§5.4) — real drift between Probe and run is expected and legitimate |
-| `job_failed` | `system` | **cause**: `upstream_5xx` / `auth_expiry` / `completeness_mismatch` / `stall` / `internal`, plus the upstream `x-request-id`. **Operator-facing only** |
+| `job_failed` | `system` | **cause**: `upstream_5xx` / `auth_expiry` / `completeness_mismatch` / `stall` / `internal`, plus the upstream `x-request-id` and the calls spent on the code it failed on, which no `code_fetched` carries (§13.6). **Operator-facing only** |
 | `extraction_alert_raised` | `system` | |
 | `extraction_alert_cleared` | `system` \| `reviewer` | `reviewer` names `contacted_requester`/`abandoned`; **`system` writes `re_ran` when a deferred re-run completes** (§10.6). Carries **both** the assigned and the clearing Reviewer, and the count of re-run attempts |
 | `extraction_rerun_queued` | `reviewer` | carries the **original Decision's id** |
@@ -2242,7 +2245,20 @@ you sending?" must be answerable.
 - `code_fetched` covers running jobs; **`probe_performed` covers submits,
   including those that are rejected or expire** (§12.4). `probe_failed` covers the
   calls an abandoned Probe spent before giving up — traffic spent either way, and
-  the retries make it more than a successful Probe's, not less.
+  the retries make it more than a successful Probe's, not less. `job_failed`
+  covers the calls a failed job spent on the code it failed on.
+- **Each carries `callsMade`: every call that reached upstream, retries
+  included** — answered; cut off while in flight, by the 60 s timeout or a
+  stall; or dropped by the other side after it was sent. A call that failed
+  before it left the host (a DNS failure, a refused connection, a failed TLS
+  handshake) is not counted: DDC never saw it. The retries this counts pile up
+  exactly when DDC's server struggles, which is when DDC is likeliest to ask
+  (decided 2026-09-27, #99).
+- **The count is not a floor, and it has one known error.** A stall's cancel
+  can land while a call is still connecting, and that call is counted though
+  it never arrived. It errs high, never low, and at most by one per stall. A
+  `job_failed` carries only the calls no `code_fetched` already did, so no
+  call is counted twice.
 - **A CLI report on the Docker host** counts upstream calls over a date range,
   split by Probe and fetch. Not a dashboard and not an endpoint: this question
   gets asked by a human a handful of times a year, and a dashboard nobody opens is

@@ -3,6 +3,7 @@ import {
   createFakeUpstream,
   type FakeUpstream,
 } from '../../test/fake-upstream/fake-upstream';
+import { CallCount } from '../upstream/call-count';
 import { buildSpan } from '../upstream/span-builder';
 import { UpstreamClient } from '../upstream/upstream-client';
 import { runExtraction } from './extraction-pipeline';
@@ -61,6 +62,7 @@ describe('the extraction job sends buildSpan’s own output, verbatim', () => {
         sleep: () => Promise.resolve(),
         onCodeFetched: () => Promise.resolve(),
         touch: () => undefined,
+        unrecordedCalls: new CallCount(),
       },
     ).catch(() => undefined);
 

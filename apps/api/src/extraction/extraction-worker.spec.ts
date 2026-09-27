@@ -8,7 +8,11 @@ import { Logger, type LoggerService } from '@nestjs/common';
 import { DelayedError } from 'bullmq';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import { afterAll, describe, expect, it, vi } from 'vitest';
-import { type UpstreamPage } from '../upstream/upstream-client';
+import {
+  type CallOptions,
+  type UpstreamPage,
+} from '../upstream/upstream-client';
+import { UpstreamError } from '../upstream/upstream-error';
 import { type ArchiveStore } from './archive-store';
 import { type UpstreamPager } from './extraction-pipeline';
 import { DISK_FLOOR_BYTES } from './extraction.config';
@@ -170,6 +174,31 @@ function noopUpstream(): UpstreamPager {
       };
     },
   };
+}
+
+/**
+ * A call that never answers until it is cancelled, as the real client's is
+ * then: counted as having reached upstream, and rejecting with the reason.
+ */
+function hangingUpstream(): UpstreamPager & { started: number } {
+  const pager = {
+    started: 0,
+    async *pages(
+      _groupCode: string,
+      _span: unknown,
+      { onCall, signal }: CallOptions = {},
+    ): AsyncGenerator<UpstreamPage> {
+      pager.started += 1;
+      await new Promise<never>((_, reject) => {
+        signal?.addEventListener('abort', () => {
+          onCall?.();
+          reject(signal.reason as Error);
+        });
+      });
+      yield undefined as never;
+    },
+  };
+  return pager;
 }
 
 const silentLogger = new Logger('test') as LoggerService;
@@ -334,12 +363,6 @@ describe('processExtractionJob', () => {
       { email: 'reviewer@ddc.go.th', displayName: 'Reviewer One' },
     );
     const mailSender = fakeMailSender();
-    const hangingUpstream: UpstreamPager = {
-      async *pages(): AsyncGenerator<UpstreamPage> {
-        await new Promise<never>(() => undefined);
-        yield undefined as never;
-      },
-    };
 
     await processExtractionJob(
       fakeJob(),
@@ -348,7 +371,7 @@ describe('processExtractionJob', () => {
         db,
         extractionJobs: jobs,
         mailSender,
-        upstream: hangingUpstream,
+        upstream: hangingUpstream(),
         stallMs: 5,
       }),
     );
@@ -466,12 +489,7 @@ describe('processExtractionJob', () => {
     const { db, inserted } = fakeDb(REQUEST_ROW);
     // Never resolves within the job's lifetime — the stall guard alone must
     // be what ends this job.
-    const hangingUpstream: UpstreamPager = {
-      async *pages(): AsyncGenerator<UpstreamPage> {
-        await new Promise<never>(() => undefined);
-        yield undefined as never;
-      },
-    };
+    const upstream = hangingUpstream();
 
     await processExtractionJob(
       fakeJob(),
@@ -479,7 +497,7 @@ describe('processExtractionJob', () => {
       baseDeps({
         db,
         extractionJobs: jobs,
-        upstream: hangingUpstream,
+        upstream,
         stallMs: 5,
       }),
     );
@@ -492,6 +510,131 @@ describe('processExtractionJob', () => {
     );
     const failedEvent = inserted.find((i) => i.values.type === 'job_failed');
     expect(failedEvent?.values).toMatchObject({ payload: { cause: 'stall' } });
+  });
+
+  it('cancels a stalled pipeline, so it calls upstream no more, and counts the call it cut off', async () => {
+    const { db, inserted } = fakeDb(REQUEST_ROW);
+    const upstream = hangingUpstream();
+
+    await processExtractionJob(
+      fakeJob(),
+      undefined,
+      baseDeps({ db, upstream, stallMs: 5 }),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    // A cancelled call is not retried, at the page or the code level.
+    expect(upstream.started).toBe(1);
+    const failedEvent = inserted.find((i) => i.values.type === 'job_failed');
+    expect(failedEvent?.values).toMatchObject({
+      payload: { cause: 'stall', callsMade: 1 },
+    });
+  });
+
+  it('still ends a stalled job when its pipeline will not wind down', async () => {
+    const { db, inserted } = fakeDb(REQUEST_ROW);
+    // Ignores the cancel: stuck on something that is not upstream.
+    const deaf: UpstreamPager = {
+      async *pages(_groupCode, _span, { onCall } = {}) {
+        onCall?.();
+        await new Promise<never>(() => undefined);
+        yield undefined as never;
+      },
+    };
+
+    await processExtractionJob(
+      fakeJob(),
+      undefined,
+      baseDeps({ db, upstream: deaf, stallMs: 5, stallSettleMs: 10 }),
+    );
+
+    const failedEvent = inserted.find((i) => i.values.type === 'job_failed');
+    expect(failedEvent?.values).toMatchObject({
+      payload: { cause: 'stall', callsMade: 1 },
+    });
+  });
+
+  it('counts a call once when the stall lands while its code_fetched is being written', async () => {
+    const { db, inserted } = fakeDb(REQUEST_ROW);
+    const jobs = fakeJobs();
+    // The heartbeat before the event write outlasts the stall window.
+    vi.mocked(jobs.touch).mockImplementation(
+      () => new Promise((resolve) => setTimeout(resolve, 30)),
+    );
+    const onePage: UpstreamPager = {
+      async *pages(_groupCode, _span, { onCall } = {}) {
+        onCall?.();
+        yield await Promise.resolve({
+          rows: [],
+          meta: {
+            page: 1,
+            pageSize: 10_000,
+            totalItems: 0,
+            totalPages: 1,
+            hasNext: false,
+            hasPrevious: false,
+          },
+          requestId: null,
+          processTimeMs: 1,
+        });
+      },
+    };
+
+    await processExtractionJob(
+      fakeJob(),
+      undefined,
+      baseDeps({ db, extractionJobs: jobs, upstream: onePage, stallMs: 5 }),
+    );
+
+    const types = inserted.map((i) => i.values.type);
+    expect(types.indexOf('code_fetched')).toBeLessThan(
+      types.indexOf('job_failed'),
+    );
+    const callsOn = (type: string) =>
+      inserted.find((i) => i.values.type === type)?.values.payload?.callsMade;
+    expect(callsOn('code_fetched')).toBe(1);
+    expect(callsOn('job_failed')).toBe(0);
+  });
+
+  it('counts a failed job’s partial work on job_failed: every page of every attempt on the code it failed on', async () => {
+    const { db, inserted } = fakeDb(REQUEST_ROW);
+    // Page 1 answers, page 2 fails: two calls an attempt, three attempts.
+    const failingOnPage2: UpstreamPager = {
+      async *pages(_groupCode, _span, { onCall } = {}) {
+        onCall?.();
+        yield await Promise.resolve({
+          rows: [],
+          meta: {
+            page: 1,
+            pageSize: 10_000,
+            totalItems: 10_001,
+            totalPages: 2,
+            hasNext: true,
+            hasPrevious: false,
+          },
+          requestId: null,
+          processTimeMs: 1,
+        });
+        onCall?.();
+        throw new UpstreamError({
+          kind: 'server_error',
+          groupCode: '999',
+          page: 2,
+          attempts: 3,
+        });
+      },
+    };
+
+    await processExtractionJob(
+      fakeJob(),
+      undefined,
+      baseDeps({ db, upstream: failingOnPage2 }),
+    );
+
+    const failedEvent = inserted.find((i) => i.values.type === 'job_failed');
+    expect(failedEvent?.values).toMatchObject({
+      payload: { cause: 'upstream_5xx', callsMade: 6 },
+    });
   });
 
   it('records the province checksum on a job failed by an unrecognised province code (§6.3)', async () => {
