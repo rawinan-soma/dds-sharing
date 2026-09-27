@@ -17,7 +17,7 @@ import { type SurfaceZone, surfaceZone } from '../requests/surface-zone';
 import { openAlertsOf } from './alert-records';
 import { type LinkState, linkState } from './lookup';
 import { type Area, describeArea } from './review-queue';
-import { type ProbeRowCount } from './review-queue.service';
+import { type ProbeRowCount } from '../requests/probe-row-count';
 
 /**
  * What a lookup finds. A Request still on the surface is only pointed at: it

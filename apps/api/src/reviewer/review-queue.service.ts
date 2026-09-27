@@ -1,9 +1,12 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { and, eq, inArray } from 'drizzle-orm';
-import { type RequestEventPayloads } from '../audit/event-catalogue';
+import { eq } from 'drizzle-orm';
 import { DB, type Db } from '../db/database.module';
-import { request, requestContact, requestEvent } from '../db/schema';
+import { request, requestContact } from '../db/schema';
 import { ProvinceLookup } from '../reference/province-lookup.service';
+import {
+  type ProbeRowCount,
+  probeRowCountOf,
+} from '../requests/probe-row-count';
 import { schedulerHealth } from '../scheduler/scheduler-health';
 import { CLOCK, type Clock } from '../clock/clock';
 import { type AlertRow, Alerts } from './alerts.service';
@@ -44,9 +47,6 @@ export interface QueueList {
   /** Approved and not yet terminal (§10.9), read in the same breath too. */
   inFlight: InFlightListRow[];
 }
-
-/** The summed count, or the Probe's still-pending or abandoned state (§5.4). */
-export type ProbeRowCount = number | 'pending' | 'failed';
 
 export interface Dossier extends QueueRow {
   contact: {
@@ -148,26 +148,8 @@ export class ReviewQueue {
       startDate: entry.startDate,
       endDate: entry.endDate,
       area: describeArea(entry.provinces, this.provinces.provinces),
-      rowCount: await this.probeRowCount(id),
+      rowCount: await probeRowCountOf(this.db, id),
     };
-  }
-
-  // `probe_performed`/`probe_failed` is terminal and written at most once per
-  // Request (§5.4), so the first match settles it; no event yet reads pending.
-  private async probeRowCount(id: string): Promise<ProbeRowCount> {
-    const [row] = await this.db
-      .select({ type: requestEvent.type, payload: requestEvent.payload })
-      .from(requestEvent)
-      .where(
-        and(
-          eq(requestEvent.requestId, id),
-          inArray(requestEvent.type, ['probe_performed', 'probe_failed']),
-        ),
-      )
-      .limit(1);
-    if (!row) return 'pending';
-    if (row.type === 'probe_failed') return 'failed';
-    return (row.payload as RequestEventPayloads['probe_performed']).totalItems;
   }
 }
 

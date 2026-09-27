@@ -1,4 +1,5 @@
 import { type Snapshot } from '../audit/event-catalogue';
+import { type ProbeRowCount } from '../requests/probe-row-count';
 
 // The Decision's pure rules (spec §10.3): what counts as a valid reject note,
 // and what the Reviewer had on screen at the moment they decided. Nothing here
@@ -22,17 +23,21 @@ export interface SnapshotSource {
 
 /**
  * The Snapshot copies the ask and the Workplace, never the other contact
- * fields (§12.3). The Probe does not exist yet (a later slice), so the row
- * count is honestly `pending` until it does — never a number, never null.
+ * fields (§12.3), and the row count exactly as the Reviewer had it on screen:
+ * a number, or still `pending` or `failed`, since a Decision waits on neither
+ * (§5.4).
  */
-export function buildSnapshot(row: SnapshotSource): Snapshot {
+export function buildSnapshot(
+  row: SnapshotSource,
+  probeRowCount: ProbeRowCount,
+): Snapshot {
   return {
     diseaseGroupName: row.diseaseGroupName,
     reportCodes: [...row.reportCodes],
     startDate: row.startDate,
     endDate: row.endDate,
     provinces: [...row.provinces],
-    probeRowCount: 'pending',
+    probeRowCount,
     workplace: row.workplace,
   };
 }
