@@ -16,9 +16,9 @@ const STALENESS_TICK_MS = 30_000;
 
 // The split queue (§10.1): the list on the left, the Request on the right,
 // with the Alerts zone (§10.6) and the In-progress zone (§10.9) below the
-// queue, and the lookup by reference (§10.10) above them all. A Request is in exactly one zone at a time — an open Alert takes it
-// out of the in-flight list — so each zone is a list of its own and never a
-// badge on another's.
+// queue, and the lookup by reference (§10.10) above them all. A Request is in
+// exactly one zone at a time — an open Alert takes it out of the in-flight
+// list — so each zone is a list of its own and never a badge on another's.
 @Component({
   selector: 'app-reviewer-queue',
   imports: [LookupSearch, RouterLink, RouterLinkActive, RouterOutlet],

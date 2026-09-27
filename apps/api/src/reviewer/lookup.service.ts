@@ -51,7 +51,7 @@ export interface RequestRecord {
     /** The count as the Snapshot holds it: what the Reviewer had on screen. */
     rowCount: ProbeRowCount;
   } | null;
-  /** Every Extract, newest run first. Never a token. */
+  /** Every Extract archive, newest run first. Never a token. */
   files: {
     run: number;
     archiveFilename: string;
@@ -145,7 +145,7 @@ export class RequestLookup {
         payload: requestEvent.payload,
       })
       .from(requestEvent)
-      .innerJoin(reviewer, eq(reviewer.id, sql`${requestEvent.reviewerId}`))
+      .innerJoin(reviewer, eq(reviewer.id, requestEvent.reviewerId))
       .where(
         and(
           eq(requestEvent.requestId, requestId),
@@ -154,7 +154,8 @@ export class RequestLookup {
       )
       .limit(1);
     if (!decision) return null;
-    const { snapshot } = decision.payload as RequestEventPayloads['approved'];
+    const { snapshot } = decision.payload as RequestEventPayloads[
+      'approved' | 'rejected'];
     return {
       outcome: decision.type as 'approved' | 'rejected',
       reviewer: decision.reviewer,

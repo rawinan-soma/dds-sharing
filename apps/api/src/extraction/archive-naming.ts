@@ -41,7 +41,7 @@ export function extractFilename(submittedAt: Date, runNumber: number): string {
 }
 
 /** The run an archive name belongs to, read back off its `-rN` suffix. */
-export function runNumberOf(archiveFilename: string): number {
-  const suffix = /-r(\d+)\.zip$/.exec(archiveFilename);
+export function runNumberOf(filename: string): number {
+  const suffix = /-r(\d+)\.zip$/.exec(filename);
   return suffix ? Number(suffix[1]) : 1;
 }

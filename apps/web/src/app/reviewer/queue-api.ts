@@ -129,6 +129,9 @@ export interface QueueList {
   inFlight: InFlightRow[];
 }
 
+/** A summed count, or the Probe's still-pending or abandoned state. */
+export type ProbeRowCount = number | 'pending' | 'failed';
+
 export type Area =
   | { kind: 'national' }
   | {
@@ -149,8 +152,7 @@ export interface Dossier extends QueueRow {
   startDate: string;
   endDate: string;
   area: Area;
-  /** A summed count, or the Probe's still-pending or abandoned state. */
-  rowCount: number | 'pending' | 'failed';
+  rowCount: ProbeRowCount;
 }
 
 export type DossierOutcome =
@@ -224,9 +226,9 @@ export interface RequestRecord {
     decidedAt: string;
     workplace: string;
     /** As the Snapshot holds it: what the Reviewer had on screen. */
-    rowCount: number | 'pending' | 'failed';
+    rowCount: ProbeRowCount;
   } | null;
-  /** Every file, newest run first. Never a token. */
+  /** Every Extract archive, newest run first. Never a token. */
   files: {
     run: number;
     archiveFilename: string;
@@ -243,6 +245,10 @@ export interface RequestRecord {
     reviewer: string | null;
   }[];
 }
+
+export type RecordDecision = NonNullable<RequestRecord['decision']>;
+export type RecordFile = RequestRecord['files'][number];
+export type RecordEvent = RequestRecord['events'][number];
 
 /** What a lookup by reference found: where it is, or its record. */
 export type LookupOutcome =

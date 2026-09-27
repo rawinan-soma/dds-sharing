@@ -1,8 +1,9 @@
 import * as m from '../../paraglide/messages.js';
 import { linkLeft } from './in-flight-copy';
 import {
+  type RecordEvent,
+  type RecordFile,
   type RequestEventType,
-  type RequestRecord,
   type TerminalState,
 } from './queue-api';
 
@@ -24,10 +25,8 @@ export function terminalStateWord(state: TerminalState): string {
   }
 }
 
-type File = RequestRecord['files'][number];
-
 /** How a file's link reads now; a live one shows its wall-clock time left. */
-export function linkWord(file: File, now: number): string {
+export function linkWord(file: RecordFile, now: number): string {
   switch (file.link) {
     case 'live':
       return m.reviewer_inflight_link_left({
@@ -42,10 +41,8 @@ export function linkWord(file: File, now: number): string {
   }
 }
 
-type Event = RequestRecord['events'][number];
-
 /** Who did it: a Reviewer by name, anyone else by what they were. */
-export function actorWord(event: Event): string {
+export function actorWord(event: RecordEvent): string {
   switch (event.actor) {
     case 'reviewer':
       return event.reviewer ?? '';

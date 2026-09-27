@@ -2,26 +2,8 @@ import { Component, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import * as m from '../../paraglide/messages.js';
 import { Field } from './field';
-import { QueueApi, type SurfaceZone } from './queue-api';
-
-/** Where a Request still on the surface opens: its own zone, as usual. */
-export function zonePath(zone: SurfaceZone, requestId: string): string[] {
-  switch (zone) {
-    case 'queue':
-      return ['/reviewer', requestId];
-    case 'alerts':
-      return ['/reviewer', 'alerts', requestId];
-    case 'in_flight':
-      return ['/reviewer', 'in-flight', requestId];
-  }
-}
-
-/** Where a terminal Request opens: as a record, by its reference. */
-export const recordPath = (reference: string) => [
-  '/reviewer',
-  'lookup',
-  reference,
-];
+import { QueueApi } from './queue-api';
+import { recordPath, zonePath } from './surface-paths';
 
 type Problem = 'not_found' | 'failed' | null;
 

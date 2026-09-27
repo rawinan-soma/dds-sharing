@@ -13,8 +13,13 @@ import { ActivatedRoute, Router } from '@angular/router';
 import * as m from '../../paraglide/messages.js';
 import { formatDay } from '../requester/format-day';
 import { areaHeadline, areaProvinces } from './area-copy';
-import { zonePath } from './lookup-search';
-import { QueueApi, type RequestRecord } from './queue-api';
+import {
+  QueueApi,
+  type ProbeRowCount,
+  type RecordDecision,
+  type RecordFile,
+  type RequestRecord,
+} from './queue-api';
 import { formatInstant } from './queue-format';
 import {
   actorWord,
@@ -22,6 +27,7 @@ import {
   linkWord,
   terminalStateWord,
 } from './record-copy';
+import { zonePath } from './surface-paths';
 
 type View =
   | { kind: 'loading' }
@@ -150,7 +156,7 @@ type View =
               <table class="events">
                 <thead>
                   <tr>
-                    <th scope="col">{{ copy.decidedAt }}</th>
+                    <th scope="col">{{ copy.when }}</th>
                     <th scope="col">{{ copy.what }}</th>
                     <th scope="col">{{ copy.who }}</th>
                   </tr>
@@ -317,6 +323,7 @@ export class RecordPage {
     noFiles: m.reviewer_lookup_no_files(),
     eventsHeading: m.reviewer_lookup_events_heading(),
     eventsNote: m.reviewer_lookup_events_note(),
+    when: m.reviewer_lookup_event_when(),
     what: m.reviewer_lookup_event_what(),
     who: m.reviewer_lookup_event_who(),
   };
@@ -371,23 +378,20 @@ export class RecordPage {
     });
   }
 
-  protected decidedBy(d: NonNullable<RequestRecord['decision']>): string {
+  protected decidedBy(d: RecordDecision): string {
     return d.outcome === 'approved'
       ? m.reviewer_approved_by({ reviewer: d.reviewer })
       : m.reviewer_rejected_by({ reviewer: d.reviewer });
   }
 
-  protected rowCount(
-    count: NonNullable<RequestRecord['decision']>['rowCount'],
-  ): string {
+  protected rowCount(count: ProbeRowCount): string {
     if (count === 'pending') return m.reviewer_lookup_probe_uncounted();
     if (count === 'failed') return m.reviewer_probe_failed();
     return String(count);
   }
 
   protected stateWord = (r: RequestRecord) => terminalStateWord(r.state);
-  protected link = (file: RequestRecord['files'][number]) =>
-    linkWord(file, Date.now());
+  protected link = (file: RecordFile) => linkWord(file, Date.now());
   protected attempts = (count: number) =>
     m.reviewer_file_attempts_value({ count });
   protected eventWord = eventWord;
