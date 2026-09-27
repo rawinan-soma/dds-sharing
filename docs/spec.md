@@ -1962,7 +1962,7 @@ Snapshot exists to make the Decision legible on its own years later.
 | Type | Actor | Notes |
 |---|---|---|
 | `submitted` | `requester` | carries IP, user agent |
-| `probe_performed` | `system` | Report codes probed, calls made (**every attempt, retries included**, §13.6), the probed span, **per-code and total `total_items`**, upstream `x-request-id`s. **Fires when the Probe finishes — after submit, and usually but not necessarily before any Decision**, since approve no longer waits on it (§5.4) — this is what makes the reject path's upstream traffic accountable |
+| `probe_performed` | `system` | Report codes probed, calls made (**every call, retries included**, §13.6), the probed span, **per-code and total `total_items`**, upstream `x-request-id`s. **Fires when the Probe finishes — after submit, and usually but not necessarily before any Decision**, since approve no longer waits on it (§5.4) — this is what makes the reject path's upstream traffic accountable |
 | `probe_failed` | `system` | a Report code's Probe calls exhausted their 3 attempts (§5.4). Carries the code, the relay of upstream errors and their `x-request-id`s, and the calls the whole Probe spent, the codes before this one included (§13.6). **Terminal for the Probe** — the count never lands. It gates nothing: the job runs regardless (§7.8), and only the zero-row catch is lost |
 | `approved` | `reviewer` | carries the Snapshot |
 | `rejected` | `reviewer` | carries the Snapshot and the **mandatory internal note** |
@@ -2247,12 +2247,18 @@ you sending?" must be answerable.
   calls an abandoned Probe spent before giving up — traffic spent either way, and
   the retries make it more than a successful Probe's, not less. `job_failed`
   covers the calls a failed job spent on the code it failed on.
-- **Each carries `callsMade`: every attempt that reached upstream, retries
-  included** — answered, or cut off by the 60 s timeout or a stall while in
-  flight. An attempt refused before it left the host (a DNS failure, a refused
-  connection) is not counted: DDC never saw it. The count is therefore exact,
-  not a floor, and it is widest exactly when DDC's server struggles, which is
-  when DDC is likeliest to ask (decided 2026-09-27, #99).
+- **Each carries `callsMade`: every call that reached upstream, retries
+  included** — answered; cut off while in flight, by the 60 s timeout or a
+  stall; or dropped by the other side after it was sent. A call that failed
+  before it left the host (a DNS failure, a refused connection, a failed TLS
+  handshake) is not counted: DDC never saw it. The retries this counts pile up
+  exactly when DDC's server struggles, which is when DDC is likeliest to ask
+  (decided 2026-09-27, #99).
+- **The count is not a floor, and it has one known error.** A stall's cancel
+  can land while a call is still connecting, and that call is counted though
+  it never arrived. It errs high, never low, and at most by one per stall. A
+  `job_failed` carries only the calls no `code_fetched` already did, so no
+  call is counted twice.
 - **A CLI report on the Docker host** counts upstream calls over a date range,
   split by Probe and fetch. Not a dashboard and not an endpoint: this question
   gets asked by a human a handful of times a year, and a dashboard nobody opens is

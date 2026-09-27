@@ -26,6 +26,15 @@ export const EXTRACTION_DEFAULTS = {
    * expected gap between one Report code finishing and the next.
    */
   stallMs: 120_000,
+  /**
+   * How long a stalled pipeline gets to wind down once cancelled, so every
+   * call it made is counted before `job_failed` is written (§13.6).
+   * Cancelling aborts the upstream call in flight at once; what can remain is
+   * one backoff sleep, `codeBackoffBaseMs` or the client's own, doubled per
+   * attempt. Past this, whatever it is stuck on is not upstream, and the stall
+   * must still end the job.
+   */
+  stallSettleMs: 5_000,
 } as const;
 
 /** A floor, never a projection from row count or the Probe (spec §7.8). */

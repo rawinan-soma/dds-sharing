@@ -179,7 +179,7 @@ export interface RequestEventPayloads {
   submitted: Record<string, never>;
   probe_performed: {
     reportCodes: string[];
-    /** Every attempt that reached upstream, retries included (§13.6). */
+    /** Every call that reached upstream, retries included (§13.6). */
     callsMade: number;
     spanStart: string;
     spanEnd: string;
@@ -228,7 +228,8 @@ export interface RequestEventPayloads {
   job_failed: {
     cause: JobFailureCause;
     xRequestId: string | null;
-    /** Upstream calls no `code_fetched` carries: the failing code's (§13.6). */
+    /** Upstream calls no `code_fetched` carries: those on a code it did not
+     * finish (§13.6). */
     callsMade: number;
   };
   extraction_alert_raised: Record<string, never>;

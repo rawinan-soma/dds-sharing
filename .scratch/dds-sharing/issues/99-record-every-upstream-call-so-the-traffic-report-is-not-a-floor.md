@@ -36,3 +36,14 @@ Decisions taken while building it:
 - **A stall now cancels the pipeline.** Before, a stalled pipeline kept calling upstream in the background after `job_failed`, uncounted and beside the next job. The worker now aborts it, gives it up to 5 s to settle, then writes `job_failed` with the calls it made. Spec §7.6 says so.
 - **No backfill.** Nothing is deployed yet (#77), so there are no old events without `callsMade` to fall back on.
 
+**Claude** — 2026-09-27
+
+Fixed the findings from `/code-review` on 714137b:
+
+- **A dropped connection is now counted.** A request whose connection the other side dropped after it was sent (`UND_ERR_SOCKET`, `ECONNRESET`, `EPIPE`) reached DDC and is counted. Other network failures still are not.
+- **"Exact" is withdrawn from §13.6.** It now states the one remaining error: a stall's cancel landing mid-connect counts a call that never arrived. It errs high, by at most one per stall.
+- **A code's calls are cleared only after its `code_fetched` is written**, so a failed write hands them to `job_failed` instead of losing them. The worker now touches the heartbeat before the event write, so nothing after the write can fail and count the calls twice.
+- **Report wording:** "spent on Report codes they did not finish", which also covers a job that failed after every code was fetched.
+- **Tests:** extraction counts are now checked against the fake upstream's log (a retried page; a failed job with a dropped call). The fake upstream gained `dropped` and `slow-body` faults. New tests cover a timeout after the headers, the stall's settle-timeout branch, and a stall landing mid-write.
+- **Standards:** `stallSettleMs` moved into `EXTRACTION_DEFAULTS`. One `CallCount` is shared by the Probe and the pipeline. The timeout-or-cancel check is one helper. The unrecorded count is a required dependency. "Attempt" became "call" in the new prose.
+

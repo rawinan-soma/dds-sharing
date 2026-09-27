@@ -1,6 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { writeRequestEvent } from '../audit/write-request-event';
 import { DB, type Db } from '../db/database.module';
+import { CallCount } from '../upstream/call-count';
 import { buildSpan } from '../upstream/span-builder';
 import { type ResponseInfo, UpstreamClient } from '../upstream/upstream-client';
 import { UpstreamError } from '../upstream/upstream-error';
@@ -49,10 +50,9 @@ export class ProbeService {
     const span = buildSpan({ from: target.startDate, to: target.endDate });
     const totalItemsByCode: Record<string, number> = {};
     const xRequestIds: string[] = [];
-    // Every attempt on every code, retries included (spec §13.6): the traffic
+    // Every call on every code, retries included (spec §13.6): the traffic
     // report reads this and nothing else.
-    let callsMade = 0;
-    const onCall = () => void (callsMade += 1);
+    const calls = new CallCount();
 
     for (const groupCode of codes) {
       const attempts: ResponseInfo[] = [];
@@ -60,7 +60,7 @@ export class ProbeService {
       try {
         page = await this.upstream.probe(groupCode, span, {
           onResponse: (info) => attempts.push(info),
-          onCall,
+          onCall: calls.add,
         });
       } catch (error) {
         if (!(error instanceof UpstreamError)) throw error;
@@ -88,7 +88,7 @@ export class ProbeService {
           type: 'probe_failed',
           occurredAt: now,
           actor: { actorType: 'system' },
-          payload: { groupCode, errors, callsMade },
+          payload: { groupCode, errors, callsMade: calls.count },
         });
         return;
       }
@@ -107,7 +107,7 @@ export class ProbeService {
       actor: { actorType: 'system' },
       payload: {
         reportCodes: codes,
-        callsMade,
+        callsMade: calls.count,
         spanStart: span.startDate,
         spanEnd: span.endDate,
         totalItemsByCode,

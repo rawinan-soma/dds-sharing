@@ -531,6 +531,71 @@ describe('processExtractionJob', () => {
     });
   });
 
+  it('still ends a stalled job when its pipeline will not wind down', async () => {
+    const { db, inserted } = fakeDb(REQUEST_ROW);
+    // Ignores the cancel: stuck on something that is not upstream.
+    const deaf: UpstreamPager = {
+      async *pages(_groupCode, _span, { onCall } = {}) {
+        onCall?.();
+        await new Promise<never>(() => undefined);
+        yield undefined as never;
+      },
+    };
+
+    await processExtractionJob(
+      fakeJob(),
+      undefined,
+      baseDeps({ db, upstream: deaf, stallMs: 5, stallSettleMs: 10 }),
+    );
+
+    const failedEvent = inserted.find((i) => i.values.type === 'job_failed');
+    expect(failedEvent?.values).toMatchObject({
+      payload: { cause: 'stall', callsMade: 1 },
+    });
+  });
+
+  it('counts a call once when the stall lands while its code_fetched is being written', async () => {
+    const { db, inserted } = fakeDb(REQUEST_ROW);
+    const jobs = fakeJobs();
+    // The heartbeat before the event write outlasts the stall window.
+    vi.mocked(jobs.touch).mockImplementation(
+      () => new Promise((resolve) => setTimeout(resolve, 30)),
+    );
+    const onePage: UpstreamPager = {
+      async *pages(_groupCode, _span, { onCall } = {}) {
+        onCall?.();
+        yield await Promise.resolve({
+          rows: [],
+          meta: {
+            page: 1,
+            pageSize: 10_000,
+            totalItems: 0,
+            totalPages: 1,
+            hasNext: false,
+            hasPrevious: false,
+          },
+          requestId: null,
+          processTimeMs: 1,
+        });
+      },
+    };
+
+    await processExtractionJob(
+      fakeJob(),
+      undefined,
+      baseDeps({ db, extractionJobs: jobs, upstream: onePage, stallMs: 5 }),
+    );
+
+    const types = inserted.map((i) => i.values.type);
+    expect(types.indexOf('code_fetched')).toBeLessThan(
+      types.indexOf('job_failed'),
+    );
+    const callsOn = (type: string) =>
+      inserted.find((i) => i.values.type === type)?.values.payload?.callsMade;
+    expect(callsOn('code_fetched')).toBe(1);
+    expect(callsOn('job_failed')).toBe(0);
+  });
+
   it('counts a failed job’s partial work on job_failed: every page of every attempt on the code it failed on', async () => {
     const { db, inserted } = fakeDb(REQUEST_ROW);
     // Page 1 answers, page 2 fails: two calls an attempt, three attempts.

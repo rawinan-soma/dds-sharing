@@ -36,11 +36,11 @@ import {
   type ExtractionResult,
   type ExtractionSummary,
   type ExtractionTarget,
-  UnrecordedCalls,
   type UpstreamPager,
 } from './extraction-pipeline';
 import { raiseExtractionAlert } from '../reviewer/alert-records';
 import { StallError, StallGuard } from './stall-guard';
+import { CallCount } from '../upstream/call-count';
 
 export interface ExtractionWorkerDeps {
   db: NodePgDatabase;
@@ -67,6 +67,8 @@ export interface ExtractionWorkerDeps {
   logger?: LoggerService;
   /** Overrides `EXTRACTION_DEFAULTS.stallMs` — a spec does not wait 2 minutes. */
   stallMs?: number;
+  /** Overrides `EXTRACTION_DEFAULTS.stallSettleMs`, for the same reason. */
+  stallSettleMs?: number;
 }
 
 /** What the processor needs from a BullMQ `Job` — narrowed for testability. */
@@ -285,14 +287,6 @@ async function sendExtractionFailureMail(
   });
 }
 
-/**
- * How long a stalled pipeline gets to wind down once cancelled. Cancelling
- * aborts the upstream call in flight at once, and the longest wait left is a
- * backoff sleep of 2 s; past this, whatever it is stuck on is not upstream,
- * and the stall must still end the job.
- */
-const STALL_SETTLE_MS = 5_000;
-
 /** Resolves when `promise` settles either way, or after `ms`, whichever is first. */
 async function settled(promise: Promise<unknown>, ms: number): Promise<void> {
   let timer: NodeJS.Timeout | undefined;
@@ -406,7 +400,7 @@ export async function processExtractionJob(
   const stallGuard = new StallGuard(
     deps.stallMs ?? EXTRACTION_DEFAULTS.stallMs,
   );
-  const calls = new UnrecordedCalls();
+  const unrecordedCalls = new CallCount();
   const cancel = new AbortController();
   let pipeline: Promise<ExtractionResult> | undefined;
   let published: string | null = null;
@@ -422,7 +416,11 @@ export async function processExtractionJob(
       provinces,
       now,
       sleep,
+      // The event is written last: once it is, the pipeline clears the calls
+      // it carries, and nothing after it may fail and hand them to
+      // `job_failed` as well (§13.6).
       onCodeFetched: async (payload) => {
+        await deps.extractionJobs.touch(jobId, now());
         await writeRequestEvent(deps.db, {
           requestId,
           type: 'code_fetched',
@@ -430,10 +428,9 @@ export async function processExtractionJob(
           actor: { actorType: 'system' },
           payload,
         });
-        await deps.extractionJobs.touch(jobId, now());
       },
       touch: () => stallGuard.touch(),
-      calls,
+      unrecordedCalls,
       signal: cancel.signal,
     });
     // A pipeline that loses the race below is cancelled in the catch; this
@@ -457,7 +454,10 @@ export async function processExtractionJob(
       // A stalled pipeline would otherwise go on calling upstream after its
       // job has failed, beside the next job and uncounted (spec §13.2, §13.6).
       cancel.abort(error);
-      await settled(pipeline, STALL_SETTLE_MS);
+      await settled(
+        pipeline,
+        deps.stallSettleMs ?? EXTRACTION_DEFAULTS.stallSettleMs,
+      );
     }
     const failure = toFailure(error, deps.provinceLookup.checksum);
     logger.warn(
@@ -478,7 +478,7 @@ export async function processExtractionJob(
       payload: {
         cause: failure.cause,
         xRequestId: failure.xRequestId,
-        callsMade: calls.take(),
+        callsMade: unrecordedCalls.count,
       },
     });
     // The second watcher (§14.2): the operator reads the fault on /health;

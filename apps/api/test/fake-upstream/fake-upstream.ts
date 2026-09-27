@@ -6,10 +6,13 @@
 //
 // It mimics the verified upstream behaviour of spec §5 (envelope, 1-based page,
 // exclusive end_date, silent unknown parameters, empty 200 for an unknown code,
-// the failure taxonomy) and exposes the five fault paths the retry work needs:
+// the failure taxonomy) and exposes the fault paths the retry work and the
+// traffic count (§13.6) need:
 //
 //   server-error     a 500 mid-loop
 //   slow-page        a page held back
+//   slow-body        a page whose body stalls after the headers are sent
+//   dropped          a connection dropped after the request, with no answer
 //   truncated-page   a body cut off mid-JSON
 //   auth-expiry      a token that stops working mid-job
 //   shifting-total   a `total_items` that moves between attempts — the one no
@@ -36,6 +39,8 @@ const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 export type Fault =
   | { kind: 'server-error'; page: number; times: number }
   | { kind: 'slow-page'; page: number; delayMs: number; times: number }
+  | { kind: 'slow-body'; page: number; delayMs: number; times: number }
+  | { kind: 'dropped'; page: number; times: number }
   | { kind: 'truncated-page'; page: number; times: number }
   | { kind: 'auth-expiry'; afterRequests: number }
   | { kind: 'shifting-total' };
@@ -190,6 +195,11 @@ export async function createFakeUpstream(
     }
 
     // Faults that fire before the body is built.
+    if (fault?.kind === 'dropped' && fault.page === page && fault.times > 0) {
+      fault.times -= 1;
+      req.socket.destroy();
+      return;
+    }
     if (
       fault?.kind === 'server-error' &&
       fault.page === page &&
@@ -241,6 +251,21 @@ export async function createFakeUpstream(
       },
     };
 
+    if (fault?.kind === 'slow-body' && fault.page === page && fault.times > 0) {
+      fault.times -= 1;
+      served += 1;
+      const text = JSON.stringify(body);
+      res.writeHead(200, {
+        'content-type': 'application/json',
+        'x-request-id': randomUUID(),
+        'x-process-time-ms': String(Date.now() - started),
+      });
+      res.write(text.slice(0, Math.floor(text.length / 2)));
+      const { delayMs } = fault;
+      await new Promise<void>((resolve) => setTimeout(resolve, delayMs));
+      if (!res.destroyed) res.end(text.slice(Math.floor(text.length / 2)));
+      return;
+    }
     if (
       fault?.kind === 'truncated-page' &&
       fault.page === page &&

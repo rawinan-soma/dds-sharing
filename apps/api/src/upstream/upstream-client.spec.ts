@@ -463,6 +463,39 @@ describe('counting calls that reached upstream', () => {
     expect(calls).toBe(upstream.requests.length);
   });
 
+  it('counts a call dropped after it was sent, before any answer', async () => {
+    upstream.setFault({ kind: 'dropped', page: 1, times: 1 });
+    let calls = 0;
+    const page = await makeClient().probe('201', span, {
+      onCall: () => (calls += 1),
+    });
+    expect(page.meta.totalItems).toBe(25_000);
+    expect(calls).toBe(2);
+    expect(calls).toBe(upstream.requests.length);
+  });
+
+  it('counts a call once when it times out after the headers arrived', async () => {
+    upstream.setFault({ kind: 'slow-body', page: 1, delayMs: 400, times: 1 });
+    let calls = 0;
+    const infos: ResponseInfo[] = [];
+    const page = await makeClient({ timeoutMs: 100 }).probe('201', span, {
+      onResponse: (info) => infos.push(info),
+      onCall: () => (calls += 1),
+    });
+    expect(page.meta.totalItems).toBe(25_000);
+    expect(infos).toHaveLength(2);
+    expect(calls).toBe(2);
+    expect(calls).toBe(upstream.requests.length);
+  });
+
+  it('counts a call once when its body is cut off mid-JSON', async () => {
+    upstream.setFault({ kind: 'truncated-page', page: 1, times: 1 });
+    let calls = 0;
+    await makeClient().probe('201', span, { onCall: () => (calls += 1) });
+    expect(calls).toBe(2);
+    expect(calls).toBe(upstream.requests.length);
+  });
+
   it('does not count a call the network refused before it left the host', async () => {
     const url = upstream.url;
     await upstream.close();

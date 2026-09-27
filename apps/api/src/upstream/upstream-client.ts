@@ -72,15 +72,35 @@ export type OnResponse = (info: ResponseInfo) => void;
 export interface CallOptions {
   onResponse?: OnResponse;
   /**
-   * Once per attempt that reached upstream (spec §13.6): answered, or stopped
-   * — by the timeout or by `signal` — while in flight. Not an attempt the
-   * network refused: a DNS failure or a refused connection is not traffic DDC
-   * saw. A timeout is taken as having reached upstream because the connect
-   * phase fails on its own, well inside the 60 s, as a network error.
+   * Once per call that reached upstream (spec §13.6): answered; cut off while
+   * in flight, by the timeout or by `signal`; or dropped by the other side
+   * after it was sent. Not a call that failed before it left the host — a DNS
+   * failure, a refused connection — which is not traffic DDC saw.
+   *
+   * A timeout is taken as having reached upstream because the connect phase
+   * fails on its own, well inside the 60 s, as a network error. A cancel can
+   * land mid-connect and still be counted; a stall cancels one call in
+   * minutes, so that is the one count this can get wrong, and it errs high.
    */
   onCall?: () => void;
   /** Stops the call and every retry still to come; rejects with its reason. */
   signal?: AbortSignal;
+}
+
+/**
+ * What `fetch` rejects with when the connection dropped after the request was
+ * written: DDC received it. Every other network failure happened before the
+ * request left the host.
+ */
+const DROPPED_AFTER_SENDING: ReadonlySet<string> = new Set([
+  'UND_ERR_SOCKET',
+  'ECONNRESET',
+  'EPIPE',
+]);
+
+function droppedAfterSending(error: unknown): boolean {
+  const code = (error as { cause?: { code?: unknown } }).cause?.code;
+  return typeof code === 'string' && DROPPED_AFTER_SENDING.has(code);
 }
 
 interface Envelope {
@@ -310,6 +330,14 @@ export class UpstreamClient {
       );
       return error;
     };
+    // Stopped in flight: by the caller, which rejects with its own reason, or
+    // by the per-request timeout.
+    const timedOut = (
+      extra: Partial<ConstructorParameters<typeof UpstreamError>[0]> = {},
+    ) => {
+      cancel?.throwIfAborted();
+      return makeError('timeout', extra);
+    };
 
     let response: Response;
     try {
@@ -320,12 +348,14 @@ export class UpstreamClient {
         },
         signal,
       });
-    } catch {
+    } catch (error) {
       // Nothing caught is chained or logged: it can quote what it choked on.
-      if (!signal.aborted) throw makeError('network');
-      onCall?.();
-      cancel?.throwIfAborted();
-      throw makeError('timeout');
+      if (signal.aborted) {
+        onCall?.();
+        throw timedOut();
+      }
+      if (droppedAfterSending(error)) onCall?.();
+      throw makeError('network');
     }
     onCall?.();
 
@@ -345,8 +375,7 @@ export class UpstreamClient {
       readable = false;
       if (signal.aborted) {
         this.emitResponse(onResponse, { ...context, groupCode, page, attempt });
-        cancel?.throwIfAborted();
-        throw makeError('timeout', context);
+        throw timedOut(context);
       }
     }
 
