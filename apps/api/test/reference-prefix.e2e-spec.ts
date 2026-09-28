@@ -106,6 +106,10 @@ describe('a configured reference prefix (e2e)', () => {
         `/api/reviewer/lookup?reference=${encodeURIComponent(value)}`,
       );
     expect((await lookup(reference)).body.zone).toBe('queue');
+    // The Reviewer surface shows what was stored, prefix and all.
+    const queue = await reviewer.get('/api/reviewer/queue');
+    const { requests } = queue.body as { requests: { reference: string }[] };
+    expect(requests.map((r) => r.reference)).toEqual([reference]);
     // The same number under another service's prefix is another Request.
     expect((await lookup(reference.replace(/^PLT-/, 'REQ-'))).status).toBe(404);
   });

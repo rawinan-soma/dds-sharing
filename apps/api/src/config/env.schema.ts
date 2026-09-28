@@ -2,7 +2,8 @@ import { isIP } from 'node:net';
 import Joi from 'joi';
 
 // The environment holds deployment facts, not policy (NFR-31). Every variable
-// is required and has no default, except the few that name a safe choice.
+// is required and has no default, except the few that name a safe choice —
+// and REFERENCE_PREFIX, whose default is simply today's behaviour.
 //
 // Nothing here may echo a value. A failure lists variable names and the rule
 // they broke, so a secret that fails a rule never reaches a log.
@@ -18,6 +19,9 @@ export const ENV_DEFAULTS = {
   BULL_BOARD_PORT: '3100',
   ALLOW_INSECURE_TRANSPORT: 'false',
   SMTP_ALLOW_PLAINTEXT: 'false',
+  // Not a safety setting: `REQ` keeps every existing deploy stamping what it
+  // always has. A service with a record of its own must set its own prefix —
+  // on the Pilot a missing value would reissue Production's numbers (ADR 0022).
   REFERENCE_PREFIX: 'REQ',
 } as const;
 

@@ -148,7 +148,7 @@ const actorChecks = (table: {
 export const requestState = pgEnum('request_state', REQUEST_STATES);
 
 // The reference number's counter (spec §12.5). One sequence, never reset: the
-// shape `REQ-2569-0142` fixes the year and the padding, and what the counter
+// shape `<prefix>-2569-0142` fixes the year and the padding, and what the counter
 // resets on is left to the implementer. A sequence cannot collide under
 // concurrent submits, which a per-year counter would have to be made to do.
 export const requestReferenceSeq = pgSequence('request_reference_seq');

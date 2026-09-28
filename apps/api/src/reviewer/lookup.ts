@@ -4,7 +4,8 @@ import { ATTEMPT_CAP } from '../delivery/resolve-token';
 // what counts as a reference, and how a file's link reads now.
 
 /**
- * Far longer than `REQ-2569-0142` will ever grow, and short enough that
+ * Far longer than any reference will grow — `ABCDEFGH-2569-12345`, at the
+ * longest prefix a service may configure, is 19 — and short enough that
  * nothing pasted into the field by mistake reaches the database.
  */
 const MAX_REFERENCE_LENGTH = 32;

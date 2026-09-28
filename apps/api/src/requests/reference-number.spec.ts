@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { formatReference } from './reference-number';
 
 describe('formatReference', () => {
-  it('has the shape REQ-<Buddhist year>-<counter, at least four digits>', () => {
+  it('has the shape <prefix>-<Buddhist year>-<counter, at least four digits>', () => {
     expect(formatReference('REQ', new Date('2026-09-21T03:00:00Z'), 142)).toBe(
       'REQ-2569-0142',
     );
