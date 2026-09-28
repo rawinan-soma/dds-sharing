@@ -1,6 +1,6 @@
 # Look up a Request by its reference number
 
-Status: ready-for-agent
+Status: closed
 Blocked by: 74, 65
 Source: https://github.com/rawinan-soma/dds-sharing/issues/97 (migrated 2026-09-21)
 
@@ -30,3 +30,9 @@ A lookup is read-only and a read is not an event anywhere in the catalogue, so Â
 - [ ] There is no search by any field other than the reference number
 - [ ] A lookup writes no event, of any type
 
+
+## Comments
+
+**Claude** â€” 2026-09-28
+
+Merged in #119 (0db0791).
