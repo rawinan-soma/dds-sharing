@@ -127,3 +127,13 @@ The copy of what a Reviewer had on screen, carried by their Decision — the Dis
 **Extract fingerprint**:
 The description of a released Extract that outlives the Extract itself — row count, column count, the size of the Extract, the size of its Extract archive, and a SHA-256 of the Extract's bytes as written. It answers what was released, where the record alone would only say that a release happened. The rows are never kept. It attests **content, not provenance**: two Requests asking the same question of the same data release identical bytes and so share a fingerprint, and every empty Extract shares one — so a match narrows to a set of Requests, never to one. The checksums of the reference data that produced the Extract are recorded beside it, never inside it: they describe what made the Extract, not what was released.
 _Avoid_: Manifest, receipt
+
+### Where it runs
+
+**Production**:
+The service run by the department on a DDC VM, reached through the ministry-managed edge under a `moph.go.th` name. The first-deploy gate (#77) is what makes it live.
+_Avoid_: Live, prod server
+
+**Pilot**:
+A second service for real Requesters, run on the repo owner's own server and domain and open to the internet — beside Production, never merged into it. Its Decisions and Extracts are real releases of DDS surveillance data; its audit record and its reference numbers are its own, and the record is disposable — losing the Pilot loses every trace of what it released.
+_Avoid_: Staging, test server, demo

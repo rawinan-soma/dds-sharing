@@ -3178,6 +3178,31 @@ is ever made and lands wrong, this section is deleted rather than worked around.
 - **A public holiday counts as business time** — the clock skips weekends only
   (§15.2, ADR 0021).
 
+### 18.15 The Pilot releases real data from personally owned hardware, and keeps no record it must
+
+The **Pilot** ([ADR 0022](adr/0022-a-disposable-pilot-releases-real-data-from-the-repo-owners-server.md))
+is a second service beside Production: the repo owner's own server, open to the
+internet through a Cloudflare Tunnel on the owner's domain, calling the real
+upstream and releasing real Extracts under the same approval gate. Accepted by
+the repo owner 2026-09-28, with these costs stated rather than discovered:
+
+- **Case-level DDS surveillance data is fetched onto personally owned hardware**,
+  outside the department's infrastructure, and kept there for up to 72 hours per
+  Extract. §18.1's basis was argued for a department-run service; the PDPO is to
+  be told of this one the same way.
+- **Cloudflare terminates TLS**, so Requester contact details, Reviewer sign-ins
+  and Extract downloads pass through a third party in clear.
+- **The department's upstream token and relay credentials live on that server.**
+- **The Pilot's record is disposable.** There is no backup and no export: a lost
+  disk loses every Decision the Pilot made, and a release from the Pilot may leave
+  no trace anywhere. §12's promise that a release can be read back years later
+  holds for Production only.
+- **One Reviewer at launch.** The two-Reviewer minimum is unmet until a colleague
+  is seeded; recovery meanwhile is shell access to the server.
+
+**Reversal:** `docker compose down` on the Pilot's server, then deleting its
+volumes — which, the record being disposable, is also the whole of retiring it.
+
 ---
 
 ## 19. Where each requirement was decided
