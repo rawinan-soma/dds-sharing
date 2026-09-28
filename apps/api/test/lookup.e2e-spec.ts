@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return --
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument --
    rows from pg and JSON bodies over HTTP are untyped by nature; the assertions are the types. */
 import { randomUUID } from 'node:crypto';
 import { INestApplication } from '@nestjs/common';
@@ -360,6 +360,63 @@ describe('looking up a Request by its reference (e2e)', () => {
       }
     });
 
+    it('reads out the record, contact-free, when the contact row is gone', async () => {
+      // ADR 0019: nothing in the service removes one. The lookup must not
+      // depend on the row either way, so it is deleted here by hand.
+      const { id, reference } = await submitted('rejected');
+      await decided(id, 'rejected');
+      await q(`DELETE FROM request_contact WHERE request_id = $1`, [id]);
+
+      const res = await lookup(reference);
+      expect(res.status).toBe(200);
+      expect(res.body.record).toMatchObject({
+        reference,
+        state: 'rejected',
+        decision: { workplace: 'Snapshot Office' },
+      });
+      expect(Object.keys(res.body.record)).not.toContain('contact');
+    });
+
+    it('carries no action: every Reviewer action on what it found is refused, and changes nothing', async () => {
+      const { id, reference } = await submitted('collected');
+      await decided(id, 'approved');
+      await job(id, 'succeeded');
+      await token(
+        id,
+        'dds-envocc-sharing-20260921-090000.zip',
+        new Date(clock.now().getTime() - HOUR),
+        { attempts: 1 },
+      );
+      const { requestId } = (await lookup(reference)).body.record;
+      const events = async () =>
+        (
+          await q(
+            `SELECT count(*)::int AS n FROM request_event WHERE request_id = $1`,
+            [id],
+          )
+        )[0].n;
+      const before = await events();
+
+      const browser = reviewers.bob.browser;
+      for (const [path, body] of [
+        [`/api/reviewer/queue/${requestId}/approve`, {}],
+        [
+          `/api/reviewer/queue/${requestId}/reject`,
+          { note: 'Could not confirm the workplace' },
+        ],
+        [`/api/reviewer/requests/${requestId}/rerun`, {}],
+        [`/api/reviewer/requests/${requestId}/resend`, {}],
+      ] as const) {
+        const res = await browser.post(path, body);
+        expect(res.status, path).toBe(404);
+      }
+      const [{ state }] = await q(`SELECT state FROM request WHERE id = $1`, [
+        id,
+      ]);
+      expect(state).toBe('collected');
+      expect(await events()).toBe(before);
+    });
+
     it('shows who refused a rejected Request, never the internal note', async () => {
       const { id, reference } = await submitted('rejected');
       await decided(id, 'rejected', 'bob');
@@ -433,6 +490,26 @@ describe('looking up a Request by its reference (e2e)', () => {
       const res = await reviewers.bob.browser.get('/api/reviewer/lookup');
       expect(res.status).toBe(404);
     });
+
+    it('reads no parameter but the reference', async () => {
+      const { id, reference } = await submitted('pending');
+      for (const query of [
+        `name=${CONTACT.name}`,
+        `surname=${CONTACT.surname}`,
+        `tel=${CONTACT.tel}`,
+        `email=${CONTACT.email}`,
+        `workplace=${CONTACT.workplace}`,
+        `q=${reference}`,
+        `id=${reference}`,
+        `requestId=${id}`,
+      ]) {
+        const res = await reviewers.bob.browser.get(
+          `/api/reviewer/lookup?${encodeURI(query)}`,
+        );
+        expect(res.status, query).toBe(404);
+        expect(res.body).toEqual({ error: 'not_found' });
+      }
+    });
   });
 
   it('writes no event, of any type', async () => {
@@ -449,6 +526,43 @@ describe('looking up a Request by its reference (e2e)', () => {
     expect((await lookup(reference)).status).toBe(200);
     expect((await lookup('REQ-0000-0000')).status).toBe(404);
     expect(await count()).toEqual(before);
+  });
+
+  it('adds no row to any table, found or not', async () => {
+    const pending = await submitted('pending');
+    const terminal = await submitted('rejected');
+    await decided(terminal.id, 'rejected');
+    const tables = (
+      await q(
+        `SELECT table_name FROM information_schema.tables
+         WHERE table_schema = 'public' AND table_type = 'BASE TABLE'`,
+      )
+    ).map((t) => t.table_name as string);
+    expect(tables).toContain('request_event');
+    const rows = async () =>
+      Object.fromEntries(
+        await Promise.all(
+          tables.map(async (t) => [
+            t,
+            (await q(`SELECT count(*)::int AS n FROM "${t}"`))[0].n,
+          ]),
+        ),
+      );
+
+    const before = await rows();
+    for (const reference of [
+      pending.reference,
+      terminal.reference,
+      'REQ-0000-0000',
+      CONTACT.email,
+      '',
+    ]) {
+      await lookup(reference);
+    }
+    await new Browser(server).get(
+      `/api/reviewer/lookup?reference=${terminal.reference}`,
+    );
+    expect(await rows()).toEqual(before);
   });
 
   it('is for signed-in Reviewers only', async () => {
