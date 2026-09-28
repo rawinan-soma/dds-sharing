@@ -23,7 +23,7 @@ Decided with the repo owner while triaging #77 on 2026-09-28; the decision and i
 - **Its own references:** `REFERENCE_PREFIX=PLT` (#100).
 - **Disposable.** No backup. Only the Reviewer accounts need to survive, and they are re-seeded by the host command.
 - **One Reviewer at launch** (the repo owner); a colleague is added later. The two-Reviewer minimum is knowingly unmet until then.
-- **English at launch**; redeployed when #96 flips to Thai-only. #96's copy review happens on the Pilot.
+- **English at launch**; redeployed when #96 flips to Thai-only. #96's copy review can happen on the Pilot, though #96 does not wait for it.
 
 **Facts checked 2026-09-28 from `personal-test-server`:** the upstream host accepts a TLS connection, and the relay's port 587 answers. Docker was not found on the non-interactive `PATH` — confirm it is installed.
 
@@ -59,4 +59,4 @@ Decided with the repo owner while triaging #77 on 2026-09-28; the decision and i
 - Backups or exports of the Pilot's record (declined: ADR 0022)
 - A second Reviewer, a Cloudflare Access gate, or a mail catcher (declined: ADR 0022)
 - Automated deploys on merge
-- The Thai copy — #96, which is reviewed on the Pilot once this is up
+- The Thai copy — #96, which does not depend on this ticket

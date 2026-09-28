@@ -6,7 +6,7 @@ Date: 2026-09-28
 
 Accepted. Decided by the repo owner while triaging #77 (2026-09-28). Adds the
 Pilot beside Production, which #77 still gates; adds `docs/spec.md` §18.15;
-rewords #96's "staging deploy" to the Pilot. Tickets: #100 (the reference
+rewords #96's "staging deploy" to a running deploy, which the Pilot can be — #96 is not blocked by it. Tickets: #100 (the reference
 prefix), #101 (the Pilot).
 
 ## Context
