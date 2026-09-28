@@ -37,7 +37,7 @@ Decided with the repo owner while triaging #77 on 2026-09-28; the decision and i
 - `FRONTEND_URL` is the Pilot's `https://` hostname on the owner's domain, and neither insecure flag is set.
 - `docker compose down` on the server stops the service serving data — the kill switch.
 
-**Updating the Pilot** is by hand, never automatic: on the server, `git pull` on `main`, then `docker compose up -d --build`. The runbook for first deploy, update and teardown is written down where the repo keeps operator notes, and says that retiring the Pilot is `docker compose down` plus deleting its volumes — its record being disposable.
+**The Pilot runs from the `pilot` branch**, which is never merged into `main` (repo owner, 2026-09-28): it carries the Pilot's own changes, starting with #100. **Updating the Pilot** is by hand, never automatic: bring new work in by merging `main` into `pilot` (e.g. #96's flip), then on the server `git pull` on `pilot` and `docker compose up -d --build`. The runbook for first deploy, update and teardown is written down where the repo keeps operator notes, and says that retiring the Pilot is `docker compose down` plus deleting its volumes — its record being disposable.
 
 ## Acceptance criteria
 
