@@ -9,8 +9,30 @@ import {
   convertToParamMap,
   provideRouter,
 } from '@angular/router';
+import { RecordPage } from './record.page';
 import { ReviewerSession } from './reviewer-session';
-import { requirePendingChange, requireSession } from './reviewer.routes';
+import {
+  requirePendingChange,
+  requireSession,
+  reviewerRoutes,
+} from './reviewer.routes';
+
+describe('reviewer routes', () => {
+  // The split queue's own children: the Request beside the list.
+  const beside = () =>
+    reviewerRoutes[0].children!.find((r) => r.path === '')!.children!;
+
+  it('opens a terminal Request looked up by reference as a record, beside the queue', () => {
+    const paths = beside().map((r) => r.path);
+    expect(
+      beside().find((r) => r.path === 'lookup/:reference')?.component,
+    ).toBe(RecordPage);
+    // Before the catch-all Request id, which would otherwise take it.
+    expect(paths.indexOf('lookup/:reference')).toBeLessThan(
+      paths.indexOf(':id'),
+    );
+  });
+});
 
 describe('reviewer route guards', () => {
   let router: Router;

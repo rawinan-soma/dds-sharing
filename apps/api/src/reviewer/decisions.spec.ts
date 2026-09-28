@@ -32,19 +32,26 @@ describe('buildSnapshot (§12.3)', () => {
   };
 
   it('copies the ask and the workplace, over the report codes it expanded to', () => {
-    expect(buildSnapshot(source)).toEqual({
+    expect(buildSnapshot(source, 129)).toEqual({
       diseaseGroupName: 'โรคซิลิโคสิส',
       reportCodes: ['202', '203'],
       startDate: '2025-01-01',
       endDate: '2025-01-31',
       provinces: ['50'],
-      probeRowCount: 'pending',
+      probeRowCount: 129,
       workplace: 'Regional Office 1',
     });
   });
 
+  it.each(['pending', 'failed'] as const)(
+    'copies a count that was %s on screen as exactly that',
+    (rowCount) => {
+      expect(buildSnapshot(source, rowCount).probeRowCount).toBe(rowCount);
+    },
+  );
+
   it('never copies a contact field: the source has none to leak', () => {
-    const keys = Object.keys(buildSnapshot(source));
+    const keys = Object.keys(buildSnapshot(source, 129));
     expect(keys).not.toContain('name');
     expect(keys).not.toContain('tel');
     expect(keys).not.toContain('email');
@@ -52,7 +59,7 @@ describe('buildSnapshot (§12.3)', () => {
 
   it('copies arrays rather than aliasing them', () => {
     const codes = ['202'];
-    const snapshot = buildSnapshot({ ...source, reportCodes: codes });
+    const snapshot = buildSnapshot({ ...source, reportCodes: codes }, 129);
     codes.push('203');
     expect(snapshot.reportCodes).toEqual(['202']);
   });

@@ -9,6 +9,7 @@ import { App } from 'supertest/types';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { AppModule } from '../src/app.module';
 import { CLOCK } from '../src/clock/clock';
+import { hashToken } from '../src/delivery/token';
 import { ExtractionQueue } from '../src/extraction/extraction-queue';
 import { API_PREFIX, API_PREFIX_EXCLUDE } from '../src/global-prefix';
 import { ReviewerAccounts } from '../src/reviewer/reviewer-accounts';
@@ -234,6 +235,29 @@ describe('Alerts on the queue (e2e)', () => {
       );
       expect(res.status).toBe(200);
       expect(res.body.alerts).toHaveLength(1);
+      expect(res.body.contact).toBeNull();
+      expect(JSON.stringify(res.body)).not.toContain('081 234 5678');
+    });
+
+    it('withholds them once the link has lapsed uncollected, before the tick has recorded it (ADR 0016)', async () => {
+      const id = await withLapse('alice');
+      const issued = new Date(clock.now().getTime() - 73 * 60 * 60 * 1000);
+      await q(
+        `INSERT INTO download_token (request_id, token_hash, archive_filename,
+           created_at, expires_at)
+         VALUES ($1, $2, 'dds-envocc-sharing-20260921-090000.zip', $3, $4)`,
+        [
+          id,
+          hashToken(randomUUID()),
+          issued,
+          new Date(issued.getTime() + 72 * 60 * 60 * 1000),
+        ],
+      );
+      expect(await stateOf(id)).toBe('approved');
+      const res = await reviewers.alice.browser.get(
+        `/api/reviewer/alerts/${id}`,
+      );
+      expect(res.status).toBe(200);
       expect(res.body.contact).toBeNull();
       expect(JSON.stringify(res.body)).not.toContain('081 234 5678');
     });

@@ -6,6 +6,7 @@ import { DossierPage } from './dossier.page';
 import { InFlightPage } from './in-flight.page';
 import { PasswordGatePage } from './password-gate.page';
 import { QueuePage } from './queue.page';
+import { RecordPage } from './record.page';
 import { signInQueryFor } from './return-to';
 import { ReviewerShell } from './reviewer-shell';
 import { ReviewerSession } from './reviewer-session';
@@ -75,6 +76,8 @@ export const reviewerRoutes: Routes = [
         children: [
           { path: 'alerts/:id', component: AlertPage },
           { path: 'in-flight/:id', component: InFlightPage },
+          // A terminal Request, looked up by its reference (spec §10.10).
+          { path: 'lookup/:reference', component: RecordPage },
           { path: ':id', component: DossierPage },
         ],
       },

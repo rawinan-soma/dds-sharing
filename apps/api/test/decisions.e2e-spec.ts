@@ -196,6 +196,39 @@ describe('the Decision (e2e)', () => {
       expect(JSON.stringify(event.payload)).not.toContain('@example.go.th');
     });
 
+    it('carries the row count the Reviewer had on screen, once the Probe has written it', async () => {
+      const counted = await submitted('REQ-2569-1013', '2026-09-21T09:00');
+      const failed = await submitted('REQ-2569-1014', '2026-09-21T09:00');
+      await scratch.owner.query(
+        `INSERT INTO request_event (request_id, type, actor_type, occurred_at, payload)
+         VALUES ($1, 'probe_performed', 'system', now(), $2),
+                ($3, 'probe_failed', 'system', now(), '{}')`,
+        [
+          counted,
+          JSON.stringify({
+            reportCodes: ['202', '203'],
+            callsMade: 2,
+            spanStart: '2025-01-01',
+            spanEnd: '2025-02-01',
+            totalItemsByCode: { '202': 40, '203': 65 },
+            totalItems: 105,
+            xRequestIds: ['req-1', 'req-2'],
+          }),
+          failed,
+        ],
+      );
+
+      await signedIn.post(`/api/reviewer/queue/${counted}/approve`);
+      await signedIn.post(`/api/reviewer/queue/${failed}/reject`, {
+        note: 'Could not confirm the workplace',
+      });
+
+      const [approved] = await eventsOf(counted, 'approved');
+      expect(approved.payload.snapshot.probeRowCount).toBe(105);
+      const [rejected] = await eventsOf(failed, 'rejected');
+      expect(rejected.payload.snapshot.probeRowCount).toBe('failed');
+    });
+
     it('drops the Request off the queue once approved', async () => {
       const id = await submitted('REQ-2569-1011', '2026-09-21T09:00');
       await signedIn.post(`/api/reviewer/queue/${id}/approve`);

@@ -9,6 +9,7 @@ import { moveRequestState } from '../requests/move-request-state';
 import { ExtractionQueue } from '../extraction/extraction-queue';
 import { MailSender } from '../mail/mail-sender';
 import { requestExpiry } from '../clock/business-hours';
+import { probeRowCountOf } from '../requests/probe-row-count';
 import { buildSnapshot, noteIsValid } from './decisions';
 import { CLOCK, type Clock } from '../clock/clock';
 
@@ -123,7 +124,7 @@ export class Decisions {
           return { status: 'not_pending' };
         }
 
-        const snapshot = buildSnapshot(row);
+        const snapshot = buildSnapshot(row, await probeRowCountOf(tx, id));
         const actor = {
           actorType: 'reviewer' as const,
           reviewerId: by.reviewerId,

@@ -5,6 +5,8 @@ import { writeRequestEvent } from '../audit/write-request-event';
 import { CLOCK, type Clock } from '../clock/clock';
 import { DB, type Db } from '../db/database.module';
 import { request, requestContact, requestEvent, reviewer } from '../db/schema';
+import { settledState } from '../requests/in-flight';
+import { currentToken } from '../requests/in-flight-records';
 import { moveRequestState } from '../requests/move-request-state';
 import {
   type RequestState,
@@ -117,7 +119,14 @@ export class Alerts {
       .from(request)
       .innerJoin(requestContact, eq(requestContact.requestId, request.id))
       .where(eq(request.id, requestId));
-    const { state, ...contact } = row;
+    const { state: stored, ...contact } = row;
+    // As it already is, whether or not the tick has recorded it: a lapsed,
+    // never-collected link has ended the Request (ADR 0016).
+    const state = settledState(
+      stored,
+      await currentToken(this.db, requestId),
+      this.clock.now(),
+    );
     const terminal = (
       TERMINAL_REQUEST_STATES as readonly RequestState[]
     ).includes(state);
