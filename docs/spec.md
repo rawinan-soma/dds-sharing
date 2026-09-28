@@ -2048,7 +2048,11 @@ about.
 ### 12.5 The reference number
 
 **A display label; the UUID is the key.** `REQ-2569-0142` in shape, stamped at
-submit and accepted by every lookup surface, but foreign keys use the UUID. Its
+submit and accepted by every lookup surface, but foreign keys use the UUID.
+**The prefix is configuration** (`REFERENCE_PREFIX`, `REQ` by default): each
+service that keeps its own record stamps its own, and the Pilot's is `PLT`
+([ADR 0022](adr/0022-a-disposable-pilot-releases-real-data-from-the-repo-owners-server.md)),
+so a number quoted over the telephone names the service that holds it. Its
 exact format — Buddhist-era year, what the counter resets on, whether it must be
 unguessable — is free to change, because a key that is not finished being designed
 should not be load-bearing in a record that can never be migrated by deletion. It

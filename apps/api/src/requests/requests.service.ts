@@ -78,7 +78,11 @@ export class RequestsService {
         const counter = await tx.execute<{ n: string }>(
           sql`SELECT nextval('request_reference_seq') AS n`,
         );
-        const reference = formatReference(now, Number(counter.rows[0].n));
+        const reference = formatReference(
+          this.app.referencePrefix,
+          now,
+          Number(counter.rows[0].n),
+        );
 
         const [{ id }] = await tx
           .insert(request)

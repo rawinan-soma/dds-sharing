@@ -223,6 +223,27 @@ describe('the HTTP app environment', () => {
     expect(problemsOf({ ...testEnv, [name]: value })).toContain(name);
   });
 
+  describe('REFERENCE_PREFIX', () => {
+    it('defaults to REQ', () => {
+      expect(
+        validateEnv(httpAppSchema, without(testEnv, 'REFERENCE_PREFIX')),
+      ).toMatchObject({ REFERENCE_PREFIX: 'REQ' });
+    });
+
+    it.each(['PLT', 'AB', 'ABCDEFGH'])('accepts %s', (value) => {
+      expect(problemsOf({ ...testEnv, REFERENCE_PREFIX: value })).toBe('');
+    });
+
+    it.each(['plt', 'P', 'ABCDEFGHI', 'PL-T', 'PL1', ' PLT', 'ภาษา'])(
+      'refuses %j, naming the setting and never falling back to REQ',
+      (value) => {
+        expect(problemsOf({ ...testEnv, REFERENCE_PREFIX: value })).toContain(
+          'REFERENCE_PREFIX must be 2 to 8 upper-case letters A-Z',
+        );
+      },
+    );
+  });
+
   it.each(['true', 'false', '1', '2', '10.0.0.0/8', 'loopback, 10.0.0.1'])(
     'accepts TRUST_PROXY=%s',
     (value) => {

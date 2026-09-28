@@ -47,6 +47,8 @@ services:
       SMTP_FROM: ${SMTP_FROM:?}
       UPSTREAM_BASE_URL: ${UPSTREAM_BASE_URL:?}
       UPSTREAM_TOKEN: ${UPSTREAM_TOKEN:?}
+      # REQ unless this service keeps a record of its own (the Pilot: PLT).
+      REFERENCE_PREFIX: ${REFERENCE_PREFIX:-REQ}
       # The insecure flags default to off here and are read from `.env` only if
       # the operator sets them on purpose. The app logs a WARN when either is on.
       ALLOW_INSECURE_TRANSPORT: ${ALLOW_INSECURE_TRANSPORT:-false}

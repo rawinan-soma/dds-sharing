@@ -18,6 +18,7 @@ export const ENV_DEFAULTS = {
   BULL_BOARD_PORT: '3100',
   ALLOW_INSECURE_TRANSPORT: 'false',
   SMTP_ALLOW_PLAINTEXT: 'false',
+  REFERENCE_PREFIX: 'REQ',
 } as const;
 
 // Static templates only: Joi's defaults print the offending value for some
@@ -42,6 +43,7 @@ const MESSAGES: Record<string, string> = {
   'env.origin': 'must be an origin only: no path, query or trailing slash',
   'env.ip': 'must be an IP address',
   'env.https': 'must be https unless ALLOW_INSECURE_TRANSPORT is true',
+  'env.referencePrefix': 'must be 2 to 8 upper-case letters A-Z',
   'env.trustProxy':
     'must be true, false, a hop count, or a list of proxy addresses',
   'smtp.plaintext':
@@ -117,6 +119,12 @@ const trustProxy = S.custom((value: string, helpers) => {
   return valid ? value : helpers.error('env.trustProxy');
 });
 
+// One per service that keeps its own record (spec §12.5, ADR 0022). Letters
+// only, so a reference still reads as `<prefix>-<year>-<counter>`.
+const referencePrefix = S.custom((value: string, helpers) =>
+  /^[A-Z]{2,8}$/.test(value) ? value : helpers.error('env.referencePrefix'),
+);
+
 type Group = Record<string, Joi.Schema>;
 
 export const appGroup: Group = {
@@ -136,6 +144,7 @@ export const appGroup: Group = {
   // loopback only, for an SSH port-forward.
   BULL_BOARD_HOST: ipAddress.default(ENV_DEFAULTS.BULL_BOARD_HOST),
   BULL_BOARD_PORT: port.default(ENV_DEFAULTS.BULL_BOARD_PORT),
+  REFERENCE_PREFIX: referencePrefix.default(ENV_DEFAULTS.REFERENCE_PREFIX),
 };
 
 /** What the HTTP app connects as. Never the owner (§6.4). */

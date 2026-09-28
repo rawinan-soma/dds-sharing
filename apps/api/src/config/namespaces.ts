@@ -32,6 +32,8 @@ export const mapApp = (v: Vars) => ({
   scratchDir: v.SCRATCH_DIR,
   logDir: v.LOG_DIR,
   bullBoard: { host: v.BULL_BOARD_HOST, port: Number(v.BULL_BOARD_PORT) },
+  /** The first part of every reference this service stamps (§12.5). */
+  referencePrefix: v.REFERENCE_PREFIX,
 });
 
 export const mapDb = (v: Vars) => ({ url: v.APP_DATABASE_URL });

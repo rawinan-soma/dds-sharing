@@ -66,6 +66,7 @@ describe('the config namespaces', () => {
     expect(NAMESPACE_MAPPERS.app(env)).toMatchObject({
       port: 3000,
       trustProxy: false,
+      referencePrefix: 'REQ',
     });
     expect(NAMESPACE_MAPPERS.minio(env)).toMatchObject({
       port: 9000,
