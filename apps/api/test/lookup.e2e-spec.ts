@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-argument --
+/* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-return --
    rows from pg and JSON bodies over HTTP are untyped by nature; the assertions are the types. */
 import { randomUUID } from 'node:crypto';
 import { INestApplication } from '@nestjs/common';
@@ -161,6 +161,46 @@ describe('looking up a Request by its reference (e2e)', () => {
         [row.id, requestId, issued],
       );
     }
+  }
+
+  /**
+   * Every row of every table, in a stable order, so a test can tell that a
+   * lookup changed nothing at all. `reviewer_session` is left out: every
+   * user-initiated request slides its idle window (§10.5), a lookup included.
+   */
+  async function everyRow(): Promise<Record<string, unknown[]>> {
+    const tables = (
+      await q(
+        `SELECT table_name FROM information_schema.tables
+         WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
+           AND table_name <> 'reviewer_session'`,
+      )
+    ).map((table) => table.table_name as string);
+    expect(tables).toContain('request_event');
+    return Object.fromEntries(
+      await Promise.all(
+        tables.map(async (table) => [
+          table,
+          await q(`SELECT * FROM "${table}" ORDER BY "${table}"::text`),
+        ]),
+      ),
+    );
+  }
+
+  /**
+   * Approved, and its only link lapsed with no Attempt: ended (ADR 0016),
+   * though the column still reads `approved` until the tick writes it.
+   */
+  async function lapsedUncollected() {
+    const found = await submitted('approved');
+    await decided(found.id, 'approved');
+    await job(found.id, 'succeeded');
+    await token(
+      found.id,
+      'dds-envocc-sharing-20260921-090000.zip',
+      new Date(clock.now().getTime() - 73 * HOUR),
+    );
+    return found;
   }
 
   const lookup = (reference: string, who = 'bob') =>
@@ -362,9 +402,14 @@ describe('looking up a Request by its reference (e2e)', () => {
 
     it('reads out the record, contact-free, when the contact row is gone', async () => {
       // ADR 0019: nothing in the service removes one. The lookup must not
-      // depend on the row either way, so it is deleted here by hand.
+      // depend on the row either way, so it is deleted here by hand — leaving
+      // the rejection email's address, on its `mail_sent`, as the one copy.
       const { id, reference } = await submitted('rejected');
       await decided(id, 'rejected');
+      await systemEvent(id, 'mail_sent', {
+        kind: 'rejection',
+        to: CONTACT.email,
+      });
       await q(`DELETE FROM request_contact WHERE request_id = $1`, [id]);
 
       const res = await lookup(reference);
@@ -374,48 +419,55 @@ describe('looking up a Request by its reference (e2e)', () => {
         state: 'rejected',
         decision: { workplace: 'Snapshot Office' },
       });
-      expect(Object.keys(res.body.record)).not.toContain('contact');
-    });
-
-    it('carries no action: every Reviewer action on what it found is refused, and changes nothing', async () => {
-      const { id, reference } = await submitted('collected');
-      await decided(id, 'approved');
-      await job(id, 'succeeded');
-      await token(
-        id,
-        'dds-envocc-sharing-20260921-090000.zip',
-        new Date(clock.now().getTime() - HOUR),
-        { attempts: 1 },
-      );
-      const { requestId } = (await lookup(reference)).body.record;
-      const events = async () =>
-        (
-          await q(
-            `SELECT count(*)::int AS n FROM request_event WHERE request_id = $1`,
-            [id],
-          )
-        )[0].n;
-      const before = await events();
-
-      const browser = reviewers.bob.browser;
-      for (const [path, body] of [
-        [`/api/reviewer/queue/${requestId}/approve`, {}],
-        [
-          `/api/reviewer/queue/${requestId}/reject`,
-          { note: 'Could not confirm the workplace' },
-        ],
-        [`/api/reviewer/requests/${requestId}/rerun`, {}],
-        [`/api/reviewer/requests/${requestId}/resend`, {}],
-      ] as const) {
-        const res = await browser.post(path, body);
-        expect(res.status, path).toBe(404);
+      const body = JSON.stringify(res.body);
+      for (const value of Object.values(CONTACT)) {
+        expect(body).not.toContain(value);
       }
-      const [{ state }] = await q(`SELECT state FROM request WHERE id = $1`, [
-        id,
-      ]);
-      expect(state).toBe('collected');
-      expect(await events()).toBe(before);
     });
+
+    it.each([
+      [
+        'collected',
+        async () => {
+          const found = await submitted('collected');
+          await decided(found.id, 'approved');
+          await job(found.id, 'succeeded');
+          await token(
+            found.id,
+            'dds-envocc-sharing-20260921-090000.zip',
+            new Date(clock.now().getTime() - HOUR),
+            { attempts: 1 },
+          );
+          return found;
+        },
+      ],
+      ['lapsed and never collected', lapsedUncollected],
+    ])(
+      'carries no action: every Reviewer action on a %s Request it found is refused, and changes nothing',
+      async (_ended, seed) => {
+        const { reference } = await seed();
+        const found = (await lookup(reference)).body;
+        expect(found.zone).toBeNull();
+        const { requestId } = found.record;
+        const before = await everyRow();
+
+        for (const [path, body] of [
+          [`/api/reviewer/queue/${requestId}/approve`, {}],
+          [
+            `/api/reviewer/queue/${requestId}/reject`,
+            { note: 'Could not confirm the workplace' },
+          ],
+          [`/api/reviewer/requests/${requestId}/rerun`, {}],
+          [`/api/reviewer/requests/${requestId}/resend`, {}],
+        ] as const) {
+          const res = await reviewers.bob.browser.post(path, body);
+          // The service's own refusal, not a route that no longer exists.
+          expect(res.status, path).toBe(404);
+          expect(res.body, path).toEqual({ error: 'not_found' });
+        }
+        expect(await everyRow()).toEqual(before);
+      },
+    );
 
     it('shows who refused a rejected Request, never the internal note', async () => {
       const { id, reference } = await submitted('rejected');
@@ -438,14 +490,7 @@ describe('looking up a Request by its reference (e2e)', () => {
     });
 
     it('reads a lapsed, never-collected link as ended before the tick has written it', async () => {
-      const { id, reference } = await submitted('approved');
-      await decided(id, 'approved');
-      await job(id, 'succeeded');
-      await token(
-        id,
-        'dds-envocc-sharing-20260921-090000.zip',
-        new Date(clock.now().getTime() - 73 * HOUR),
-      );
+      const { reference } = await lapsedUncollected();
       const res = await lookup(reference);
       expect(res.body.zone).toBeNull();
       expect(res.body.record.state).toBe('expired_uncollected');
@@ -500,6 +545,7 @@ describe('looking up a Request by its reference (e2e)', () => {
         `email=${CONTACT.email}`,
         `workplace=${CONTACT.workplace}`,
         `q=${reference}`,
+        `search=${reference}`,
         `id=${reference}`,
         `requestId=${id}`,
       ]) {
@@ -512,57 +558,37 @@ describe('looking up a Request by its reference (e2e)', () => {
     });
   });
 
-  it('writes no event, of any type', async () => {
-    const { id, reference } = await submitted('rejected');
-    await decided(id, 'rejected');
-    const count = async () =>
-      (
-        await q(
-          `SELECT (SELECT count(*) FROM request_event)::int AS requests,
-                  (SELECT count(*) FROM reviewer_event)::int AS reviewers`,
-        )
-      )[0];
-    const before = await count();
-    expect((await lookup(reference)).status).toBe(200);
-    expect((await lookup('REQ-0000-0000')).status).toBe(404);
-    expect(await count()).toEqual(before);
-  });
-
-  it('adds no row to any table, found or not', async () => {
+  it('writes no event, of any type, and changes no row in any table', async () => {
     const pending = await submitted('pending');
+    const inFlight = await submitted('approved');
+    await decided(inFlight.id, 'approved');
+    await job(inFlight.id, 'running');
     const terminal = await submitted('rejected');
     await decided(terminal.id, 'rejected');
-    const tables = (
-      await q(
-        `SELECT table_name FROM information_schema.tables
-         WHERE table_schema = 'public' AND table_type = 'BASE TABLE'`,
-      )
-    ).map((t) => t.table_name as string);
-    expect(tables).toContain('request_event');
-    const rows = async () =>
-      Object.fromEntries(
-        await Promise.all(
-          tables.map(async (t) => [
-            t,
-            (await q(`SELECT count(*)::int AS n FROM "${t}"`))[0].n,
-          ]),
-        ),
-      );
+    // The case most likely to tempt a write: the lookup reads it as ended
+    // before the tick has recorded that.
+    const lapsed = await lapsedUncollected();
+    const before = await everyRow();
 
-    const before = await rows();
+    const statuses = [];
     for (const reference of [
       pending.reference,
+      inFlight.reference,
       terminal.reference,
+      lapsed.reference,
       'REQ-0000-0000',
       CONTACT.email,
       '',
     ]) {
-      await lookup(reference);
+      statuses.push((await lookup(reference)).status);
     }
-    await new Browser(server).get(
+    const stranger = await new Browser(server).get(
       `/api/reviewer/lookup?reference=${terminal.reference}`,
     );
-    expect(await rows()).toEqual(before);
+    statuses.push(stranger.status);
+
+    expect(statuses).toEqual([200, 200, 200, 200, 404, 404, 404, 401]);
+    expect(await everyRow()).toEqual(before);
   });
 
   it('is for signed-in Reviewers only', async () => {
