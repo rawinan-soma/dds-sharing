@@ -36,11 +36,16 @@ of `pilot`) on `HOST` (default: `personal-test-server`).
 alias pilot-dds-sharing='make -C deploy/pilot'   # optional; the examples use it
 ```
 
-## Once: the server's `.env`
+## Once: the server's registry login and `.env`
 
 ```sh
+pilot-dds-sharing login
 pilot-dds-sharing env
 ```
+
+`login` logs the server in to `dhi.io`, where the Pilot's MinIO image comes
+from (`minio/minio` is no longer published); use your Docker Hub user and an
+access token.
 
 `write-env.sh` runs on the server without being copied there, so the secrets
 are typed into the server and nowhere else. It asks for the Pilot URL, the
