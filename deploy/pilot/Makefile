@@ -54,11 +54,13 @@ sync:
 	ssh $(HOST) "echo PILOT_TAG=$(TAG) > $(D)/release.env && $(DC) config --quiet && echo config ok"
 
 # Step 4. Safe to repeat: re-applies the app role's password (replacing
-# docker/postgres-init's dev one) and restarts only what changed.
+# docker/postgres-init's dev one) and restarts only what changed. `ssh -t` gives
+# Compose a terminal, so it shows its progress display rather than a line per
+# layer.
 run: sync
-	ssh $(HOST) "$(DC) pull app cloudflared && $(DC) up -d --wait postgres"
+	ssh -t $(HOST) "$(DC) pull app cloudflared && $(DC) up -d --wait postgres"
 	ssh $(HOST) "set -a && . $(D)/.env && echo \"ALTER ROLE dds_app_login PASSWORD :'pw';\" | $(DC) exec -T postgres psql -q -U postgres -d dds_sharing -v ON_ERROR_STOP=1 -v pw=\"\$$APP_DB_PASSWORD\""
-	ssh $(HOST) "$(DC) up -d --remove-orphans && $(DC) ps"
+	ssh -t $(HOST) "$(DC) up -d --remove-orphans && $(DC) ps"
 
 # The Pilot's one Reviewer (§17.5); interactive.
 seed:
