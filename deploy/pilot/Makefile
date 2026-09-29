@@ -1,7 +1,6 @@
 # The Pilot's deploy (ADR 0022, #101): deploy/pilot/README.md's steps as
 # targets, run from the laptop. From the repository root:
 #
-#   make -C deploy/pilot login      # once: the server's login to dhi.io (MinIO)
 #   make -C deploy/pilot env        # once: the server's .env, secrets typed there
 #   make -C deploy/pilot deploy     # every time: build, push, sync, run, check
 #   make -C deploy/pilot rollback TAG=<sha>
@@ -22,21 +21,16 @@ D  := ~/dds-pilot
 DC := docker compose --project-name dds-pilot --env-file $(D)/.env --env-file $(D)/release.env -f $(D)/docker-compose.yml -f $(D)/compose.pilot.yml
 
 .DEFAULT_GOAL := help
-.PHONY: help login env build sync run seed check deploy rollback ps logs board dc down retire
+.PHONY: help env build sync run seed check deploy rollback ps logs board dc down retire
 
 help:
-	@echo 'Once:       login    env [FORCE=1]    seed USERNAME=<you> EMAIL=<you@…>'
+	@echo 'Once:       env [FORCE=1]    seed USERNAME=<you> EMAIL=<you@…>'
 	@echo 'Deploy:     deploy           (build, sync, run, check)'
 	@echo 'Roll back:  rollback TAG=<sha>'
 	@echo 'Steps:      build  sync  run  check'
 	@echo 'Operate:    ps  logs  board  dc ARGS="<compose args>"'
 	@echo 'Stop:       down (the kill switch)    retire (deletes the Pilot)'
 	@echo 'Now:        HOST=$(HOST) TAG=$(TAG)'
-
-# Once. The server pulls MinIO from dhi.io, which refuses anonymous pulls:
-# log in with your Docker Hub user and an access token, typed on the server.
-login:
-	ssh -t $(HOST) 'docker login dhi.io'
 
 # Step 2. write-env.sh runs on the server without being copied there. It
 # refuses to replace an existing .env; FORCE=1 replaces it (new secrets).

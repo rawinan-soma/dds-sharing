@@ -11,7 +11,7 @@
 # - the app publishes no public port: cloudflared reaches it by service name on
 #   the Compose network, so the tunnel is the only way in (#101);
 # - references are the Pilot's own (spec §12.5, #100);
-# - MinIO is Docker's hardened image, since minio/minio can no longer be pulled;
+# - MinIO is Pigsty's maintained fork, since minio/minio can no longer be pulled;
 # - everything restarts with the host.
 # `docker compose down` stops the tunnel with the rest: it is the kill switch.
 services:
@@ -36,9 +36,10 @@ services:
 
   minio:
     # minio/minio is no longer published, and the base file's only works where
-    # it is already cached. Docker's hardened build runs the same `minio`
-    # entrypoint as root; dhi.io needs `make login` on the server once.
-    image: dhi.io/minio:latest
+    # it is already cached. Pigsty's fork keeps MinIO's env, data format and
+    # `server` command, needs no login, and is pinned to a dated release
+    # (docs/research/004-object-storage-image.md).
+    image: pgsty/silo:RELEASE.2026-09-16T00-00-00Z
     restart: unless-stopped
 
   # A remotely-managed tunnel: its public hostname is set in the Cloudflare
