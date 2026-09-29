@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# Writes the Pilot's .env, on the Pilot's server, once. The runbook's step 2
-# (deploy/pilot/README.md) runs it there over `ssh -t` without copying it: the
+# Writes the Pilot's .env, on the Pilot's server, once. `make env`
+# (deploy/pilot/Makefile) runs it there over `ssh -t` without copying it: the
 # secrets are typed into the server and never pass through git or another
 # machine.
 #
 # Asked for: the Pilot's public URL, the Cloudflare tunnel token, the relay
 # account, the upstream token. Generated here: every password the Pilot's own
 # containers use, including the application role's (docker/postgres-init
-# creates it with a dev password; the runbook's step 4 replaces it).
+# creates it with a dev password; `make run` replaces it).
 #
 # It refuses to replace an existing .env unless given --force.
 set -euo pipefail
@@ -71,7 +71,7 @@ TUNNEL_TOKEN=$TUNNEL_TOKEN
 # --- postgres ---
 POSTGRES_PASSWORD=$POSTGRES_PASSWORD
 DATABASE_URL=postgres://postgres:$POSTGRES_PASSWORD@postgres:5432/dds_sharing
-# Replaces docker/postgres-init's dev password at every run (runbook step 4).
+# Replaces docker/postgres-init's dev password at every `make run`.
 APP_DB_PASSWORD=$APP_DB_PASSWORD
 APP_DATABASE_URL=postgres://dds_app_login:$APP_DB_PASSWORD@postgres:5432/dds_sharing
 
