@@ -1,12 +1,12 @@
-# The Pilot (ADR 0022, #101), on top of the production-shaped docker-compose.yml:
-#   deploy/pilot/compose.sh <compose command>
-# which runs
-#   docker compose --project-name dds-pilot --env-file ~/dds-pilot/.env \
+# The Pilot (ADR 0022, #101), on top of the production-shaped docker-compose.yml.
+# On the server, beside its .env; `deploy/pilot/pipeline.sh` copies both compose
+# files there and runs
+#   docker compose --project-name dds-pilot --env-file .env --env-file release.env \
 #     -f docker-compose.yml -f compose.pilot.yml <compose command>
 #
 # Differences from the base file, and nothing else:
-# - the app runs the image `deploy/pilot/pipeline.sh build` made, never a build
-#   of its own, so what runs is always a tagged commit of `pilot`;
+# - the app runs the image `pipeline.sh build` pushed, at the commit
+#   release.env names — never a build, since the server has no source;
 # - the app publishes no public port: cloudflared reaches it by service name on
 #   the Compose network, so the tunnel is the only way in (#101);
 # - references are the Pilot's own (spec §12.5, #100);
@@ -15,8 +15,7 @@
 services:
   app:
     build: !reset null
-    image: dds-sharing-pilot:latest
-    pull_policy: never
+    image: rawinan/dds-sharing-pilot:${PILOT_TAG:?}
     ports: !override
       # Bull Board (spec §14.4): the host's loopback only, as in the base file.
       # Reach it with `ssh -L 3100:127.0.0.1:3100 personal-test-server`.

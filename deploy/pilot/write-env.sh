@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
-# Writes the Pilot's .env, on the Pilot's server, once. Run it in a terminal
-# there (pipeline.sh env does, over `ssh -t`): the secrets are typed here and
-# never pass through git or another machine.
+# Writes the Pilot's .env, on the Pilot's server, once. `pipeline.sh env` runs
+# it there over `ssh -t` without copying it: the secrets are typed into the
+# server and never pass through git or another machine.
 #
 # Asked for: the Pilot's public URL, the Cloudflare tunnel token, the relay
 # account, the upstream token. Generated here: every password the Pilot's own
 # containers use, including the application role's (docker/postgres-init
 # creates it with a dev password; pipeline.sh run replaces it).
 #
-#   deploy/pilot/write-env.sh           # refuses if .env exists
-#   deploy/pilot/write-env.sh --force   # replaces it
+#   deploy/pilot/pipeline.sh env           # refuses if .env exists
+#   deploy/pilot/pipeline.sh env --force   # replaces it
 set -euo pipefail
 
 PILOT_DIR="${PILOT_DIR:-$HOME/dds-pilot}"
