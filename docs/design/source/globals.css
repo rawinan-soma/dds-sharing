@@ -1,93 +1,96 @@
 /*
-  DDS Sharing — the surveillance map.
+  DDS Sharing — the map-first form.
 
-  Copied from the Lunagraph project `dds-sharing`, where the design was made.
-  This is the source of the design's colour, type and geometry, and it is what
-  the Angular build should be written against. Tailwind v4 `@theme`, so every
-  token below generates its own utilities (`bg-land`, `text-on-dark-muted`).
+  Locked 2026-09-30 from Requester-form variant B ("Map-first split"), which
+  replaced the square "surveillance map" system everywhere, Reviewer surface
+  included. B was drawn in the Lunagraph project `dds-prototype`; the values
+  below are B's, except where B failed WCAG 2.1 AA contrast. Those few are
+  darkened and say so beside them.
 
-  The page is map ground, inert things are land, and the single saturated
-  colour appears only where a person has chosen something or where the primary
-  action is. Figures carry this UI, so every figure is tabular.
-
-  See docs/design/system.md for what each token is for.
+  Tailwind v4 `@theme`, so every token below generates its own utilities
+  (`bg-primary-wash`, `rounded-xl`, `shadow-card`). This is what the Angular
+  build should be written against. See docs/design/system.md for what each
+  token is for.
 */
 
 @import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
 
 @theme {
-  --color-background: #eef1ee;
-  --color-card: #f7f9f7;
-  --color-foreground: #16241e;
-  --color-muted-foreground: #556159;
-  --color-border: #c8d0c9;
-  --color-border-strong: #16241e;
+  --color-background: #e4e6ea;
+  --color-card: #ffffff;
+  --color-foreground: #1b1d24;
+  /* B drew #6b6f7a, which is 4.02:1 on the page. Darkened to 4.74:1. */
+  --color-muted-foreground: #5f6470;
+  /* Hairline dividers only. Never the only edge of a control (1.31:1). */
+  --color-border: #dfe1e6;
+  /*
+    The edge of anything you type into or press: fields, secondary buttons,
+    map cells. B drew these in the hairline colour; WCAG 1.4.11 needs 3:1
+    against both the page (3.25:1) and the card (4.06:1).
+  */
+  --color-input: #7a7e88;
 
   /* On the one dark field in the system: the Reviewer header. */
-  --color-on-dark: #eef1ee;
-  --color-on-dark-muted: #a8b5ac;
+  --color-on-dark: #e4e6ea;
+  --color-on-dark-muted: #a9adb6;
 
-  --color-land: #d9e0da;
-  --color-land-strong: #c2ccc4;
-
-  --color-primary: #0c6b63;
-  --color-primary-foreground: #f7f9f7;
-  --color-primary-wash: #dceceb;
-  --color-primary-hover: #0a5751;
+  --color-primary: #3b5bfd;
+  --color-primary-foreground: #ffffff;
+  --color-primary-hover: #3050e8;
+  --color-primary-wash: #eef1ff;
 
   /*
-    No state is green. Green is selection and the primary action, nowhere else,
-    so a Reviewer can never confuse "this row is ready" with "this row is the
-    one I clicked".
+    State. Each ink passes 4.5:1 on its own wash and on the card.
 
-    amber  a person is being waited on
-    blue   there is something here you can act on
-    red    broken
-    grey   nothing to do, whether queued, running or finished
+    success  done, complete, ready to act on
+    pending  a person is being waited on, or partly complete
+    failed   broken, or missing
+    inert    nothing to do, whether queued, running or finished
   */
-  --color-pending: #7f5300;
-  --color-pending-wash: #f6eedc;
-  --color-ready: #2b5b86;
-  --color-ready-wash: #e4edf4;
-  --color-failed: #8c2b20;
-  --color-failed-wash: #f6e6e3;
-  --color-inert: #5a6862;
-  --color-inert-wash: #e6e9e6;
-  --color-running: #5a6862;
-  --color-running-wash: #e6e9e6;
+  --color-success: #1a7a4f;
+  --color-success-wash: #e6f4ec;
+  --color-pending: #8a5a00;
+  --color-pending-wash: #fdf3dc;
+  /* The meter's partial segment. Graphic only, 3.64:1 on the card. */
+  --color-pending-bright: #b7791f;
+  --color-failed: #c42b3a;
+  --color-failed-wash: #fbe9eb;
+  --color-inert: #5f6470;
+  --color-inert-wash: #eceef2;
 
   --font-sans: "IBM Plex Sans Thai", "IBM Plex Sans", system-ui, sans-serif;
 
-  /*
-    No radius tokens. This system is square, everywhere, deliberately: the
-    surfaces are map ground and field rules, not cards. If a rounded corner is
-    ever needed, it is a decision to take here rather than a token to reach for.
-  */
+  /* One radius per kind of thing, never chosen per screen. */
+  --radius-sm: 6px; /* chip, tag, segment */
+  --radius-md: 10px; /* field, button */
+  --radius-lg: 12px; /* map cell */
+  --radius-xl: 20px; /* card */
+
+  /* One elevation, and the focus halo. Nothing else casts a shadow. */
+  --shadow-card: 0 30px 60px rgb(0 0 0 / 0.06);
+  --shadow-focus: 0 0 0 3px rgb(59 91 253 / 0.18);
 }
 
 /*
-  Border colours, stated explicitly and deliberately OUTSIDE any @layer.
-
-  On the design canvas, border- colour utilities never took effect: every
-  border rendered in a default grey while bg- and text- colours were correct.
-  Defining them inside @layer utilities did not help either, which points at an
-  unlayered reset on the canvas; unlayered CSS beats any layered rule. So these
-  are unlayered too.
-
-  In a real Tailwind v4 build they duplicate generated utilities with the same
-  values. The cost is that they would also beat a layered hover:/focus: border
-  colour; this system uses none, and anyone adding one must know this is here.
-  Remove the block if the Angular build proves it unnecessary.
+  Border colours, stated deliberately OUTSIDE any @layer: on the Lunagraph
+  canvas an unlayered reset beats Tailwind's layered border- utilities, so
+  every class border rendered grey (system.md). Remove the block if the Angular
+  build proves it unnecessary. It also beats any layered hover:/focus: border
+  colour, which is why a focused field takes its primary edge from the
+  unlayered .field-box rule at the end of this block.
 */
 .border-border { border-color: var(--color-border); }
-.border-border-strong { border-color: var(--color-border-strong); }
+.border-input { border-color: var(--color-input); }
 .border-primary { border-color: var(--color-primary); }
+.border-success { border-color: var(--color-success); }
 .border-pending { border-color: var(--color-pending); }
-.border-ready { border-color: var(--color-ready); }
 .border-failed { border-color: var(--color-failed); }
 .border-inert { border-color: var(--color-inert); }
-.border-muted-foreground { border-color: var(--color-muted-foreground); }
+.field-box:focus-within {
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-focus);
+}
 
 @layer base {
   html {

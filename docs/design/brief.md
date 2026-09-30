@@ -105,8 +105,8 @@ arrives. That is accepted.
 
 ### 3. Duplicate suppression
 
-A submit from an IP that already has an unfinished Request is refused, worded as
-a friendly *you already have a request in progress*. It catches the page refresh
+A submit whose email and ask match an unfinished Request is refused, worded as
+a friendly *you already sent this request*. It catches the page refresh
 and the double-posted form, not an adversary. **It is UX, not a rate limit — do
 not name it one on screen or in the file names.**
 

@@ -4,6 +4,11 @@
 (spec §18.12 stands). **Date:** 2026-09-18. **Scope:** every screen on the Lunagraph
 canvas `dds-sharing`, the tokens in `source/globals.css`, and the components.
 
+> **2026-09-30: measured against the old tokens.** `system.md` now carries
+> variant B's tokens. Their contrast was measured when they were locked (see
+> "Where B was changed for contrast" there), and the new `input` token answers
+> P2 and P3. The rest of this audit has not been redone against B.
+
 This is a design audit. Contrast is measured exactly from the tokens. Keyboard,
 screen-reader and zoom behaviour are judged against the design and the handoff,
 **not tested**, because nothing is built yet. Test all three again on the Angular
