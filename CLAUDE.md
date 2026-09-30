@@ -4,11 +4,11 @@
 
 ### Issue tracker
 
-Issues live as markdown files under `.scratch/<feature>/issues/`; GitHub is SCM and PRs only. See `docs/agents/issue-tracker.md`.
+Issues and PRs live on GitHub (`gh`). The closed files under `.scratch/dds-sharing/issues/` are history, and their numbers 99–105 are not GitHub numbers. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 
-Default five-role vocabulary — `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix` — written as each ticket file's `Status:` line. See `docs/agents/triage-labels.md`.
+Default five-role vocabulary — `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix` — applied as GitHub labels. See `docs/agents/triage-labels.md`.
 
 ### Domain docs
 
