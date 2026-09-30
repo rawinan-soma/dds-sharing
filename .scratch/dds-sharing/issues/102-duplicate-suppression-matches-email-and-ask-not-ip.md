@@ -1,6 +1,6 @@
 # Duplicate suppression matches email and ask, not IP
 
-Status: ready-for-agent
+Status: closed
 Labels: enhancement
 
 ## What to build
@@ -45,3 +45,7 @@ Spec §4.8, §16.4's typo note, SRS FR-06 and the glossary entry in `CONTEXT.md`
 - [ ] `request_event_submitted_ip` is dropped in a migration, or kept with a comment naming what still reads it
 - [ ] The `TRUST_PROXY` rationale in `namespaces.ts`, #77 and #101 names the audit record, not duplicate suppression
 - [ ] Existing request-submission tests are updated, and none still asserts that a second IP-matched submit is refused
+
+## Comments
+
+Merged in #120 (cc6cf9af61de6da0ff72e9adfa52559d488c59d0).
