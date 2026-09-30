@@ -756,11 +756,7 @@ select.field-box.placeholder {
   overflow-wrap: anywhere;
 }
 
-.map-caption {
-  font-size: 13px;
-  color: var(--muted-foreground);
-}
-
+.map-caption,
 .map-note {
   font-size: 13px;
   color: var(--muted-foreground);

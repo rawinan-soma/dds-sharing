@@ -2,7 +2,7 @@
 // (docs/design/system.md "Date field"). It stores ISO (Gregorian): the span,
 // the 365-day cap and the Span builder never see a Buddhist year. Month names
 // come from the platform's Thai calendar data, not the copy catalogue, as
-// `formatDay` does for the check page and the popover's long day.
+// `formatDay` does for the check page and the popover's day labels.
 
 const BUDDHIST_OFFSET = 543;
 /** A year below this is read as the Common Era and shown back in พ.ศ. */

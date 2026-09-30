@@ -8,7 +8,7 @@ import {
 } from '@angular/core';
 import { Router } from '@angular/router';
 import * as m from '../../paraglide/messages.js';
-import { type RangeEnd, pickerBounds } from './calendar';
+import { type DateRange, type RangeEnd, pickerBounds } from './calendar';
 import { type DateChange, DateField } from './date-field.component';
 import { DeidBlock } from './deid-block.component';
 import { formatDay } from './format-day';
@@ -105,11 +105,16 @@ export class RequestPage implements OnInit {
     () => this.attempted() && this.issueCount() === 0 && !this.form().consent,
   );
 
+  /** Both date ends, for the pickers' bounds and the wash between them. */
+  protected readonly range = computed<DateRange>(() => ({
+    from: this.form().from,
+    to: this.form().to,
+  }));
   protected readonly fromBounds = computed(() =>
-    pickerBounds('from', this.form().from, this.form().to),
+    pickerBounds('from', this.range()),
   );
   protected readonly toBounds = computed(() =>
-    pickerBounds('to', this.form().from, this.form().to),
+    pickerBounds('to', this.range()),
   );
   protected readonly days = computed(() =>
     dayCount(this.form().from, this.form().to),

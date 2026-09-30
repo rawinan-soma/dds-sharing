@@ -21,7 +21,7 @@ export interface Bounds {
 }
 
 /** The days the picker for one end may offer, given both ends as stored. */
-export function pickerBounds(end: RangeEnd, from: string, to: string): Bounds {
+export function pickerBounds(end: RangeEnd, { from, to }: DateRange): Bounds {
   if (end === 'to') {
     return ISO_DAY.test(from)
       ? { min: from, max: latestTo(from) }

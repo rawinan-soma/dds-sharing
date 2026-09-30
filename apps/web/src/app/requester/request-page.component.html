@@ -168,7 +168,7 @@
                     [unreadable]="unreadable().from"
                     [invalid]="dateInvalid('from')"
                     [bounds]="fromBounds()"
-                    [range]="{ from: form().from, to: form().to }"
+                    [range]="range()"
                     [capNote]="form().to ? m.requester_calendar_cap_from() : ''"
                     (changed)="date('from', $event)"
                   />
@@ -191,7 +191,7 @@
                     [unreadable]="unreadable().to"
                     [invalid]="dateInvalid('to')"
                     [bounds]="toBounds()"
-                    [range]="{ from: form().from, to: form().to }"
+                    [range]="range()"
                     [capNote]="form().from ? m.requester_calendar_cap_to() : ''"
                     (changed)="date('to', $event)"
                   />

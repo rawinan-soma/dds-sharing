@@ -155,7 +155,7 @@ export interface DateChange {
               [class.today]="day.today"
               [attr.data-day]="day.iso"
               [attr.aria-pressed]="day.chosen"
-              [attr.aria-label]="longDay(day.iso)"
+              [attr.aria-label]="formatDay(day.iso)"
               [attr.aria-current]="day.today ? 'date' : null"
               [disabled]="day.disabled"
               [tabindex]="day.iso === focusDay() ? 0 : -1"
@@ -256,7 +256,7 @@ export class DateField {
     return (!min || this.today >= min) && (!max || this.today <= max);
   });
 
-  protected readonly longDay = formatDay;
+  protected readonly formatDay = formatDay;
 
   protected onType(event: Event) {
     const typed = (event.target as HTMLInputElement).value;

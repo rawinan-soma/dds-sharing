@@ -94,9 +94,9 @@ file names carry `font-variant-numeric: tabular-nums` via `.figure`.
 |---|---|---|
 | `radius-sm` | 6px | chip, tag, segment (B drew segments at 8px; one radius per kind of thing puts them with chips) |
 | `radius-md` | 10px | field, button |
-| `radius-lg` | 12px | map cell |
+| `radius-lg` | 12px | map cell; also the consent box and the Reviewer queue table, as drawn |
 | `radius-xl` | 20px | card |
-| `radius-panel` | 14px | the calendar popover, the Statement, and panels and notes inside a card |
+| `radius-panel` | 14px | the calendar popover, the Statement, and panels and notes inside a card, the requirement checklist's refused-send frame included |
 
 One radius per kind of thing. A screen never picks its own.
 

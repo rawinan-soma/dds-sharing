@@ -76,14 +76,15 @@ function withPhone(text: string, telephone: string): string {
 }
 
 const MARKS = {
-  info: { modifier: '', glyph: 'i' },
-  pending: { modifier: ' pending', glyph: '!' },
+  info: { modifier: null, glyph: 'i' },
+  pending: { modifier: 'pending', glyph: '!' },
 };
 
 function note(mark: keyof typeof MARKS, heading: string, detail: string) {
   const { modifier, glyph } = MARKS[mark];
-  return `<div class="note${modifier}">
-<span class="mark${modifier}" aria-hidden="true">${glyph}</span>
+  const extraClass = modifier ? ` ${modifier}` : '';
+  return `<div class="note${extraClass}">
+<span class="mark${extraClass}" aria-hidden="true">${glyph}</span>
 <div><h2>${heading}</h2><p>${detail}</p></div></div>`;
 }
 

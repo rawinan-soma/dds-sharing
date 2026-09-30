@@ -3,22 +3,28 @@ import { calendarMonth, pickerBounds } from './calendar';
 
 describe('the bounds the picker offers', () => {
   it('lets `to` run from `from` to the cap, and nothing before or past it', () => {
-    expect(pickerBounds('to', '2025-01-01', '')).toEqual({
+    expect(pickerBounds('to', { from: '2025-01-01', to: '' })).toEqual({
       min: '2025-01-01',
       max: '2026-01-01',
     });
   });
 
   it('mirrors the cap under `from` once `to` is set', () => {
-    expect(pickerBounds('from', '', '2026-01-01')).toEqual({
+    expect(pickerBounds('from', { from: '', to: '2026-01-01' })).toEqual({
       min: '2025-01-01',
       max: '2026-01-01',
     });
   });
 
   it('is open while the other end is empty or unreadable', () => {
-    expect(pickerBounds('to', '', '')).toEqual({ min: null, max: null });
-    expect(pickerBounds('from', '', '')).toEqual({ min: null, max: null });
+    expect(pickerBounds('to', { from: '', to: '' })).toEqual({
+      min: null,
+      max: null,
+    });
+    expect(pickerBounds('from', { from: '', to: '' })).toEqual({
+      min: null,
+      max: null,
+    });
   });
 });
 
