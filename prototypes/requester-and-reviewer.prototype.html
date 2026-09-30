@@ -1,0 +1,2005 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PROTOTYPE — Requester and Reviewer</title>
+<!--
+  PROTOTYPE — throwaway. Both surfaces of DDS Sharing, driven end to end in one
+  page against one in-browser store: a Request submitted on the Requester form
+  reaches the Reviewer queue, is decided, extracted, emailed and collected.
+
+  Built from docs/design/system.md (locked 2026-09-30) and the copy on the
+  Lunagraph page "Requester form: prototypes" in project dds-prototype. The dark
+  strip at the top is prototype chrome, not part of the design: it switches
+  surfaces and simulates what the server and the clock would do.
+
+  Deliberate simplifications:
+  - one clock, advanced by hand; the business-hours clock is treated as wall time
+  - no real archive is served; a download only counts the Attempt
+  - send-abandoned Alerts are not simulated
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --background: #e4e6ea;
+    --card: #ffffff;
+    --foreground: #1b1d24;
+    --muted-foreground: #5f6470;
+    --border: #dfe1e6;
+    --input: #7a7e88;
+    --primary: #3b5bfd;
+    --primary-hover: #3050e8;
+    --primary-wash: #eef1ff;
+    --success: #1a7a4f;
+    --success-wash: #e6f4ec;
+    --pending: #8a5a00;
+    --pending-wash: #fdf3dc;
+    --pending-bright: #b7791f;
+    --failed: #c42b3a;
+    --failed-wash: #fbe9eb;
+    --inert: #5f6470;
+    --inert-wash: #eceef2;
+    --sunk: #f7f8fa;
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 12px;
+    --radius-xl: 20px;
+    --shadow-card: 0 30px 60px rgb(0 0 0 / 0.06);
+    --shadow-focus: 0 0 0 3px rgb(59 91 253 / 0.18);
+    --shadow-float: 0 12px 32px rgb(0 0 0 / 0.18);
+  }
+  * { box-sizing: border-box; }
+  html { font-family: "IBM Plex Sans Thai", "IBM Plex Sans", system-ui, sans-serif; }
+  body {
+    margin: 0;
+    background: var(--background);
+    color: var(--foreground);
+    font-size: 15px;
+    line-height: 1.65;
+  }
+  h1, h2, h3 { line-height: 1.35; margin: 0; font-weight: 600; }
+  p { margin: 0; }
+  ul { margin: 0; padding: 0; list-style: none; }
+  button, input, select, textarea { font: inherit; color: inherit; }
+  .figure, time, data { font-variant-numeric: tabular-nums; }
+  :focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+  [tabindex="-1"]:focus { outline: none; }
+  .muted { color: var(--muted-foreground); }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { transition-duration: 0.01ms !important; animation-duration: 0.01ms !important; }
+  }
+
+  /* ───────── Prototype chrome (not the design) ───────── */
+  .proto {
+    position: sticky; top: 0; z-index: 50;
+    background: #111318; color: #d6d8de;
+    font: 13px/1.4 "IBM Plex Sans", system-ui, sans-serif;
+    display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
+    padding: 8px 16px;
+  }
+  .proto b { color: #fff; font-weight: 600; margin-right: 10px; letter-spacing: 0.04em; }
+  .proto .pbtn {
+    background: transparent; color: #d6d8de; border: 1px solid #3a3e48;
+    border-radius: 6px; padding: 4px 10px; cursor: pointer; font-size: 13px;
+  }
+  .proto .pbtn:hover { border-color: #8a8f9b; color: #fff; }
+  .proto .pbtn[aria-current="page"] { background: #fff; color: #111318; border-color: #fff; }
+  .proto .pbtn .count { background: var(--primary); color: #fff; border-radius: 9px; padding: 0 6px; margin-left: 4px; font-size: 11px; }
+  .proto .spacer { flex: 1; }
+  .proto .clock { font-variant-numeric: tabular-nums; color: #fff; }
+  .sim {
+    position: fixed; top: 44px; right: 12px; z-index: 60; width: 340px;
+    max-height: calc(100vh - 60px); overflow: auto;
+    background: #111318; color: #d6d8de; border-radius: 12px;
+    font: 13px/1.45 "IBM Plex Sans", system-ui, sans-serif;
+    padding: 14px 16px 16px; box-shadow: var(--shadow-float);
+  }
+  .sim h4 { margin: 12px 0 6px; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #8a8f9b; font-weight: 600; }
+  .sim h4:first-child { margin-top: 0; }
+  .sim .row { display: flex; flex-wrap: wrap; gap: 6px; }
+  .sim .pbtn { background: transparent; color: #d6d8de; border: 1px solid #3a3e48; border-radius: 6px; padding: 4px 9px; cursor: pointer; font-size: 12.5px; }
+  .sim .pbtn:hover { border-color: #8a8f9b; color: #fff; }
+  .sim .pbtn.on { background: #fdf3dc; color: #111318; border-color: #fdf3dc; }
+  .sim .hint { color: #8a8f9b; font-size: 12px; margin-top: 4px; }
+  .sim code { color: #fff; }
+  .flash {
+    position: fixed; right: 16px; bottom: 16px; z-index: 70; max-width: 360px;
+    background: #111318; color: #fff; border-radius: 10px; padding: 10px 14px;
+    font: 13px/1.45 "IBM Plex Sans", system-ui, sans-serif; box-shadow: var(--shadow-float);
+  }
+  .flash small { display: block; color: #8a8f9b; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; }
+
+  /* ───────── Components ───────── */
+  .card { background: var(--card); border-radius: var(--radius-xl); box-shadow: var(--shadow-card); padding: 24px; }
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    height: 40px; padding: 0 20px; border-radius: var(--radius-md);
+    border: 1px solid var(--input); background: var(--card); color: var(--foreground);
+    cursor: pointer; font-size: 15px; transition: background-color .15s, border-color .15s, color .15s;
+    white-space: nowrap; text-decoration: none;
+  }
+  .btn:hover { background: var(--primary-wash); }
+  .btn:active { background: var(--primary-wash); border-color: var(--primary); }
+  .btn.primary { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 600; }
+  .btn.primary:hover, .btn.primary:active, .btn.primary[aria-busy="true"] { background: var(--primary-hover); border-color: var(--primary-hover); }
+  .btn.quiet { color: var(--muted-foreground); }
+  .btn.lg { height: 44px; padding: 0 32px; font-size: 16px; }
+  .btn.full { width: 100%; }
+  .btn:disabled, .btn[aria-disabled="true"] { opacity: 0.45; cursor: not-allowed; }
+  .btn:disabled:hover, .btn[aria-disabled="true"]:hover { background: var(--card); }
+  .btn.primary:disabled:hover { background: var(--primary); }
+  .btn[aria-busy="true"] { cursor: progress; }
+  .pair { display: grid; grid-template-columns: 1fr 1.2fr; gap: 12px; }
+  .link { background: none; border: 0; padding: 0; color: var(--primary); cursor: pointer; text-decoration: underline; text-underline-offset: 2px; }
+  .link.plain { text-decoration: none; }
+
+  .lbl { display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 500; margin-bottom: 6px; }
+  .lbl .req { color: var(--primary); }
+  .lbl .aside { margin-left: auto; font-size: 12px; font-weight: 400; color: var(--muted-foreground); }
+  .lbl .aside.bad { color: var(--failed); font-weight: 600; }
+  .lbl button.aside { background: none; border: 0; padding: 0; cursor: pointer; }
+  .box {
+    width: 100%; height: 44px; padding: 0 14px; border: 1px solid var(--input);
+    border-radius: var(--radius-md); background: var(--card); font-size: 15px;
+    transition: border-color .15s, box-shadow .15s;
+  }
+  .box::placeholder { color: #8a8e98; }
+  .box:focus { outline: none; border-color: var(--primary); box-shadow: var(--shadow-focus); }
+  .box.bad { border-color: var(--failed); }
+  .box.code { letter-spacing: 0.3em; font-variant-numeric: tabular-nums; }
+  select.box { appearance: none; background-image: linear-gradient(45deg, transparent 50%, var(--muted-foreground) 50%), linear-gradient(135deg, var(--muted-foreground) 50%, transparent 50%); background-position: calc(100% - 20px) 19px, calc(100% - 15px) 19px; background-size: 5px 5px; background-repeat: no-repeat; padding-right: 36px; }
+  textarea.box { height: auto; min-height: 112px; padding: 10px 14px; resize: vertical; line-height: 1.6; }
+  .field-err { color: var(--failed); font-size: 12px; margin-top: 4px; }
+  .field-hint { color: var(--muted-foreground); font-size: 12px; margin-top: 4px; }
+  .field { margin-top: 14px; }
+  .field:first-child { margin-top: 0; }
+  .pairrow { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .pairrow > .field { margin-top: 14px; }
+  .divider { height: 1px; background: var(--border); margin: 20px 0 6px; }
+
+  .tag { display: inline-flex; align-items: center; border-radius: var(--radius-sm); padding: 1px 8px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+  .tag.success { background: var(--success-wash); color: var(--success); }
+  .tag.pending { background: var(--pending-wash); color: var(--pending); }
+  .tag.failed { background: var(--failed-wash); color: var(--failed); }
+  .tag.inert { background: var(--inert-wash); color: var(--inert); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chip { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 1px 8px; font-size: 12px; }
+
+  .statement { border-radius: 14px; padding: 20px; }
+  .statement h3 { font-size: 16px; margin-bottom: 4px; }
+  .statement p + p { margin-top: 4px; }
+  .statement .note { font-size: 13px; color: var(--muted-foreground); }
+  .statement.success { background: var(--success-wash); border: 1px solid var(--success); }
+  .statement.success h3 { color: var(--success); }
+  .statement.inert { background: var(--inert-wash); }
+  .statement.pending { background: var(--pending-wash); }
+  .statement.pending h3 { color: var(--pending); }
+  .notice { border-radius: var(--radius-md); padding: 12px 14px; border-left: 2px solid; font-size: 14px; }
+  .notice strong { display: block; font-weight: 600; }
+  .notice .note { font-size: 12px; color: var(--muted-foreground); margin-top: 2px; }
+  .notice.failed { background: var(--failed-wash); border-color: var(--failed); }
+  .notice.failed strong { color: var(--failed); }
+  .notice.pending { background: var(--pending-wash); border-color: var(--pending); }
+  .notice.pending strong { color: var(--pending); }
+
+  .mark { width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; flex: none; font-weight: 700; font-size: 20px; }
+  .mark.success { background: var(--success-wash); color: var(--success); }
+  .mark.pending { background: var(--pending-wash); color: var(--pending); border: 1.5px solid var(--pending); }
+  .mark.inert { background: var(--inert-wash); color: var(--inert); }
+  .mark.solid-success { background: var(--success); color: #fff; }
+
+  .kv { display: grid; grid-template-columns: 120px 1fr; gap: 12px; padding: 10px 0; border-top: 1px solid var(--border); font-size: 14px; }
+  .kv:last-child { border-bottom: 1px solid var(--border); }
+  .kv > dt { color: var(--muted-foreground); }
+  .kv > dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+  dl { margin: 0; }
+
+  /* Dialog */
+  .scrim { position: fixed; inset: 0; background: rgb(27 29 36 / 0.45); z-index: 40; display: grid; place-items: center; padding: 24px; }
+  .dialog { background: var(--card); border-radius: var(--radius-xl); padding: 32px; width: 520px; max-width: 100%; box-shadow: 0 30px 60px rgb(0 0 0 / 0.18); display: grid; gap: 20px; }
+  .dialog.wide { width: 560px; }
+  .dialog h2 { font-size: 18px; }
+  .sunk-note { background: var(--sunk); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 10px 12px; font-size: 13px; color: var(--muted-foreground); }
+
+  /* Toast */
+  .toast { position: fixed; left: 72px; bottom: 72px; z-index: 45; width: 400px; max-width: calc(100vw - 32px); background: var(--foreground); color: #fff; border-radius: 12px; padding: 16px 18px; box-shadow: var(--shadow-float); display: grid; gap: 6px; }
+  .toast strong { font-size: 14px; }
+  .toast p { font-size: 13px; color: #c9ccd3; line-height: 1.5; }
+  .toast .btn { justify-self: start; margin-top: 6px; }
+
+  /* ───────── Requester surface ───────── */
+  .pub { max-width: 972px; margin: 0 auto; padding: 48px 56px 96px; }
+  .pub-title { font-size: 28px; margin-bottom: 24px; }
+  .deid h2 { font-size: 18px; margin-bottom: 14px; }
+  .deid .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; border-top: 1px solid var(--border); padding-top: 14px; }
+  .deid h3 { font-size: 14px; margin-bottom: 8px; }
+  .deid .inc h3 { color: var(--success); }
+  .deid .exc h3 { color: var(--muted-foreground); }
+  .deid li { display: flex; gap: 10px; font-size: 14px; padding: 3px 0; }
+  .dot { flex: none; width: 16px; height: 16px; border-radius: 50%; display: grid; place-items: center; font-size: 10px; font-weight: 700; margin-top: 4px; }
+  .dot.ok { background: var(--success); color: #fff; }
+  .dot.out { border: 1.5px solid var(--inert); color: var(--inert); }
+  .dot.no { background: var(--inert); color: #fff; }
+  .dot.bad { background: var(--failed); color: #fff; }
+
+  .split { display: grid; grid-template-columns: 360px 460px; gap: 40px; align-items: start; margin-top: 32px; }
+  .map-pane { position: sticky; top: 64px; display: grid; gap: 14px; justify-items: start; }
+  .eyebrow { font-size: 12px; letter-spacing: 0.08em; color: var(--muted-foreground); }
+  .area-head { font-size: 32px; font-weight: 600; line-height: 1.35; margin-top: -10px; }
+  .area-head.none { color: var(--muted-foreground); }
+  .segs { display: flex; gap: 8px; }
+  .seg { border: 1px solid var(--input); background: var(--card); border-radius: var(--radius-sm); padding: 6px 14px; font-size: 14px; cursor: pointer; transition: background-color .15s, border-color .15s; }
+  .seg:hover { background: var(--primary-wash); }
+  .seg[aria-checked="true"] { background: var(--primary-wash); border-color: var(--primary); color: var(--primary); font-weight: 600; }
+  .prov-field { width: 100%; }
+  .map { display: grid; grid-template-columns: repeat(4, 72px); grid-template-rows: repeat(7, 56px); gap: 6px; }
+  .cell {
+    border: 1px solid var(--input); background: var(--card); border-radius: var(--radius-lg);
+    font-size: 16px; font-weight: 600; color: var(--muted-foreground); cursor: pointer;
+    transition: transform .1s, border-color .15s, color .15s, background-color .15s;
+  }
+  .cell:hover { transform: translateY(-2px); border-color: var(--primary); color: var(--primary); }
+  .cell[aria-checked="true"] { background: var(--primary); border-color: var(--primary); color: #fff; }
+  .cell.related { background: var(--primary-wash); border-color: var(--primary); color: var(--primary); }
+  .map-caption { font-size: 12px; color: var(--muted-foreground); max-width: 360px; }
+
+  .form-card { padding: 24px; }
+  .form-head { display: flex; gap: 16px; align-items: center; padding-bottom: 20px; margin-bottom: 20px; border-bottom: 1px solid var(--border); }
+  .badge { width: 48px; height: 48px; border-radius: 50%; border: 1px solid var(--border); display: grid; place-items: center; flex: none; }
+  .form-head h2 { font-size: 18px; }
+  .form-head p { font-size: 13px; color: var(--muted-foreground); }
+
+  .tip-wrap { position: relative; display: inline-flex; }
+  .tip-trigger { width: 16px; height: 16px; border-radius: 50%; background: var(--pending); color: #fff; border: 0; font-size: 10px; font-weight: 700; display: grid; place-items: center; cursor: help; padding: 0; }
+  .tooltip {
+    position: absolute; top: calc(100% + 10px); left: -20px; width: 320px; z-index: 5;
+    background: var(--foreground); border-radius: var(--radius-md); padding: 12px 14px; box-shadow: var(--shadow-float);
+    display: none; font-weight: 400;
+  }
+  .tooltip::before { content: ""; position: absolute; top: -5px; left: 23px; width: 10px; height: 10px; background: var(--foreground); transform: rotate(45deg); }
+  .tooltip strong { display: block; color: #fff; font-size: 13px; font-weight: 600; }
+  .tooltip span { display: block; color: #c9ccd3; font-size: 12px; line-height: 1.5; margin-top: 2px; }
+  .tip-wrap.open .tooltip { display: block; }
+
+  .datebox { position: relative; }
+  .datebox .box { padding-right: 44px; }
+  .cal-btn { position: absolute; right: 4px; top: 4px; width: 36px; height: 36px; border: 0; background: none; border-radius: 8px; color: var(--muted-foreground); cursor: pointer; display: grid; place-items: center; transition: background-color .15s, color .15s; }
+  .cal-btn:hover, .cal-btn[aria-expanded="true"] { background: var(--primary-wash); color: var(--primary); }
+  .cal { position: absolute; top: calc(100% + 6px); left: 0; z-index: 20; width: 304px; background: var(--card); border: 1px solid var(--border); border-radius: 14px; box-shadow: var(--shadow-float); padding: 12px; }
+  .cal.right { left: auto; right: 0; }
+  .cal-head { display: flex; gap: 6px; align-items: center; margin-bottom: 8px; }
+  .cal-head select { height: 32px; border: 1px solid var(--input); border-radius: 8px; padding: 0 6px; font-size: 13px; background: var(--card); }
+  .cal-head select:first-of-type { flex: 1; }
+  .cal-nav { width: 32px; height: 32px; flex: none; border: 1px solid var(--input); border-radius: 8px; background: var(--card); cursor: pointer; font-size: 14px; }
+  .cal-nav:hover { background: var(--primary-wash); }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; text-align: center; }
+  .cal-grid .wd { font-size: 11px; color: var(--muted-foreground); padding: 4px 0; }
+  .cal-day { height: 36px; border: 0; background: none; border-radius: 8px; cursor: pointer; font-size: 13px; font-variant-numeric: tabular-nums; }
+  .cal-day:hover { background: var(--primary-wash); }
+  .cal-day.inrange { background: var(--primary-wash); border-radius: 0; }
+  .cal-day.today { box-shadow: inset 0 0 0 1px var(--input); }
+  .cal-day[aria-pressed="true"] { background: var(--primary); color: #fff; font-weight: 600; border-radius: 8px; }
+  .cal-day:disabled { color: #b9bcc4; cursor: not-allowed; background: none; }
+  .cal-foot { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border); font-size: 12px; color: var(--muted-foreground); }
+  .span-panel { grid-column: 1 / -1; display: flex; gap: 10px; background: var(--failed-wash); border-radius: var(--radius-md); padding: 12px 14px; margin-top: 10px; font-size: 13px; }
+  .span-panel .dot { margin-top: 2px; }
+  .span-panel strong { color: var(--failed); display: block; font-size: 14px; }
+
+  .checklist { margin-top: 20px; border-radius: 14px; }
+  .checklist.alarm { border: 2px solid var(--primary); box-shadow: var(--shadow-focus); padding: 14px; }
+  .meter { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .meter span { height: 4px; border-radius: 2px; background: #e3e5ea; }
+  .meter-label { font-size: 13px; color: var(--muted-foreground); margin-top: 6px; }
+  .meter-label.ok { color: var(--success); font-weight: 600; }
+  .alarm-head { color: var(--failed); font-weight: 600; font-size: 14px; margin-top: 8px; }
+  .alarm-sub { font-size: 12px; color: var(--muted-foreground); }
+  .checks { display: grid; gap: 4px; margin-top: 8px; font-size: 13px; color: var(--muted-foreground); }
+  .checks li { display: flex; gap: 8px; align-items: flex-start; }
+  .checks li .dot { margin-top: 2px; }
+  .checks .jump { background: none; border: 0; padding: 0; color: var(--failed); font-weight: 600; text-decoration: underline; cursor: pointer; text-align: left; font-size: 13px; }
+  .checks .failtext { color: var(--failed); font-weight: 600; }
+
+  .consent { display: flex; gap: 12px; align-items: flex-start; margin-top: 16px; background: var(--sunk); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 14px; cursor: pointer; }
+  .consent.on { background: var(--primary-wash); border-color: var(--primary); }
+  .consent input { appearance: none; flex: none; width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--input); background: #fff; margin: 3px 0 0; display: grid; place-items: center; cursor: pointer; }
+  .consent input:checked { background: var(--primary); border-color: var(--primary); }
+  .consent input:checked::after { content: "✓"; color: #fff; font-size: 11px; font-weight: 700; }
+  .consent strong { font-size: 14px; font-weight: 600; }
+  .consent p { font-size: 13px; color: var(--muted-foreground); margin-top: 2px; }
+  .form-actions { margin-top: 20px; }
+
+  .narrow { max-width: 640px; margin: 0 auto; }
+  .narrow .card { padding: 32px; display: grid; gap: 24px; }
+  .narrow h1 { font-size: 26px; }
+  .wash-panel { background: var(--primary-wash); border: 1px solid var(--primary); border-radius: 14px; padding: 18px 20px; }
+  .wash-panel .big { font-size: 28px; font-weight: 600; overflow-wrap: anywhere; line-height: 1.35; }
+  .wash-panel .huge { font-size: 40px; font-weight: 600; line-height: 1.25; }
+  .wash-panel p.body { font-size: 14px; margin-top: 6px; }
+  .section h2 { font-size: 16px; margin-bottom: 10px; }
+  .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .tile { border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; font-size: 13px; }
+  .tile strong { display: block; font-size: 14px; }
+  .tile span { color: var(--muted-foreground); }
+  .phone { font-size: 14px; color: var(--muted-foreground); }
+  .phone b { color: var(--foreground); white-space: nowrap; }
+  .head-row { display: flex; gap: 16px; align-items: center; }
+  .head-row p { color: var(--muted-foreground); font-size: 14px; }
+  .pending-panel { background: var(--pending-wash); border-radius: 14px; padding: 16px 18px; }
+  .pending-panel p + p { margin-top: 4px; }
+  .bordered { border: 1px solid var(--border); border-radius: 14px; padding: 16px 18px; display: grid; gap: 6px; justify-items: start; }
+  .bordered .btn { margin-top: 8px; }
+
+  .file-panel { border: 1px solid var(--border); border-radius: 14px; padding: 20px; display: grid; gap: 14px; }
+  .file-top { display: flex; gap: 14px; align-items: center; }
+  .file-icon { width: 44px; height: 44px; border-radius: 10px; background: var(--primary-wash); color: var(--primary); display: grid; place-items: center; flex: none; }
+  .file-name { font-weight: 600; overflow-wrap: anywhere; }
+  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .stat { border-radius: 10px; padding: 10px 14px; background: var(--sunk); }
+  .stat small { display: block; font-size: 12px; color: var(--muted-foreground); }
+  .stat b { font-weight: 600; }
+  .stat.success { background: var(--success-wash); color: var(--success); }
+  .stat.success small { color: var(--success); }
+  .dl-btn { height: 52px; font-size: 16px; }
+  .center-note { text-align: center; font-size: 12px; color: var(--muted-foreground); }
+  .notes { display: grid; gap: 10px; }
+  .notes li { display: flex; gap: 12px; border: 1px solid var(--border); border-radius: 14px; padding: 14px 16px; }
+  .notes .i { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 700; flex: none; background: var(--inert-wash); color: var(--inert); margin-top: 1px; }
+  .notes .i.warn { background: var(--pending-wash); color: var(--pending); }
+  .notes strong { display: block; font-size: 14px; }
+  .notes p { font-size: 13px; color: var(--muted-foreground); }
+  .expiry { max-width: 560px; margin: 40px auto 0; text-align: center; display: grid; gap: 14px; justify-items: center; padding: 40px 32px; }
+  .expiry .mark { width: 56px; height: 56px; }
+  .expiry h1 { font-size: 24px; }
+
+  /* ───────── Mail ───────── */
+  .mail { max-width: 1240px; margin: 0 auto; padding: 32px 24px 80px; display: grid; grid-template-columns: 340px 1fr; gap: 24px; align-items: start; }
+  .mail-list { padding: 8px; }
+  .mail-tabs { display: flex; gap: 4px; background: var(--inert-wash); border-radius: var(--radius-md); padding: 4px; margin: 6px 6px 8px; }
+  .mail-tabs button { flex: 1; border: 0; background: transparent; border-radius: var(--radius-sm); padding: 6px; cursor: pointer; color: var(--muted-foreground); font-size: 14px; }
+  .mail-tabs button[aria-selected="true"] { background: var(--card); color: var(--foreground); font-weight: 600; box-shadow: 0 1px 2px rgb(0 0 0 / 0.08); }
+  .mail-item { display: block; width: 100%; text-align: left; border: 0; background: none; border-radius: 10px; padding: 10px 12px; cursor: pointer; }
+  .mail-item:hover { background: var(--sunk); }
+  .mail-item[aria-current="true"] { background: var(--primary-wash); }
+  .mail-item .s { font-size: 14px; font-weight: 600; display: block; }
+  .mail-item.read .s { font-weight: 400; }
+  .mail-item .m { font-size: 12px; color: var(--muted-foreground); display: block; }
+  .mail-empty { padding: 24px 12px; font-size: 14px; color: var(--muted-foreground); }
+  .email { max-width: 680px; padding: 0; overflow: hidden; }
+  .email-head { display: grid; grid-template-columns: 56px 1fr; gap: 2px 12px; padding: 16px 24px; border-bottom: 1px solid var(--border); font-size: 14px; }
+  .email-head dt { color: var(--muted-foreground); }
+  .email-head dd { margin: 0; }
+  .email-body { padding: 20px 24px 28px; display: grid; gap: 14px; justify-items: start; font-size: 15px; }
+  .email-body .small { font-size: 14px; color: var(--muted-foreground); }
+  .email-table { width: 100%; border: 1px solid var(--border); border-radius: 12px; padding: 0 16px; }
+  .email-table .kv { border-top: 0; border-bottom: 1px solid var(--border); font-size: 14px; }
+  .email-table .kv:last-child { border-bottom: 0; }
+  .email-panel { width: 100%; border-radius: 12px; padding: 12px 16px; font-size: 14px; }
+  .email-panel.pending { background: var(--pending-wash); }
+  .email-panel.pending b { color: var(--pending); }
+  .email-panel.inert { background: var(--inert-wash); font-weight: 600; }
+  .email-panel.pendingtitle { background: var(--pending-wash); color: var(--pending); font-weight: 600; }
+
+  /* ───────── Reviewer surface ───────── */
+  .rv-wrap { padding: 48px; }
+  .rv { max-width: 1344px; margin: 0 auto; background: var(--card); border-radius: var(--radius-xl); box-shadow: var(--shadow-card); overflow: hidden; }
+  .rv-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 28px; border-bottom: 1px solid var(--border); }
+  .rv-header .brand { font-size: 16px; font-weight: 600; }
+  .rv-header .brand span { font-size: 13px; font-weight: 400; color: var(--muted-foreground); margin-left: 8px; }
+  .rv-header .who { font-size: 14px; color: var(--muted-foreground); display: flex; gap: 14px; align-items: center; }
+  .band { background: var(--sunk); border-bottom: 1px solid var(--border); padding: 20px 40px; display: grid; gap: 14px; }
+  .band-row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .tabs { display: inline-flex; gap: 2px; background: var(--inert-wash); border-radius: var(--radius-md); padding: 4px; }
+  .tab { border: 0; background: transparent; border-radius: var(--radius-sm); padding: 6px 14px; cursor: pointer; font-size: 14px; color: var(--muted-foreground); }
+  .tab.attn { color: var(--pending); }
+  .tab[aria-selected="true"] { background: var(--card); color: var(--foreground); font-weight: 600; box-shadow: 0 1px 2px rgb(0 0 0 / 0.08); }
+  .tab.attn[aria-selected="true"] { color: var(--pending); }
+  .tab.attn.strong { font-weight: 600; }
+  .band-right { margin-left: auto; display: flex; align-items: center; gap: 14px; }
+  .stale { font-size: 12px; color: var(--muted-foreground); }
+  .stale.bad { color: var(--failed); }
+  .lookup { position: relative; width: 260px; }
+  .lookup input { height: 40px; font-size: 14px; }
+  .lookup .lk-err { position: absolute; top: 100%; left: 0; font-size: 12px; color: var(--failed); margin-top: 2px; white-space: nowrap; }
+  .qtable { width: 100%; border-collapse: separate; border-spacing: 0; background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; font-size: 14px; }
+  .qtable th { text-align: left; font-weight: 400; font-size: 12px; color: var(--muted-foreground); padding: 10px 20px; border-bottom: 1px solid var(--border); }
+  .qtable td { padding: 10px 20px; border-top: 1px solid var(--border); vertical-align: middle; }
+  .qtable tbody tr:first-child td { border-top: 0; }
+  .qtable tbody tr { cursor: pointer; }
+  .qtable tbody tr:hover td { background: var(--sunk); }
+  .qtable tbody tr.sel td { background: var(--primary-wash); }
+  .qtable tbody tr.sel td:first-child { box-shadow: inset 3px 0 0 var(--primary); }
+  .qtable tbody tr.sel th[scope="row"] { font-weight: 600; }
+  .qtable tbody tr.sel.alert td { background: var(--pending-wash); }
+  .qtable tbody tr.sel.alert td:first-child { box-shadow: inset 3px 0 0 var(--pending); }
+  .qtable th[scope="row"] { font-weight: 400; color: var(--foreground); font-size: 14px; padding: 10px 20px; border-top: 1px solid var(--border); border-bottom: 0; }
+  .qtable tbody tr:first-child th[scope="row"] { border-top: 0; }
+  .qtable tbody tr:hover th[scope="row"] { background: var(--sunk); }
+  .qtable tbody tr.sel th[scope="row"] { background: var(--primary-wash); box-shadow: inset 3px 0 0 var(--primary); }
+  .qtable tbody tr.sel.alert th[scope="row"] { background: var(--pending-wash); box-shadow: inset 3px 0 0 var(--pending); }
+  .qtable .rowbtn { background: none; border: 0; padding: 0; font: inherit; color: inherit; cursor: pointer; text-align: left; }
+  .qtable .kind { color: var(--pending); font-weight: 600; }
+  .band-note { font-size: 12px; color: var(--muted-foreground); }
+  .empty { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 48px 24px; display: grid; justify-items: center; gap: 6px; text-align: center; }
+  .empty .mark { margin-bottom: 8px; }
+  .empty h2 { font-size: 18px; }
+  .empty p { font-size: 14px; color: var(--muted-foreground); }
+  .empty p.small { font-size: 13px; }
+  .empty .btn { margin-top: 10px; }
+
+  .dossier { padding: 36px 40px 48px; display: grid; gap: 28px; }
+  .dos-head { display: flex; justify-content: space-between; gap: 32px; align-items: flex-start; }
+  .dos-head .ref { font-size: 13px; color: var(--muted-foreground); }
+  .dos-head h2 { font-size: 26px; }
+  .dos-meta { display: flex; gap: 32px; }
+  .dos-meta div { display: grid; }
+  .dos-meta small { font-size: 12px; color: var(--muted-foreground); }
+  .dos-meta span { font-size: 14px; font-variant-numeric: tabular-nums; }
+  .dos-meta .success { color: var(--success); }
+  .cols2 { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+  .cols2 h3 { font-size: 16px; margin-bottom: 10px; }
+  .codes-btn { display: block; margin-top: 2px; font-size: 13px; color: var(--primary); background: none; border: 0; padding: 0; cursor: pointer; }
+  .codes-list { font-size: 13px; color: var(--muted-foreground); margin-top: 2px; }
+  .rows-muted { color: var(--muted-foreground); }
+  .strip { border-top: 1px solid var(--border); padding-top: 24px; display: flex; justify-content: space-between; gap: 24px; align-items: center; }
+  .strip .q { max-width: 640px; }
+  .strip .q p { font-size: 14px; }
+  .strip .q small { font-size: 12px; color: var(--muted-foreground); }
+  .strip .btns { display: flex; gap: 12px; }
+  .strip .btns .btn.lg { padding: 0; }
+  .after { border-top: 1px solid var(--border); padding-top: 24px; }
+  .alert-card { background: var(--pending-wash); border-left: 2px solid var(--pending); border-radius: 12px; padding: 24px; display: grid; gap: 8px; justify-items: start; }
+  .alert-card h3 { color: var(--pending); font-size: 16px; }
+  .alert-card .meta { font-size: 13px; color: var(--muted-foreground); }
+  .alert-card .sub { font-size: 13px; font-weight: 500; margin-top: 8px; }
+  .alert-card .outs { display: flex; gap: 8px; flex-wrap: wrap; }
+  .alert-card small { font-size: 12px; color: var(--muted-foreground); }
+  .alert-contact { width: 100%; background: var(--card); border-radius: var(--radius-md); padding: 14px 18px; margin-top: 6px; display: grid; grid-template-columns: 1.4fr 1fr 1.4fr; gap: 20px; }
+  .alert-contact small { display: block; font-size: 12px; color: var(--muted-foreground); }
+  .alert-contact b { display: block; font-size: 15px; font-weight: 600; }
+  .alert-contact b.tel { font-size: 18px; }
+  .alert-contact span { display: block; font-size: 13px; color: var(--muted-foreground); overflow-wrap: anywhere; }
+  .alert-contact .addr { font-size: 14px; color: var(--foreground); }
+  .ask-only { max-width: 640px; }
+  .actions2 { border-top: 1px solid var(--border); padding-top: 24px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
+  .actions2 > div { display: grid; gap: 4px; justify-items: start; }
+  .actions2 strong { font-size: 14px; }
+  .actions2 p { font-size: 13px; color: var(--muted-foreground); }
+  .actions2 .btn { margin-top: 8px; min-width: 180px; }
+  .actions2 .why { font-size: 12px; color: var(--muted-foreground); margin-top: 2px; }
+  .absence { background: var(--inert-wash); border-radius: 14px; padding: 16px 20px; font-size: 14px; display: flex; gap: 12px; align-items: flex-start; }
+  .absence svg { flex: none; color: var(--inert); margin-top: 2px; }
+  .absence strong { color: var(--foreground); font-weight: 600; display: block; }
+  .rerun { border-top: 1px solid var(--border); padding-top: 24px; display: flex; justify-content: space-between; align-items: center; gap: 24px; }
+  .rerun p { font-size: 14px; }
+  .rerun small { font-size: 12px; color: var(--muted-foreground); display: block; }
+  .ro-tag { display: flex; gap: 10px; align-items: center; margin-bottom: 4px; font-size: 13px; color: var(--muted-foreground); }
+  .ended-note { background: var(--inert-wash); border-radius: 14px; padding: 14px 18px; font-size: 14px; }
+  .ftable { width: 100%; border-collapse: collapse; font-size: 14px; border: 1px solid var(--border); }
+  .ftable th { text-align: left; font-weight: 400; color: var(--muted-foreground); font-size: 12px; padding: 8px 14px; border-bottom: 1px solid var(--border); }
+  .ftable td { padding: 8px 14px; border-top: 1px solid var(--border); }
+  .trail { display: grid; font-size: 13px; }
+  .trail div { display: grid; grid-template-columns: 140px 160px 1fr; gap: 12px; padding: 6px 0; border-top: 1px solid var(--border); }
+  .trail span:not(:last-child) { color: var(--muted-foreground); }
+
+  .signin { max-width: 460px; margin: 64px auto 0; padding: 32px; display: grid; gap: 20px; }
+  .signin .eyebrow2 { font-size: 13px; color: var(--muted-foreground); }
+  .signin h1 { font-size: 26px; margin-top: -14px; }
+  .signin .foot { border-top: 1px solid var(--border); padding-top: 16px; font-size: 12px; color: var(--muted-foreground); }
+  .narrow-screen { display: none; }
+
+  @media (max-width: 1023px) {
+    .rv-wrap .rv, .rv-wrap .signin { display: none; }
+    .narrow-screen { display: grid; max-width: 640px; margin: 40px auto; min-height: 420px; align-content: center; gap: 12px; padding: 40px; }
+    .narrow-screen .eyebrow2 { font-size: 13px; color: var(--muted-foreground); }
+    .narrow-screen h1 { font-size: 26px; }
+    .narrow-screen p { color: var(--muted-foreground); }
+    .rv-wrap { padding: 16px; }
+  }
+  @media (max-width: 900px) {
+    .pub { padding: 24px 16px 64px; }
+    .pub-title { font-size: 22px; }
+    .deid .cols { grid-template-columns: 1fr; gap: 16px; }
+    .split { grid-template-columns: 1fr; gap: 24px; }
+    .map-pane { position: static; }
+    .area-head { font-size: 26px; }
+    .map { grid-template-columns: repeat(4, 52px); grid-template-rows: repeat(7, 42px); }
+    .form-actions.pair { grid-template-columns: 1fr; }
+    .form-actions.pair .primary { order: -1; height: 48px; }
+    .narrow .card { padding: 24px 20px; }
+    .tiles, .stats { grid-template-columns: 1fr 1fr; }
+    .wash-panel .big { font-size: 22px; }
+    .mail { grid-template-columns: 1fr; padding: 16px; }
+    .kv { grid-template-columns: 96px 1fr; }
+  }
+  @media (max-width: 480px) {
+    .pairrow { grid-template-columns: 1fr; gap: 0; }
+    .pairrow.dates { grid-template-columns: 1fr 1fr; gap: 12px; }
+    .tiles { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div id="proto"></div>
+<main id="app"></main>
+<div id="overlay"></div>
+<div id="flash"></div>
+
+<script>
+'use strict';
+
+/* ═════════════════ Reference data ═════════════════ */
+
+// docs/disease-groups.md, picker order. vol = rows/yr measured 2026-09-02.
+const GROUPS = [
+  { id: 'air-pollution', name: 'โรคจากการสัมผัสมลพิษทางอากาศ', codes: ['201'], vol: 1952 },
+  { id: 'silicosis', name: 'โรคซิลิโคสิส', codes: ['202', '203'], vol: 129 },
+  { id: 'asbestos', name: 'โรคจากแร่ใยหิน', codes: ['204', '205', '206', '207'], vol: 73 },
+  { id: 'lead', name: 'โรคจากตะกั่วและสารประกอบของตะกั่ว', codes: ['208'], vol: 95 },
+  { id: 'pesticides', name: 'โรคจากสารกำจัดศัตรูพืช', codes: ['209', '210', '211', '212', '213', '214', '215', '216', '217', '218'], vol: 28 },
+  { id: 'confined-space', name: 'การบาดเจ็บจากภาวะอับอากาศ', codes: ['219'], vol: 15 },
+  { id: 'radiation', name: 'โรคจากรังสี', codes: ['222', '223', '224'], vol: 4 },
+  { id: 'work-related', name: 'โรคจากการทำงาน', codes: ['220'], vol: 970 },
+  { id: 'environmental-pollution', name: 'โรคที่เกี่ยวข้องกับการสัมผัสมลพิษในสิ่งแวดล้อม', codes: ['221'], vol: 194 },
+  { id: 'heat', name: 'โรคจากความร้อน', codes: ['501'], vol: 401 },
+];
+const groupById = id => GROUPS.find(g => g.id === id);
+
+// docs/provinces.csv: [province_id, name_th, health_region]
+const PROVINCES = [[10,"กรุงเทพมหานคร",13],[11,"สมุทรปราการ",6],[12,"นนทบุรี",4],[13,"ปทุมธานี",4],[14,"พระนครศรีอยุธยา",4],[15,"อ่างทอง",4],[16,"ลพบุรี",4],[17,"สิงห์บุรี",4],[18,"ชัยนาท",3],[19,"สระบุรี",4],[20,"ชลบุรี",6],[21,"ระยอง",6],[22,"จันทบุรี",6],[23,"ตราด",6],[24,"ฉะเชิงเทรา",6],[25,"ปราจีนบุรี",6],[26,"นครนายก",4],[27,"สระแก้ว",6],[30,"นครราชสีมา",9],[31,"บุรีรัมย์",9],[32,"สุรินทร์",9],[33,"ศรีสะเกษ",10],[34,"อุบลราชธานี",10],[35,"ยโสธร",10],[36,"ชัยภูมิ",9],[37,"อำนาจเจริญ",10],[38,"บึงกาฬ",8],[39,"หนองบัวลำภู",8],[40,"ขอนแก่น",7],[41,"อุดรธานี",8],[42,"เลย",8],[43,"หนองคาย",8],[44,"มหาสารคาม",7],[45,"ร้อยเอ็ด",7],[46,"กาฬสินธุ์",7],[47,"สกลนคร",8],[48,"นครพนม",8],[49,"มุกดาหาร",10],[50,"เชียงใหม่",1],[51,"ลำพูน",1],[52,"ลำปาง",1],[53,"อุตรดิตถ์",2],[54,"แพร่",1],[55,"น่าน",1],[56,"พะเยา",1],[57,"เชียงราย",1],[58,"แม่ฮ่องสอน",1],[60,"นครสวรรค์",3],[61,"อุทัยธานี",3],[62,"กำแพงเพชร",3],[63,"ตาก",2],[64,"สุโขทัย",2],[65,"พิษณุโลก",2],[66,"พิจิตร",3],[67,"เพชรบูรณ์",2],[70,"ราชบุรี",5],[71,"กาญจนบุรี",5],[72,"สุพรรณบุรี",5],[73,"นครปฐม",5],[74,"สมุทรสาคร",5],[75,"สมุทรสงคราม",5],[76,"เพชรบุรี",5],[77,"ประจวบคีรีขันธ์",5],[80,"นครศรีธรรมราช",11],[81,"กระบี่",11],[82,"พังงา",11],[83,"ภูเก็ต",11],[84,"สุราษฎร์ธานี",11],[85,"ระนอง",11],[86,"ชุมพร",11],[90,"สงขลา",12],[91,"สตูล",12],[92,"ตรัง",12],[93,"พัทลุง",12],[94,"ปัตตานี",12],[95,"ยะลา",12],[96,"นราธิวาส",12]];
+const provById = id => PROVINCES.find(p => p[0] === Number(id));
+const provsOfRegion = r => PROVINCES.filter(p => p[2] === r);
+const PROV_SORTED = [...PROVINCES].sort((a, b) => a[1].localeCompare(b[1], 'th'));
+
+// system.md, Region map: the 4 × 7 lattice. [region, row, col]
+const LATTICE = [[1,1,2],[2,2,2],[3,3,2],[4,4,2],[5,5,1],[6,5,3],[7,3,3],[8,2,3],[9,4,3],[10,4,4],[11,6,1],[12,7,1],[13,5,2]];
+
+const REVIEWERS = { 'thanapon.s': 'ธนพล ศรีสุข', 'malee.j': 'มาลี จันทร์เพ็ญ' };
+const PHONE = '0 2590 4393';
+const MAX_DAYS = 365;
+const LINK_HOURS = 72;
+const MAX_ATTEMPTS = 10;
+
+/* ═════════════════ Formatting ═════════════════ */
+
+const TZ = 'Asia/Bangkok';
+const HOUR = 3600e3, MIN = 60e3, DAY = 86400e3;
+const fmt = (ms, o) => new Intl.DateTimeFormat('th-TH', { timeZone: TZ, ...o }).format(ms);
+const hm = ms => new Intl.DateTimeFormat('en-GB', { timeZone: TZ, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(ms);
+const dShort = ms => fmt(ms, { day: 'numeric', month: 'short', year: 'numeric' });
+const dLong = ms => fmt(ms, { day: 'numeric', month: 'long', year: 'numeric' });
+const dmHm = ms => `${fmt(ms, { day: 'numeric', month: 'short' })} ${hm(ms)}`;
+const dtShort = ms => `${dShort(ms)} ${hm(ms)}`;
+const isoDay = s => Date.parse(`${s}T00:00:00+07:00`);
+const durHM = min => { min = Math.max(0, Math.round(min)); return `${Math.floor(min / 60)} ชม. ${String(min % 60).padStart(2, '0')} น.`; };
+const num = n => n.toLocaleString('en-US');
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const stamp = ms => { const p = new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23' }).formatToParts(ms); const g = t => p.find(x => x.type === t).value; return `${g('year')}${g('month')}${g('day')}-${g('hour')}${g('minute')}${g('second')}`; };
+// Dates are typed and shown in พ.ศ.; the store keeps ISO (Gregorian).
+const TH_MONTHS = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+function parseThaiDate(txt) {
+  const t0 = String(txt).trim();
+  // Either 1/3/2569 or the at-rest form 1 มี.ค. 2569, so the shown value is also editable.
+  let m = t0.match(/^(\d{1,2})\s*[/.-]\s*(\d{1,2})\s*[/.-]\s*(\d{4})$/);
+  if (!m) {
+    const w = t0.match(/^(\d{1,2})\s+(\S+)\s+(\d{4})$/);
+    const mi = w ? TH_MONTHS.indexOf(w[2]) : -1;
+    if (mi < 0) return null;
+    m = [t0, w[1], String(mi + 1), w[3]];
+  }
+  const d = Number(m[1]), mo = Number(m[2]);
+  let y = Number(m[3]);
+  if (y > 2400) y -= 543; // พ.ศ.; a year below 2400 is read as ค.ศ.
+  const iso = `${y}-${String(mo).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  const t = new Date(iso + 'T00:00:00Z');
+  return t.getUTCMonth() + 1 === mo && t.getUTCDate() === d ? iso : null;
+}
+const days = (from, to) => Math.round((isoDay(to) - isoDay(from)) / DAY) + 1;
+
+/* ═════════════════ Store ═════════════════ */
+
+const KEY = 'dds-proto-rr-v1';
+const T0 = Date.parse('2026-09-30T14:20:00+07:00');
+const blankForm = () => ({ groupId: '', from: '', to: '', areaMode: 'national', region: null, provinceId: '', name: '', surname: '', workplace: '', tel: '', email: '', consent: false });
+
+function mkReq(o) {
+  const g = groupById(o.groupId);
+  const r = {
+    ref: o.ref, name: o.name, surname: o.surname, workplace: o.workplace, tel: o.tel, email: o.email,
+    groupId: o.groupId, codes: [...g.codes], from: o.from, to: o.to,
+    area: o.area, provinces: o.area.mode === 'national' ? [] : o.area.mode === 'region' ? provsOfRegion(o.area.region).map(p => p[0]) : [Number(o.area.provinceId)],
+    submittedAt: o.submittedAt, bizMin: o.bizMin ?? 24 * 60, state: o.state || 'pending',
+    probe: o.probe || { state: 'counting', rows: null }, decision: o.decision || null,
+    runs: o.runs || [], alerts: o.alerts || [], events: o.events || [],
+  };
+  if (!o.events) r.events.push({ at: o.submittedAt, actor: 'ผู้ขอ', text: 'ส่งคำขอ' });
+  if (o.probe?.state === 'counted' && o.probe.rows == null) r.probe.rows = estimateRows(r);
+  return r;
+}
+function estimateRows(r) {
+  const g = groupById(r.groupId);
+  const frac = r.area.mode === 'national' ? 1 : r.provinces.length / 77;
+  return Math.round(g.vol * (days(r.from, r.to) / 365) * frac);
+}
+function mkRun(r, n, state, readyAt, attempts = 0) {
+  const tok = 'tk' + Math.random().toString(36).slice(2, 10);
+  const run = { n, state, token: tok, archive: `dds-envocc-sharing-${stamp(r.submittedAt)}${n > 1 ? '-r' + n : ''}.zip`, readyAt: readyAt ?? null, deliveredAt: readyAt ?? null, attempts, sizeKb: Math.max(12, Math.round((r.probe.rows || 40) * 0.046) + 11) };
+  return run;
+}
+
+function seed() {
+  const S = {
+    now: T0, nextRef: 142, requests: {}, mails: [], mailSeq: 1,
+    flags: { sendFail: false, refreshFail: false, sessionExpired: false },
+    form: blankForm(), formUi: { attempted: false }, pubRoute: 'form', lastRef: null,
+    rv: { user: null, snap: null, zone: 'pending', sel: null, lookup: null, decided: {}, codesOpen: {}, lookupQ: '', lookupErr: '', refreshErr: null, toast: null, notice: null, pendingNote: '' },
+    mailTab: 'requester', mailSel: null,
+  };
+  const add = r => { S.requests[r.ref] = r; return r; };
+  const at = s => Date.parse(s + '+07:00');
+
+  // Pending, oldest first; three Probe states.
+  add(mkReq({ ref: 'REQ-2569-0138', name: 'กิตติพงษ์', surname: 'แสงทอง', workplace: 'สสจ.ขอนแก่น กลุ่มงานอาชีวอนามัย', tel: '043 221 900', email: 'kittipong.s@moph.go.th', groupId: 'work-related', from: '2026-01-01', to: '2026-06-30', area: { mode: 'province', provinceId: 40 }, submittedAt: at('2026-09-29T11:39:00'), bizMin: 19 * 60 + 5, probe: { state: 'counted' } }));
+  add(mkReq({ ref: 'REQ-2569-0140', name: 'ณัฐธิดา', surname: 'พรหมมา', workplace: 'มหาวิทยาลัยเชียงใหม่ คณะสาธารณสุขศาสตร์', tel: '053 942 555', email: 'nattida.p@cmu.ac.th', groupId: 'asbestos', from: '2025-10-01', to: '2026-09-15', area: { mode: 'region', region: 1 }, submittedAt: at('2026-09-29T15:04:00'), bizMin: 22 * 60 + 30, probe: { state: 'failed', rows: null } }));
+  add(mkReq({ ref: 'REQ-2569-0141', name: 'อภิชาติ', surname: 'มั่นคง', workplace: 'รพ.สต.บ้านโคก', tel: '081 555 0192', email: 'apichart.m@gmail.com', groupId: 'radiation', from: '2026-06-01', to: '2026-08-31', area: { mode: 'province', provinceId: 34 }, submittedAt: at('2026-09-30T08:54:00'), bizMin: 23 * 60 + 50, probe: { state: 'counted', rows: 0 } }));
+
+  // Alerts: an extraction failure (mine) and a collection lapse (Malee's).
+  const w = add(mkReq({ ref: 'REQ-2569-0131', name: 'วรรณา', surname: 'ทองดี', workplace: 'สสจ.นครราชสีมา งานควบคุมโรค', tel: '089 456 1122', email: 'wanna.t@moph.go.th', groupId: 'air-pollution', from: '2026-01-01', to: '2026-06-30', area: { mode: 'province', provinceId: 30 }, submittedAt: at('2026-09-29T09:02:00'), state: 'approved', probe: { state: 'counted' } }));
+  w.decision = { kind: 'approved', by: 'ธนพล ศรีสุข', at: at('2026-09-29T15:20:00'), rows: w.probe.rows };
+  w.runs = [{ ...mkRun(w, 1, 'failed'), failedAt: at('2026-09-30T09:12:00') }];
+  w.alerts = [{ kind: 'failed', raisedAt: at('2026-09-30T09:12:00'), assignee: 'ธนพล ศรีสุข', open: true, attempts: 1 }];
+  w.events.push({ at: w.decision.at, actor: 'ธนพล ศรีสุข', text: 'อนุมัติ' }, { at: at('2026-09-30T09:12:00'), actor: 'ระบบ', text: 'ดึงข้อมูลไม่สำเร็จ ครั้งที่ 1' });
+
+  const p = add(mkReq({ ref: 'REQ-2569-0127', name: 'ประเสริฐ', surname: 'ใจดี', workplace: 'สคร.9 นครราชสีมา กลุ่มระบาดวิทยา', tel: '044 212 900', email: 'prasert.j@ddc.mail.go.th', groupId: 'heat', from: '2026-03-01', to: '2026-05-31', area: { mode: 'region', region: 9 }, submittedAt: at('2026-09-27T10:05:00'), state: 'approved', probe: { state: 'counted' } }));
+  p.decision = { kind: 'approved', by: 'มาลี จันทร์เพ็ญ', at: at('2026-09-27T16:10:00'), rows: p.probe.rows };
+  p.runs = [mkRun(p, 1, 'ready', at('2026-09-28T13:40:00'))];
+  p.alerts = [{ kind: 'lapse', raisedAt: at('2026-09-29T13:40:00'), assignee: 'มาลี จันทร์เพ็ญ', open: true }];
+  p.runs[0].lapseRaised = true;
+  p.events.push({ at: p.decision.at, actor: 'มาลี จันทร์เพ็ญ', text: 'อนุมัติ' }, { at: at('2026-09-28T13:40:00'), actor: 'ระบบ', text: 'ส่งอีเมลพร้อมลิงก์แล้ว' }, { at: at('2026-09-29T13:40:00'), actor: 'ระบบ', text: 'ยังไม่มีการดาวน์โหลด 24 ชั่วโมง แจ้งผู้อนุมัติ' });
+
+  // In flight: ready, running, queued (submit order).
+  const s = add(mkReq({ ref: 'REQ-2569-0119', name: 'สมชาย', surname: 'รักษ์ไทย', workplace: 'สคร.7 ขอนแก่น กลุ่มระบาดวิทยา', tel: '086 777 0101', email: 'somchai.r@ddc.mail.go.th', groupId: 'air-pollution', from: '2026-07-01', to: '2026-08-31', area: { mode: 'region', region: 7 }, submittedAt: at('2026-09-26T09:30:00'), state: 'approved', probe: { state: 'counted' } }));
+  s.decision = { kind: 'approved', by: 'มาลี จันทร์เพ็ญ', at: at('2026-09-29T17:10:00'), rows: s.probe.rows };
+  s.runs = [mkRun(s, 1, 'ready', at('2026-09-29T17:32:00'))];
+  s.events.push({ at: s.decision.at, actor: 'มาลี จันทร์เพ็ญ', text: 'อนุมัติ' }, { at: at('2026-09-29T17:32:00'), actor: 'ระบบ', text: 'ส่งอีเมลพร้อมลิงก์แล้ว' });
+  const a = add(mkReq({ ref: 'REQ-2569-0124', name: 'อรุณี', surname: 'แก้วมณี', workplace: 'สสจ.ชลบุรี กลุ่มงานควบคุมโรค', tel: '038 274 111', email: 'arunee.k@moph.go.th', groupId: 'lead', from: '2025-10-01', to: '2026-09-01', area: { mode: 'province', provinceId: 20 }, submittedAt: at('2026-09-28T13:12:00'), state: 'approved', probe: { state: 'counted' } }));
+  a.decision = { kind: 'approved', by: 'ธนพล ศรีสุข', at: at('2026-09-30T14:02:00'), rows: a.probe.rows };
+  a.runs = [mkRun(a, 1, 'running')];
+  a.events.push({ at: a.decision.at, actor: 'ธนพล ศรีสุข', text: 'อนุมัติ' });
+  const y = add(mkReq({ ref: 'REQ-2569-0139', name: 'ปิยะ', surname: 'สุขสวัสดิ์', workplace: 'มหาวิทยาลัยมหิดล คณะสาธารณสุขศาสตร์', tel: '02 354 8543', email: 'piya.s@mahidol.ac.th', groupId: 'silicosis', from: '2025-09-30', to: '2026-09-29', area: { mode: 'national' }, submittedAt: at('2026-09-29T14:40:00'), state: 'approved', probe: { state: 'counted' } }));
+  y.decision = { kind: 'approved', by: 'ธนพล ศรีสุข', at: at('2026-09-30T14:15:00'), rows: y.probe.rows };
+  y.runs = [mkRun(y, 1, 'queued')];
+  y.events.push({ at: y.decision.at, actor: 'ธนพล ศรีสุข', text: 'อนุมัติ' });
+
+  // Terminal, for lookup.
+  const d = add(mkReq({ ref: 'REQ-2569-0098', name: 'จิราพร', surname: 'บุญมา', workplace: 'กองระบาดวิทยา กรมควบคุมโรค', tel: '02 590 1882', email: 'jiraporn.b@ddc.mail.go.th', groupId: 'pesticides', from: '2026-01-01', to: '2026-03-31', area: { mode: 'national' }, submittedAt: at('2026-09-19T16:20:00'), state: 'ended', probe: { state: 'counted' } }));
+  d.decision = { kind: 'approved', by: 'มาลี จันทร์เพ็ญ', at: at('2026-09-20T10:05:00'), rows: d.probe.rows };
+  d.runs = [{ ...mkRun(d, 1, 'expired', at('2026-09-20T10:41:00'), 2) }];
+  d.events = [
+    { at: at('2026-09-19T16:20:00'), actor: 'ผู้ขอ', text: 'ส่งคำขอ' },
+    { at: at('2026-09-20T10:05:00'), actor: 'มาลี จันทร์เพ็ญ', text: 'อนุมัติ' },
+    { at: at('2026-09-20T10:41:00'), actor: 'ระบบ', text: 'ส่งอีเมลพร้อมลิงก์แล้ว' },
+    { at: at('2026-09-20T11:15:00'), actor: 'ผู้ถือลิงก์', text: 'ดาวน์โหลดครั้งที่ 1' },
+    { at: at('2026-09-20T14:02:00'), actor: 'ผู้ถือลิงก์', text: 'ดาวน์โหลดครั้งที่ 2' },
+    { at: at('2026-09-23T10:41:00'), actor: 'ระบบ', text: 'ลิงก์หมดอายุ' },
+  ];
+  const x = add(mkReq({ ref: 'REQ-2569-0105', name: 'ธีระ', surname: 'วงศ์สว่าง', workplace: 'บริษัท ดาต้าอินไซต์ จำกัด', tel: '090 111 2233', email: 'teera@datainsight.co.th', groupId: 'heat', from: '2025-10-01', to: '2026-09-01', area: { mode: 'national' }, submittedAt: at('2026-09-22T09:10:00'), state: 'rejected', probe: { state: 'counted' } }));
+  x.decision = { kind: 'rejected', by: 'ธนพล ศรีสุข', at: at('2026-09-22T13:30:00'), rows: x.probe.rows, note: 'โทรแล้ว ไม่ใช่เจ้าหน้าที่ในสังกัดกระทรวง' };
+  x.events.push({ at: x.decision.at, actor: 'ธนพล ศรีสุข', text: 'ไม่อนุมัติ' }, { at: x.decision.at, actor: 'ระบบ', text: 'ส่งอีเมลแจ้งผลแล้ว' });
+
+  // The delivery emails already out, so the lapse and the ready link can be collected.
+  mail(S, { audience: 'requester', kind: 'delivery', ref: 'REQ-2569-0127', at: at('2026-09-28T13:40:00'), token: p.runs[0].token, read: true });
+  mail(S, { audience: 'requester', kind: 'delivery', ref: 'REQ-2569-0119', at: at('2026-09-29T17:32:00'), token: s.runs[0].token, read: true });
+  mail(S, { audience: 'reviewer', kind: 'failure', ref: 'REQ-2569-0131', at: at('2026-09-30T09:12:00'), read: true });
+  return S;
+}
+
+function mail(S, m) {
+  const r = S.requests[m.ref];
+  m.id = S.mailSeq++;
+  m.at = m.at ?? S.now;
+  m.to = m.to ?? (m.audience === 'requester' ? r.email : m.kind === 'queue' ? 'ผู้ตรวจสอบทุกท่าน' : r.decision?.by);
+  S.mails.push(m);
+}
+
+let S;
+try { S = JSON.parse(localStorage.getItem(KEY)); } catch { S = null; }
+if (!S || !S.requests) S = seed();
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch { /* private window */ } };
+
+/* ═════════════════ Domain helpers ═════════════════ */
+
+const reqs = () => Object.values(S.requests);
+const fullName = r => `${r.name} ${r.surname}`;
+const curRun = r => r.runs[r.runs.length - 1];
+const openAlerts = r => r.alerts.filter(a => a.open);
+const isTerminal = r => ['rejected', 'lapsed', 'ended'].includes(r.state);
+function zoneOf(r) {
+  if (r.state === 'pending') return 'pending';
+  if (r.state === 'approved') return openAlerts(r).length ? 'alerts' : 'inflight';
+  return null;
+}
+function areaLabel(r, withCount) {
+  if (r.area.mode === 'national') return 'ทั้งประเทศ';
+  if (r.area.mode === 'region') return `เขตสุขภาพที่ ${r.area.region}${withCount ? ` · ${r.provinces.length} จังหวัด` : ''}`;
+  return provById(r.area.provinceId)[1];
+}
+const linkMinLeft = run => run.readyAt ? (run.readyAt + LINK_HOURS * HOUR - S.now) / MIN : 0;
+const rangeShort = r => `${dShort(isoDay(r.from))} – ${dShort(isoDay(r.to))}`;
+const rangeLong = r => `${dLong(isoDay(r.from))} – ${dLong(isoDay(r.to))}`;
+const log = (r, actor, text, at = S.now) => r.events.push({ at, actor, text });
+
+function rowsText(r) {
+  const p = r.probe;
+  if (p.state === 'counting') return '<span class="rows-muted">กำลังนับ</span>';
+  if (p.state === 'failed') return '<span class="rows-muted">นับไม่สำเร็จ</span>';
+  if (p.rows === 0) return '0 แถว · ไม่มีรายงานตรงกับที่ขอ';
+  return `${num(p.rows)} แถว`;
+}
+
+/* ═════════════════ Server simulation ═════════════════ */
+
+function resolveProbe(ref, ok = true) {
+  const r = S.requests[ref];
+  if (!r || r.probe.state !== 'counting') return;
+  r.probe = ok ? { state: 'counted', rows: estimateRows(r) } : { state: 'failed', rows: null };
+}
+
+function startRun(r, byName) {
+  const n = r.runs.length + 1;
+  const run = mkRun(r, n, 'queued');
+  r.runs.push(run);
+  if (n > 1) log(r, byName, `ดึงข้อมูลใหม่ ครั้งที่ ${n}`);
+  const failed = r.alerts.find(a => a.open && a.kind === 'failed');
+  if (failed) failed.rerunning = true;
+  setTimeout(() => { if (run.state === 'queued') { run.state = 'running'; save(); render(); } }, 2500);
+}
+
+function finishRun(r, ok) {
+  const run = curRun(r);
+  if (!run || !['queued', 'running'].includes(run.state)) return;
+  if (ok) {
+    run.state = 'ready'; run.readyAt = S.now; run.deliveredAt = S.now;
+    for (const old of r.runs) if (old !== run && old.state === 'ready') { old.state = 'revoked'; log(r, 'ระบบ', `ยกเลิกลิงก์ครั้งที่ ${old.n} เพราะไฟล์ใหม่พร้อมแล้ว`); }
+    const f = r.alerts.find(a => a.open && a.kind === 'failed');
+    if (f) { f.open = false; f.outcome = 'ดึงข้อมูลใหม่สำเร็จ'; f.clearedBy = 'ระบบ'; f.clearedAt = S.now; }
+    log(r, 'ระบบ', 'ส่งอีเมลพร้อมลิงก์แล้ว');
+    mail(S, { audience: 'requester', kind: 'delivery', ref: r.ref, token: run.token });
+  } else {
+    run.state = 'failed'; run.failedAt = S.now;
+    log(r, 'ระบบ', `ดึงข้อมูลไม่สำเร็จ ครั้งที่ ${run.n}`);
+    const f = r.alerts.find(a => a.open && a.kind === 'failed');
+    if (f) { f.rerunning = false; f.attempts = (f.attempts || 1) + 1; }
+    else {
+      r.alerts.push({ kind: 'failed', raisedAt: S.now, assignee: r.decision.by, open: true, attempts: 1 });
+      mail(S, { audience: 'reviewer', kind: 'failure', ref: r.ref });
+    }
+  }
+}
+
+function tick(minutes) {
+  S.now += minutes * MIN;
+  for (const r of reqs()) {
+    if (r.state === 'pending') {
+      r.bizMin -= minutes;
+      if (r.bizMin <= 0) { r.bizMin = 0; r.state = 'lapsed'; log(r, 'ระบบ', 'ครบ 24 ชั่วโมงทำการโดยไม่มีการตัดสิน คำขอสิ้นสุด'); }
+    }
+    if (r.state !== 'approved') continue;
+    for (const run of r.runs) {
+      if (run.state !== 'ready') continue;
+      if (linkMinLeft(run) <= 0) {
+        run.state = 'expired';
+        log(r, 'ระบบ', 'ลิงก์หมดอายุ', run.readyAt + LINK_HOURS * HOUR);
+        if (run === curRun(r)) { r.state = 'ended'; r.alerts.forEach(a => { if (a.open) { a.open = false; a.outcome = 'ลิงก์หมดอายุ'; a.clearedBy = 'ระบบ'; a.clearedAt = S.now; } }); }
+      } else if (!run.lapseRaised && run.attempts === 0 && S.now - run.deliveredAt >= 24 * HOUR) {
+        run.lapseRaised = true;
+        r.alerts.push({ kind: 'lapse', raisedAt: S.now, assignee: r.decision.by, open: true });
+        log(r, 'ระบบ', 'ยังไม่มีการดาวน์โหลด 24 ชั่วโมง แจ้งผู้อนุมัติ');
+      }
+    }
+  }
+}
+
+function submitRequest(f) {
+  const area = f.areaMode === 'national' ? { mode: 'national' } : f.areaMode === 'region' ? { mode: 'region', region: f.region } : { mode: 'province', provinceId: Number(f.provinceId) };
+  const draft = mkReq({ ref: '', ...f, area, submittedAt: S.now });
+  const sameProvs = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
+  // Duplicate suppression: email and ask match an unfinished Request.
+  const dup = reqs().find(r => !isTerminal(r) && r.email.trim().toLowerCase() === f.email.trim().toLowerCase() && r.groupId === draft.groupId && r.from === draft.from && r.to === draft.to && sameProvs([...r.provinces].sort(), [...draft.provinces].sort()));
+  if (dup) return { dup: true };
+  const ref = `REQ-2569-${String(S.nextRef++).padStart(4, '0')}`;
+  draft.ref = ref;
+  S.requests[ref] = draft;
+  mail(S, { audience: 'reviewer', kind: 'queue', ref });
+  setTimeout(() => { resolveProbe(ref, true); save(); render(); }, 4000);
+  return { ref };
+}
+
+/* ═════════════════ Requester form state ═════════════════ */
+
+const rawDate = k => (S.formUi.raw || {})[k] || '';
+const badDate = k => !!rawDate(k).trim() && !S.form[k];
+const dateShown = k => S.form[k] ? dShort(isoDay(S.form[k])) : rawDate(k);
+function formProblems(f) {
+  const miss = new Set();
+  if (!f.groupId) miss.add('groupId');
+  if (!f.from) miss.add('from');
+  if (!f.to) miss.add('to');
+  if (f.areaMode === 'province' && !f.provinceId) miss.add('provinceId');
+  for (const k of ['name', 'surname', 'workplace', 'tel', 'email']) if (!f[k].trim()) miss.add(k);
+  const reversed = f.from && f.to && isoDay(f.to) < isoDay(f.from);
+  const n = f.from && f.to && !reversed ? days(f.from, f.to) : null;
+  const tooLong = n != null && n > MAX_DAYS;
+  const badFormat = badDate('from') || badDate('to');
+  return { miss, reversed, n, tooLong, badFormat };
+}
+function checks(f) {
+  const p = formProblems(f);
+  return [
+    { label: 'เลือกกลุ่มโรค 1 กลุ่ม', ok: !p.miss.has('groupId'), jump: 'f-group' },
+    { label: 'ช่วงวันที่ไม่เกิน 365 วัน', ok: !p.miss.has('from') && !p.miss.has('to') && !p.reversed && !p.tooLong, jump: p.miss.has('from') ? 'f-from' : 'f-to', hard: p.reversed || p.tooLong || p.badFormat },
+    { label: 'ระบุพื้นที่ หรือทั้งประเทศ', ok: !p.miss.has('provinceId'), jump: 'f-prov' },
+    { label: 'ชื่อ นามสกุล และหน่วยงาน', ok: !['name', 'surname', 'workplace'].some(k => p.miss.has(k)), jump: ['f-name', 'f-surname', 'f-workplace'][['name', 'surname', 'workplace'].findIndex(k => p.miss.has(k))] },
+    { label: 'โทรศัพท์และอีเมลที่ติดต่อได้จริง', ok: !p.miss.has('tel') && !p.miss.has('email'), jump: p.miss.has('tel') ? 'f-tel' : 'f-email' },
+  ];
+}
+
+/* ═════════════════ Rendering: chrome ═════════════════ */
+
+let simOpen = false;
+let flashTimer;
+function flash(msg) {
+  const el = document.getElementById('flash');
+  el.innerHTML = `<div class="flash" role="status"><small>Prototype</small>${esc(msg)}</div>`;
+  clearTimeout(flashTimer);
+  flashTimer = setTimeout(() => { el.innerHTML = ''; }, 3800);
+}
+
+function route() {
+  const h = location.hash.replace(/^#\/?/, '');
+  if (h.startsWith('d/')) return { name: 'collect', token: h.slice(2) };
+  if (h === 'link-expired') return { name: 'expired' };
+  if (h.startsWith('reviewer')) return { name: 'reviewer' };
+  if (h.startsWith('mail')) return { name: 'mail' };
+  return { name: 'public' };
+}
+const go = h => { if (location.hash === '#/' + h) render(); else location.hash = '/' + h; };
+
+function renderProto() {
+  const rt = route().name;
+  const unread = S.mails.filter(m => !m.read).length;
+  const running = reqs().filter(r => r.state === 'approved' && ['queued', 'running'].includes(curRun(r)?.state)).length;
+  document.getElementById('proto').innerHTML = `
+    <nav class="proto" aria-label="Prototype">
+      <b>PROTOTYPE</b>
+      <button class="pbtn" data-go="" ${rt === 'public' ? 'aria-current="page"' : ''}>Requester · form</button>
+      <button class="pbtn" data-go="reviewer" ${rt === 'reviewer' ? 'aria-current="page"' : ''}>Reviewer</button>
+      <button class="pbtn" data-go="mail" ${rt === 'mail' || rt === 'collect' || rt === 'expired' ? 'aria-current="page"' : ''}>Email inboxes${unread ? `<span class="count">${unread}</span>` : ''}</button>
+      <span class="spacer"></span>
+      <span class="clock" title="Simulated clock, Asia/Bangkok">${esc(dtShort(S.now))}</span>
+      ${running ? `<span style="color:#fdf3dc">· ${running} extraction job${running > 1 ? 's' : ''} running</span>` : ''}
+      <button class="pbtn" data-act="sim-toggle" aria-expanded="${simOpen}">Simulate ▾</button>
+    </nav>`;
+  const simEl = document.getElementById('sim');
+  if (simEl) simEl.remove();
+  if (!simOpen) return;
+  const div = document.createElement('div');
+  div.id = 'sim';
+  div.className = 'sim';
+  div.innerHTML = `
+    <h4>Clock</h4>
+    <div class="row">
+      <button class="pbtn" data-act="tick" data-min="60">+1 hour</button>
+      <button class="pbtn" data-act="tick" data-min="360">+6 hours</button>
+      <button class="pbtn" data-act="tick" data-min="1440">+24 hours</button>
+      <button class="pbtn" data-act="tick" data-min="4320">+72 hours</button>
+    </div>
+    <p class="hint">Deadlines run down, links expire, a delivered link with no Attempt for 24 h raises a collection lapse. Business hours are treated as wall time here.</p>
+    <h4>Extraction jobs</h4>
+    <div class="row">
+      <button class="pbtn" data-act="jobs" data-ok="1">Finish running jobs</button>
+      <button class="pbtn" data-act="jobs" data-ok="0">Fail running jobs</button>
+    </div>
+    <h4>Probe</h4>
+    <div class="row">
+      <button class="pbtn" data-act="probes" data-ok="1">Finish counting</button>
+      <button class="pbtn" data-act="probes" data-ok="0">Fail counting</button>
+    </div>
+    <h4>Next server response</h4>
+    <div class="row">
+      <button class="pbtn ${S.flags.sendFail ? 'on' : ''}" data-act="flag" data-flag="sendFail">Submit fails</button>
+      <button class="pbtn ${S.flags.refreshFail ? 'on' : ''}" data-act="flag" data-flag="refreshFail">Queue refresh fails</button>
+      <button class="pbtn ${S.flags.sessionExpired ? 'on' : ''}" data-act="flag" data-flag="sessionExpired">Session has expired</button>
+    </div>
+    <h4>Reviewer session</h4>
+    <div class="row">
+      <button class="pbtn" data-act="expire-open">Open request runs out of time</button>
+      <button class="pbtn" data-act="toast" data-kind="idle">Idle warning</button>
+      <button class="pbtn" data-act="toast" data-kind="ceiling">6-hour warning</button>
+    </div>
+    <p class="hint">Sign in as <code>thanapon.s</code> or <code>malee.j</code>, any password, any 6-digit code. <code>000000</code> fails.</p>
+    <h4>Requester</h4>
+    <div class="row">
+      <button class="pbtn" data-act="prefill">Fill the form with a sample</button>
+    </div>
+    <h4>Data</h4>
+    <div class="row"><button class="pbtn" data-act="reset">Reset everything</button></div>`;
+  document.body.appendChild(div);
+}
+
+/* ═════════════════ Rendering: Requester ═════════════════ */
+
+const ICON_DOC = '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></svg>';
+const ICON_CAL = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>';
+const ICON_FILE = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M12 11v6M9.5 14.5 12 17l2.5-2.5"/></svg>';
+const ICON_BROKEN = '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M9 17H7a5 5 0 0 1 0-10h2M15 7h2a5 5 0 0 1 4 8M8 12h3M4 4l16 16"/></svg>';
+
+const INCLUDED = ['รหัสรายงานโรค รหัส ICD-10 และรายการวินิจฉัย', 'วันเกิด อายุ ณ วันเริ่มป่วย เพศ คำนำหน้า สัญชาติ', 'อาชีพ และสถานภาพสมรส', 'จังหวัดและอำเภอตามทะเบียนราษฎร์', 'จังหวัดและอำเภอที่สอบสวนโรค และเขตสุขภาพของจังหวัดนั้น', 'รหัสสถานพยาบาล', 'วันเริ่มป่วย วันรักษา วันวินิจฉัย วันเสียชีวิต วันรายงาน และวันแก้ไขล่าสุด'];
+const EXCLUDED = ['ชื่อ นามสกุล และเลขประจำตัวประชาชน', 'ที่อยู่ บ้านเลขที่ ถนน และหมู่บ้าน', 'ตำบลหรือละเอียดกว่านั้น อำเภอคือพื้นที่ย่อยที่สุดที่ระบุไว้', 'พิกัดแผนที่', 'ข้อความบรรยายอิสระทุกชนิด', 'ช่องทางติดต่อของผู้ป่วย'];
+
+function renderPublic() {
+  const pr = S.pubRoute;
+  if (pr === 'check') return renderCheck();
+  if (pr === 'submitted') return renderSubmitted();
+  if (pr === 'duplicate') return renderDuplicate();
+  return renderForm();
+}
+
+function renderForm() {
+  const f = S.form;
+  document.title = 'ขอข้อมูลเฝ้าระวังโรค';
+  const regionShown = f.areaMode === 'region' ? f.region : f.areaMode === 'province' && f.provinceId ? provById(f.provinceId)[2] : null;
+  const head = f.areaMode === 'national' ? 'ทั้งประเทศ' : f.areaMode === 'region' ? `เขตสุขภาพที่ ${f.region}` : f.provinceId ? provById(f.provinceId)[1] : '';
+  const cells = LATTICE.map(([n, row, col]) => {
+    const sel = f.areaMode === 'region' && f.region === n;
+    const rel = f.areaMode === 'province' && regionShown === n;
+    return `<button type="button" role="radio" id="cell-${n}" class="cell ${rel ? 'related' : ''}" style="grid-row:${row};grid-column:${col}" aria-checked="${sel}" tabindex="${(f.areaMode === 'region' ? sel : n === 1) ? 0 : -1}" aria-label="เขตสุขภาพที่ ${n}${n === 13 ? ' กรุงเทพมหานคร' : ''}" data-act="pick-region" data-region="${n}">${n}</button>`;
+  }).join('');
+  const chips = f.areaMode === 'region' ? `<ul class="chips" aria-label="จังหวัดในเขตสุขภาพที่ ${f.region}">${provsOfRegion(f.region).map(p => `<li class="chip">${esc(p[1])}</li>`).join('')}</ul>` : '';
+  const prov = provById(f.provinceId);
+  const caption = f.areaMode === 'province' && prov ? `<p class="map-caption">${esc(prov[1])}อยู่ในเขตสุขภาพที่ ${prov[2]} แสดงไว้ให้เห็นตำแหน่งเท่านั้น · คำขอนี้เก็บเฉพาะจังหวัด${esc(prov[1])} ไม่ขยายเป็นทั้งเขต</p>` : '';
+  const showErr = S.formUi.attempted;
+  const p = formProblems(f);
+  const bad = k => showErr && p.miss.has(k);
+
+  return `
+  <div class="pub">
+    <h1 class="pub-title">ขอข้อมูลรายบุคคลแบบไม่ระบุตัวตน จากระบบเฝ้าระวังโรค</h1>
+    <section class="card deid" aria-labelledby="deid-h">
+      <h2 id="deid-h">ข้อมูลที่ท่านจะได้รับ</h2>
+      <div class="cols">
+        <div class="inc"><h3>ได้รับ</h3><ul>${INCLUDED.map(t => `<li><span class="dot ok" aria-hidden="true">✓</span>${t}</li>`).join('')}</ul></div>
+        <div class="exc"><h3>ไม่ได้รับ</h3><ul>${EXCLUDED.map(t => `<li><span class="dot out" aria-hidden="true">–</span>${t}</li>`).join('')}</ul></div>
+      </div>
+    </section>
+
+    <div class="split">
+      <aside class="map-pane" aria-label="พื้นที่ที่ขอ">
+        <p class="eyebrow" id="area-eyebrow">พื้นที่ที่ขอ</p>
+        <p class="area-head ${head ? '' : 'none'}" aria-live="polite">${esc(head || 'ยังไม่ได้เลือกจังหวัด')}</p>
+        <div class="segs" role="radiogroup" aria-label="รูปแบบพื้นที่">
+          <button type="button" role="radio" class="seg" aria-checked="${f.areaMode === 'national'}" tabindex="${f.areaMode !== 'province' ? 0 : -1}" data-act="area-mode" data-mode="national">ทั้งประเทศ</button>
+          <button type="button" role="radio" class="seg" aria-checked="${f.areaMode === 'province'}" tabindex="${f.areaMode === 'province' ? 0 : -1}" data-act="area-mode" data-mode="province">เลือกจังหวัด</button>
+        </div>
+        ${f.areaMode === 'province' ? `
+          <div class="prov-field">
+            <label class="lbl" for="f-prov">จังหวัด<span class="req">*</span></label>
+            <select id="f-prov" class="box ${bad('provinceId') ? 'bad' : ''}" data-field="provinceId" aria-invalid="${bad('provinceId')}">
+              <option value="">เลือกจังหวัด…</option>
+              ${PROV_SORTED.map(pp => `<option value="${pp[0]}" ${String(pp[0]) === String(f.provinceId) ? 'selected' : ''}>${esc(pp[1])} (${pp[0]})</option>`).join('')}
+            </select>
+            ${bad('provinceId') ? '<p class="field-err" id="err-provinceId">กรุณาเลือกจังหวัด</p>' : ''}
+          </div>` : ''}
+        <div class="map" role="radiogroup" aria-label="เขตสุขภาพ กดเพื่อขอทั้งเขต">${cells}</div>
+        ${caption}${chips}
+      </aside>
+
+      <form class="card form-card" id="req-form" novalidate>
+        <header class="form-head">
+          <span class="badge" aria-hidden="true">${ICON_DOC}</span>
+          <div><h2>ขอข้อมูลเฝ้าระวังโรค</h2><p>กรอกสิ่งที่ต้องการ แล้วบอกเราว่าท่านเป็นใคร</p></div>
+        </header>
+
+        <div class="field">
+          <label class="lbl" for="f-group">กลุ่มโรค<span class="req">*</span></label>
+          <select id="f-group" class="box ${bad('groupId') ? 'bad' : ''}" data-field="groupId">
+            <option value="">เลือกหนึ่งกลุ่ม…</option>
+            ${GROUPS.map(g => `<option value="${g.id}" ${g.id === f.groupId ? 'selected' : ''}>${esc(g.name)}</option>`).join('')}
+          </select>
+          <div id="err-groupId">${bad('groupId') ? '<p class="field-err">กรุณาเลือกกลุ่มโรค</p>' : ''}</div>
+        </div>
+
+        <div class="pairrow dates">
+          <div class="field">
+            <label class="lbl" for="f-from">ตั้งแต่<span class="req">*</span></label>
+            <div class="datebox">
+              <input id="f-from" type="text" inputmode="numeric" class="box figure" data-date="from" placeholder="วว/ดด/ปปปป" value="${esc(dateShown('from'))}" aria-describedby="date-panel">
+              <button type="button" class="cal-btn" id="cal-btn-from" data-act="cal-open" data-k="from" aria-label="เลือกวันแรกจากปฏิทิน" aria-haspopup="dialog" aria-expanded="false">${ICON_CAL}</button>
+              <div id="cal-from"></div>
+            </div>
+          </div>
+          <div class="field">
+            <label class="lbl" for="f-to">ถึง<span class="req">*</span><span class="aside" id="days-aside"></span></label>
+            <div class="datebox">
+              <input id="f-to" type="text" inputmode="numeric" class="box figure" data-date="to" placeholder="วว/ดด/ปปปป" value="${esc(dateShown('to'))}" aria-describedby="date-panel">
+              <button type="button" class="cal-btn" id="cal-btn-to" data-act="cal-open" data-k="to" aria-label="เลือกวันสุดท้ายจากปฏิทิน" aria-haspopup="dialog" aria-expanded="false">${ICON_CAL}</button>
+              <div id="cal-to"></div>
+            </div>
+          </div>
+          <div id="date-panel" style="grid-column:1/-1"></div>
+        </div>
+
+        <div class="divider" role="presentation"></div>
+
+        <div class="pairrow">
+          ${textField('name', 'ชื่อ', { ac: 'given-name' })}
+          ${textField('surname', 'นามสกุล', { ac: 'family-name' })}
+        </div>
+        ${textField('workplace', 'หน่วยงาน', { ac: 'organization', ph: 'เช่น สคร.1 เชียงใหม่ กลุ่มระบาดวิทยา' })}
+        ${textField('tel', 'โทรศัพท์ที่ท่านรับสาย', { ac: 'tel', type: 'tel', ph: 'เช่น 081 234 5678', figure: true })}
+        <div class="field">
+          <label class="lbl" for="f-email">อีเมลรับไฟล์<span class="req">*</span>
+            <span class="tip-wrap" id="tip">
+              <button type="button" class="tip-trigger" aria-label="คำเตือนเรื่องอีเมล" aria-describedby="tip-body" data-act="tip">!</button>
+              <span class="tooltip" role="tooltip" id="tip-body"><strong>อีเมลที่ท่านกรอก</strong><span>ลิงก์ดาวน์โหลดจะส่งไปยังอีเมลนี้เท่านั้น ระบบไม่ตรวจสอบว่าอีเมลถูกต้องหรือมีอยู่จริง หากพิมพ์ผิด จะไม่มีใครรู้และไฟล์จะไม่ถึงท่าน</span></span>
+            </span>
+            <button type="button" class="aside" id="email-clear" data-act="clear-email" ${f.email ? '' : 'hidden'}>ล้าง</button>
+          </label>
+          <input id="f-email" type="email" class="box" data-field="email" autocomplete="email" placeholder="อีเมลที่ท่านเปิดอ่านจริง" value="${esc(f.email)}" aria-describedby="tip-body err-email">
+          <div id="err-email"></div>
+        </div>
+
+        <div id="checklist-slot"></div>
+
+        <label class="consent ${f.consent ? 'on' : ''}" id="consent">
+          <input type="checkbox" data-field="consent" ${f.consent ? 'checked' : ''}>
+          <span><strong>ข้าพเจ้าได้อ่านและยอมรับ <a href="#" class="link" data-act="pdpa">ประกาศความเป็นส่วนตัว (PDPA)</a></strong>
+          <p>ข้อมูลติดต่อและประวัติคำขอถูกเก็บไว้ถาวร เพื่อให้ทุกการเผยแพร่ข้อมูลตรวจสอบย้อนกลับได้ว่าใครขอและใครอนุมัติ</p></span>
+        </label>
+
+        <div class="pair form-actions">
+          <button type="button" class="btn" data-act="clear-form">ล้างฟอร์ม</button>
+          <button type="submit" class="btn primary">ส่งคำขอ</button>
+        </div>
+      </form>
+    </div>
+  </div>`;
+}
+
+function textField(k, label, o = {}) {
+  return `<div class="field">
+    <label class="lbl" for="f-${k}">${label}<span class="req">*</span></label>
+    <input id="f-${k}" type="${o.type || 'text'}" class="box ${o.figure ? 'figure' : ''}" data-field="${k}" autocomplete="${o.ac || 'off'}" ${o.ph ? `placeholder="${esc(o.ph)}"` : ''} value="${esc(S.form[k])}" aria-describedby="err-${k}">
+    <div id="err-${k}"></div>
+  </div>`;
+}
+
+// The parts of the form that change as the Requester types, updated in place so
+// the input they are typing in is never replaced.
+function refreshForm() {
+  const f = S.form;
+  if (!document.getElementById('req-form')) return;
+  const p = formProblems(f);
+  const shown = S.formUi.attempted;
+  const errs = {
+    name: 'กรุณากรอกข้อมูลในช่องนี้', surname: 'กรุณากรอกข้อมูลในช่องนี้', workplace: 'กรุณากรอกข้อมูลในช่องนี้',
+    tel: 'กรุณากรอกข้อมูลในช่องนี้', email: 'กรุณากรอกอีเมล ระบบส่งไฟล์ทางอีเมลเท่านั้น', groupId: 'กรุณาเลือกกลุ่มโรค',
+  };
+  for (const k of Object.keys(errs)) {
+    const input = document.querySelector(`[data-field="${k}"]`);
+    const on = shown && p.miss.has(k);
+    input?.classList.toggle('bad', on);
+    input?.setAttribute('aria-invalid', on);
+    const slot = document.getElementById('err-' + k);
+    if (slot) slot.innerHTML = on ? `<p class="field-err">${errs[k]}</p>` : '';
+  }
+  // Dates: one shared message for the pair.
+  const dateBad = p.reversed || p.tooLong || (shown && (p.miss.has('from') || p.miss.has('to')));
+  for (const k of ['from', 'to']) {
+    const el = document.querySelector(`[data-date="${k}"]`);
+    const on = badDate(k) || p.reversed || p.tooLong || (shown && p.miss.has(k));
+    el.classList.toggle('bad', on);
+    el.setAttribute('aria-invalid', on);
+  }
+  const aside = document.getElementById('days-aside');
+  aside.textContent = p.n ? `${num(p.n)} วัน` : '';
+  aside.classList.toggle('bad', !!p.tooLong);
+  const panel = document.getElementById('date-panel');
+  if (p.badFormat) panel.innerHTML = `<p class="field-err">อ่านวันที่ไม่ได้ พิมพ์เป็น วว/ดด/ปปปป ปี พ.ศ. เช่น 1/3/2569</p>`;
+  else if (p.tooLong) panel.innerHTML = `<div class="span-panel" role="alert"><span class="dot bad" aria-hidden="true">!</span><div><strong>ช่วงวันที่ยาวเกินที่ขอได้</strong>API ของกรมควบคุมโรคจำกัดไว้ที่ 365 วันต่อหนึ่งคำขอ ระบบจะไม่ตัดช่วงวันให้เองเพราะจะทำให้ท่านไม่รู้ว่าได้ข้อมูลครบหรือไม่ กรุณาแยกส่งเป็นหลายคำขอ</div></div>`;
+  else if (p.reversed) panel.innerHTML = `<div class="span-panel" role="alert"><span class="dot bad" aria-hidden="true">!</span><div><strong>วันสุดท้ายอยู่ก่อนวันแรก กรุณาตรวจสอบวันที่อีกครั้ง</strong></div></div>`;
+  else panel.innerHTML = dateBad ? '<p class="field-err">กรุณากรอกวันที่ทั้งสองช่อง</p>' : '<p class="field-hint">ปี พ.ศ. เช่น 1/3/2569</p>';
+
+  document.getElementById('email-clear').hidden = !f.email;
+  document.getElementById('consent').classList.toggle('on', f.consent);
+
+  const cs = checks(f);
+  const score = cs.filter(c => c.ok).length;
+  const lit = score === 5 ? 3 : score >= 3 ? 2 : score >= 1 ? 1 : 0;
+  const color = score === 5 ? 'var(--success)' : score >= 3 ? 'var(--pending-bright)' : 'var(--failed)';
+  const missingFields = [...p.miss].filter(k => !((k === 'from' || k === 'to') && badDate(k))).length + (p.reversed || p.tooLong || p.badFormat ? 1 : 0);
+  const alarm = shown && score < 5;
+  document.getElementById('checklist-slot').innerHTML = `
+    <div class="checklist ${alarm ? 'alarm' : ''}" id="checklist" tabindex="-1" aria-live="polite">
+      <div class="meter" aria-hidden="true">${[1, 2, 3].map(i => `<span style="${i <= lit ? `background:${color}` : ''}"></span>`).join('')}</div>
+      ${alarm
+        ? `<p class="alarm-head">ยังส่งคำขอไม่ได้ ขาดข้อมูล ${missingFields} รายการ</p><p class="alarm-sub">กดที่ชื่อรายการเพื่อไปยังช่องนั้น ข้อมูลที่กรอกไว้แล้วยังอยู่ครบ</p>`
+        : `<p class="meter-label ${score === 5 ? 'ok' : ''}">${score === 5 ? 'พร้อมส่ง ครบทุกข้อ' : `คำขอยังไม่ครบ (${score}/5) ต้องมี:`}</p>`}
+      <ul class="checks">${cs.map(c => {
+        const failed = !c.ok && (alarm || c.hard);
+        const mark = c.ok ? '<span class="dot ok" aria-hidden="true">✓</span>' : `<span class="dot ${failed ? 'bad' : 'no'}" aria-hidden="true">×</span>`;
+        const txt = !c.ok && alarm ? `<button type="button" class="jump" data-act="jump" data-to="${c.jump}">${c.label}</button>` : failed ? `<span class="failtext">${c.label}</span>` : c.label;
+        return `<li>${mark}<span><span class="sr-only">${c.ok ? 'ครบแล้ว: ' : 'ยังไม่ครบ: '}</span>${txt}</span></li>`;
+      }).join('')}</ul>
+    </div>`;
+}
+
+function askRows(r, { chips = false, count = true } = {}) {
+  return `
+    <div class="kv"><dt>กลุ่มโรค</dt><dd>${esc(groupById(r.groupId).name)}</dd></div>
+    <div class="kv"><dt>ช่วงวันที่</dt><dd class="figure">${esc(rangeLong(r))}${count ? ` · ${num(days(r.from, r.to))} วัน` : ''}</dd></div>
+    <div class="kv"><dt>พื้นที่</dt><dd>${esc(areaLabel(r))}${chips && r.area.mode === 'region' ? `<ul class="chips" style="margin-top:8px">${r.provinces.map(id => `<li class="chip">${esc(provById(id)[1])}</li>`).join('')}</ul>` : ''}</dd></div>`;
+}
+function formAsReq() {
+  const f = S.form;
+  const area = f.areaMode === 'national' ? { mode: 'national' } : f.areaMode === 'region' ? { mode: 'region', region: f.region } : { mode: 'province', provinceId: Number(f.provinceId) };
+  return { ...f, area, provinces: area.mode === 'region' ? provsOfRegion(area.region).map(p => p[0]) : [] };
+}
+
+let sending = false, sendFailed = false;
+function renderCheck() {
+  document.title = 'ตรวจสอบคำขอก่อนส่ง';
+  const r = formAsReq();
+  return `
+  <div class="pub"><div class="narrow"><section class="card" aria-labelledby="chk-h">
+    <h1 id="chk-h" tabindex="-1">ตรวจสอบคำขอก่อนส่ง</h1>
+    <div class="wash-panel"><p class="muted">ไฟล์จะส่งไปที่</p><p class="big">${esc(r.email)}</p></div>
+    <div class="section"><h2>สิ่งที่ท่านขอ</h2><dl>${askRows(r, { chips: true })}</dl></div>
+    <div class="section"><h2>ผู้ขอข้อมูล</h2><dl>
+      <div class="kv"><dt>ชื่อ นามสกุล</dt><dd>${esc(r.name)} ${esc(r.surname)}</dd></div>
+      <div class="kv"><dt>หน่วยงาน</dt><dd>${esc(r.workplace)}</dd></div>
+      <div class="kv"><dt>โทรศัพท์</dt><dd class="figure">${esc(r.tel)}</dd></div>
+    </dl></div>
+    ${sendFailed ? `<div class="span-panel" role="alert" style="margin-top:0"><span class="dot bad" aria-hidden="true">!</span><div>ระบบอาจยังไม่ได้ส่งคำขอของท่าน กรุณารอสักครู่แล้วลองส่งอีกครั้ง หากยังพบข้อความนี้ โปรดโทร <b>${PHONE}</b></div></div>` : ''}
+    <div class="pair" style="grid-template-columns:1fr 1.4fr">
+      <button class="btn lg" data-act="check-back" ${sending ? 'disabled' : ''}>แก้ไข</button>
+      <button class="btn lg primary" data-act="check-send" ${sending ? 'aria-busy="true"' : ''}>${sending ? 'กำลังส่ง…' : 'ส่งคำขอ'}</button>
+    </div>
+  </section></div></div>`;
+}
+
+function renderSubmitted() {
+  document.title = 'ส่งคำขอเรียบร้อยแล้ว';
+  const r = S.requests[S.lastRef];
+  if (!r) { S.pubRoute = 'form'; return renderForm(); }
+  return `
+  <div class="pub"><div class="narrow"><section class="card" aria-labelledby="ok-h">
+    <div class="head-row"><span class="mark solid-success" aria-hidden="true">✓</span><div><h1 id="ok-h" tabindex="-1">ส่งคำขอเรียบร้อยแล้ว</h1><p>คำขอของท่านอยู่ในคิวรอเจ้าหน้าที่พิจารณา ท่านไม่ต้องทำอะไรต่อ</p></div></div>
+    <div class="wash-panel"><p class="muted">เลขที่คำขอ</p><p class="huge figure">${esc(r.ref)}</p><p class="body">กรุณาบันทึกเลขนี้ไว้ ระบบไม่ได้ส่งอีเมลยืนยันการรับคำขอ หากปิดหน้านี้ไป ท่านจะเห็นเลขนี้อีกครั้งในอีเมลแจ้งผลการพิจารณา</p></div>
+    <div class="section"><h2>สิ่งที่ท่านขอ</h2><dl>${askRows(r, { count: false })}</dl></div>
+    <div class="tiles">
+      <div class="tile"><strong>ผลการพิจารณา</strong><span>แจ้งทางอีเมลภายใน 24 ชั่วโมงทำการ เจ้าหน้าที่อาจโทรหาท่านเพื่อยืนยันตัวตนก่อนตัดสิน</span></div>
+      <div class="tile"><strong>หากอนุมัติ</strong><span>ระบบจะส่งลิงก์ดาวน์โหลดไปยังอีเมลที่ท่านกรอกไว้ ลิงก์มีอายุ 72 ชั่วโมงนับจากไฟล์พร้อม</span></div>
+    </div>
+    <p class="phone">มีคำถามเกี่ยวกับคำขอนี้ โทร. <b>${PHONE}</b> พร้อมแจ้งเลขที่คำขอ</p>
+  </section></div></div>`;
+}
+
+function renderDuplicate() {
+  document.title = 'ท่านส่งคำขอนี้ไปแล้ว';
+  return `
+  <div class="pub"><div class="narrow"><section class="card" aria-labelledby="dup-h">
+    <div class="head-row"><span class="mark pending" aria-hidden="true">!</span><h1 id="dup-h" tabindex="-1" style="font-size:24px">ท่านส่งคำขอนี้ไปแล้ว</h1></div>
+    <div class="pending-panel"><p>มีคำขอที่ใช้อีเมลนี้และขอข้อมูลชุดเดียวกันรอการพิจารณาอยู่ คำขอนั้นถูกบันทึกแล้ว ไม่ต้องส่งซ้ำ</p><p class="muted" style="font-size:14px">เลขที่คำขออยู่ในหน้าที่แสดงหลังส่ง และจะอยู่ในอีเมลแจ้งผลการพิจารณา</p></div>
+    <div class="bordered"><strong>ต้องการขอข้อมูลชุดอื่น หรือพิมพ์อีเมลผิด</strong><p class="muted" style="font-size:13px">กลับไปแก้ไขแล้วส่งใหม่ได้ ข้อมูลที่กรอกไว้ยังอยู่ครบ คำขอที่ต่างกันเพียงกลุ่มโรค ช่วงวันที่ พื้นที่ หรืออีเมล จะส่งได้ตามปกติ</p><button class="btn lg" data-act="dup-back">กลับไปแก้ไขคำขอ</button></div>
+  </section></div></div>`;
+}
+
+function tokenState(token) {
+  for (const r of reqs()) for (const run of r.runs) if (run.token === token) {
+    const ok = r.state === 'approved' && run.state === 'ready' && run.attempts < MAX_ATTEMPTS && linkMinLeft(run) > 0;
+    return { r, run, ok };
+  }
+  return { ok: false };
+}
+
+function renderCollect(token) {
+  const { r, run, ok } = tokenState(token);
+  if (!ok) return renderExpired();
+  document.title = 'ไฟล์ตามคำขอของท่านพร้อมแล้ว';
+  const left = Math.floor(linkMinLeft(run) / 60);
+  return `
+  <div class="pub"><div class="narrow"><section class="card" aria-labelledby="col-h">
+    <div><p class="muted figure" style="font-size:13px">คำขอเลขที่ ${esc(r.ref)}</p><h1 id="col-h">ไฟล์ตามคำขอของท่านพร้อมแล้ว</h1></div>
+    <div class="file-panel">
+      <div class="file-top"><span class="file-icon">${ICON_FILE}</span><div style="min-width:0"><p class="file-name figure">${esc(run.archive)}</p><p class="muted figure" style="font-size:13px">${run.sizeKb} KB</p></div></div>
+      <div class="stats">
+        <div class="stat"><small>ดาวน์โหลดแล้ว</small><b class="figure">${run.attempts} จาก ${MAX_ATTEMPTS} ครั้ง</b></div>
+        <div class="stat success"><small>เวลาที่เหลือ</small><b class="figure">เหลืออีก ${left} ชั่วโมง</b></div>
+      </div>
+      <a class="btn primary full dl-btn" href="#" data-act="download" data-token="${esc(token)}">ดาวน์โหลดไฟล์</a>
+      <p class="center-note">หลังจากนั้นไฟล์จะถูกลบออกจากระบบ</p>
+    </div>
+    <ul class="notes">
+      <li><span class="i" aria-hidden="true">i</span><div><strong>ในไฟล์บีบอัดมีสองไฟล์</strong><p>ไฟล์ CSV ข้อมูลรายบุคคลแบบไม่ระบุตัวตน และพจนานุกรมข้อมูลไทยและอังกฤษที่อธิบายทุกคอลัมน์ พจนานุกรมนี้เหมือนกันทุกคำขอ</p></div></li>
+      <li><span class="i warn" aria-hidden="true">!</span><div><strong>อย่าส่งต่อลิงก์นี้</strong><p>ลิงก์คือกุญแจเพียงอย่างเดียว ใครก็ตามที่เปิดลิงก์นี้ได้จะดาวน์โหลดไฟล์ได้ทันที โดยไม่ต้องเข้าสู่ระบบ หากต้องการแบ่งปันข้อมูล กรุณาส่งไฟล์ให้กันเอง</p></div></li>
+      <li><span class="i" aria-hidden="true">i</span><div><strong>ทุกการดาวน์โหลดถูกบันทึกไว้</strong><p>ระบบบันทึกเวลา หมายเลขไอพี และเบราว์เซอร์ทุกครั้งที่กดดาวน์โหลด ไม่ว่าดาวน์โหลดสำเร็จหรือไม่ การเปิดหน้านี้ไม่นับเป็นการดาวน์โหลด และไม่มีสิ่งใดต่ออายุ 72 ชั่วโมง</p></div></li>
+    </ul>
+    <p class="phone">ดาวน์โหลดไม่สำเร็จหรือไฟล์เสียหาย โทร. <b>${PHONE}</b> พร้อมแจ้งเลขที่คำขอ</p>
+  </section></div></div>`;
+}
+
+function renderExpired() {
+  document.title = 'ลิงก์นี้ใช้ไม่ได้แล้ว';
+  return `<div class="pub"><section class="card expiry" aria-labelledby="exp-h">
+    <span class="mark inert" aria-hidden="true">${ICON_BROKEN}</span>
+    <h1 id="exp-h">ลิงก์นี้ใช้ไม่ได้แล้ว</h1>
+    <p class="muted">หากยังต้องการข้อมูลชุดนี้ กรุณาส่งคำขอใหม่ หรือโทร. <b style="color:var(--foreground);white-space:nowrap">${PHONE}</b></p>
+  </section></div>`;
+}
+
+/* ═════════════════ Rendering: Mail ═════════════════ */
+
+function mailSubject(m) {
+  const r = S.requests[m.ref];
+  return {
+    delivery: `ข้อมูลตามคำขอ ${r.ref} พร้อมให้ดาวน์โหลดแล้ว`,
+    rejection: `ผลการพิจารณาคำขอ ${r.ref}`,
+    queue: `มีคำขอใหม่รอตัดสิน ${r.ref}`,
+    failure: `ผู้ขอยังไม่ได้รับไฟล์ ${r.ref}`,
+  }[m.kind];
+}
+function mailBody(m) {
+  const r = S.requests[m.ref];
+  const ask = `<dl class="email-table">${askRows(r, { count: false })}</dl>`;
+  if (m.kind === 'delivery') return `
+    <p>เรียน ${esc(fullName(r))}</p>
+    <p>คำขอเลขที่ ${esc(r.ref)} ได้รับอนุมัติแล้ว และไฟล์ข้อมูลพร้อมให้ดาวน์โหลด</p>
+    <a class="btn primary" href="#/d/${esc(m.token)}">ดาวน์โหลดไฟล์</a>
+    ${ask}
+    <p class="small">ลิงก์มีอายุ 72 ชั่วโมงนับจากเวลาที่ไฟล์พร้อม การเปิดลิงก์ไม่ต่ออายุ เมื่อหมดอายุ ไฟล์จะถูกลบและต้องส่งคำขอใหม่</p>
+    <p class="email-panel pending">ในไฟล์บีบอัดมีไฟล์ CSV หนึ่งไฟล์ และพจนานุกรมข้อมูลไทยและอังกฤษ <b>กรุณาอย่าส่งต่อลิงก์ เพราะลิงก์คือกุญแจเพียงอย่างเดียว</b></p>`;
+  if (m.kind === 'rejection') return `
+    <p>เรียน ${esc(fullName(r))}</p>
+    <p class="email-panel inert">คำขอเลขที่ ${esc(r.ref)} ไม่ได้รับอนุมัติ</p>
+    <p class="small">ระบบไม่แจ้งเหตุผลของการพิจารณา ท่านส่งคำขอใหม่ได้ทุกเมื่อ และการไม่อนุมัติครั้งนี้ไม่มีผลต่อคำขอครั้งต่อไป</p>
+    <p class="small">หากมีข้อสงสัย โทร. <b style="color:var(--foreground)">${PHONE}</b> พร้อมแจ้งเลขที่คำขอ</p>`;
+  if (m.kind === 'queue') return `
+    <p>มีคำขอใหม่รอการตัดสิน</p>
+    <dl class="email-table">
+      <div class="kv"><dt>ผู้ขอ</dt><dd>${esc(fullName(r))}</dd></div>
+      <div class="kv"><dt>หน่วยงาน</dt><dd>${esc(r.workplace)}</dd></div>
+      <div class="kv"><dt>ตัดสินภายใน</dt><dd class="figure"><b>${esc(dtShort(r.submittedAt + 24 * HOUR))}</b></dd></div>
+    </dl>
+    <p class="small">อีเมลนี้ไม่มีข้อมูลผู้ป่วยและไม่มีลิงก์ดาวน์โหลด เปิดหน้าผู้ตรวจสอบเพื่ออ่านแฟ้มคำขอก่อนตัดสิน</p>`;
+  return `
+    <p>เรียน ${esc(r.decision.by)}</p>
+    <p class="email-panel pendingtitle">คำขอ ${esc(r.ref)} ที่ท่านอนุมัติ ดึงข้อมูลไม่สำเร็จ</p>
+    <p style="font-size:14px">${esc(fullName(r))} (${esc(r.workplace.split(' ')[0])}) ยังไม่ได้รับอะไรเลย และไม่รู้ว่าเกิดปัญหา ผู้ขอจะรู้เรื่องนี้ก็ต่อเมื่อท่านติดต่อไป</p>
+    <p class="small">ผู้ดูแลระบบได้รับแจ้งเรื่องความผิดพลาดแยกต่างหากแล้ว ท่านไม่ต้องแก้ปัญหาทางเทคนิค เรื่องนี้รออยู่ในแท็บต้องจัดการบนหน้าผู้ตรวจสอบ</p>`;
+}
+function renderMail() {
+  document.title = 'Email inboxes';
+  const list = S.mails.filter(m => m.audience === S.mailTab).sort((a, b) => b.at - a.at || b.id - a.id);
+  let sel = list.find(m => m.id === S.mailSel) || list[0];
+  if (sel && !sel.read) { sel.read = true; save(); setTimeout(renderProto); }
+  return `
+  <div class="mail">
+    <section class="card mail-list" aria-label="กล่องอีเมล">
+      <div class="mail-tabs" role="tablist">
+        <button role="tab" aria-selected="${S.mailTab === 'requester'}" data-act="mail-tab" data-tab="requester">ถึงผู้ขอ</button>
+        <button role="tab" aria-selected="${S.mailTab === 'reviewer'}" data-act="mail-tab" data-tab="reviewer">ถึงผู้ตรวจสอบ</button>
+      </div>
+      ${list.length ? list.map(m => `<button class="mail-item ${m.read ? 'read' : ''}" aria-current="${m === sel}" data-act="mail-open" data-id="${m.id}"><span class="s">${esc(mailSubject(m))}</span><span class="m">${esc(m.to)} · ${esc(dmHm(m.at))}</span></button>`).join('') : '<p class="mail-empty">ยังไม่มีอีเมล</p>'}
+    </section>
+    ${sel ? `<article class="card email">
+      <dl class="email-head">
+        <dt>จาก</dt><dd>ระบบขอข้อมูลเฝ้าระวังโรค DDS</dd>
+        <dt>ถึง</dt><dd>${esc(sel.to)}</dd>
+        <dt>เรื่อง</dt><dd><b>${esc(mailSubject(sel))}</b></dd>
+      </dl>
+      <div class="email-body">${mailBody(sel)}</div>
+    </article>` : ''}
+  </div>`;
+}
+
+/* ═════════════════ Rendering: Reviewer ═════════════════ */
+
+let signingIn = false, signInFailed = false, dialogBusy = false;
+const dlg = { kind: null, ref: null, note: '', err: '' };
+
+function takeSnapshot() {
+  const z = { pending: [], alerts: [], inflight: [] };
+  const all = reqs().sort((a, b) => a.submittedAt - b.submittedAt);
+  for (const r of all) { const k = zoneOf(r); if (k) z[k].push(r.ref); }
+  S.rv.snap = { at: S.now, ...z };
+}
+const snapZone = k => (S.rv.snap?.[k] || []).map(ref => S.requests[ref]).filter(Boolean);
+function moveInSnap(ref, to) {
+  for (const k of ['pending', 'alerts', 'inflight']) S.rv.snap[k] = S.rv.snap[k].filter(x => x !== ref);
+  if (to) { S.rv.snap[to].push(ref); S.rv.snap[to].sort((a, b) => S.requests[a].submittedAt - S.requests[b].submittedAt); }
+}
+
+function renderReviewer() {
+  const rv = S.rv;
+  document.title = 'ผู้ตรวจสอบ · DDS Sharing';
+  const narrow = `<section class="card narrow-screen"><p class="eyebrow2">DDS Sharing · ผู้ตรวจสอบ</p><h1>ใช้หน้านี้บนจอที่กว้างกว่านี้</h1><p>การตัดสินต้องเห็นข้อมูลผู้ขอและสิ่งที่ขอครบก่อนถึงปุ่มอนุมัติ จึงเปิดได้เฉพาะบนจอกว้างตั้งแต่ 1024 พิกเซลขึ้นไป</p></section>`;
+  if (!rv.user) return `<div class="rv-wrap">${renderSignIn()}${narrow}</div>`;
+  if (!rv.snap) takeSnapshot();
+  return `<div class="rv-wrap"><div class="rv">
+    <header class="rv-header"><p class="brand">DDS Sharing<span>ผู้ตรวจสอบ</span></p><p class="who"><span>${esc(rv.user)}</span><button class="link plain" data-act="sign-out">ออกจากระบบ</button></p></header>
+    ${renderBand()}
+    ${renderDossier()}
+  </div>${narrow}</div>`;
+}
+
+function renderSignIn() {
+  const n = S.rv.notice;
+  return `<form class="card signin" id="signin" novalidate>
+    <p class="eyebrow2">DDS Sharing · ผู้ตรวจสอบ</p>
+    <h1>เข้าสู่ระบบ</h1>
+    ${signInFailed ? `<div class="notice failed" role="alert"><strong>เข้าสู่ระบบไม่สำเร็จ</strong>ชื่อผู้ใช้ รหัสผ่าน หรือรหัส 6 หลัก มีอย่างน้อยหนึ่งอย่างไม่ถูกต้อง<p class="note">บัญชีไม่ถูกล็อก ถ้าลองผิดหลายครั้ง ระบบจะให้รอนานขึ้นก่อนลองใหม่</p></div>` : ''}
+    ${!signInFailed && n ? `<div class="notice pending" role="alert"><strong>ออกจากระบบแล้ว การอนุมัติที่กดล่าสุดไม่ถูกบันทึก</strong>เซสชันหมดก่อนที่การกดจะถึงระบบ คำขอ ${esc(n.ref)} ยังรอตัดสินอยู่<p class="note">เข้าสู่ระบบแล้วจะกลับไปที่คำขอนั้น ถ้ายังต้องการอนุมัติ ให้กดอีกครั้ง</p></div>` : ''}
+    <div>
+      <div class="field"><label class="lbl" for="si-user">ชื่อผู้ใช้</label><input id="si-user" class="box" autocomplete="username" value="${esc(S.rv.lastUser || '')}" ${signingIn ? 'readonly' : ''}></div>
+      <div class="field"><label class="lbl" for="si-pass">รหัสผ่าน</label><input id="si-pass" type="password" class="box" autocomplete="current-password" ${signInFailed ? 'placeholder="พิมพ์รหัสผ่านอีกครั้ง"' : ''} ${signingIn ? 'readonly' : ''}></div>
+      <div class="field"><label class="lbl" for="si-code">รหัส 6 หลักจากแอปยืนยันตัวตน</label><input id="si-code" class="box code" inputmode="numeric" autocomplete="one-time-code" maxlength="6" ${signInFailed ? 'placeholder="รหัสใหม่จากแอป"' : ''} aria-describedby="si-code-h" ${signingIn ? 'readonly' : ''}><p class="field-hint" id="si-code-h">รหัสเปลี่ยนทุก 30 วินาที</p></div>
+    </div>
+    <button type="submit" class="btn lg primary full" ${signingIn ? 'aria-busy="true"' : ''}>${signingIn ? 'กำลังเข้าสู่ระบบ…' : 'เข้าสู่ระบบ'}</button>
+    <p class="foot">บัญชีสร้างโดยผู้ดูแลระบบเท่านั้น ไม่มีการรีเซ็ตรหัสผ่านทางอีเมล ถ้าเข้าไม่ได้ ให้ติดต่อผู้ตรวจสอบอีกท่าน</p>
+  </form>`;
+}
+
+function staleText() {
+  const mins = Math.floor((S.now - S.rv.snap.at) / MIN);
+  return mins < 1 ? 'อัปเดตเมื่อสักครู่' : mins < 60 ? `อัปเดตเมื่อ ${mins} นาทีที่แล้ว` : `อัปเดตเมื่อ ${Math.floor(mins / 60)} ชั่วโมงที่แล้ว`;
+}
+
+function renderBand() {
+  const rv = S.rv;
+  const zp = snapZone('pending'), za = snapZone('alerts'), zi = snapZone('inflight');
+  const tab = (k, label, n, attn) => `<button role="tab" id="tab-${k}" class="tab ${attn ? 'attn' : ''} ${attn && k !== rv.zone ? 'strong' : ''}" aria-selected="${rv.zone === k}" aria-controls="zone-panel" tabindex="${rv.zone === k ? 0 : -1}" data-act="zone" data-zone="${k}">${label} · ${n}</button>`;
+  const stale = rv.refreshErr
+    ? `<p class="stale bad" aria-live="polite">โหลดรายการไม่สำเร็จ · รายการด้านล่างเป็นของเมื่อ ${Math.max(1, Math.floor((S.now - rv.snap.at) / MIN))} นาทีที่แล้ว</p>`
+    : `<p class="stale" aria-live="polite">${staleText()}. รายการนี้ไม่รีเฟรชเอง</p>`;
+  return `<div class="band">
+    <div class="band-row">
+      <div class="tabs" role="tablist" aria-label="คิว">
+        ${tab('pending', 'รอตัดสิน', zp.length)}${tab('alerts', 'ต้องจัดการ', za.length, za.length > 0)}${tab('inflight', 'กำลังดำเนินการ', zi.length)}
+      </div>
+      <div class="band-right">
+        ${stale}
+        <form class="lookup" id="lookup" role="search"><label class="sr-only" for="lk">ค้นหาด้วยเลขที่คำขอ</label><input id="lk" class="box figure" placeholder="ค้นหาด้วยเลขที่คำขอ" value="${esc(rv.lookupQ)}" autocomplete="off">${rv.lookupErr ? `<p class="lk-err" role="alert">${esc(rv.lookupErr)}</p>` : ''}</form>
+        <button class="btn" data-act="refresh">${rv.refreshErr ? '↻ ลองอีกครั้ง' : '↻ รีเฟรช'}</button>
+      </div>
+    </div>
+    <div id="zone-panel" role="tabpanel" aria-labelledby="tab-${rv.zone}">${renderZoneTable(zp, za, zi)}</div>
+  </div>`;
+}
+
+function renderZoneTable(zp, za, zi) {
+  const rv = S.rv;
+  const selRef = rv.lookup ? null : rv.sel;
+  if (rv.zone === 'pending') {
+    if (!zp.length) {
+      if (za.length) return `<div class="empty"><span class="mark pending" aria-hidden="true">!</span><h2>ไม่มีคำขอรอตัดสิน แต่งานยังไม่หมด</h2><p>มีเรื่องต้องจัดการ ${za.length} เรื่อง ผู้ขอกำลังรอคนติดต่อกลับ</p><button class="btn" data-act="zone" data-zone="alerts">ไปที่ต้องจัดการ</button></div>`;
+      return `<div class="empty"><span class="mark success" aria-hidden="true">✓</span><h2>ไม่มีคำขอรอตัดสิน</h2><p>และไม่มีเรื่องต้องจัดการ คำขอใหม่จะแจ้งทางอีเมล</p><p class="small">หน้านี้ไม่อัปเดตเอง กดรีเฟรชเมื่อได้รับอีเมล</p></div>`;
+    }
+    return `<table class="qtable"><colgroup><col style="width:220px"><col><col style="width:260px"><col style="width:150px"><col style="width:140px"></colgroup>
+      <thead><tr><th scope="col">ผู้ขอ</th><th scope="col">หน่วยงาน</th><th scope="col">กลุ่มโรค</th><th scope="col">ส่งเมื่อ</th><th scope="col">เวลาที่เหลือ</th></tr></thead>
+      <tbody>${zp.map(r => `<tr class="${r.ref === selRef ? 'sel' : ''}" data-act="select" data-ref="${r.ref}"><th scope="row"><button class="rowbtn" data-act="select" data-ref="${r.ref}" aria-current="${r.ref === selRef}">${esc(fullName(r))}</button></th><td>${esc(r.workplace)}</td><td>${esc(groupById(r.groupId).name)}</td><td class="muted figure">${esc(dmHm(r.submittedAt))}</td><td class="figure">${rv.decided[r.ref] === 'expired' ? 'หมดเวลา' : durHM(r.bizMin)}</td></tr>`).join('')}</tbody></table>`;
+  }
+  if (rv.zone === 'alerts') {
+    if (!za.length) return `<div class="empty"><span class="mark success" aria-hidden="true">✓</span><h2>ไม่มีเรื่องต้องจัดการ</h2><p>เรื่องใหม่จะแจ้งทางอีเมล</p></div>`;
+    return `<table class="qtable"><colgroup><col style="width:200px"><col style="width:160px"><col><col style="width:180px"><col style="width:150px"></colgroup>
+      <thead><tr><th scope="col">เรื่อง</th><th scope="col">คำขอ</th><th scope="col">ผู้ขอ</th><th scope="col">มอบหมายให้</th><th scope="col">เกิดขึ้นเมื่อ</th></tr></thead>
+      <tbody>${za.map(r => { const a = openAlerts(r)[0] || r.alerts[r.alerts.length - 1]; return `<tr class="alert ${r.ref === selRef ? 'sel' : ''}" data-act="select" data-ref="${r.ref}"><th scope="row"><button class="rowbtn kind" data-act="select" data-ref="${r.ref}">${alertTitle(a)}</button></th><td class="figure">${r.ref}</td><td>${esc(fullName(r))} · ${esc(r.workplace.split(' ').slice(0, 2).join(' '))}</td><td>${esc(a.assignee)}</td><td class="muted figure">${esc(dmHm(a.raisedAt))}</td></tr>`; }).join('')}</tbody></table>`;
+  }
+  const hidden = za.length;
+  if (!zi.length) return `<div class="empty"><span class="mark inert" aria-hidden="true">–</span><h2>ไม่มีคำขอที่กำลังดำเนินการ</h2></div>`;
+  return `<p class="band-note" style="margin-bottom:10px">เรียงตามเวลาที่ส่งคำขอ คำขอที่มีเรื่องต้องจัดการแสดงที่แท็บต้องจัดการแทน ไม่แสดงซ้ำที่นี่ (${hidden} รายการ)</p>
+    <table class="qtable"><colgroup><col style="width:170px"><col><col style="width:170px"><col style="width:160px"><col style="width:300px"></colgroup>
+    <thead><tr><th scope="col">คำขอ</th><th scope="col">ผู้ขอ</th><th scope="col">อนุมัติโดย</th><th scope="col">สถานะ</th><th scope="col">ลิงก์ดาวน์โหลด</th></tr></thead>
+    <tbody>${zi.map(r => { const run = curRun(r); return `<tr class="${r.ref === selRef ? 'sel' : ''}" data-act="select" data-ref="${r.ref}"><th scope="row"><button class="rowbtn figure" data-act="select" data-ref="${r.ref}">${r.ref}</button></th><td>${esc(fullName(r))} · ${esc(r.workplace.split(' ').slice(0, 2).join(' '))}</td><td>${esc(r.decision?.by || '')}</td><td>${runTag(r)}</td><td class="figure ${run?.state === 'ready' ? '' : 'muted'}">${linkCell(r)}</td></tr>`; }).join('')}</tbody></table>`;
+}
+function runTag(r) {
+  const s = curRun(r)?.state;
+  if (r.state !== 'approved') return '<span class="tag inert">สิ้นสุดแล้ว</span>';
+  return { ready: '<span class="tag success">ไฟล์พร้อมแล้ว</span>', running: '<span class="tag inert">กำลังดึงข้อมูล</span>', queued: '<span class="tag inert">รอคิวดึงข้อมูล</span>', failed: '<span class="tag failed">ดึงข้อมูลไม่สำเร็จ</span>' }[s] || '';
+}
+function linkCell(r) {
+  const run = curRun(r);
+  if (r.state !== 'approved') return 'สิ้นสุดแล้ว';
+  if (run.state === 'ready') return `เหลือ ${Math.floor(linkMinLeft(run) / 60)} ชม. · ดาวน์โหลด ${run.attempts} จาก ${MAX_ATTEMPTS}`;
+  if (run.state === 'failed') return 'ดึงข้อมูลไม่สำเร็จ';
+  return 'ยังทำอะไรไม่ได้จนกว่าจะดึงข้อมูลเสร็จ';
+}
+const alertTitle = a => ({ failed: 'ดึงข้อมูลไม่สำเร็จ', lapse: 'ยังไม่มีการดาวน์โหลด' }[a.kind]);
+
+function renderDossier() {
+  const rv = S.rv;
+  if (rv.lookup) return renderLookup(S.requests[rv.lookup]);
+  const list = snapZone(rv.zone);
+  let r = S.requests[rv.sel];
+  if (!r || (!list.includes(r) && !rv.decided[r.ref])) { r = list[0]; rv.sel = r?.ref || null; }
+  if (!r) return '';
+  if (rv.zone === 'pending') return renderPendingDossier(r);
+  if (rv.zone === 'alerts') return renderAlertDossier(r);
+  return renderInflightDossier(r);
+}
+
+function contactCol(r, title = 'ผู้ขอข้อมูล', split = true) {
+  return `<section aria-labelledby="c-h"><h3 id="c-h">${title}</h3><dl>
+    ${split ? `<div class="kv"><dt>ชื่อ</dt><dd>${esc(r.name)}</dd></div><div class="kv"><dt>นามสกุล</dt><dd>${esc(r.surname)}</dd></div>` : `<div class="kv"><dt>ชื่อ นามสกุล</dt><dd>${esc(fullName(r))}</dd></div>`}
+    <div class="kv"><dt>หน่วยงาน</dt><dd>${esc(r.workplace)}</dd></div>
+    <div class="kv"><dt>โทรศัพท์</dt><dd class="figure">${esc(r.tel)}</dd></div>
+    <div class="kv"><dt>อีเมล</dt><dd>${esc(r.email)}</dd></div>
+  </dl></section>`;
+}
+function askCol(r, { rows = true, workplace = false } = {}) {
+  const open = S.rv.codesOpen[r.ref];
+  return `<section aria-labelledby="a-h"><h3 id="a-h">สิ่งที่ขอ</h3><dl>
+    <div class="kv"><dt>กลุ่มโรค</dt><dd>${esc(groupById(r.groupId).name)}
+      <button class="codes-btn" data-act="codes" data-ref="${r.ref}" aria-expanded="${!!open}">${open ? '▾' : '▸'} รหัสรายงาน ${r.codes.length} รหัส</button>
+      ${open ? `<p class="codes-list figure">${r.codes.join(' · ')}</p>` : ''}</dd></div>
+    <div class="kv"><dt>ช่วงวันที่</dt><dd class="figure">${esc(rangeShort(r))} · ${num(days(r.from, r.to))} วัน</dd></div>
+    <div class="kv"><dt>พื้นที่</dt><dd>${esc(areaLabel(r, true))}</dd></div>
+    ${workplace ? `<div class="kv"><dt>หน่วยงาน</dt><dd>${esc(r.workplace)}</dd></div>` : ''}
+    ${rows ? `<div class="kv"><dt>จำนวนแถว</dt><dd class="figure">${rowsText(r)}</dd></div>` : ''}
+  </dl></section>`;
+}
+const meta = cells => `<div class="dos-meta">${cells.map(([k, v, cls]) => `<div><small>${k}</small><span class="${cls || ''}">${v}</span></div>`).join('')}</div>`;
+
+function renderPendingDossier(r) {
+  const rv = S.rv;
+  const decided = rv.decided[r.ref];
+  const ahead = snapZone('pending').filter(x => x.submittedAt < r.submittedAt).length;
+  let foot;
+  if (decided === 'approved') foot = `<div class="after"><div class="statement success" role="status"><h3>อนุมัติแล้ว โดยท่าน เวลา ${hm(r.decision.at)}</h3><p>ระบบเริ่มดึงข้อมูลแล้ว ผู้ขอจะได้รับอีเมลเมื่อไฟล์พร้อม ชื่อของท่านอยู่บนการปล่อยข้อมูลนี้ถาวร</p><p class="note">ติดตามคำขอนี้ได้ที่แท็บ <button class="link plain" data-act="zone" data-zone="inflight" data-sel="${r.ref}">กำลังดำเนินการ</button></p></div></div>`;
+  else if (decided === 'rejected') foot = `<div class="after"><div class="statement inert" role="status"><h3>ไม่อนุมัติแล้ว โดยท่าน เวลา ${hm(r.decision.at)}</h3><p>ส่งอีเมลแจ้งผู้ขอแล้วว่าไม่ได้รับอนุมัติ โดยไม่ได้บอกเหตุผล บันทึกภายในของท่านเก็บไว้ในบันทึกของระบบ</p><p class="note">คำขอนี้สิ้นสุดแล้ว และจะไม่ปรากฏบนหน้านี้อีก</p></div></div>`;
+  else if (decided === 'expired') foot = `<div class="after"><div class="statement pending" role="status"><h3>คำขอนี้หมดเวลาระหว่างที่ท่านอ่าน</h3><p>คำขอครบ 24 ชั่วโมงทำการก่อนที่การตัดสินของท่านจะถึงระบบ จึงไม่ได้บันทึกการอนุมัติ</p></div></div>`;
+  else if (decided === 'taken') foot = `<div class="after"><div class="statement inert" role="status"><h3>คำขอนี้ตัดสินไปแล้วโดย ${esc(r.decision.by)} เวลา ${hm(r.decision.at)}</h3><p>การกดของท่านไม่ได้ถูกบันทึก กดรีเฟรชเพื่อดูรายการล่าสุด</p></div></div>`;
+  else foot = `<div class="strip">
+      <div class="q"><p>บุคคลนี้มีตัวตนอยู่จริงวันนี้ และทำงานที่หน่วยงานที่ระบุหรือไม่?</p><small>ถ้าไม่แน่ใจ โทรหาผู้ขอก่อนตัดสิน. การอนุมัติย้อนกลับไม่ได้</small></div>
+      <div class="btns"><button class="btn lg" style="width:180px" data-act="open-reject" data-ref="${r.ref}">ไม่อนุมัติ</button><button class="btn lg primary" style="width:260px" data-act="open-approve" data-ref="${r.ref}">อนุมัติและปล่อยข้อมูล</button></div>
+    </div>`;
+  const expiredShown = decided === 'expired';
+  return `<article class="dossier" aria-labelledby="dos-name">
+    <div class="dos-head">
+      <div><p class="ref figure">คำขอ ${r.ref}</p><h2 id="dos-name" tabindex="-1">${esc(fullName(r))}</h2></div>
+      ${meta([['ส่งเมื่อ', dtShort(r.submittedAt)], ['เวลาทำการที่เหลือ', expiredShown ? '0 ชม. 00 น.' : decided ? '—' : durHM(r.bizMin)], ['ก่อนหน้า', `${ahead} คำขอ`]])}
+    </div>
+    <div class="cols2">${contactCol(r)}${askCol(r)}</div>
+    ${foot}
+  </article>`;
+}
+
+function outcomeButtons(r, a) {
+  const mine = a.assignee === S.rv.user;
+  const outs = a.kind === 'failed' ? ['ติดต่อผู้ขอแล้ว', 'ยุติเรื่อง'] : ['ติดต่อผู้ขอได้แล้ว', 'ติดต่อไม่ได้', 'ไม่ต้องทำอะไรเพิ่ม'];
+  return `<p class="sub">ปิดเรื่องนี้ด้วยผลที่เกิดขึ้น</p>
+    <div class="outs">${outs.map(o => `<button class="btn" data-act="outcome" data-ref="${r.ref}" data-out="${o}" ${mine ? '' : 'aria-disabled="true" aria-describedby="why-out"'}>${o}</button>`).join('')}</div>
+    ${mine ? '' : `<small id="why-out">เรื่องนี้มอบหมายให้ ${esc(a.assignee)} โดยชื่อ เพราะเป็นผู้ที่รับรองผู้ขอรายนี้ จึงปิดได้เฉพาะ ${esc(a.assignee)}</small>`}
+    <small>ไม่มีช่องให้พิมพ์ จำนวนครั้งของแต่ละผลคือตัวเลขเดียวที่บอกว่าปัญหานี้เกิดบ่อยแค่ไหน</small>`;
+}
+
+function renderAlertDossier(r) {
+  const a = openAlerts(r)[0];
+  if (!a) return renderInflightDossier(r);
+  const run = curRun(r);
+  const rerunning = a.kind === 'failed' && ['queued', 'running'].includes(run.state);
+  const body = a.kind === 'failed'
+    ? `<p>ระบบลองดึงข้อมูลครบทุกครั้งแล้วแต่ไม่ได้ไฟล์ ผู้ขอยังไม่ได้รับอะไรเลย และไม่รู้ว่าเกิดปัญหา ผู้ดูแลระบบได้รับแจ้งเรื่องความผิดพลาดแยกต่างหากแล้ว</p>`
+    : `<p>ส่งลิงก์ไปที่ ${esc(r.email)} เมื่อ ${esc(dtShort(run.deliveredAt))} ผ่านมา 24 ชั่วโมงแล้วยังไม่มีการดาวน์โหลด ระบบมองไม่เห็นว่าอีเมลถึงผู้ขอหรือไม่ ความเงียบนี้เป็นสัญญาณเดียวที่มี</p>`;
+  const card = `<div class="alert-card">
+    <h3>${alertTitle(a)}</h3>${body}
+    <div class="alert-contact" aria-label="ติดต่อผู้ขอ">
+      <div><small>ผู้ขอ</small><b>${esc(fullName(r))}</b><span>${esc(r.workplace)}</span></div>
+      <div><small>โทรศัพท์</small><b class="tel figure">${esc(r.tel)}</b></div>
+      <div><small>อีเมล</small><span class="addr">${esc(r.email)}</span></div>
+    </div>
+    <p class="meta">มอบหมายให้ ${esc(a.assignee)}${a.assignee === S.rv.user ? ' เพราะท่านเป็นผู้อนุมัติ' : ' ผู้อนุมัติคำขอนี้'} · เกิดขึ้นเมื่อ ${esc(dtShort(a.raisedAt))}${a.attempts > 1 ? ` · ดึงข้อมูลไม่สำเร็จ ${a.attempts} ครั้ง` : ''}</p>
+    ${rerunning ? `<p class="sub">กำลังดึงข้อมูลใหม่ ครั้งที่ ${run.n} ถ้าสำเร็จ ระบบส่งไฟล์ให้ผู้ขอและปิดเรื่องนี้เอง</p>` : outcomeButtons(r, a)}
+  </div>`;
+  const headMeta = a.kind === 'failed'
+    ? [['อนุมัติโดย', esc(r.decision.by)], ['อนุมัติเมื่อ', dtShort(r.decision.at)], ['ดึงข้อมูล', `ครั้งที่ ${run.n} จาก ${run.n}`]]
+    : [['อนุมัติโดย', esc(r.decision.by)], ['ส่งลิงก์เมื่อ', dtShort(run.deliveredAt)], ['ลิงก์เหลือ', durHM(linkMinLeft(run)), 'success'], ['ดาวน์โหลดแล้ว', `${run.attempts} จาก ${MAX_ATTEMPTS} ครั้ง`]];
+  const tail = a.kind === 'failed'
+    ? `<div class="rerun"><div><p>ดึงข้อมูลใหม่จากคำขอเดิม</p><small>ไม่ต้องตัดสินใหม่ ถ้าครั้งใหม่สำเร็จ ระบบส่งไฟล์ให้ผู้ขอและปิดเรื่องนี้เอง ถ้าไม่สำเร็จ เรื่องนี้ยังอยู่ที่นี่</small></div>
+        <div style="display:grid;justify-items:end;gap:4px"><button class="btn lg" data-act="rerun" data-ref="${r.ref}" ${rerunning ? 'aria-disabled="true" aria-describedby="why-rr"' : ''}>${rerunning ? 'กำลังดึงข้อมูลใหม่…' : 'ดึงข้อมูลใหม่'}</button>${rerunning ? '<small id="why-rr">ยังทำอะไรไม่ได้จนกว่าจะดึงข้อมูลเสร็จ</small>' : ''}</div></div>`
+    : actionPair(r) + absence();
+  return `<article class="dossier" aria-labelledby="dos-name">
+    <div class="dos-head"><div><p class="ref figure">คำขอ ${r.ref}</p><h2 id="dos-name" tabindex="-1">${esc(fullName(r))}</h2></div>${meta(headMeta)}</div>
+    ${card}
+    <div class="ask-only">${askCol(r)}</div>
+    ${tail}
+  </article>`;
+}
+
+function actionPair(r) {
+  const run = curRun(r);
+  const busy = ['queued', 'running'].includes(run.state);
+  const canResend = run.state === 'ready';
+  const why = busy ? 'ยังทำอะไรไม่ได้จนกว่าจะดึงข้อมูลเสร็จ' : run.state === 'failed' ? 'ไม่มีไฟล์ให้ส่ง ดึงข้อมูลครั้งล่าสุดไม่สำเร็จ' : '';
+  const note = S.rv.actionNote?.[r.ref];
+  return `<div class="actions2">
+    <div><strong>ส่งอีเมลซ้ำ</strong><p>ส่งลิงก์เดิมไปที่ ${esc(r.email)} อีกครั้ง ลิงก์ไม่ได้ต่ออายุ</p>
+      <button class="btn" data-act="resend" data-ref="${r.ref}" ${canResend ? '' : 'aria-disabled="true" aria-describedby="why-rs"'}>ส่งอีเมลซ้ำ</button>
+      ${canResend ? '' : `<p class="why" id="why-rs">${why}</p>`}</div>
+    <div><strong>ดึงข้อมูลใหม่</strong><p>ทำไฟล์ใหม่จากคำขอเดิม ได้ลิงก์ใหม่ 72 ชั่วโมง ลิงก์เดิมยังใช้ได้จนกว่าไฟล์ใหม่จะพร้อม</p>
+      <button class="btn" data-act="rerun" data-ref="${r.ref}" ${busy ? 'aria-disabled="true" aria-describedby="why-rr"' : ''}>ดึงข้อมูลใหม่</button>
+      ${busy ? `<p class="why" id="why-rr">${why}</p>` : ''}</div>
+  </div>${note ? `<p class="muted" role="status" style="font-size:13px;margin-top:-12px">${esc(note)}</p>` : ''}`;
+}
+const absence = () => `<div class="absence"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg><div><strong>แก้ที่อยู่อีเมลของผู้ขอไม่ได้</strong>ผู้ตรวจสอบตัดสินว่าใครได้ข้อมูล ไม่ใช่ข้อมูลไปที่ไหน ถ้าอีเมลผิด ผู้ขอต้องส่งคำขอใหม่ด้วยอีเมลที่ถูกต้อง</div></div>`;
+
+function renderInflightDossier(r) {
+  const run = curRun(r);
+  if (isTerminal(r)) return renderLookup(r);
+  const ready = run.state === 'ready';
+  const readyRun = [...r.runs].reverse().find(x => x.state === 'ready');
+  const m = [['อนุมัติโดย', esc(r.decision.by)]];
+  if (ready) m.push(['ไฟล์พร้อมเมื่อ', dtShort(run.readyAt)], ['ลิงก์เหลือ', durHM(linkMinLeft(run)), 'success'], ['ดาวน์โหลดแล้ว', `${run.attempts} จาก ${MAX_ATTEMPTS} ครั้ง`]);
+  else if (readyRun) m.push(['สถานะ', `กำลังดึงข้อมูลใหม่ ครั้งที่ ${run.n}`], ['ลิงก์เดิมเหลือ', durHM(linkMinLeft(readyRun)), 'success']);
+  else m.push(['อนุมัติเมื่อ', dtShort(r.decision.at)], ['สถานะ', { queued: 'รอคิวดึงข้อมูล', running: 'กำลังดึงข้อมูล', failed: 'ดึงข้อมูลไม่สำเร็จ' }[run.state]]);
+  return `<article class="dossier" aria-labelledby="dos-name">
+    <div class="dos-head"><div><p class="ref figure">คำขอ ${r.ref}</p><h2 id="dos-name" tabindex="-1">${esc(fullName(r))}</h2></div>${meta(m)}</div>
+    <div class="cols2">${contactCol(r, 'ผู้ขอข้อมูล', false)}${askCol(r)}</div>
+    ${actionPair(r)}
+    ${absence()}
+  </article>`;
+}
+
+function renderLookup(r) {
+  if (!isTerminal(r)) return renderInflightDossier(r);
+  const d = r.decision;
+  const outcome = d ? (d.kind === 'approved' ? 'อนุมัติ' : 'ไม่อนุมัติ') : 'ไม่มีการตัดสิน หมดเวลา 24 ชั่วโมงทำการ';
+  const files = r.runs.length
+    ? `<table class="ftable"><thead><tr><th>ครั้งที่</th><th>ชื่อไฟล์</th><th>ลิงก์</th><th>ดาวน์โหลด</th></tr></thead><tbody>${r.runs.map(run => `<tr><td class="figure">${run.n}</td><td class="figure">${esc(run.archive)}</td><td class="muted figure">${{ expired: `หมดอายุ ${dmHm(run.readyAt + LINK_HOURS * HOUR)}`, revoked: 'ยกเลิกเมื่อไฟล์ใหม่พร้อม', failed: 'ดึงข้อมูลไม่สำเร็จ', ready: 'ใช้ได้', queued: '—', running: '—' }[run.state]}</td><td class="figure">${run.attempts} จาก ${MAX_ATTEMPTS}</td></tr>`).join('')}</tbody></table>`
+    : '<p class="muted" style="font-size:14px">ไม่มีไฟล์</p>';
+  return `<article class="dossier" aria-labelledby="dos-name">
+    <div><p class="ro-tag"><span class="tag inert">สิ้นสุดแล้ว</span>อ่านอย่างเดียว</p><h2 id="dos-name" tabindex="-1" style="font-size:26px" class="figure">คำขอ ${r.ref}</h2></div>
+    <p class="ended-note">คำขอนี้สิ้นสุดแล้ว ไม่มีอะไรให้ทำต่อ หน้านี้แสดงสิ่งที่บันทึกไว้ ไม่แสดงข้อมูลติดต่อของผู้ขอ</p>
+    <div class="cols2">${askCol(r, { rows: false, workplace: true })}
+      <section aria-labelledby="d-h"><h3 id="d-h">การตัดสิน</h3><dl>
+        <div class="kv"><dt>ผล</dt><dd>${outcome}</dd></div>
+        ${d ? `<div class="kv"><dt>ผู้ตัดสิน</dt><dd>${esc(d.by)}</dd></div><div class="kv"><dt>เมื่อ</dt><dd class="figure">${esc(dtShort(d.at))}</dd></div>` : ''}
+        <div class="kv"><dt>จำนวนแถวตอนนั้น</dt><dd class="figure">${d?.rows != null ? `${num(d.rows)} แถว` : 'นับไม่สำเร็จ'}</dd></div>
+      </dl></section></div>
+    <section><h3 style="font-size:16px;margin-bottom:10px">ไฟล์</h3>${files}</section>
+    <section><h3 style="font-size:16px;margin-bottom:10px">บันทึกเหตุการณ์ <span class="muted" style="font-size:13px;font-weight:400">ล่าสุดก่อน</span></h3>
+      <div class="trail">${[...r.events].sort((a, b) => b.at - a.at).map(e => `<div><span class="figure">${esc(dmHm(e.at))}</span><span>${esc(e.actor)}</span><span>${esc(e.text)}</span></div>`).join('')}</div></section>
+  </article>`;
+}
+
+function renderDialog() {
+  const el = document.getElementById('overlay');
+  if (!dlg.kind) { el.innerHTML = ''; return; }
+  const r = S.requests[dlg.ref];
+  if (dlg.kind === 'approve') {
+    el.innerHTML = `<div class="scrim"><div class="dialog" role="dialog" aria-modal="true" aria-labelledby="dlg-h">
+      <h2 id="dlg-h">อนุมัติและปล่อยข้อมูลให้ ${esc(fullName(r))}?</h2>
+      <dl>
+        <div class="kv"><dt>คำขอ</dt><dd class="figure">${r.ref}</dd></div>
+        <div class="kv"><dt>หน่วยงาน</dt><dd>${esc(r.workplace)}</dd></div>
+        <div class="kv"><dt>สิ่งที่ขอ</dt><dd>${esc(groupById(r.groupId).name)} · ${num(days(r.from, r.to))} วัน · ${esc(areaLabel(r))}</dd></div>
+      </dl>
+      <div class="pair"><button class="btn lg" data-act="dlg-back" ${dialogBusy ? 'disabled' : ''}>ย้อนกลับ</button><button class="btn lg primary" id="dlg-confirm" data-act="confirm-approve" ${dialogBusy ? 'aria-busy="true"' : ''}>${dialogBusy ? 'กำลังอนุมัติ…' : 'ยืนยันอนุมัติ'}</button></div>
+    </div></div>`;
+  } else {
+    el.innerHTML = `<div class="scrim"><div class="dialog wide" role="dialog" aria-modal="true" aria-labelledby="dlg-h">
+      <h2 id="dlg-h">ไม่อนุมัติคำขอของ ${esc(fullName(r))}?</h2>
+      <div><label class="lbl" for="dlg-note">บันทึกภายใน<span class="req">*</span></label>
+        <textarea id="dlg-note" class="box ${dlg.err ? 'bad' : ''}" aria-describedby="dlg-note-h" ${dialogBusy ? 'readonly' : ''}>${esc(dlg.note)}</textarea>
+        <p class="${dlg.err ? 'field-err' : 'field-hint'}" id="dlg-note-h">${dlg.err ? esc(dlg.err) : 'อย่างน้อย 10 ตัวอักษร เก็บไว้ในบันทึกของระบบ ไม่แสดงและไม่ส่งถึงผู้ขอ'}</p></div>
+      <p class="sunk-note">ข้อความนี้ไม่ถูกบันทึกระหว่างพิมพ์ ถ้าปิดหน้าต่างนี้ต้องพิมพ์ใหม่ เครื่องที่ใช้ร่วมกันไม่ควรเก็บบันทึกภายในไว้</p>
+      <div class="pair"><button class="btn lg" data-act="dlg-back" ${dialogBusy ? 'disabled' : ''}>ย้อนกลับ</button><button class="btn lg primary" id="dlg-confirm" data-act="confirm-reject" ${dialogBusy ? 'aria-busy="true"' : ''}>${dialogBusy ? 'กำลังบันทึก…' : 'ยืนยันไม่อนุมัติ'}</button></div>
+    </div></div>`;
+  }
+}
+
+function renderToast() {
+  const t = S.rv.toast;
+  const old = document.getElementById('toast');
+  if (old) old.remove();
+  if (!t || !S.rv.user || route().name !== 'reviewer') return;
+  const div = document.createElement('div');
+  div.id = 'toast'; div.className = 'toast'; div.setAttribute('role', 'alert');
+  div.innerHTML = t === 'idle'
+    ? `<strong>ไม่มีการใช้งานมา 55 นาที</strong><p>อีก 5 นาทีจะออกจากระบบ บันทึกภายในที่พิมพ์ค้างไว้จะหายไป</p><button class="btn primary" data-act="still-here">ยังใช้งานอยู่</button>`
+    : `<strong>อีก 5 นาทีจะออกจากระบบ</strong><p>ครบ 6 ชั่วโมงตั้งแต่เข้าสู่ระบบ ต่อเวลาไม่ได้ เข้าสู่ระบบใหม่แล้วจะกลับมาที่คำขอนี้ คำขอยังรอตัดสินอยู่</p>`;
+  document.body.appendChild(div);
+}
+
+/* ═════════════════ Date picker (พ.ศ.) ═════════════════ */
+
+const TH_MONTHS_LONG = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+const TH_WEEKDAYS = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
+const isoOf = ms => new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(ms);
+const addDays = (iso, n) => new Date(Date.parse(iso + 'T00:00:00Z') + n * DAY).toISOString().slice(0, 10);
+let picker = null; // { k, y, m }
+
+// The other end of the range bounds this one, so the picker can only offer a span of at most 365 days.
+function pickerLimits(k) {
+  const f = S.form;
+  if (k === 'to' && f.from) return { lo: f.from, hi: addDays(f.from, MAX_DAYS - 1) };
+  if (k === 'from' && f.to) return { lo: addDays(f.to, -(MAX_DAYS - 1)), hi: f.to };
+  return { lo: '0000-01-01', hi: '9999-12-31' };
+}
+function openPicker(k) {
+  const base = S.form[k] || (k === 'to' && S.form.from) || (k === 'from' && S.form.to) || isoOf(S.now);
+  const [y, m] = base.split('-').map(Number);
+  picker = { k, y, m };
+  renderPicker();
+  (document.querySelector('.cal-day[aria-pressed="true"]') || document.querySelector('.cal-day.today:not(:disabled)') || document.querySelector('.cal-day:not(:disabled)'))?.focus();
+}
+function closePicker(refocus) {
+  const k = picker?.k;
+  picker = null; renderPicker();
+  if (refocus && k) document.getElementById('cal-btn-' + k)?.focus();
+}
+function renderPicker() {
+  for (const k of ['from', 'to']) {
+    const slot = document.getElementById('cal-' + k);
+    const btn = document.getElementById('cal-btn-' + k);
+    if (!slot) continue;
+    btn.setAttribute('aria-expanded', picker?.k === k);
+    if (picker?.k !== k) { slot.innerHTML = ''; continue; }
+    const { y, m } = picker;
+    const { lo, hi } = pickerLimits(k);
+    const first = new Date(Date.UTC(y, m - 1, 1)).getUTCDay();
+    const count = new Date(Date.UTC(y, m, 0)).getUTCDate();
+    const today = isoOf(S.now);
+    const nowBE = Number(today.slice(0, 4)) + 543;
+    const f = S.form;
+    let cells = TH_WEEKDAYS.map(w => `<span class="wd" aria-hidden="true">${w}</span>`).join('');
+    for (let i = 0; i < first; i++) cells += '<span></span>';
+    for (let d = 1; d <= count; d++) {
+      const iso = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const off = iso < lo || iso > hi;
+      const sel = iso === f[k];
+      const inr = f.from && f.to && iso > f.from && iso < f.to;
+      cells += `<button type="button" class="cal-day ${iso === today ? 'today' : ''} ${inr ? 'inrange' : ''}" data-act="cal-pick" data-iso="${iso}" aria-pressed="${sel}" aria-label="${d} ${TH_MONTHS_LONG[m - 1]} ${y + 543}" ${off ? 'disabled' : ''}>${d}</button>`;
+    }
+    const years = [];
+    for (let by = nowBE - 10; by <= nowBE + 1; by++) years.push(by);
+    slot.innerHTML = `<div class="cal ${k === 'to' ? 'right' : ''}" role="dialog" aria-label="ปฏิทิน ปี พ.ศ.">
+      <div class="cal-head">
+        <button type="button" class="cal-nav" data-act="cal-step" data-step="-1" aria-label="เดือนก่อนหน้า">‹</button>
+        <select data-cal="m" aria-label="เดือน">${TH_MONTHS_LONG.map((n, i) => `<option value="${i + 1}" ${i + 1 === m ? 'selected' : ''}>${n}</option>`).join('')}</select>
+        <select data-cal="y" aria-label="ปี พ.ศ.">${years.map(by => `<option value="${by - 543}" ${by - 543 === y ? 'selected' : ''}>${by}</option>`).join('')}</select>
+        <button type="button" class="cal-nav" data-act="cal-step" data-step="1" aria-label="เดือนถัดไป">›</button>
+      </div>
+      <div class="cal-grid">${cells}</div>
+      <div class="cal-foot"><span>${k === 'to' && f.from ? 'เลือกได้ไม่เกิน 365 วันนับจากวันแรก' : 'ปี พ.ศ.'}</span>${today >= lo && today <= hi ? `<button type="button" class="link plain" data-act="cal-pick" data-iso="${today}">วันนี้</button>` : ''}</div>
+    </div>`;
+  }
+}
+
+/* ═════════════════ Render root ═════════════════ */
+
+function render(focusId) {
+  const active = document.activeElement?.id;
+  const rt = route();
+  const app = document.getElementById('app');
+  if (rt.name === 'public') app.innerHTML = renderPublic();
+  else if (rt.name === 'collect') app.innerHTML = renderCollect(rt.token);
+  else if (rt.name === 'expired') app.innerHTML = renderExpired();
+  else if (rt.name === 'mail') app.innerHTML = renderMail();
+  else app.innerHTML = renderReviewer();
+  refreshForm();
+  renderPicker();
+  renderProto();
+  renderDialog();
+  renderToast();
+  const f = document.getElementById(focusId || active);
+  if (f && f !== document.activeElement) f.focus({ preventScroll: !focusId });
+  save();
+}
+
+/* ═════════════════ Events ═════════════════ */
+
+document.addEventListener('input', e => {
+  const dk = e.target.dataset?.date;
+  if (dk) {
+    S.formUi.raw = { ...(S.formUi.raw || {}), [dk]: e.target.value };
+    S.form[dk] = parseThaiDate(e.target.value) || '';
+    refreshForm(); save();
+    return;
+  }
+  const k = e.target.dataset?.field;
+  if (k) {
+    S.form[k] = e.target.type === 'checkbox' ? e.target.checked : e.target.value;
+    if (k === 'provinceId' || k === 'groupId') return;
+    refreshForm(); save();
+    return;
+  }
+  if (e.target.id === 'dlg-note') { dlg.note = e.target.value; }
+  if (e.target.id === 'lk') { S.rv.lookupQ = e.target.value; }
+});
+document.addEventListener('change', e => {
+  const c = e.target.dataset?.cal;
+  if (c && picker) { picker[c] = Number(e.target.value); renderPicker(); document.querySelector(`[data-cal="${c}"]`)?.focus(); return; }
+  const k = e.target.dataset?.field;
+  if (k === 'provinceId' || k === 'groupId') { S.form[k] = e.target.value; render(e.target.id); }
+  else if (k) { S.form[k] = e.target.type === 'checkbox' ? e.target.checked : e.target.value; refreshForm(); save(); }
+});
+
+document.addEventListener('submit', e => {
+  e.preventDefault();
+  if (e.target.id === 'req-form') {
+    S.formUi.attempted = true;
+    const ok = checks(S.form).every(c => c.ok);
+    if (!ok) { refreshForm(); document.getElementById('checklist').focus(); return; }
+    S.formUi.attempted = false;
+    S.pubRoute = 'check'; sendFailed = false;
+    render('chk-h'); window.scrollTo(0, 0);
+  }
+  if (e.target.id === 'signin') {
+    const user = document.getElementById('si-user').value.trim();
+    const pass = document.getElementById('si-pass').value;
+    const code = document.getElementById('si-code').value.trim();
+    S.rv.lastUser = user;
+    signingIn = true; render();
+    setTimeout(() => {
+      signingIn = false;
+      if (!REVIEWERS[user] || !pass || !/^\d{6}$/.test(code) || code === '000000') { signInFailed = true; render('si-pass'); return; }
+      signInFailed = false;
+      S.rv.user = REVIEWERS[user];
+      const back = S.rv.notice?.ref;
+      S.rv.notice = null; S.rv.decided = {}; S.rv.lookup = null;
+      takeSnapshot();
+      if (back && S.requests[back] && zoneOf(S.requests[back])) { S.rv.zone = zoneOf(S.requests[back]); S.rv.sel = back; }
+      render('dos-name');
+    }, 700);
+  }
+  if (e.target.id === 'lookup') {
+    const q = S.rv.lookupQ.trim().toUpperCase();
+    const r = S.requests[q];
+    S.rv.lookupErr = '';
+    if (!r) { S.rv.lookupErr = 'ไม่พบคำขอเลขนี้ ตรวจสอบเลขที่คำขออีกครั้ง'; render('lk'); return; }
+    if (isTerminal(r)) { S.rv.lookup = r.ref; }
+    else {
+      S.rv.lookup = null;
+      const z = ['pending', 'alerts', 'inflight'].find(k => S.rv.snap[k].includes(r.ref)) || zoneOf(r);
+      if (!S.rv.snap[z].includes(r.ref)) moveInSnap(r.ref, z);
+      S.rv.zone = z; S.rv.sel = r.ref;
+    }
+    render('dos-name');
+  }
+});
+
+document.addEventListener('click', e => {
+  if (picker && !e.target.closest('.datebox')) closePicker(false);
+  const t = e.target.closest('[data-act],[data-go]');
+  if (!t) {
+    const tip = document.getElementById('tip');
+    if (tip && !e.target.closest('#tip')) tip.classList.remove('open');
+    return;
+  }
+  if (t.dataset.go !== undefined) { e.preventDefault(); if (t.dataset.go === '') S.pubRoute = S.pubRoute === 'check' ? 'check' : 'form'; go(t.dataset.go); return; }
+  if (t.getAttribute('aria-disabled') === 'true') { e.preventDefault(); return; }
+  const a = t.dataset.act;
+  const rv = S.rv;
+  const r = S.requests[t.dataset.ref];
+  switch (a) {
+    // chrome
+    case 'sim-toggle': simOpen = !simOpen; renderProto(); break;
+    case 'tick': tick(Number(t.dataset.min)); flash(`Clock advanced ${Number(t.dataset.min) / 60} h.`); render(); break;
+    case 'jobs': {
+      const ok = t.dataset.ok === '1';
+      const list = reqs().filter(x => x.state === 'approved' && ['queued', 'running'].includes(curRun(x)?.state));
+      if (list.length) tick(3);
+      list.forEach(x => finishRun(x, ok));
+      flash(list.length ? `${list.length} job(s) ${ok ? 'finished: Delivery emails sent' : 'failed: Alerts raised'}.` : 'No extraction job is running.');
+      render(); break;
+    }
+    case 'probes': {
+      const ok = t.dataset.ok === '1';
+      const list = reqs().filter(x => x.probe.state === 'counting');
+      list.forEach(x => resolveProbe(x.ref, ok));
+      flash(list.length ? `${list.length} Probe(s) ${ok ? 'counted' : 'failed'}.` : 'No Probe is counting.');
+      render(); break;
+    }
+    case 'flag': S.flags[t.dataset.flag] = !S.flags[t.dataset.flag]; renderProto(); save(); break;
+    case 'expire-open': {
+      const x = S.requests[rv.sel];
+      if (!rv.user || !x || x.state !== 'pending') { flash('Sign in as a Reviewer and open a pending Request first.'); break; }
+      tick(0); x.bizMin = 0; x.state = 'lapsed'; log(x, 'ระบบ', 'ครบ 24 ชั่วโมงทำการโดยไม่มีการตัดสิน คำขอสิ้นสุด');
+      flash(`${x.ref} ran out of time on the server. The Reviewer's screen still shows it; press approve to see 11e.`); render(); break;
+    }
+    case 'toast': if (!rv.user) { flash('Sign in as a Reviewer first.'); break; } rv.toast = t.dataset.kind; if (route().name !== 'reviewer') go('reviewer'); else render(); if (t.dataset.kind === 'ceiling') setTimeout(() => { if (rv.toast === 'ceiling') { rv.toast = null; render(); } }, 9000); break;
+    case 'prefill': Object.assign(S.form, { groupId: 'heat', from: '2026-03-01', to: '2026-05-31', areaMode: 'region', region: 4, provinceId: '', name: 'สุภาพร', surname: 'วงศ์ใหญ่', workplace: 'สคร.4 สระบุรี กลุ่มระบาดวิทยา', tel: '081 234 5678', email: 'supaporn.w@ddc.mail.go.th', consent: true }); S.pubRoute = 'form'; S.formUi.attempted = false; S.formUi.raw = {}; go(''); break;
+    case 'reset': if (confirm('Reset every Request, email and setting in this prototype?')) { try { localStorage.removeItem(KEY); } catch {} S = seed(); dlg.kind = null; simOpen = false; go(''); } break;
+
+    // requester
+    case 'area-mode': S.form.areaMode = t.dataset.mode; if (t.dataset.mode !== 'region') S.form.region = null; render(t.dataset.mode === 'province' ? 'f-prov' : t.id); break;
+    case 'pick-region': S.form.areaMode = 'region'; S.form.region = Number(t.dataset.region); S.form.provinceId = ''; render('cell-' + t.dataset.region); break;
+    case 'tip': document.getElementById('tip').classList.toggle('open'); break;
+    case 'cal-open': if (picker?.k === t.dataset.k) closePicker(true); else openPicker(t.dataset.k); break;
+    case 'cal-step': { let { y, m } = picker; m += Number(t.dataset.step); if (m < 1) { m = 12; y--; } if (m > 12) { m = 1; y++; } picker.y = y; picker.m = m; renderPicker(); document.querySelector(`[data-act="cal-step"][data-step="${t.dataset.step}"]`)?.focus(); break; }
+    case 'cal-pick': {
+      const k = picker.k;
+      S.form[k] = t.dataset.iso;
+      S.formUi.raw = { ...(S.formUi.raw || {}), [k]: '' };
+      document.getElementById('f-' + k).value = dShort(isoDay(t.dataset.iso));
+      closePicker(true); refreshForm(); save();
+      break;
+    }
+    case 'clear-email': S.form.email = ''; document.getElementById('f-email').value = ''; refreshForm(); document.getElementById('f-email').focus(); save(); break;
+    case 'clear-form': S.form = blankForm(); S.formUi.attempted = false; S.formUi.raw = {}; render(); break;
+    case 'jump': { const el = document.getElementById(t.dataset.to); if (el) { el.focus(); el.scrollIntoView({ block: 'center' }); } break; }
+    case 'pdpa': e.preventDefault(); flash('The PDPA notice link target is not settled (system.md, Consent block).'); break;
+    case 'check-back': S.pubRoute = 'form'; render('f-group'); window.scrollTo(0, 0); break;
+    case 'check-send':
+      if (sending) break;
+      sending = true; sendFailed = false; render();
+      setTimeout(() => {
+        sending = false;
+        if (S.flags.sendFail) { S.flags.sendFail = false; sendFailed = true; render(); return; }
+        tick(1);
+        const res = submitRequest(S.form);
+        if (res.dup) { S.pubRoute = 'duplicate'; render('dup-h'); }
+        else { S.lastRef = res.ref; S.pubRoute = 'submitted'; render('ok-h'); flash(`${res.ref} stored. Reviewers were emailed; refresh the Reviewer queue to see it.`); }
+        window.scrollTo(0, 0);
+      }, 900);
+      break;
+    case 'dup-back': S.pubRoute = 'form'; render('f-group'); break;
+    case 'download': {
+      e.preventDefault();
+      const st = tokenState(t.dataset.token);
+      if (!st.ok) { render(); break; }
+      st.run.attempts++;
+      log(st.r, 'ผู้ถือลิงก์', `ดาวน์โหลดครั้งที่ ${st.run.attempts}`);
+      const lapse = st.r.alerts.find(x => x.open && x.kind === 'lapse');
+      if (lapse) { lapse.open = false; lapse.outcome = 'ดาวน์โหลดแล้ว'; lapse.clearedBy = 'ระบบ'; lapse.clearedAt = S.now; }
+      flash(`Attempt ${st.run.attempts} of ${MAX_ATTEMPTS} counted. No real archive is served in the prototype.${lapse ? ' The collection lapse cleared itself (actor: system).' : ''}`);
+      render(); break;
+    }
+
+    // mail
+    case 'mail-tab': S.mailTab = t.dataset.tab; S.mailSel = null; render(); break;
+    case 'mail-open': S.mailSel = Number(t.dataset.id); render(); break;
+
+    // reviewer
+    case 'sign-out': rv.user = null; rv.snap = null; rv.toast = null; rv.lookup = null; rv.decided = {}; dlg.kind = null; render('si-user'); break;
+    case 'zone': rv.zone = t.dataset.zone; rv.lookup = null; rv.sel = t.dataset.sel || null; rv.lookupErr = ''; render('tab-' + rv.zone); break;
+    case 'select': rv.sel = t.dataset.ref; rv.lookup = null; render('dos-name'); break;
+    case 'codes': rv.codesOpen[r.ref] = !rv.codesOpen[r.ref]; render(t.id); break;
+    case 'refresh':
+      if (S.flags.refreshFail) { S.flags.refreshFail = false; rv.refreshErr = true; render(); break; }
+      rv.refreshErr = null; rv.decided = {}; takeSnapshot(); render(); break;
+    case 'still-here': rv.toast = null; render(); break;
+    case 'open-approve': case 'open-reject':
+      dlg.kind = a === 'open-approve' ? 'approve' : 'reject'; dlg.ref = r.ref; dlg.note = ''; dlg.err = ''; dlg.trigger = t;
+      renderDialog(); document.getElementById(dlg.kind === 'approve' ? 'dlg-confirm' : 'dlg-note').focus(); break;
+    case 'dlg-back': closeDialog(); break;
+    case 'confirm-approve': case 'confirm-reject': {
+      if (dialogBusy) break;
+      const x = S.requests[dlg.ref];
+      if (a === 'confirm-reject' && dlg.note.trim().length < 10) { dlg.err = 'บันทึกภายในต้องมีอย่างน้อย 10 ตัวอักษร'; renderDialog(); document.getElementById('dlg-note').focus(); break; }
+      dialogBusy = true; renderDialog();
+      setTimeout(() => {
+        dialogBusy = false;
+        if (S.flags.sessionExpired) {
+          S.flags.sessionExpired = false;
+          rv.notice = { ref: x.ref }; rv.user = null; rv.snap = null; rv.toast = null; dlg.kind = null;
+          render('si-user'); return;
+        }
+        dlg.kind = null;
+        tick(2);
+        if (x.state === 'lapsed') { rv.decided[x.ref] = 'expired'; render('dos-name'); return; }
+        if (x.state !== 'pending') { rv.decided[x.ref] = 'taken'; render('dos-name'); return; }
+        if (a === 'confirm-approve') {
+          x.state = 'approved';
+          x.decision = { kind: 'approved', by: rv.user, at: S.now, rows: x.probe.rows };
+          log(x, rv.user, 'อนุมัติ');
+          startRun(x, rv.user);
+          moveInSnap(x.ref, 'inflight');
+          rv.decided[x.ref] = 'approved';
+        } else {
+          x.state = 'rejected';
+          x.decision = { kind: 'rejected', by: rv.user, at: S.now, rows: x.probe.rows, note: dlg.note.trim() };
+          log(x, rv.user, 'ไม่อนุมัติ');
+          log(x, 'ระบบ', 'ส่งอีเมลแจ้งผลแล้ว');
+          mail(S, { audience: 'requester', kind: 'rejection', ref: x.ref });
+          moveInSnap(x.ref, null);
+          rv.decided[x.ref] = 'rejected';
+        }
+        rv.sel = x.ref;
+        render('dos-name');
+      }, 900);
+      break;
+    }
+    case 'outcome': {
+      const al = r.alerts.find(x => x.open);
+      al.open = false; al.outcome = t.dataset.out; al.clearedBy = rv.user; al.clearedAt = S.now;
+      log(r, rv.user, `ปิดเรื่อง${alertTitle(al)}: ${t.dataset.out}`);
+      if (t.dataset.out === 'ยุติเรื่อง') { r.state = 'ended'; log(r, 'ระบบ', 'คำขอสิ้นสุด'); }
+      moveInSnap(r.ref, zoneOf(r));
+      flash(`Alert cleared as “${t.dataset.out}”.${zoneOf(r) === 'inflight' ? ' The Request is back under กำลังดำเนินการ.' : ''}`);
+      rv.sel = null; render(); break;
+    }
+    case 'resend': {
+      const run = curRun(r);
+      mail(S, { audience: 'requester', kind: 'delivery', ref: r.ref, token: run.token });
+      log(r, rv.user, 'ส่งอีเมลซ้ำ ลิงก์เดิม');
+      rv.actionNote = { ...(rv.actionNote || {}), [r.ref]: `ส่งอีเมลซ้ำแล้ว เวลา ${hm(S.now)} ลิงก์เดิม ไม่ได้ต่ออายุ` };
+      render(); break;
+    }
+    case 'rerun': {
+      startRun(r, rv.user);
+      rv.actionNote = { ...(rv.actionNote || {}), [r.ref]: `เริ่มดึงข้อมูลใหม่ ครั้งที่ ${curRun(r).n} เวลา ${hm(S.now)}` };
+      flash('Re-run queued. Use Simulate → Finish or Fail running jobs.');
+      render(); break;
+    }
+  }
+});
+
+function closeDialog() {
+  if (dialogBusy) return;
+  const trig = dlg.trigger;
+  dlg.kind = null; renderDialog();
+  trig?.isConnected ? trig.focus() : document.querySelector('[data-act="open-approve"]')?.focus();
+}
+
+document.addEventListener('keydown', e => {
+  // Dialog: Escape returns to the trigger; Tab stays inside.
+  if (dlg.kind) {
+    if (e.key === 'Escape') { e.preventDefault(); closeDialog(); return; }
+    if (e.key === 'Tab') {
+      const items = [...document.querySelectorAll('.dialog button:not([disabled]), .dialog textarea')];
+      const i = items.indexOf(document.activeElement);
+      if (e.shiftKey && i <= 0) { e.preventDefault(); items[items.length - 1].focus(); }
+      else if (!e.shiftKey && i === items.length - 1) { e.preventDefault(); items[0].focus(); }
+    }
+    return;
+  }
+  if (picker && e.key === 'Escape') { e.preventDefault(); closePicker(true); return; }
+  if (picker && e.target.classList.contains('cal-day') && ['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+    e.preventDefault();
+    const n = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 }[e.key];
+    const days = [...document.querySelectorAll('.cal-day[data-iso]')].filter(b => b.closest('.cal-grid'));
+    const i = days.indexOf(e.target);
+    let j = i + n;
+    while (days[j] && days[j].disabled) j += Math.sign(n);
+    days[j]?.focus();
+    return;
+  }
+  if (e.key === 'Escape') { document.getElementById('tip')?.classList.remove('open'); if (simOpen) { simOpen = false; renderProto(); } }
+  const t = e.target;
+  const arrows = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 };
+  if (!(e.key in arrows)) return;
+  const step = arrows[e.key];
+  if (t.classList.contains('cell')) {
+    e.preventDefault();
+    const n = ((Number(t.dataset.region) - 1 + step + 13) % 13) + 1;
+    S.form.areaMode = 'region'; S.form.region = n; S.form.provinceId = ''; render('cell-' + n);
+  } else if (t.classList.contains('seg')) {
+    e.preventDefault();
+    const mode = t.dataset.mode === 'national' ? 'province' : 'national';
+    S.form.areaMode = mode; S.form.region = null; render(document.querySelector(`[data-mode="${mode}"]`).id || undefined);
+    document.querySelector(`.seg[data-mode="${mode}"]`)?.focus();
+  } else if (t.classList.contains('tab')) {
+    e.preventDefault();
+    const order = ['pending', 'alerts', 'inflight'];
+    const z = order[(order.indexOf(t.dataset.zone) + step + 3) % 3];
+    S.rv.zone = z; S.rv.sel = null; S.rv.lookup = null; render('tab-' + z);
+  }
+});
+
+// Email tooltip opens on hover and on focus, stays while hovered (WCAG 1.4.13).
+document.addEventListener('mouseover', e => { const w = e.target.closest?.('#tip'); if (w) w.classList.add('open'); });
+document.addEventListener('mouseout', e => { const w = e.target.closest?.('#tip'); if (w && !w.contains(e.relatedTarget) && document.activeElement?.dataset.act !== 'tip') w.classList.remove('open'); });
+// Whatever form a date was typed in, it is read back at rest as 1 มี.ค. 2569.
+document.addEventListener('focusout', e => { const k = e.target.dataset?.date; if (k && S.form[k]) e.target.value = dShort(isoDay(S.form[k])); });
+document.addEventListener('focusin', e => { if (e.target.dataset?.act === 'tip') e.target.closest('#tip').classList.add('open'); });
+document.addEventListener('focusout', e => { if (e.target.dataset?.act === 'tip') e.target.closest('#tip').classList.remove('open'); });
+
+window.addEventListener('hashchange', () => { render(); window.scrollTo(0, 0); });
+render();
+</script>
+</body>
+</html>

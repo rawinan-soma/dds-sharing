@@ -100,7 +100,7 @@ control.
 |---|---|---|
 | Disease group row | selected | `primary-wash` ground, `border-b border-primary`, label `primary` + semibold |
 | Date fields | span > 365 | both fields `border-failed`, day count in `failed`, message below with 2px `failed` rule. **Refused inline, never split** |
-| Date `to` picker | always | greyed beyond `from + 365 days`; the server re-checks and attributes the cap to upstream |
+| Date fields | always | typed and shown in พ.ศ., never a native date input, with a พ.ศ. calendar popover as the second way in (`system.md`, Date field). The popover disables days beyond `from + 364` (365 inclusive). The server re-checks the cap and attributes it to upstream |
 | Region tags | 7+ provinces | wrap to a second row. Normal case, not an overflow |
 | Submit | incomplete | summary names the missing fields; each name jumps to its field; typed values are kept |
 | Field | invalid | `border-failed` + message below in `failed` |
@@ -235,7 +235,9 @@ information. Do not add a projected start or finish time.
 ### Alert card
 
 `pending-wash` with a 2px `pending` left rule. Kind, the silence described in
-words, assignee by name, then **three outcome buttons** (`secondary md`) and one
+words, **the Requester's name, workplace, telephone and email in a `card`-filled
+block** (the outcome is a call, so the number comes before the outcomes;
+amended 2026-09-30), assignee by name, then **three outcome buttons** (`secondary md`) and one
 line explaining why there is no free-text field: the counts are the only measure
 of how often this happens.
 
@@ -258,9 +260,10 @@ reads a greyed button as a broken screen.
 
 > **There is no third action and there must not be one. A Reviewer cannot
 > correct a Requester's email address** (ADR 0017). The resend control takes no
-> address field. This is rendered on screen as a stated absence in `failed-wash`,
-> because it is the absence most likely to be "fixed" by someone who has not
-> read it.
+> address field. This is rendered on screen as a stated absence in `inert-wash`
+> with a lock icon (not `failed-wash`, since 2026-09-30: nothing in it is
+> broken), because it is the absence most likely to be "fixed" by someone who
+> has not read it.
 
 ---
 

@@ -125,7 +125,10 @@ Below 900px the columns stack, map first, and the map cells shrink to
 ## The Requester screens, as locked (2026-09-30)
 
 **Source of truth: the Lunagraph page "Requester form: prototypes" in project
-`dds-prototype`, reviewed and finalized by the repo owner on 2026-09-30.** Every
+`dds-prototype`, reviewed and finalized by the repo owner on 2026-09-30, and
+re-locked the same day after the design critique:** every date box on every
+Requester frame now carries the calendar button, and one frame was added for
+the open calendar. Every
 Requester screen and state below is a frame on that page. Where this section
 and a frame disagree, the frame is right. The frame `B · Map-first split` is the
 reference the tokens were locked from, not a screen.
@@ -158,6 +161,7 @@ Top to bottom:
 | `… · ช่วงวันเกิน 365 วัน` | Span over 365 | Both date boxes `failed`; day count in `failed`; one shared panel below the pair (`failed-wash`, title *ช่วงวันที่ยาวเกินที่ขอได้* and the cap's reason); the date item fails in the checklist |
 | `… · วันสุดท้ายก่อนวันแรก` | Reversed range | Both date boxes `failed`; no day count; one-line panel *วันสุดท้ายอยู่ก่อนวันแรก…* |
 | `… · กดส่งแต่ยังไม่ครบ` | Submit with gaps | Each missing field gets a `failed` edge and one line under it; the checklist is wrapped in a 2px `primary` focus frame, headed *ยังส่งคำขอไม่ได้ ขาดข้อมูล 3 รายการ* in `failed` with the hint below, and its failing items are `failed`, bold and underlined as jump links |
+| `… · เลือกวันจากปฏิทิน` | Calendar open | The complete state with the *ถึง* calendar open under its box: the box in focus (`primary` edge and halo), the popover right-aligned, พฤษภาคม 2568 with 31 solid `primary` and 1–30 in `primary-wash` (inside the range), and the foot *เลือกได้ไม่เกิน 365 วันนับจากวันแรก*. No *วันนี้* link, because today falls outside the 365 days the picker allows. Every other frame shows the calendar button, an 18px line icon in `muted-foreground` at the right end of each date box |
 | `1m · แบบขอข้อมูล · 390px` | Phone | One column: title 22px, the file-contents card with the columns stacked, the map (52 × 42 cells), then the form card; ส่งคำขอ full width above ล้างฟอร์ม |
 
 Two states from the handoff are **not drawn, by decision**: region mode with
@@ -225,7 +229,8 @@ reference number, submit time or status.**
 ## The Reviewer screens, as locked (2026-09-30)
 
 **Source of truth: the Lunagraph page "Requester form: prototypes" in project
-`dds-prototype`, reviewed and edited by the repo owner on 2026-09-30.** Every
+`dds-prototype`, reviewed and edited by the repo owner on 2026-09-30, and
+re-locked the same day after the design critique** (6a and 6b redrawn). Every
 Reviewer screen and state below is a frame on that page. Where this section and
 a frame disagree, the frame is right. Screen 5's layout was picked on
 2026-09-30 from three drawn in this system (a split with the queue on the left,
@@ -329,8 +334,8 @@ no email reset, the other Reviewer is the way back in.
 
 | Frame | State |
 |---|---|
-| `6a · ต้องจัดการ: ดึงข้อมูลไม่สำเร็จ` | The **ต้องจัดการ** tab selected; its label is `pending` ink in every frame where it has a count. The table's columns are เรื่อง (kind, `pending` 600), คำขอ, ผู้ขอ with workplace, มอบหมายให้, เกิดขึ้นเมื่อ; the selected row is `pending-wash` with a 3px `pending` rule. The dossier: header (reference, name, and อนุมัติโดย / อนุมัติเมื่อ / ดึงข้อมูล), the **Alert card**, the two columns (*ติดต่อผู้ขอ* with the contact fields, because the outcome is a call; *สิ่งที่ขอ*), then a re-run strip with a `secondary lg` **ดึงข้อมูลใหม่** |
-| `6b · กำลังดำเนินการ: ส่งซ้ำและดึงใหม่` | The **กำลังดำเนินการ** tab. One 12px line above the table: submit order, and requests with an open Alert are shown under ต้องจัดการ instead (with the count). Columns คำขอ, ผู้ขอ, อนุมัติโดย, สถานะ (a **Tag**: `success` *ไฟล์พร้อมแล้ว*, `inert` *กำลังดึงข้อมูล*, `inert` *รอคิวดึงข้อมูล*), ลิงก์ดาวน์โหลด (time left and downloads, or *ยังทำอะไรไม่ได้จนกว่าจะดึงข้อมูลเสร็จ*). The dossier header carries อนุมัติโดย, ไฟล์พร้อมเมื่อ, ลิงก์เหลือ (in `success`), ดาวน์โหลดแล้ว. Beneath the columns, two actions side by side, each a 14/600 title, one line and a `secondary md` button: **ส่งอีเมลซ้ำ** (names the address, says the link is not extended) and **ดึงข้อมูลใหม่** (new link, the old one works until the new file is ready). Last, the stated absence in `failed-wash`: **แก้ที่อยู่อีเมลของผู้ขอไม่ได้** (ADR 0017) |
+| `6a · ต้องจัดการ: ดึงข้อมูลไม่สำเร็จ` | The **ต้องจัดการ** tab selected; its label is `pending` ink in every frame where it has a count. The table's columns are เรื่อง (kind, `pending` 600), คำขอ, ผู้ขอ with workplace, มอบหมายให้, เกิดขึ้นเมื่อ; the selected row is `pending-wash` with a 3px `pending` rule. The dossier: header (reference, name, and อนุมัติโดย / อนุมัติเมื่อ / ดึงข้อมูล), the **Alert card**, *สิ่งที่ขอ* alone at 640px max, then a re-run strip with a `secondary lg` **ดึงข้อมูลใหม่**. **Amended 2026-09-30 (design critique), frame redrawn to match:** the contact details moved *into* the Alert card, above the outcome buttons, as a `card`-filled block (ผู้ขอ with workplace, โทรศัพท์ at 18/600 `figure`, อีเมล). The outcome is a call, so the number must be read before the outcomes, not after them; the frame used to draw a separate *ติดต่อผู้ขอ* column below the card, which made the Reviewer scroll down to the number and back up to record the result |
+| `6b · กำลังดำเนินการ: ส่งซ้ำและดึงใหม่` | The **กำลังดำเนินการ** tab. One 12px line above the table: submit order, and requests with an open Alert are shown under ต้องจัดการ instead (with the count). Columns คำขอ, ผู้ขอ, อนุมัติโดย, สถานะ (a **Tag**: `success` *ไฟล์พร้อมแล้ว*, `inert` *กำลังดึงข้อมูล*, `inert` *รอคิวดึงข้อมูล*), ลิงก์ดาวน์โหลด (time left and downloads, or *ยังทำอะไรไม่ได้จนกว่าจะดึงข้อมูลเสร็จ*). The dossier header carries อนุมัติโดย, ไฟล์พร้อมเมื่อ, ลิงก์เหลือ (in `success`), ดาวน์โหลดแล้ว. Beneath the columns, two actions side by side, each a 14/600 title, one line and a `secondary md` button: **ส่งอีเมลซ้ำ** (names the address, says the link is not extended) and **ดึงข้อมูลใหม่** (new link, the old one works until the new file is ready). Last, the stated absence: **แก้ที่อยู่อีเมลของผู้ขอไม่ได้** (ADR 0017), on `inert-wash` with a lock line icon, title 14/600 in `foreground`. **Amended 2026-09-30 (design critique), frame redrawn to match**; it used to be `failed-wash` with a `failed` title: this panel is on every in-flight dossier and nothing in it is broken, so red there taught Reviewers to ignore the one colour that has to mean *broken* |
 
 ### Screen 12: empty queues and the session
 
@@ -411,7 +416,12 @@ optional 13px `muted-foreground` line. The tone says what kind of outcome it
 is: `success` with a `success` edge for an approval, `inert` for a rejection
 (calm, not red), `pending` for an expiry. The compact form, 10px radius with a
 2px left rule, carries notices above a form (4b, 4c) and the Alert card (6a,
-12px radius, 24px padding, with its outcome buttons inside).
+12px radius, 24px padding, with the Requester's contact block and then its
+outcome buttons inside).
+
+A **stated absence** (a thing the Reviewer cannot do, said on screen so nobody
+"fixes" it) is `inert-wash` with a lock icon, never `failed`: it is a rule,
+not a fault.
 
 ## Component: Empty state
 
@@ -502,6 +512,42 @@ replaces the hint rather than stacking on it.
 
 Related fields pair on one row (first and last name, from and to). A hairline
 divider separates *the ask* from *who is asking*.
+
+### Date field (added 2026-09-30, design critique)
+
+Every date the service shows is พ.ศ., so the one place a date is typed must be
+too. **Never a native `<input type="date">`**: it shows the browser's calendar,
+which for most Requesters is ค.ศ., so a Requester types 2026 and then reads 2569
+on the check page for the same day.
+
+- A text box, `figure`, `inputmode="numeric"`, placeholder *วว/ดด/ปปปป*.
+- **At rest** it reads *1 มี.ค. 2569*, the same form as the check page.
+- **It accepts** *1/3/2569*, *01-03-2569* and its own at-rest form, so the shown
+  value is editable as it stands. A year below 2400 is read as ค.ศ. and shown
+  back in พ.ศ., so a Requester who types 2026 sees 2569 at once, not on 1b.
+- **It stores ISO** (Gregorian). The span, the 365-day cap and the Span builder
+  never see a Buddhist year.
+- **One shared line under the pair**: the hint *ปี พ.ศ. เช่น 1/3/2569* when
+  nothing is wrong; *อ่านวันที่ไม่ได้ พิมพ์เป็น วว/ดด/ปปปป ปี พ.ศ.…* for a date
+  that does not parse (both through `invalid` plus the pair's shared message);
+  the span panels as drawn otherwise.
+- **A calendar button** (a line calendar icon, 36px hit area) sits inside the
+  right end of each box and opens a popover beneath it (left-aligned under
+  *ตั้งแต่*, right-aligned under *ถึง*, so neither leaves the card at 390px):
+  `card`, 14px radius, `shadow-float`, 304px wide. Head: ‹, a month select
+  (full Thai names), a **พ.ศ.** year select, ›. A 7-column grid headed
+  อา จ อ พ พฤ ศ ส. The chosen day is solid `primary`; the days between *from*
+  and *to* are `primary-wash`; today has an `input` ring. **The other end of
+  the range bounds the grid**: under *ถึง*, days before *from* and past
+  *from* + 364 are disabled, and the foot says *เลือกได้ไม่เกิน 365 วันนับจากวันแรก*
+  (the mirror image under *ตั้งแต่* once *ถึง* is set), so the picker can
+  never produce the over-365 state. The foot's right side is *วันนี้*.
+  Typing stays the first way in; the picker is the second.
+- Picker accessibility: the button has `aria-haspopup="dialog"` and
+  `aria-expanded`; each day is a button named in full (*31 พฤษภาคม 2569*);
+  focus opens on the chosen day (else today), arrow keys move by day and week
+  and skip disabled days, Escape and a click outside close it, and focus
+  returns to the calendar button.
 
 ## Component: Field tooltip
 

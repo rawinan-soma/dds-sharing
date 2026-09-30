@@ -94,7 +94,7 @@ Measured from `source/globals.css`.
 | Disease groups | one stop for the group | select | — | move between the ten, **in 1–10 order** |
 | Area segmented | one stop | select | — | move between the three |
 | Region map (region mode) | one stop | select | — | move between regions in number order |
-| Date fields | one stop each | — | — | native |
+| Date fields | one stop each | — | — | text inputs in พ.ศ. plus a calendar button each (`system.md`, Date field), not native date inputs |
 | Check page | ส่งคำขอ, then แก้ไข | activate | — | — |
 | Queue zones | one stop per row | open in the dossier; focus moves to its heading | — | — |
 | Approve / reject | **only after the identity fields and the ask** in DOM order | open the dialog | — | — |
