@@ -368,6 +368,8 @@
   "reviewer_event_expired_uncollected": "ลิงก์หมดอายุ ไม่มีการดาวน์โหลด",
   "reviewer_event_object_deleted": "ลบไฟล์แล้ว",
   "requester_area_eyebrow": "พื้นที่ที่ขอ",
+  "requester_epidem_area_label": "กรองตามจังหวัดที่สอบสวนโรค",
+  "requester_epidem_area_detail": "ระบบกรองจากจังหวัดที่ผู้ป่วยอยู่ขณะสำรวจว่าเป็นโรค ไม่ใช่ที่อยู่ตามทะเบียน และไม่ใช่จังหวัดของโรงพยาบาลที่รักษา",
   "requester_area_region_13_name": "เขตสุขภาพที่ 13 กรุงเทพมหานคร",
   "requester_province_placeholder": "เลือกจังหวัด…",
   "requester_card_title": "ขอข้อมูลเฝ้าระวังโรค",

@@ -368,6 +368,8 @@
   "reviewer_event_expired_uncollected": "Link expired, never downloaded",
   "reviewer_event_object_deleted": "File deleted",
   "requester_area_eyebrow": "Area requested",
+  "requester_epidem_area_label": "Filtered on the province that investigated the case",
+  "requester_epidem_area_detail": "The filter uses the province the patient was living in when the case was surveyed. Not the registered address, and not the province of the treating hospital.",
   "requester_area_region_13_name": "Health region 13, Bangkok",
   "requester_province_placeholder": "Choose a province…",
   "requester_card_title": "Request surveillance data",

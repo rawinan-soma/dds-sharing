@@ -761,6 +761,17 @@ select.field-box.placeholder {
   color: var(--muted-foreground);
 }
 
+.map-note {
+  font-size: 13px;
+  color: var(--muted-foreground);
+}
+
+.map-note strong {
+  display: block;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
 .form-card {
   position: relative;
   flex: none;

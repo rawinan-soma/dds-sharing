@@ -144,6 +144,13 @@ describe('RequestPage', () => {
       expect(block.textContent).toContain(m.requester_deid_excluded_1());
     });
 
+    it('states which province the Area filters on, in the map pane', () => {
+      const note = $('.map-pane [data-epidem-area]')!;
+
+      expect(note.textContent).toContain(m.requester_epidem_area_label());
+      expect(note.textContent).toContain(m.requester_epidem_area_detail());
+    });
+
     it('carries the email warning with the email field, and retention in the consent block', () => {
       const email = $('#c-email')!;
       const tip = $(`#${email.getAttribute('aria-describedby')}`)!;

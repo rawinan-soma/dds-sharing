@@ -236,7 +236,7 @@ own line height. Test with real strings in the longest fields — the ten group
 names, the notices, the alert outcomes — not with lorem.
 
 Six keys were load-bearing, each carrying a decision that existed nowhere else.
-**The locked screens (2026-09-30) kept two and cut four**, and the catalogue
+**The locked screens (2026-09-30) kept three and cut three**, and the catalogue
 followed (#123):
 
 | Key | What it says | Since 2026-09-30 |
@@ -244,7 +244,7 @@ followed (#123):
 | `requester_gate_notice` | the approval gate, stated first | cut |
 | `requester_no_reason_notice` | a rejection gives no reason, said up front | cut |
 | `requester_span_cap_notice` | the 365-day cap, attributed to upstream | cut as a standing notice; the cap is attributed to upstream in `error_span_too_long_detail`, and the calendar cannot offer a longer range |
-| `requester_epidem_area_label` | the survey-address trap, at the point of choosing | cut |
+| `requester_epidem_area_label` | the survey-address trap, at the point of choosing | kept, under the Area switch in the map pane; the frames do not draw it, and the repo owner kept it on review of #123 |
 | `requester_email_warning` | the only place a Requester is told a typo will not be caught | kept, the email field's tooltip |
 | `requester_retention_notice` | what is kept, indefinitely, and why | kept, the consent block's body |
 

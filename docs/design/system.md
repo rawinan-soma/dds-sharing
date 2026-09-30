@@ -685,6 +685,9 @@ the block was not carried into `apps/web/src/styles.css`.
 
 ## Still undone
 
+- **The province-filter note is not drawn.** `requester_epidem_area_label` and
+  its detail sit under the Area switch in the map pane (kept by the repo owner
+  on review of #123); no frame on "Requester form: prototypes" shows it yet.
 - **The PDPA notice has no address.** The consent label names it as text, not a
   link, until it does.
 - **The Reviewer surface is on these tokens but not restyled** (#124). It keeps

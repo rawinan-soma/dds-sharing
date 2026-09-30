@@ -17,6 +17,11 @@
             [label]="m.requester_area_heading()"
             (valueChange)="chooseArea($event)"
           />
+          <!-- epidem_chw_code, not chw_code (spec §4.4): said where the Area is chosen. -->
+          <p class="map-note" data-epidem-area>
+            <strong>{{ m.requester_epidem_area_label() }}</strong>
+            {{ m.requester_epidem_area_detail() }}
+          </p>
 
           @if (form().areaMode === 'province') {
             <div class="field">
@@ -59,7 +64,10 @@
             (picked)="pickRegion($event)"
           />
 
-          @if (form().areaMode === 'province' && chosenProvince(); as province) {
+          @if (
+            form().areaMode === 'province' && chosenProvince();
+            as province
+          ) {
             <p class="map-caption">
               {{
                 m.requester_province_region_hint({
@@ -161,9 +169,7 @@
                     [invalid]="dateInvalid('from')"
                     [bounds]="fromBounds()"
                     [range]="{ from: form().from, to: form().to }"
-                    [capNote]="
-                      form().to ? m.requester_calendar_cap_from() : ''
-                    "
+                    [capNote]="form().to ? m.requester_calendar_cap_from() : ''"
                     (changed)="date('from', $event)"
                   />
                   @if (!dateMessage() && fieldError('from'); as error) {
@@ -349,7 +355,9 @@
                     <span class="tip-title">{{
                       m.requester_email_warning_heading()
                     }}</span>
-                    <span class="tip-body">{{ m.requester_email_warning() }}</span>
+                    <span class="tip-body">{{
+                      m.requester_email_warning()
+                    }}</span>
                   </span>
                 </span>
                 @if (form().email) {
@@ -412,10 +420,7 @@
                   <p class="checklist-label">{{ m.error_incomplete_hint() }}</p>
                 </div>
               } @else {
-                <p
-                  class="checklist-label"
-                  [class.complete]="metCount() === 5"
-                >
+                <p class="checklist-label" [class.complete]="metCount() === 5">
                   {{
                     metCount() === 5
                       ? m.requester_checklist_complete()
@@ -444,11 +449,24 @@
                     "
                   >
                     @if (rule.state === 'met') {
-                      <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <svg
+                        viewBox="0 0 12 12"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                      >
                         <path d="M2.5 6.2 5 8.5l4.5-5" />
                       </svg>
                     } @else {
-                      <svg viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                      <svg
+                        viewBox="0 0 12 12"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                      >
                         <path d="M4 4l4 4M8 4l-4 4" />
                       </svg>
                     }
@@ -490,10 +508,7 @@
                 {{ m.requester_retention_notice() }}
               </span>
               @if (consentMissing()) {
-                <span
-                  class="field-message error"
-                  id="consent-error"
-                >
+                <span class="field-message error" id="consent-error">
                   {{ m.error_consent_required() }}
                 </span>
               }
@@ -501,7 +516,11 @@
           </label>
 
           <div class="pair-actions form-actions">
-            <button type="button" class="btn btn-secondary btn-lg" (click)="clearForm()">
+            <button
+              type="button"
+              class="btn btn-secondary btn-lg"
+              (click)="clearForm()"
+            >
               {{ m.requester_clear_form() }}
             </button>
             <button type="submit" class="btn btn-primary btn-lg">
