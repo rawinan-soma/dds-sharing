@@ -656,7 +656,7 @@ starts no extraction: *"นี่ไม่ใช่ปุ่มดาวน์�
   indexed and is not found through search).
 - The Disease group picker is seeded from `docs/disease-groups.md` — ten groups —
   and from nowhere else.
-- The Requester's IP has no unfinished Request (FR-06).
+- No unfinished Request has the same email and ask (FR-06).
 
 **Post-conditions:**
 - A `request` row exists carrying **the ask as the human made it** — inclusive
@@ -674,8 +674,8 @@ starts no extraction: *"นี่ไม่ใช่ปุ่มดาวน์�
 - **Span > 365 days** → rejected with a message that **names the cap as
   upstream's**; the Request is not stored (FR-04).
 - **Missing or malformed required parameter** → rejected; not stored.
-- **An unfinished Request already exists for this IP** → rejected as a duplicate
-  (FR-06).
+- **An unfinished Request already has the same email and ask** → rejected as a
+  duplicate (FR-06).
 - **The Disease group id is not in the seeded classification** → rejected; this
   can only happen on a direct API call, because the surface is a picker.
 
@@ -940,26 +940,35 @@ redrawn.
 control, not a security control.** Naming it a "rate limit" is how it gets
 miscounted as a safeguard that is not there.
 
-**Pre-conditions:** A submit reached the API from a given IP.
+**Pre-conditions:** A submit reached the API carrying an email and an ask.
 
 **Post-conditions:** Either the Request proceeds, or the submit is refused and
 nothing is stored.
 
-**Exception conditions:** **An unfinished Request already exists for this IP** →
-refuse the submit with a message distinguishing *queued* from *refused*, so a
-Requester does not resubmit six times.
+**Exception conditions:** **An unfinished Request already has the same email and
+the same ask** (Disease group, `from`, `to`, and the area as stored: national or
+the same province list)
+→ refuse the submit with a message distinguishing *queued* from *refused*, so a
+Requester does not resubmit six times. The email is compared trimmed and
+case-insensitive.
 
 **Alternate conditions:**
-- **An adversary rotating IPs** → not caught, and **not a goal**. They rotate for
-  free via any phone hotspot. Per-client quotas were rejected outright: a 1000×
-  cost spread between Requests makes counting submissions meaningless, and the
-  audit email is never verified, so using it as a control key is precisely how a
-  later reader comes to assume it *is* verified.
-- **Two officers behind one NAT** → the second is refused. Accepted: the gate,
-  not this rule, is the volume control.
+- **An adversary changing one character** → not caught, and **not a goal**.
+  Per-client quotas were rejected outright: a 1000× cost spread between Requests
+  makes counting submissions meaningless. **The email is a match key here, never
+  a control key**: it is still unverified, and this rule only recognises the same
+  form sent twice. A later reader must not take it as proof the address is real.
+- **Two officers behind one NAT** → both can submit. The IP key refused the
+  second; it was dropped on 2026-09-30 for exactly this reason. The gate, not
+  this rule, is the volume control.
+- **A Requester fixing a mistyped email** → a new Request goes through, because a
+  different address is a different form. The first still runs its course.
+- **The same person asking for different data** → goes through: a different ask
+  is a different form.
 
 **Workflow:**
-1. Look up any Request from this IP that has not reached a terminal state.
+1. Look up any Request with the same email and ask that has not reached a
+   terminal state.
 2. If one exists, refuse; otherwise proceed.
 
 **Source:** §4.8, §13.1–§13.3 ·
@@ -3110,7 +3119,7 @@ of this SRS can tell whether a term is a domain term or ordinary prose.
 | **Alert** | A **must-clear** queue item, cleared only by naming an outcome from a closed set. | Notification, warning, flag |
 | **Re-run** | A second extraction of an already-approved Request. **Not a new Decision.** | Retry, resubmit, reprocess |
 | **Area selection** | National, one province, or one health region — expanded to provinces before storage. | — |
-| **Duplicate suppression** | Rejects a submit from an IP with an unfinished Request. **UX, not security.** | Rate limit |
+| **Duplicate suppression** | Rejects a submit whose email and ask match an unfinished Request. **UX, not security.** | Rate limit |
 | **Request event** | One immutable entry in a Request's history. A correction is a further event citing the one it corrects. | Log entry, audit row |
 | **Reviewer event** | One immutable entry in a Reviewer's own history. Belongs to a person, not a Request. | — |
 | **Actor** | Whoever caused an event: `requester`, `reviewer`, `system` or `anonymous`. | — |

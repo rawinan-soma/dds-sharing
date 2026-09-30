@@ -316,10 +316,19 @@ proves nothing. It is an input to human judgement, never a credential.
 
 ### 4.8 Duplicate suppression
 
-Reject a submit from an IP that already has an unfinished Request.
+Reject a submit whose **email and ask** match an unfinished Request: the same
+email address (compared trimmed and case-insensitive), the same Disease group, the
+same `from` and `to`, and the same area as stored: national, or the same
+province list after any region is expanded (so region 13 and the province
+กรุงเทพมหานคร are the same ask, which they are).
 
-This catches the page refresh and the double-posted form. It does **not** catch
-an adversary, who rotates IPs for free. It belongs to the UX section of this
+This catches the page refresh and the double-posted form, which re-send exactly
+the same form. Narrowed from an IP key on 2026-09-30 by the repo owner: a สคร.
+office is one IP, so the IP key held a whole office behind one person's pending
+Request, and it stopped a Requester resubmitting with a corrected email. Matching
+on the email is **not** verifying it: the address is still free text that nobody
+checks, and this rule reads it only to recognise the same form sent twice. It does
+**not** catch an adversary, who changes one character for free. It belongs to the UX section of this
 spec, not the security section — naming it a "limit" is how it gets miscounted as
 a control. It survives the approval gate unchanged: the gate replaces it as a
 *volume* control but not as a double-click guard.
@@ -2654,11 +2663,12 @@ Requester sends from there or goes back to edit with everything kept. Since
 can correct an address after submit, so this page is the last moment a typo can be
 caught — and it is the only one.
 
-> **A typo discovered after submit cannot be fixed.** The Requester cannot edit,
-> cannot resubmit while the first Request is unfinished (duplicate suppression,
-> §4.8), and a Reviewer cannot correct the address. The Request runs its course,
-> and if approved the Delivery goes to the address as typed. Accepted knowingly by
-> the repo owner, 2026-09-18.
+> **A typo discovered after submit cannot be fixed in place.** The Requester
+> cannot edit, and a Reviewer cannot correct the address. The Request runs its
+> course, and if approved the Delivery goes to the address as typed. Accepted
+> knowingly by the repo owner, 2026-09-18. Since 2026-09-30 the Requester **can**
+> send a new Request with the corrected address: duplicate suppression (§4.8)
+> matches on the email, so a different address is a different form.
 
 **The confirmation page** carries the reference number, a restatement of the ask,
 the 24-business-hour service promise, and the telephone number. It must read as

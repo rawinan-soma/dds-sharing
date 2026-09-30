@@ -107,7 +107,7 @@ _Avoid_: Retry, resubmit, reprocess
 A Request's optional single choice of national (the default), one province, or one health region (`เขตสุขภาพ`, 1–13). A region is expanded server-side into its province list before the Request is stored, so a stored Request names provinces and never a region. The health region → province mapping is `docs/provinces.csv`, and it is canonical: the Postgres table is generated from it, and where any document, prototype or database disagrees, the CSV is right. It is canonical for what a region means **now** — never for what a stored Request meant, which is the province list frozen at submit.
 
 **Duplicate suppression**:
-The rule rejecting a submit from an IP that already has an unfinished Request. Deliberately not called a rate limit: it catches page refreshes, not adversaries, and belongs to UX rather than security.
+The rule rejecting a submit whose email and ask (Disease group, dates, Area selection) match an unfinished Request, the area compared as its stored province list. It recognises the same form sent twice; it never verifies the email. Deliberately not called a rate limit: it catches page refreshes, not adversaries, and belongs to UX rather than security. Keyed on email and ask since 2026-09-30; before that on IP, which held a whole office behind one person's Request.
 
 ### The record
 
