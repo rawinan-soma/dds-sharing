@@ -63,37 +63,35 @@ fault.
 
 ## Colour contrast
 
-Measured from `source/globals.css`.
+Re-measured 2026-09-30 against the B tokens in `apps/web/src/styles.css` (#123).
+P2 and P3 are resolved by `input`, the control-edge token.
 
 | Element | Foreground | Background | Ratio | Required | Pass |
 |---|---|---|---|---|---|
-| Body text | `#16241e` | `#eef1ee` | 14.14:1 | 4.5:1 | ✅ |
-| Muted text | `#556159` | `#eef1ee` | 5.69:1 | 4.5:1 | ✅ |
-| Muted on primary wash | `#556159` | `#dceceb` | 5.32:1 | 4.5:1 | ✅ |
-| Muted on amber zone | `#556159` | `#f6eedc` | 5.61:1 | 4.5:1 | ✅ |
-| Muted on grey notice | `#556159` | `#e6e9e6` | 5.30:1 | 4.5:1 | ✅ |
-| Teal text / chip | `#0c6b63` | `#eef1ee` | 5.59:1 | 4.5:1 | ✅ |
-| Teal on wash (selected group) | `#0c6b63` | `#dceceb` | 5.23:1 | 4.5:1 | ✅ |
-| Button text on teal | `#f7f9f7` | `#0c6b63` | 6.02:1 | 4.5:1 | ✅ |
-| Pending tag | `#7f5300` | `#f6eedc` | 5.79:1 | 4.5:1 | ✅ |
-| Ready tag | `#2b5b86` | `#e4edf4` | 6.02:1 | 4.5:1 | ✅ |
-| Failed tag | `#8c2b20` | `#f6e6e3` | 6.99:1 | 4.5:1 | ✅ |
-| **Inert tag** | `#5a6862` | `#e6e9e6` | **4.78:1** | 4.5:1 | ✅ tightest pair — re-measure if either token moves |
-| Header muted on dark | `#a8b5ac` | `#16241e` | 7.56:1 | 4.5:1 | ✅ |
-| Map numbers | `#16241e` | `#d9e0da` | 11.97:1 | 4.5:1 | ✅ |
-| Field frame | `#16241e` | `#eef1ee` | 14.14:1 | 3:1 | ✅ |
-| Focus ring | `#0c6b63` | `#eef1ee` | 5.59:1 | 3:1 | ✅ |
-| Selected vs unselected cell | `#0c6b63` | `#d9e0da` | 4.74:1 | 3:1 | ✅ |
-| **Quiet button frame** | `#c8d0c9` | `#eef1ee` | **1.39:1** | 3:1 | ❌ P2 |
-| **Map cell as a control** | `#d9e0da` | `#eef1ee` | **1.18:1** | 3:1 | ❌ P3 |
+| Body text | `#1b1d24` | `#e4e6ea` | 13.47:1 | 4.5:1 | ✅ |
+| Muted text on the page | `#5f6470` | `#e4e6ea` | 4.74:1 | 4.5:1 | ✅ |
+| Muted text on `quiet` (consent body) | `#5f6470` | `#f7f8fa` | 5.58:1 | 4.5:1 | ✅ |
+| Muted text on primary wash | `#5f6470` | `#eef1ff` | 5.27:1 | 4.5:1 | ✅ |
+| Primary text on card | `#3b5bfd` | `#ffffff` | 5.12:1 | 4.5:1 | ✅ |
+| **Primary on wash** (selected segment, related region) | `#3b5bfd` | `#eef1ff` | **4.55:1** | 4.5:1 | ✅ tightest text pair |
+| Button text on primary | `#ffffff` | `#3b5bfd` | 5.12:1 | 4.5:1 | ✅ |
+| Failed on its wash | `#c42b3a` | `#fbe9eb` | 4.78:1 | 4.5:1 | ✅ |
+| Success on its wash | `#1a7a4f` | `#e6f4ec` | 4.70:1 | 4.5:1 | ✅ |
+| Pending on its wash | `#8a5a00` | `#fdf3dc` | 5.37:1 | 4.5:1 | ✅ |
+| Field, button and map-cell edge (`input`) on card | `#7a7e88` | `#ffffff` | 4.06:1 | 3:1 | ✅ |
+| `input` on the page | `#7a7e88` | `#e4e6ea` | 3.25:1 | 3:1 | ✅ |
+| Consent control edge on `quiet` | `#7a7e88` | `#f7f8fa` | 3.82:1 | 3:1 | ✅ |
+| **`input` on primary wash** (consent control, ticked block) | `#7a7e88` | `#eef1ff` | **3.61:1** | 3:1 | ✅ tightest edge |
+| Focus ring and selected cell (`primary`) on the page | `#3b5bfd` | `#e4e6ea` | 4.10:1 | 3:1 | ✅ |
+| Meter's partial segment | `#b7791f` | `#ffffff` | 3.64:1 | 3:1 | ✅ |
 
 ## Keyboard
 
 | Element | Tab | Enter / Space | Escape | Arrows |
 |---|---|---|---|---|
-| Disease groups | one stop for the group | select | — | move between the ten, **in 1–10 order** |
-| Area segmented | one stop | select | — | move between the three |
-| Region map (region mode) | one stop | select | — | move between regions in number order |
+| Disease group | one stop (a native select) | open | — | move between the ten, **in 1–10 order** |
+| Area segmented | one stop | select | — | move between the two |
+| Region map (always a control) | one stop | select | — | move between regions in number order |
 | Date fields | one stop each | — | — | text inputs in พ.ศ. plus a calendar button each (`system.md`, Date field), not native date inputs |
 | Check page | ส่งคำขอ, then แก้ไข | activate | — | — |
 | Queue zones | one stop per row | open in the dossier; focus moves to its heading | — | — |
@@ -106,9 +104,9 @@ Measured from `source/globals.css`.
 | Element | Announced as | Issue |
 |---|---|---|
 | Region cell | "เขตสุขภาพที่ 8, radio, selected, 8 of 13" | none if built as specified |
-| Region cell, province mode | not announced (`aria-hidden`) | none |
+| Region cell 13 | "เขตสุขภาพที่ 13 กรุงเทพมหานคร" | none: it sits out of reading order and says why |
 | State tag | its word, e.g. "รอพิจารณา" | none: never colour alone |
-| Date range error | each field "invalid", then the shared message | U1 until `aria-describedby` is added |
+| Date range error | each field "invalid", then the shared message | none: both boxes point `aria-describedby` at it |
 | Disabled resend | "ส่งอีเมลฉบับเดิมซ้ำ, dimmed, ยังทำอะไรไม่ได้…" | R2 until wired |
 | Session warning | interrupts as an alert | R1 until `role="alert"` |
 | Expiry page | one heading and one sentence | none |

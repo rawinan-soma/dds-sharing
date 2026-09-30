@@ -14,7 +14,19 @@ const NOINDEX = { name: 'robots', content: 'noindex, nofollow' };
   selector: 'app-reviewer-shell',
   imports: [RouterOutlet, SessionToast],
   template: `
-    <div class="surface"><router-outlet /></div>
+    <div class="surface">
+      <!-- The service header until the Reviewer is restyled (#124). -->
+      <header class="site-header">
+        <div class="inner">
+          <div>
+            <div class="brand">{{ header.service }}</div>
+            <div class="small muted">{{ header.department }}</div>
+          </div>
+          <div class="figure">{{ header.telephone }}</div>
+        </div>
+      </header>
+      <router-outlet />
+    </div>
     <section class="narrow">
       <h1>{{ narrow.title }}</h1>
       <p>{{ narrow.detail }}</p>
@@ -50,6 +62,11 @@ const NOINDEX = { name: 'robots', content: 'noindex, nofollow' };
   `,
 })
 export class ReviewerShell implements OnInit, OnDestroy {
+  protected readonly header = {
+    service: m.app_service_name(),
+    department: m.app_department(),
+    telephone: m.app_telephone(),
+  };
   protected readonly narrow = {
     title: m.reviewer_narrow_title(),
     detail: m.reviewer_narrow_detail(),

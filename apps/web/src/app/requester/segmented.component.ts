@@ -1,13 +1,14 @@
-import { Component, input, output } from '@angular/core';
+import { Component, computed, input, output } from '@angular/core';
 
 export interface SegmentOption {
   value: string;
   label: string;
 }
 
-// A small closed set of mutually exclusive choices, where seeing all of them at
-// once is the point (docs/design/system.md). One tab stop for the group, arrow
-// keys between segments, `role="radiogroup"` over `role="radio"`.
+// The Area modes beside the map (docs/design/system.md "Segmented"): separate
+// buttons, the selected one a mode rather than the answer. One tab stop for the
+// group, arrow keys between segments, `role="radiogroup"` over `role="radio"`.
+// None is selected while the map holds the answer (a health region).
 @Component({
   selector: 'app-segmented',
   template: `
@@ -17,7 +18,7 @@ export interface SegmentOption {
           type="button"
           role="radio"
           [attr.aria-checked]="option.value === value()"
-          [tabindex]="option.value === value() ? 0 : -1"
+          [tabindex]="option.value === tabStop() ? 0 : -1"
           (click)="choose(option.value)"
           (keydown)="onKey($event, i)"
         >
@@ -32,6 +33,13 @@ export class Segmented {
   readonly value = input.required<string>();
   readonly label = input.required<string>();
   readonly valueChange = output<string>();
+
+  protected readonly tabStop = computed(() => {
+    const options = this.options();
+    return options.some((o) => o.value === this.value())
+      ? this.value()
+      : options[0]?.value;
+  });
 
   protected choose(value: string) {
     this.valueChange.emit(value);

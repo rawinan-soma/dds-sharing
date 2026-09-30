@@ -2647,17 +2647,28 @@ third copy in this document would drift against two it cannot be checked against
 ### 16.4 The Requester page
 
 **A single scrolling page**, not a wizard and not a two-column live preview. In
-order: the approval-gate notice, the de-identification block, the parameters, the
-contact fields, submit.
+order: the title, the de-identification block, then the map-first split — the
+Area on a map beside a form card holding the Disease group, the dates and the
+contact fields — then the requirement checklist, the PDPA consent, and submit.
+
+> **Amended 2026-09-30 to the locked Requester screens** (`docs/design/system.md`,
+> ticket #123). The order used to open with an approval-gate notice; the repo
+> owner cut it, with the 24-hour line and the no-reason notice, when the design
+> was locked, and screen 1 no longer states the gate. The 24-hour promise is on
+> the confirmation. The PDPA consent must be ticked before the check page opens;
+> it is a client-side acknowledgement and is not posted.
 
 > **Requirement, not styling: the de-identification block is open, above the form,
 > not collapsed.** A Requester who never opens it receives a CSV with no names in
 > it and files it as broken. *What you will and will not get is visible before any
-> field is filled in, without interaction.*
+> field is filled in, without interaction.* Since 2026-09-30 the block no longer
+> carries a *no names is the correct result* line; its *not received* column,
+> which is not styled as an error, carries that.
 
 **Submit goes to a check page first**, decided with the repo owner 2026-09-18. It
 restates the ask and the contact details, and shows the email address at the size
-of a headline with the warning that it cannot be changed after sending. The
+of a headline. (The warning that it cannot be changed after sending was cut from
+the locked screen on 2026-09-30.) The
 Requester sends from there or goes back to edit with everything kept. Since
 [ADR 0017](adr/0017-a-reviewer-never-corrects-a-requesters-email-address.md) no one
 can correct an address after submit, so this page is the last moment a typo can be
@@ -2681,6 +2692,11 @@ the 24-business-hour service promise, and the telephone number. It must read as
 > visual layout — an implementer must not read the prototype's styling as
 > normative. Prototype:
 > [`prototype/requester-reviewer-ui`](https://github.com/rawinan-soma/dds-sharing/tree/prototype/requester-reviewer-ui).
+>
+> The wireframe arrived: the design locked on 2026-09-30 in
+> `docs/design/system.md`, drawn on the Lunagraph page "Requester form:
+> prototypes", is the source of visual layout, and the Requester surface is
+> built from it (#123).
 
 **A worked example for acceptance testing:** seed the Reviewer queue with a
 request that is genuinely hard to judge — an "independent researcher" on a

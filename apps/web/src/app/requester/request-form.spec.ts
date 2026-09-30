@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   emptyForm,
+  meterOf,
   problemsOf,
+  requirementsOf,
   regionProvinces,
   submissionBody,
   type FormState,
@@ -42,9 +44,9 @@ describe('problemsOf', () => {
       'to',
       'name',
       'surname',
+      'workplace',
       'tel',
       'email',
-      'workplace',
     ]);
   });
 
@@ -82,6 +84,58 @@ describe('problemsOf', () => {
     expect(
       problemsOf({ ...complete, areaMode: 'region', region: 1 }).missing,
     ).toEqual([]);
+  });
+});
+
+describe('requirementsOf', () => {
+  const states = (form: FormState, unreadable = false) =>
+    requirementsOf(problemsOf(form), unreadable).map((r) => r.state);
+
+  it('meets all five requirements on a complete form', () => {
+    expect(states(complete)).toEqual(['met', 'met', 'met', 'met', 'met']);
+  });
+
+  it("holds the five rules in the Requester's order: group, dates, area, who, contact", () => {
+    expect(
+      requirementsOf(problemsOf(complete), false).map((r) => r.key),
+    ).toEqual(['group', 'dates', 'area', 'identity', 'contact']);
+  });
+
+  it('counts an empty form as the whole country and nothing else', () => {
+    expect(states(emptyForm())).toEqual([
+      'unmet',
+      'unmet',
+      'met',
+      'unmet',
+      'unmet',
+    ]);
+  });
+
+  it('breaks the date rule, not just leaves it unmet, when the range is wrong or unreadable', () => {
+    expect(states({ ...complete, to: '2026-01-02' })[1]).toBe('broken');
+    expect(
+      states({ ...complete, from: '2025-02-01', to: '2025-01-01' })[1],
+    ).toBe('broken');
+    expect(states({ ...complete, to: '' }, true)[1]).toBe('broken');
+  });
+
+  it('names the fields to jump to for an unmet rule, first one first', () => {
+    const identity = requirementsOf(
+      problemsOf({ ...complete, surname: '', workplace: '' }),
+      false,
+    )[3];
+    expect(identity.fields).toEqual(['surname', 'workplace']);
+  });
+});
+
+describe('meterOf', () => {
+  it('lights nothing at none met, one failed segment at 1–2, two pending at 3–4, all success at 5', () => {
+    expect(meterOf(0)).toEqual({ lit: 0, tone: null });
+    expect(meterOf(1)).toEqual({ lit: 1, tone: 'failed' });
+    expect(meterOf(2)).toEqual({ lit: 1, tone: 'failed' });
+    expect(meterOf(3)).toEqual({ lit: 2, tone: 'pending' });
+    expect(meterOf(4)).toEqual({ lit: 2, tone: 'pending' });
+    expect(meterOf(5)).toEqual({ lit: 3, tone: 'success' });
   });
 });
 

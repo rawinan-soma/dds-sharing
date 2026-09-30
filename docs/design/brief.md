@@ -56,19 +56,20 @@ it whole; the tickets land it in order.
 
 One scrolling page. Not a wizard, not a two-column live preview.
 
-**Order is a requirement (§16.4):** approval-gate notice → de-identification
-block → the three parameters → contact fields → submit.
+**Order is a requirement (§16.4), as amended 2026-09-30 to the locked screens:**
+title → what the file contains → the map-first split (the area on the map; the
+Disease group, dates and contact fields in the form card) → the requirement
+checklist → the PDPA consent → submit. The approval-gate notice, the 24-hour
+line and the no-reason notice are no longer on screen 1: the repo owner cut
+them when the design was locked (`system.md`, Screen 1). The 24-hour promise is
+on the confirmation.
 
-- **Gate notice, first.** Every Request is read and approved by a named officer
-  before any data is fetched; a Decision takes up to 24 business hours; the
-  Extract arrives by email and never appears on a page; an unapproved Request is
-  told only that it was not approved.
 - **De-identification block — open, above the form, no interaction needed.**
   What you will get (the Extract's 23 columns, §6.2) and what you will not
   (names, national ID, addresses finer than district, coordinates, free text,
   any contact detail of a case — §6.1). The allowlist is strict and a Reviewer
-  cannot widen it per Request. *A file with no names in it is the correct
-  result, not a broken one.*
+  cannot widen it per Request. The *a file with no names in it is the correct
+  result* line was cut on 2026-09-30; the excluded column says it.
 - **Exactly three parameters. Nothing else.** Pagination, page size, chunking,
   column choice, output format, row caps and date floors are deliberately off
   the surface — named here so nobody adds them later.
@@ -88,8 +89,9 @@ block → the three parameters → contact fields → submit.
   required, none validated, none verified. Workplace has no picklist and never
   will: it is an input to a human's judgement, never a credential.
 - **Two notices that are not a footer** — the email address is where the link
-  goes and a typo tells nobody; contact details and the record are kept
-  **indefinitely**, and why.
+  goes and a typo tells nobody (the Field tooltip on the email field); contact
+  details and the record are kept **indefinitely**, and why (the body of the
+  PDPA consent block, which must be ticked to send).
 
 **Never show the Requester a row count.** Hard rule, no exception.
 
@@ -215,7 +217,7 @@ the Download token and never the file.
 
 ## 4. The rules that are requirements, not styling
 
-1. Form order: gate notice → de-identification → parameters → contact → submit.
+1. Form order: de-identification → the map-first split → checklist and consent → submit (amended 2026-09-30).
 2. The de-identification block is open and above the form.
 3. Decision buttons sit below the identity fields and the ask.
 4. No Report code anywhere on the Requester surface.
@@ -233,17 +235,18 @@ the Download token and never the file.
 own line height. Test with real strings in the longest fields — the ten group
 names, the notices, the alert outcomes — not with lorem.
 
-Six keys are load-bearing, each carrying a decision that exists nowhere else.
-Every design must give each one a home:
+Six keys were load-bearing, each carrying a decision that existed nowhere else.
+**The locked screens (2026-09-30) kept two and cut four**, and the catalogue
+followed (#123):
 
-| Key | What it says |
-|---|---|
-| `requester_gate_notice` | the approval gate, stated first, before anything else |
-| `requester_no_reason_notice` | a rejection gives no reason — said up front, not sprung at rejection time |
-| `requester_span_cap_notice` | the 365-day cap, attributed to upstream |
-| `requester_epidem_area_label` | the survey-address trap, at the point of choosing |
-| `requester_email_warning` | the only place a Requester is told a typo will not be caught |
-| `requester_retention_notice` | what is kept, indefinitely, and why |
+| Key | What it says | Since 2026-09-30 |
+|---|---|---|
+| `requester_gate_notice` | the approval gate, stated first | cut |
+| `requester_no_reason_notice` | a rejection gives no reason, said up front | cut |
+| `requester_span_cap_notice` | the 365-day cap, attributed to upstream | cut as a standing notice; the cap is attributed to upstream in `error_span_too_long_detail`, and the calendar cannot offer a longer range |
+| `requester_epidem_area_label` | the survey-address trap, at the point of choosing | cut |
+| `requester_email_warning` | the only place a Requester is told a typo will not be caught | kept, the email field's tooltip |
+| `requester_retention_notice` | what is kept, indefinitely, and why | kept, the consent block's body |
 
 ## 6. Audience and conditions
 
@@ -260,10 +263,10 @@ Each is the repo owner's call. Two are settled and struck through below.
 1. ~~**Visual direction.**~~ **Settled 2026-09-17 (repo owner): the surveillance
    map.** The system is built on the one visual the domain already owns —
    province and health region. Area selection is a schematic map of the 13
-   เขตสุขภาพ rather than a select, and its palette (land, ground, one selection
-   colour) sets the tokens for everything else. Two constraints on it: the map
-   is the control inside **parameter 3**, so the gate notice and the
-   de-identification block still come first (§16.4); and it is **schematic, not
+   เขตสุขภาพ rather than a select. **Superseded 2026-09-30:** the palette is B's
+   (`system.md`), not land and ground, and the map is the largest thing on the
+   screen beside the form card, after the de-identification block (§16.4 as
+   amended), not a control inside parameter 3. It is still **schematic, not
    cartographic** — 13 region shapes, no 77-province polygon file, because a geo
    dependency would have to be carried into the Angular build for one control.
    A province is chosen from a list, and the map highlights the region it sits in.

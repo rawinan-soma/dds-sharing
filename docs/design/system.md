@@ -2,8 +2,9 @@
 
 **Locked 2026-09-30 from Requester-form variant B, "Map-first split".** It
 replaces the square "surveillance map" system everywhere, the Reviewer surface
-included. B was drawn in the Lunagraph project `dds-prototype`, and the working
-prototype is `apps/web/src/app/requester/request-form.prototype/variant-b.ts`.
+included. B was drawn in the Lunagraph project `dds-prototype`. The working
+prototype that once sat behind `/?variant=` was deleted when the Requester
+surface was built from B (#123).
 
 The tokens are `source/globals.css` and the components are `source/components/`.
 This file is the written form of both, and the Angular build is written against
@@ -95,6 +96,7 @@ file names carry `font-variant-numeric: tabular-nums` via `.figure`.
 | `radius-md` | 10px | field, button |
 | `radius-lg` | 12px | map cell |
 | `radius-xl` | 20px | card |
+| `radius-panel` | 14px | the calendar popover, the Statement, and panels and notes inside a card |
 
 One radius per kind of thing. A screen never picks its own.
 
@@ -577,9 +579,11 @@ The PDPA acknowledgement, between the requirement checklist and the actions.
 - **Body:** 13px `muted-foreground`, the retention sentence.
 
 Build: one agreement is a **checkbox**, not a radio, even though it is drawn
-round. Two things the drawing does not settle: whether ส่งคำขอ requires it
-(and so whether the checklist gains a sixth item), and where the PDPA notice
-link goes.
+round. **Settled 2026-09-30 (repo owner):** ส่งคำขอ requires it, but it is not a
+sixth checklist item. Once the checklist is met, an unticked box refuses the
+send, takes a `failed` edge and one `failed` line under the body, and receives
+focus. It is not posted. The PDPA notice is **not a link yet**: the words stay
+in the bold label until the ministry's notice has an address.
 
 ## Component: Region map
 
@@ -597,10 +601,8 @@ branch sits directly against the west one, with no empty column between them:
 | 6 | 11 | | | |
 | 7 | 12 | | | |
 
-This is tighter than the 5 × 7 `LAYOUT` in
-`apps/web/src/app/requester/region-map.component.ts`, which still leaves a gap
-column and puts 8, 7, 9 and 10 one column further right. The build must move to
-this lattice.
+`LAYOUT` in `apps/web/src/app/requester/region-map.component.ts` is this
+lattice.
 
 | State | Visual |
 |---|---|
@@ -678,18 +680,18 @@ a control.
 On the Lunagraph canvas, class border colours render grey because an unlayered
 reset beats Tailwind's layered utilities. `source/globals.css` states the border
 colours unlayered to get round it, and gives the focused field its edge the same
-way. Delete that block if the Angular build renders borders without it.
+way. The Angular build uses no Tailwind and renders its borders without it, so
+the block was not carried into `apps/web/src/styles.css`.
 
 ## Still undone
 
-- **`apps/web/src/styles.css` is still the old system.** The Angular build moves
-  to these tokens when the Requester page is rebuilt from B.
-- **The font weight 500 is not loaded.** `angular.json` loads only 400 and 600
-  from `@fontsource`; add 500.
+- **The PDPA notice has no address.** The consent label names it as text, not a
+  link, until it does.
+- **The Reviewer surface is on these tokens but not restyled** (#124). It keeps
+  the old service header, moved from the app shell into the Reviewer shell
+  because no Requester frame draws one.
 - **The Lunagraph project `dds-sharing` has not been redrawn.** Its twelve screens,
   and every screenshot in `handoff.md`, still show the square teal system.
-- **`accessibility.md` P2 and P3 are resolved by `input`** (quiet-button frame,
-  map-cell edge). Re-measure the rest against these tokens.
 - **Two Alert kinds are not drawn.** 6a draws extraction failure; the
   collection-lapse and send-abandoned cards follow it with their three outcomes
   from `handoff.md` §6.

@@ -109,7 +109,7 @@ type Problem =
     }
     .card {
       background: var(--card);
-      border: 1px solid var(--border-strong);
+      border: 1px solid var(--border);
       padding: 2rem;
     }
     .kicker {
