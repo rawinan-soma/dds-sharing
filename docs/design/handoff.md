@@ -13,8 +13,9 @@ covers layout, states, edge cases and accessibility per screen.
 > 2, 3, 7, 7m, 8 and the two Requester emails) and its states are locked in
 > "The Requester screens, as locked" in `system.md`, from the Lunagraph page
 > that is their source of truth. Where this file's layout or copy for those
-> screens differs, `system.md` and the canvas win. **Screen 5 is locked the
-> same way**, in "The Reviewer screen, as locked", from the same page.
+> screens differs, `system.md` and the canvas win. **Every Reviewer screen is
+> locked the same way** (4, 5, 6, 11, 12, 13, 14, R and the two Reviewer
+> emails), in "The Reviewer screens, as locked", from the same page.
 > Behaviour, states, edge cases and copy in this file still stand.
 
 **Stack:** Angular SPA, one build, served by NestJS from the same origin
@@ -178,11 +179,11 @@ Never reveal which factor failed. The audit record keeps it; the screen does not
 ## 5. Queue and dossier (#65, #66)
 
 > **2026-09-30: the layout below is superseded.** Screen 5 is locked in "The
-> Reviewer screen, as locked" in `system.md`: the queue is a full-width table
+> Reviewer screens, as locked" in `system.md`: the queue is a full-width table
 > under three zone tabs, not a 372px sidebar, and the dossier is two columns
 > with the decision strip beneath both. The rules here still stand: one zone
 > per Request, oldest first, selection follows the dossier, the buttons below
-> what is judged, the three row-count states in one slot, no drain estimate.
+> what is judged, the row-count states in one slot, no drain estimate.
 > The row count is drawn at body size (*กำลังนับ*), not `text-3xl`.
 
 ### Sidebar, three zones

@@ -222,16 +222,16 @@ reference number, submit time or status.**
 > the warning that the address cannot be changed after sending. The canvas wins;
 > the spec follows.
 
-## The Reviewer screen, as locked (2026-09-30)
+## The Reviewer screens, as locked (2026-09-30)
 
-**Source of truth: the frame `5 · คิวและแฟ้มคำขอ` on the Lunagraph page
-"Requester form: prototypes" in project `dds-prototype`.** It was picked by the
-repo owner on 2026-09-30 from three layouts drawn in this system: a split with
-the queue on the left, a dossier headed by a judgement panel, and this one. The
-other two were deleted. Where this section and the frame disagree, the frame is
-right. It covers screen 5 (#65, #66) in its pending state only; the confirms,
-the reject note, the three row-count states and the empty queues are not yet
-drawn in this system.
+**Source of truth: the Lunagraph page "Requester form: prototypes" in project
+`dds-prototype`, reviewed and edited by the repo owner on 2026-09-30.** Every
+Reviewer screen and state below is a frame on that page. Where this section and
+a frame disagree, the frame is right. Screen 5's layout was picked on
+2026-09-30 from three drawn in this system (a split with the queue on the left,
+a dossier headed by a judgement panel, and this one); the other two were
+deleted. Every other Reviewer frame is a copy of frame 5, or of the Requester
+frame it matches, so the shell below is not repeated per screen.
 
 ### Layout: the queue above, the dossier below
 
@@ -298,6 +298,126 @@ keys between tabs, one tab stop; the table is the `tabpanel`.
 | ↻ and ▸ as text glyphs | line icons from the app's icon set | the design tool had no icon library |
 | tabs at an 8px radius | `radius-sm` | a tab is a segment |
 | the queue rows as grids of spans | a `<table>` with row headers, the row a button or link to its dossier | a table read as a table |
+
+### Screen 4: sign in
+
+A 460px card on `background` (frame 1120): *DDS Sharing · ผู้ตรวจสอบ* (13,
+`muted-foreground`) over *เข้าสู่ระบบ* (26/600), three Fields (ชื่อผู้ใช้,
+รหัสผ่าน, *รหัส 6 หลักจากแอปยืนยันตัวตน* with the `code` treatment and the
+hint *รหัสเปลี่ยนทุก 30 วินาที*), a full-width `primary lg` **เข้าสู่ระบบ**,
+then a hairline and one 12px note: accounts are made by the operator, there is
+no email reset, the other Reviewer is the way back in.
+
+| Frame | State |
+|---|---|
+| `4a · เข้าสู่ระบบ` | Base; the code field focused |
+| `4b · เข้าสู่ระบบไม่สำเร็จ` | A `failed-wash` notice with a 2px `failed` left rule above the fields: *เข้าสู่ระบบไม่สำเร็จ*, one sentence naming all three factors at once, and *บัญชีไม่ถูกล็อก…* (backoff, no lockout). Password and code cleared to placeholders; username kept |
+| `4c · เซสชันหมด การตัดสินไม่ถูกบันทึก` | A `pending-wash` notice with a 2px `pending` rule: the last approval was not recorded, the reference is still pending, press again after signing in. Nothing is replayed |
+
+### Screen 5 states (frames 11a–11f)
+
+| Frame | State |
+|---|---|
+| `11a · ยืนยันการอนุมัติ` | **Dialog** over the dimmed dossier: title *อนุมัติและปล่อยข้อมูลให้ {name}?*, three rows (คำขอ, หน่วยงาน, สิ่งที่ขอ as one line), `secondary` **ย้อนกลับ** and `primary` **ยืนยันอนุมัติ** at 1 : 1.2. Nothing else: the repo owner cut the name panel and the irreversibility line; the strip beneath already says approval cannot be undone |
+| `11b · ไม่อนุมัติและบันทึกภายใน` | **Dialog**: title *ไม่อนุมัติคำขอของ {name}?*, the required **บันทึกภายใน** textarea (focused, 112px min), its hint (at least 10 characters, kept on the record, never shown or sent to the Requester), a `#f7f8fa` bordered note that it is not saved as you type, **ย้อนกลับ** and `primary` **ยืนยันไม่อนุมัติ** |
+| `11c · หลังอนุมัติ` | The decision strip is replaced by a `success-wash` statement with a `success` edge: *อนุมัติแล้ว โดยท่าน เวลา 14:32*, the job has started and the Requester is emailed when the file is ready, the Reviewer's name is on the release, and a link to the **กำลังดำเนินการ** tab. The request has left the queue table (count down by one, in-flight up by one); the dossier stays on it. **No auto-advance** |
+| `11d · หลังไม่อนุมัติ` | The same slot, `inert-wash`, no edge: *ไม่อนุมัติแล้ว…*, the Requester was emailed that it was not approved with no reason, the internal note is on the record, the request has ended and will not appear here again |
+| `11e · หมดเวลาระหว่างอ่าน` | The same slot, `pending-wash`: *คำขอนี้หมดเวลาระหว่างที่ท่านอ่าน* and one sentence (24 business hours passed before the decision reached the server, so nothing was recorded). The queue row and header read *หมดเวลา* and *0 ชม. 00 น.* |
+| `11f · จำนวนแถว สามสถานะ` | The จำนวนแถว row in its states, one slot and one size: counted (*1,284 แถว*), *กำลังนับ*, *นับไม่สำเร็จ*, and counted-zero (*0 แถว · ไม่มีรายงานตรงกับที่ขอ*). Approve works the same in all of them |
+
+### Screen 6: the other two zones
+
+| Frame | State |
+|---|---|
+| `6a · ต้องจัดการ: ดึงข้อมูลไม่สำเร็จ` | The **ต้องจัดการ** tab selected; its label is `pending` ink in every frame where it has a count. The table's columns are เรื่อง (kind, `pending` 600), คำขอ, ผู้ขอ with workplace, มอบหมายให้, เกิดขึ้นเมื่อ; the selected row is `pending-wash` with a 3px `pending` rule. The dossier: header (reference, name, and อนุมัติโดย / อนุมัติเมื่อ / ดึงข้อมูล), the **Alert card**, the two columns (*ติดต่อผู้ขอ* with the contact fields, because the outcome is a call; *สิ่งที่ขอ*), then a re-run strip with a `secondary lg` **ดึงข้อมูลใหม่** |
+| `6b · กำลังดำเนินการ: ส่งซ้ำและดึงใหม่` | The **กำลังดำเนินการ** tab. One 12px line above the table: submit order, and requests with an open Alert are shown under ต้องจัดการ instead (with the count). Columns คำขอ, ผู้ขอ, อนุมัติโดย, สถานะ (a **Tag**: `success` *ไฟล์พร้อมแล้ว*, `inert` *กำลังดึงข้อมูล*, `inert` *รอคิวดึงข้อมูล*), ลิงก์ดาวน์โหลด (time left and downloads, or *ยังทำอะไรไม่ได้จนกว่าจะดึงข้อมูลเสร็จ*). The dossier header carries อนุมัติโดย, ไฟล์พร้อมเมื่อ, ลิงก์เหลือ (in `success`), ดาวน์โหลดแล้ว. Beneath the columns, two actions side by side, each a 14/600 title, one line and a `secondary md` button: **ส่งอีเมลซ้ำ** (names the address, says the link is not extended) and **ดึงข้อมูลใหม่** (new link, the old one works until the new file is ready). Last, the stated absence in `failed-wash`: **แก้ที่อยู่อีเมลของผู้ขอไม่ได้** (ADR 0017) |
+
+### Screen 12: empty queues and the session
+
+| Frame | State |
+|---|---|
+| `12a · คิวว่าง ไม่มีเรื่องต้องจัดการ` | The table replaced by an **Empty state**: a `success` tick, *ไม่มีคำขอรอตัดสิน*, *และไม่มีเรื่องต้องจัดการ คำขอใหม่จะแจ้งทางอีเมล*, and *หน้านี้ไม่อัปเดตเอง กดรีเฟรชเมื่อได้รับอีเมล*. No dossier |
+| `12b · คิวว่าง แต่ยังมีเรื่องต้องจัดการ` | The same, branched: a `pending` **!**, *ไม่มีคำขอรอตัดสิน แต่งานยังไม่หมด*, the Alert count, and a `secondary md` **ไปที่ต้องจัดการ**. It never says the desk is clear while an Alert is open |
+| `12c · เตือนก่อนหมดเวลา ไม่มีการใช้งาน` | The idle **Toast** at 55 minutes: *ไม่มีการใช้งานมา 55 นาที*, a half-typed internal note will be lost, and one `primary` **ยังใช้งานอยู่** |
+| `12d · เตือนก่อนครบ 6 ชั่วโมง` | The ceiling Toast at T-5: *อีก 5 นาทีจะออกจากระบบ*, the 6 hours cannot be extended, signing in again returns to this request. **No action** |
+
+### Screen 13: looking up a finished request
+
+A lookup field (**ค้นหาด้วยเลขที่คำขอ**, exact reference, `primary` edge while
+in use) sits in the queue band between the staleness line and refresh; the
+queue table stays, with no row selected. The dossier is read-only: an `inert`
+Tag *สิ้นสุดแล้ว* and *อ่านอย่างเดียว* over *คำขอ {reference}* as the
+headline (**no name**), an `inert-wash` notice that it has ended and no contact
+details are shown, two columns (*สิ่งที่ขอ* with the Snapshot's workplace;
+*การตัดสิน*: outcome, Reviewer, time, row count at the time), a files table
+(ครั้งที่, ชื่อไฟล์, ลิงก์, ดาวน์โหลด) and the event trail, newest first, as
+time / actor / event rows at 13px.
+
+### Screen 14: loading
+
+| Frame | State |
+|---|---|
+| `14a · รีเฟรชไม่สำเร็จ รายการเดิมยังอยู่` | The staleness line becomes `failed` text, *โหลดรายการไม่สำเร็จ · รายการด้านล่างเป็นของเมื่อ 8 นาทีที่แล้ว*, and refresh reads **↻ ลองอีกครั้ง**. The old list and dossier stay |
+| `14b · กำลังอนุมัติ` | 11a with **กำลังอนุมัติ…** on `primary-hover` and **ย้อนกลับ** disabled at 45% |
+
+### Screen R: below 1024px
+
+A card with *DDS Sharing · ผู้ตรวจสอบ*, the headline *ใช้หน้านี้บนจอที่กว้างกว่านี้*
+and one sentence: the decision needs the Requester and the ask on screen before
+the approve button, so the surface opens at 1024px and wider. Nothing else.
+
+### Screen 9: the Reviewer's emails
+
+The Requester email shell (680 body, from / to / subject over a hairline).
+
+- **Queue notification**, to every Reviewer: the requester's name, workplace
+  and the decision deadline in a bordered box, then that the email carries no
+  patient data and no download link.
+- **Extraction failure**, to the approving Reviewer: the failure on a
+  `pending-wash` panel, that the Requester has received nothing and will only
+  know when the Reviewer calls, that the operator was told separately and the
+  Reviewer need not fix anything, and that the Alert waits under ต้องจัดการ.
+
+> **The approve confirm does not name the Reviewer, by decision.** The repo
+> owner cut the name panel from 11a and 14b on 2026-09-30 and kept the cut.
+> `brief.md` §5 and ticket #66 are amended to match. The name still goes onto
+> the release, and 11c says so after the fact.
+
+## Component: Dialog
+
+A decision that needs one more deliberate press. `card`, `radius-xl`, 32px
+padding, 20px gap, shadow `0 30px 60px rgb(0 0 0 / 0.18)`, over a scrim of
+`foreground` at 45%. Title 18/600 as a question naming the person; the facts as
+label/value rows; the pair **ย้อนกลับ** (`secondary`) and the confirm
+(`primary`) at 1 : 1.2. Used twice: approve (520px) and reject (560px).
+
+Accessibility: `role="dialog"` with `aria-modal`, focus trapped, the confirm
+is the initial focus (the reject note's textarea in 11b), Escape returns to the
+trigger. While the confirm is loading, **ย้อนกลับ** is disabled: an approval
+that has gone cannot come back.
+
+## Component: Toast
+
+The session warnings only. `foreground` panel, 400px, 12px radius, `16px 18px`,
+shadow `0 12px 32px rgb(0 0 0 / 0.18)`, **bottom-left** (72px from the card's
+edges on the canvas). Title 14/600 white, body 13px `#c9ccd3` at 1.5, and at
+most one `primary` action. Never a modal or a banner. `role="alert"`.
+
+## Component: Statement
+
+What happened, in the slot where the action was. A 14px-radius panel, 20px
+padding: a 16/600 title in the tone's ink, one sentence in `foreground`, an
+optional 13px `muted-foreground` line. The tone says what kind of outcome it
+is: `success` with a `success` edge for an approval, `inert` for a rejection
+(calm, not red), `pending` for an expiry. The compact form, 10px radius with a
+2px left rule, carries notices above a form (4b, 4c) and the Alert card (6a,
+12px radius, 24px padding, with its outcome buttons inside).
+
+## Component: Empty state
+
+In place of a table, never beside it: a 48px circle on a state wash with one
+mark, an 18/600 headline, one or two lines of `muted-foreground`, and at most
+one `secondary` action. Centred in the table's card, 48px vertical padding.
 
 ## Component: Button
 
@@ -524,9 +644,7 @@ way. Delete that block if the Angular build renders borders without it.
   and every screenshot in `handoff.md`, still show the square teal system.
 - **`accessibility.md` P2 and P3 are resolved by `input`** (quiet-button frame,
   map-cell edge). Re-measure the rest against these tokens.
-- **The Reviewer surface has one screen drawn in this system**, screen 5's
-  pending state (see "The Reviewer screen, as locked"). Sign in, the confirms
-  and reject note, the row-count states, the empty queues, the Alert and
-  in-flight zones, and the lookup take these tokens and components but have no
-  drawing yet.
+- **Two Alert kinds are not drawn.** 6a draws extraction failure; the
+  collection-lapse and send-abandoned cards follow it with their three outcomes
+  from `handoff.md` §6.
 - **The province select is still hand-built.** There is no Select component.

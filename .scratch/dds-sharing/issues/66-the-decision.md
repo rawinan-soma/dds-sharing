@@ -107,3 +107,7 @@ Treat the design as the source of **visual layout only**. Structure, ordering an
 **rawinan-soma** — 2026-09-22
 
 Merged in #109 (3cb2fd47384a8b35b1d19fa87ee8f2f61bf4e6e3).
+
+**rawinan-soma** — 2026-09-30
+
+**Superseded in part: the approve confirm no longer names the Reviewer.** The design note above says Approve opens a confirm with *"Your name, {reviewer}, goes onto this release permanently."* The Reviewer screens were redrawn in the B system and locked in `docs/design/system.md` ("The Reviewer screens, as locked"); the repo owner cut that line from the confirm (frames 11a and 14b) and kept the cut. The confirm restates the Request (reference, workplace, the ask) over ย้อนกลับ and ยืนยันอนุมัติ. The Reviewer's name still goes onto the release permanently, and the post-Decision statement (frame 11c) says so. Every acceptance criterion above still stands.
