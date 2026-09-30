@@ -519,23 +519,17 @@
         <h1 tabindex="-1">{{ m.requester_duplicate_title() }}</h1>
         <div class="panel-pending stack">
           <p>{{ m.requester_duplicate_lead() }}</p>
+          <p class="small muted">{{ m.requester_duplicate_reference() }}</p>
         </div>
-        <div class="two-up">
+        <div class="panel-bordered stack">
+          <h2 class="small">{{ m.requester_duplicate_change_heading() }}</h2>
+          <p class="small muted">
+            {{ m.requester_duplicate_change_detail() }}
+          </p>
           <div>
-            <h2 class="small">{{ m.requester_duplicate_resent_heading() }}</h2>
-            <p>{{ m.requester_duplicate_resent_detail() }}</p>
-          </div>
-          <div>
-            <h2 class="small">
-              {{ m.requester_duplicate_colleague_heading() }}
-            </h2>
-            <p>
-              {{
-                m.requester_duplicate_colleague_detail({
-                  telephone: m.app_telephone(),
-                })
-              }}
-            </p>
+            <button type="button" class="btn btn-secondary" (click)="edit()">
+              {{ m.requester_duplicate_back() }}
+            </button>
           </div>
         </div>
       </div>

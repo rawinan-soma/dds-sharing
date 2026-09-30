@@ -492,6 +492,11 @@ button.region-cell:hover {
   padding: 24px 32px;
 }
 
+.panel-bordered {
+  border: 1px solid var(--border);
+  padding: 24px 32px;
+}
+
 .headline {
   font-size: 1.875rem;
   font-weight: 600;

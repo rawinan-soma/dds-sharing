@@ -46,7 +46,7 @@ describe('submit a Request (e2e)', () => {
   };
 
   // `trust proxy` lets a test speak as different IPs, which is how the edge
-  // will present them in production.
+  // will present them in production, and which the audit record keeps.
   const post = (body: unknown, ip = '10.0.0.1') =>
     request(app.getHttpServer())
       .post('/api/requests')
@@ -225,10 +225,12 @@ describe('submit a Request (e2e)', () => {
     });
 
     it('numbers Requests in sequence', async () => {
-      const first = (await post(valid, '10.0.0.1').expect(201)) as {
+      const first = (await post(valid).expect(201)) as {
         body: Submitted;
       };
-      const second = (await post(valid, '10.0.0.2').expect(201)) as {
+      const second = (await post({ ...valid, to: '2025-01-30' }).expect(
+        201,
+      )) as {
         body: Submitted;
       };
 
@@ -284,7 +286,7 @@ describe('submit a Request (e2e)', () => {
   });
 
   describe('duplicate suppression', () => {
-    it('refuses a second submit from an IP with an unfinished Request, in friendly words and not as a rate limit', async () => {
+    it('refuses the same email and ask while the first is unfinished, in friendly words and not as a rate limit', async () => {
       await post(valid).expect(201);
 
       const { body, status } = (await post(valid)) as {
@@ -294,12 +296,14 @@ describe('submit a Request (e2e)', () => {
 
       expect(status).toBe(409);
       expect(body.code).toBe('request_in_progress');
-      expect(body.message).toMatch(/already have a request in progress/i);
+      expect(body.message).toMatch(/already sent this request/i);
       expect(JSON.stringify(body)).not.toMatch(/REQ-|rate|limit|too many/i);
       expect(await rows('SELECT 1 FROM request')).toHaveLength(1);
+      expect(await rows('SELECT 1 FROM request_contact')).toHaveLength(1);
+      expect(await rows('SELECT 1 FROM request_event')).toHaveLength(1);
     });
 
-    it('does not tell one person which Request is holding the IP', async () => {
+    it('never names the Request it matched: the email is not verified', async () => {
       await post(valid).expect(201);
 
       const { text } = await post(valid);
@@ -307,12 +311,57 @@ describe('submit a Request (e2e)', () => {
       expect(text).not.toMatch(/REQ-\d/);
     });
 
-    it('is per IP: another IP is unaffected', async () => {
+    it('does not read the IP: the same email and ask from another IP is refused', async () => {
       await post(valid, '10.0.0.1').expect(201);
-      await post(valid, '10.0.0.2').expect(201);
+      await post(valid, '10.0.0.2').expect(409);
     });
 
-    it('lets the same IP submit again once the Request is finished', async () => {
+    it('lets a colleague on the same IP send the same ask under their own email', async () => {
+      await post(valid, '10.0.0.1').expect(201);
+      await post(
+        { ...valid, contact: { ...contact, email: 'somsri@example.go.th' } },
+        '10.0.0.1',
+      ).expect(201);
+    });
+
+    it('matches an email differing only in case or surrounding whitespace', async () => {
+      await post(valid).expect(201);
+      await post({
+        ...valid,
+        contact: { ...contact, email: '  SomChai@Example.GO.TH ' },
+      }).expect(409);
+    });
+
+    it('accepts the same email with a different Disease group', async () => {
+      await post(valid).expect(201);
+      await post({ ...valid, diseaseGroupId: 'asbestos' }).expect(201);
+    });
+
+    it('accepts the same email with a different start or end date', async () => {
+      await post(valid).expect(201);
+      await post({ ...valid, from: '2025-01-02' }).expect(201);
+      await post({ ...valid, to: '2025-01-30' }).expect(201);
+    });
+
+    it('accepts the same email with a different area', async () => {
+      await post(valid).expect(201);
+      await post({ ...valid, area: { provinceId: '50' } }).expect(201);
+      await post({ ...valid, area: { provinceId: '51' } }).expect(201);
+      await post({ ...valid, area: { region: 1 } }).expect(201);
+    });
+
+    it('compares the area as stored: health region 13 is the province กรุงเทพมหานคร', async () => {
+      await post({ ...valid, area: { region: 13 } }).expect(201);
+      await post({ ...valid, area: { provinceId: '10' } }).expect(409);
+    });
+
+    it('matches national only with national', async () => {
+      await post({ ...valid, area: { region: 13 } }).expect(201);
+      await post(valid).expect(201);
+      await post(valid).expect(409);
+    });
+
+    it('accepts the same email and ask again once the first is finished', async () => {
       await post(valid).expect(201);
       await post(valid).expect(409);
 
@@ -321,7 +370,7 @@ describe('submit a Request (e2e)', () => {
       await post(valid).expect(201);
     });
 
-    it('still refuses while the Request is approved but not terminal', async () => {
+    it('still refuses while the first is approved but not terminal', async () => {
       await post(valid).expect(201);
       await db.owner.query(`UPDATE request SET state = 'approved'`);
 
@@ -335,10 +384,32 @@ describe('submit a Request (e2e)', () => {
       expect(await rows('SELECT 1 FROM request')).toHaveLength(1);
     });
 
+    it('catches a double post whose emails differ only in case', async () => {
+      const results = await Promise.all([
+        post(valid),
+        post({
+          ...valid,
+          contact: { ...contact, email: 'SOMCHAI@example.go.th' },
+        }),
+      ]);
+
+      expect(results.map((r) => r.status).sort()).toEqual([201, 409]);
+      expect(await rows('SELECT 1 FROM request')).toHaveLength(1);
+    });
+
     it('does not count a refused invalid submit as a Request in progress', async () => {
       await post({ ...valid, diseaseGroupId: 'nope' }).expect(400);
 
       await post(valid).expect(201);
+    });
+
+    it('no longer keeps an index on the submitted IP', async () => {
+      const indexes = await rows<{ indexname: string }>(
+        `SELECT indexname FROM pg_indexes WHERE tablename = 'request_event'`,
+      );
+      expect(indexes.map((i) => i.indexname)).not.toContain(
+        'request_event_submitted_ip',
+      );
     });
   });
 
