@@ -3,14 +3,11 @@
   of them at once is the point. Used once, for Area: whole country, one
   province, one health region. Never both, never two.
 
-  Copied from the Lunagraph project `dds-sharing`. See docs/design/system.md.
+  Locked from Requester-form variant B (2026-09-30). See docs/design/system.md.
 
-  The selected segment is the only saturated thing in the control, because in
-  this system the solid colour means "you chose this". Hover tints an
-  unselected segment with land, never with the accent: a hover is not a choice.
-
-  Dividers are border-border-strong and the outer frame is the same, so the
-  control reads as one object rather than three buttons that happen to touch.
+  Separate small buttons, not one joined bar. The selected segment is a mode,
+  so it takes the wash and a primary edge, not the solid fill: the solid
+  primary belongs to the answer, the selected cell on the region map.
 */
 
 export function Segmented({
@@ -21,8 +18,8 @@ export function Segmented({
   value: string;
 }) {
   return (
-    <div role="radiogroup" className="border-border-strong flex w-fit border">
-      {options.map((option, index) => {
+    <div role="radiogroup" className="flex w-fit gap-2">
+      {options.map((option) => {
         const selected = option.value === value;
         return (
           <button
@@ -32,13 +29,12 @@ export function Segmented({
             aria-checked={selected}
             disabled={option.disabled}
             className={[
-              "px-5 py-2 text-sm transition-colors",
+              "rounded-sm border px-3.5 py-1.5 text-sm transition-colors",
               "focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary",
               "disabled:cursor-not-allowed disabled:opacity-45",
-              index > 0 ? "border-border-strong border-l" : "",
               selected
-                ? "bg-primary text-primary-foreground font-semibold"
-                : "hover:bg-land active:bg-land-strong",
+                ? "border-primary bg-primary-wash text-primary font-semibold"
+                : "border-input bg-card text-foreground hover:bg-primary-wash",
             ].join(" ")}
           >
             {option.label}

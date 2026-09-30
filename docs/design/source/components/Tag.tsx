@@ -1,13 +1,13 @@
 /*
   Tag — the state of a Request, and nothing else.
 
-  Copied from the Lunagraph project `dds-sharing`. See docs/design/system.md.
+  Locked from Requester-form variant B (2026-09-30). See docs/design/system.md.
 
-  Filled: ink on its own wash. The four tones are the whole state vocabulary,
-  and none of them is green, because green means "you chose this".
+  Filled: ink on its own wash. The four tones are the whole state vocabulary.
+  Blue is the accent, so no state is blue; "ready" is success green.
 
+  success  ready to act on
   pending  a person is being waited on
-  ready    there is something here you can act on
   failed   broken
   inert    nothing to do, whether queued, running or finished
 
@@ -18,12 +18,12 @@
   was asked for.
 */
 
-type Tone = "pending" | "ready" | "failed" | "inert";
+type Tone = "success" | "pending" | "failed" | "inert";
 type Size = "sm" | "md";
 
 const tones: Record<Tone, string> = {
   pending: "bg-pending-wash text-pending",
-  ready: "bg-ready-wash text-ready",
+  success: "bg-success-wash text-success",
   failed: "bg-failed-wash text-failed",
   inert: "bg-inert-wash text-inert",
 };
@@ -43,7 +43,7 @@ export function Tag({
   children: React.ReactNode;
 }) {
   return (
-    <span className={["inline-block font-semibold", tones[tone], sizes[size]].join(" ")}>
+    <span className={["inline-block rounded-sm font-semibold", tones[tone], sizes[size]].join(" ")}>
       {children}
     </span>
   );

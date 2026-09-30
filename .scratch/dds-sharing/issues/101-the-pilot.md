@@ -30,7 +30,7 @@ Decided with the repo owner while triaging #77 on 2026-09-28; the decision and i
 **The same checks #77 makes of Production, made of the Pilot**, because it faces the same internet:
 
 - The app is reachable **only through the tunnel**. `cloudflared` reaches the app without the app's port being published to the host's network or the tailnet — otherwise a direct client could forge the forwarded address that `TRUST_PROXY` trusts.
-- `TRUST_PROXY` is the number of proxy hops in front of the app, so two Requesters on different IPs can each submit (duplicate suppression is keyed on the client IP, #63).
+- `TRUST_PROXY` is the number of proxy hops in front of the app, so the `submitted` event records the Requester's real IP for the audit record, not Cloudflare's (#102).
 - Postgres, Redis, MinIO and the worker are unreachable from the internet **and from the tailnet** — MinIO is the sharp one: a reachable bucket bypasses the Download token and its audit.
 - NTP is synced on the host: TOTP and the business-hours clock both depend on it, and with one Reviewer an unsynced clock locks out the only person who can decide.
 - The province seed migration runs and its startup assert is a boot failure.
@@ -45,7 +45,7 @@ Decided with the repo owner while triaging #77 on 2026-09-28; the decision and i
 - [ ] `REFERENCE_PREFIX=PLT`: a Request submitted on the Pilot gets a `PLT-` reference
 - [ ] An end-to-end Request on the Pilot — submit, approve, the Delivery email through the real relay, download — succeeds against the real upstream
 - [ ] The app's port is not reachable except through the tunnel; Postgres, Redis, MinIO and the worker are unreachable from the internet and from the tailnet, MinIO explicitly among them
-- [ ] `TRUST_PROXY` is set for the Cloudflare hop, and two Requesters on different IPs can each submit
+- [ ] `TRUST_PROXY` is set for the Cloudflare hop, and a Request's `submitted` event records the Requester's IP, not Cloudflare's
 - [ ] NTP is synced on the host and verified
 - [ ] Neither insecure flag is set, and `/health` reports none
 - [ ] The repo owner is seeded as the Pilot's Reviewer, and has signed in with TOTP

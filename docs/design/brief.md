@@ -105,8 +105,8 @@ arrives. That is accepted.
 
 ### 3. Duplicate suppression
 
-A submit from an IP that already has an unfinished Request is refused, worded as
-a friendly *you already have a request in progress*. It catches the page refresh
+A submit whose email and ask match an unfinished Request is refused, worded as
+a friendly *you already sent this request*. It catches the page refresh
 and the double-posted form, not an adversary. **It is UX, not a rate limit — do
 not name it one on screen or in the file names.**
 
@@ -154,8 +154,9 @@ notification channel.
 > being judged. This is the deliberately **weak** form — it costs a scroll, not
 > a click. Do not float the buttons or pin an action bar.
 
-Approve is irreversible and its confirm says the Reviewer's name goes onto the
-release permanently. Reject opens an internal note — required, kept on the
+Approve is irreversible and its confirm restates who and what is being
+approved. The Reviewer's name goes onto the release permanently; the screen says
+so once the Decision is recorded, not in the confirm (repo owner, 2026-09-30). Reject opens an internal note — required, kept on the
 record, **never shown or sent to the Requester**, and not saved as you type.
 
 ### 6. Alerts

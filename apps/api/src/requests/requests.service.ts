@@ -6,7 +6,7 @@ import { Pool } from 'pg';
 import { writeRequestEvent } from '../audit/write-request-event';
 import { appConfig } from '../config/namespaces';
 import { PG_POOL } from '../db/database.module';
-import { request, requestContact, requestEvent, reviewer } from '../db/schema';
+import { request, requestContact, reviewer } from '../db/schema';
 import { MailSender } from '../mail/mail-sender';
 import { requestExpiry } from '../clock/business-hours';
 import { formatIct } from '../clock/format-ict';
@@ -15,7 +15,7 @@ import { ProbeService } from './probe.service';
 import { formatReference } from './reference-number';
 import { TERMINAL_REQUEST_STATES } from './request-state';
 
-/** Who is asking, as far as the system can tell: network origin only (§3.3). */
+/** Where the submit came from, for the audit record only (§3.3). */
 export interface Origin {
   ip: string;
   userAgent: string;
@@ -49,26 +49,38 @@ export class RequestsService {
     let requestId: string | undefined;
     const outcome = await this.db.transaction(
       async (tx): Promise<SubmitOutcome> => {
-        // Duplicate suppression (§4.8) has to be atomic with the insert, or a
-        // double-posted form — the very thing it exists for — races past its own
-        // check. Serialise per IP; other IPs never wait on each other.
+        // Duplicate suppression (§4.8): the same form sent twice — same email,
+        // Disease group, dates and area as stored — while the first is
+        // unfinished. The email is a match key, never a control key. In the
+        // words of §4.8: "Matching on the email is not verifying it: the
+        // address is still free text that nobody checks, and this rule reads
+        // it only to recognise the same form sent twice." That is why the
+        // refusal names nothing.
+        //
+        // It has to be atomic with the insert, or a double-posted form — the
+        // very thing it exists for — races past its own check. Serialise per
+        // normalised email; different emails never wait on each other.
+        // Stored emails are already trimmed (`planRequest`), so only case is
+        // left to fold, on both sides.
+        const email = plan.contact.email.toLowerCase();
         await tx.execute(
-          sql`SELECT pg_advisory_xact_lock(hashtextextended(${origin.ip}, 0))`,
+          sql`SELECT pg_advisory_xact_lock(hashtextextended(${`request-submit:${email}`}, 0))`,
         );
 
         const [unfinished] = await tx
           .select({ id: request.id })
           .from(request)
-          .innerJoin(
-            requestEvent,
-            and(
-              eq(requestEvent.requestId, request.id),
-              eq(requestEvent.type, 'submitted'),
-            ),
-          )
+          .innerJoin(requestContact, eq(requestContact.requestId, request.id))
           .where(
             and(
-              eq(requestEvent.ip, origin.ip),
+              eq(sql`lower(${requestContact.email})`, email),
+              eq(request.diseaseGroupId, plan.diseaseGroupId),
+              eq(request.startDate, plan.startDate),
+              eq(request.endDate, plan.endDate),
+              // The area as stored, in any order: region 13 and the province
+              // กรุงเทพมหานคร are the same ask, and national is only national.
+              sql`${request.provinces}::text[] @> ${sql.param(plan.provinces)}::text[]`,
+              sql`${request.provinces}::text[] <@ ${sql.param(plan.provinces)}::text[]`,
               notInArray(request.state, [...TERMINAL_REQUEST_STATES]),
             ),
           )

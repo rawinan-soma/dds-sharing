@@ -36,7 +36,7 @@ The checks that can only be run once, on the real host behind the real ministry 
 - [ ] NTP is synced on the Docker host and verified
 - [ ] The province seed migration has run and its startup assert is wired as a boot failure
 - [ ] The base URL is set from configuration and matches the ministry-issued hostname
-- [ ] `TRUST_PROXY` is set to the number of proxy hops in front of the app, and two Requesters on different IPs can each submit (duplicate suppression is keyed on the client IP; unset, every Requester shares the edge's address and the second is refused — #63)
+- [ ] `TRUST_PROXY` is set to the number of proxy hops in front of the app, and the `submitted` event of a Request records the Requester's own IP (the audit record keeps the client address; unset, every Request records the edge's address instead — #102)
 - [ ] `docker compose down` on the VM stops the service serving data
 - [ ] The Reviewer queue is seeded with the five acceptance requests, the hard-to-judge one among them
 - [ ] The DDC infra request on record states that the service is internet-facing and serves case-level de-identified surveillance data

@@ -12,11 +12,11 @@ import { ProvinceLookup } from '../reference/province-lookup.service';
 import { planRequest } from './plan-request';
 import { RequestsService } from './requests.service';
 
-// Deliberately carries no reference number and no status: suppression is keyed
-// on an IP, a สคร. office is one IP, and the request in progress may be a
-// colleague's (design handoff, screen 3).
+// Deliberately carries no reference number and no status: the match is on an
+// unverified email, so anyone typing another person's address and ask would
+// otherwise be shown that person's Request (design handoff, screen 3).
 export const IN_PROGRESS_MESSAGE =
-  'You already have a request in progress. A new one can be sent once it has a decision.';
+  'You already sent this request. It was saved, so there is no need to send it again. A different ask, or a corrected email, can be sent now.';
 
 @Controller('requests')
 export class RequestsController {
@@ -36,7 +36,8 @@ export class RequestsController {
       });
     }
 
-    // One client is one IP, whichever family the socket reported it in.
+    // For the audit record: one client is one IP, whichever family the socket
+    // reported it in.
     const ip = (req.ip ?? req.socket.remoteAddress)?.replace(/^::ffff:/i, '');
     if (!ip) {
       throw new BadRequestException({

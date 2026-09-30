@@ -357,6 +357,35 @@ describe('RequestPage', () => {
       expect($('h1')!.textContent).toBe(m.requester_duplicate_title());
       expect(root.textContent).not.toMatch(/REQ-/);
       expect(root.textContent).not.toMatch(/rate|limit/i);
+      expect(root.textContent).toContain(m.requester_duplicate_change_detail());
+    });
+
+    it('returns from the duplicate notice to the form with every field kept', async () => {
+      await send();
+      http
+        .expectOne('/api/requests')
+        .flush(
+          { code: 'request_in_progress' },
+          { status: 409, statusText: 'Conflict' },
+        );
+      await tick();
+
+      await click(
+        $$<HTMLButtonElement>('button').find((b) =>
+          b.textContent?.includes(m.requester_duplicate_back()),
+        )!,
+      );
+
+      expect($('form')).not.toBeNull();
+      expect($<HTMLInputElement>('#c-email')!.value).toBe(
+        'somchai@example.go.th',
+      );
+      expect($<HTMLInputElement>('#c-name')!.value).toBe('Somchai');
+      expect($<HTMLInputElement>('#date-from')!.value).toBe('2025-01-01');
+      expect($<HTMLInputElement>('#date-to')!.value).toBe('2025-01-31');
+      expect(
+        $<HTMLInputElement>('input[name="disease-group"]:checked'),
+      ).not.toBeNull();
     });
 
     it('says the request may not have been sent when the server cannot be reached, and stays on the check page', async () => {

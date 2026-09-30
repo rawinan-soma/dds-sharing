@@ -14,8 +14,8 @@ const bool = (value: string) => value === 'true';
 
 /**
  * Express's `trust proxy`: `true`, `false`, a hop count, or proxy addresses.
- * Duplicate suppression keys on the client IP (§4.8), so behind a proxy the app
- * must be told how many hops to believe.
+ * The `submitted` event records the client IP for the audit record (§3.3), so
+ * behind a proxy the app must be told how many hops to believe.
  */
 function trustProxy(value: string): boolean | number | string {
   if (value === 'true') return true;
