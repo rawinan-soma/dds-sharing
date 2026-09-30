@@ -2637,12 +2637,17 @@ third copy in this document would drift against two it cannot be checked against
 
 | Key | Carries |
 |---|---|
-| `requester_gate_notice` | the approval gate, stated first, before anything else on the page |
-| `requester_no_reason_notice` | the no-reason rejection, said **up front** rather than sprung at rejection time |
-| `requester_span_cap_notice` | the 365-day cap, attributed to **upstream**, not to us |
-| `requester_epidem_area_label` | the `epidem_chw_code` vs `chw_code` trap, made visible at the point of choosing — the address that answers *"cases I investigated"* |
-| `requester_email_warning` | the only place a Requester is told a typo will not be caught |
-| `requester_retention_notice` | §12.9 |
+| `requester_email_warning` | the only place a Requester is told a typo will not be caught; the email field's tooltip |
+| `requester_retention_notice` | §12.9; the consent block's body |
+| `error_span_too_long_detail` | the 365-day cap, attributed to **upstream**, not to us, when a longer range is refused |
+
+> **Amended 2026-09-30 to the locked Requester screens** (#123). Four keys were
+> cut from the catalogue: `requester_gate_notice` (the approval gate, stated
+> first), `requester_no_reason_notice` (the no-reason rejection, said up front),
+> `requester_span_cap_notice` (the cap as a standing notice; the calendar cannot
+> offer a longer range, and the refusal above still names upstream) and
+> `requester_epidem_area_label` (the `epidem_chw_code` vs `chw_code` trap at the
+> point of choosing). `docs/design/brief.md` §5 records the same.
 
 ### 16.4 The Requester page
 

@@ -485,7 +485,7 @@ select.field-box.placeholder {
   height: 32px;
   padding: 0 24px 0 10px;
   font-size: 13px;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   background-position: right 10px center;
 }
 
@@ -806,7 +806,7 @@ select.field-box.placeholder {
   align-items: flex-start;
   padding: 10px 14px;
   background: var(--failed-wash);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-panel);
   font-size: 13px;
 }
 
@@ -985,7 +985,7 @@ select.field-box.placeholder {
 .checklist.attempted {
   padding: 16px;
   border: 2px solid var(--primary);
-  border-radius: var(--radius-lg);
+  border-radius: var(--radius-panel);
   box-shadow: var(--shadow-focus);
 }
 
@@ -1178,7 +1178,7 @@ select.field-box.placeholder {
   align-items: flex-start;
   padding: 14px 16px;
   background: var(--failed-wash);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-panel);
 }
 
 .panel-bordered {

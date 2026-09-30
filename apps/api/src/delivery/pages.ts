@@ -27,12 +27,12 @@ const STYLE = `
   .small { font-size: 13px; }
   .file { border: 1px solid var(--border); border-radius: 14px; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
   .file-head { display: flex; gap: 16px; align-items: center; }
-  .file-icon { flex: none; width: 44px; height: 44px; border-radius: 10px; background: var(--primary-wash);
+  .file-icon { flex: none; width: 44px; height: 44px; border-radius: 14px; background: var(--primary-wash);
     color: var(--primary); display: grid; place-items: center; }
   .file-label { display: none; }
   .file-name { font-weight: 600; overflow-wrap: anywhere; }
   .tiles { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  .tile { border-radius: 10px; padding: 12px 12px; background: var(--quiet); }
+  .tile { border-radius: 14px; padding: 12px 12px; background: var(--quiet); }
   .tile .value { font-size: 16px; font-weight: 600; }
   .tile.left { background: var(--success-wash); color: var(--success); }
   .button { display: flex; align-items: center; justify-content: center; min-height: 44px; border-radius: 10px;
@@ -47,6 +47,7 @@ const STYLE = `
     color: #fff; background: var(--inert); font-size: 13px; font-weight: 700; }
   .mark.pending { background: var(--pending); }
   .phone { color: var(--muted); font-size: 14px; }
+  .centered { text-align: center; }
   strong.figure { color: var(--foreground); white-space: nowrap; }
   .broken { width: 56px; height: 56px; border-radius: 50%; background: var(--inert-wash); color: var(--inert);
     display: grid; place-items: center; }
@@ -141,7 +142,7 @@ export function renderCollectionPage(
   )}</p></div>
 </div>
 <a class="button" href="${data.archiveUrl}">${t('requester_collect_download')}</a>
-<p class="muted small" style="text-align: center">${t('requester_collect_deleted_after')}</p>
+<p class="muted small centered">${t('requester_collect_deleted_after')}</p>
 </section>
 <div class="notes">
 ${note('info', t('requester_collect_zip_heading'), t('requester_collect_zip_detail'))}
