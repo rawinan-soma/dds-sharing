@@ -8,7 +8,7 @@ import {
 } from '@angular/core';
 import { Router } from '@angular/router';
 import * as m from '../../paraglide/messages.js';
-import { pickerBounds } from './calendar';
+import { type RangeEnd, pickerBounds } from './calendar';
 import { type DateChange, DateField } from './date-field.component';
 import { DeidBlock } from './deid-block.component';
 import { formatDay } from './format-day';
@@ -69,7 +69,10 @@ export class RequestPage implements OnInit {
     provinces: [],
   });
   /** A date box holding text that is not a day; the form stores '' for it. */
-  protected readonly unreadable = signal({ from: false, to: false });
+  protected readonly unreadable = signal<Record<RangeEnd, boolean>>({
+    from: false,
+    to: false,
+  });
   /** Errors stay quiet until a first attempt to go on. */
   protected readonly attempted = signal(false);
   protected readonly sending = signal(false);
@@ -180,7 +183,7 @@ export class RequestPage implements OnInit {
     return asString(event);
   }
 
-  protected date(end: 'from' | 'to', change: DateChange) {
+  protected date(end: RangeEnd, change: DateChange) {
     this.set({ [end]: change.value });
     this.unreadable.update((u) => ({ ...u, [end]: change.unreadable }));
   }
@@ -200,7 +203,7 @@ export class RequestPage implements OnInit {
       : m.error_field_required();
   }
 
-  protected dateInvalid(end: 'from' | 'to') {
+  protected dateInvalid(end: RangeEnd) {
     return (
       this.dateBroken() || this.unreadable()[end] || !!this.fieldError(end)
     );

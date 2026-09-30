@@ -6,17 +6,22 @@ import { daysOfMonth, earliestFrom, latestTo } from './span-cap';
 
 const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
 
+/** One end of the date range. */
+export type RangeEnd = 'from' | 'to';
+
+/** Both ends as stored: ISO days, or '' while unset. */
+export interface DateRange {
+  from: string;
+  to: string;
+}
+
 export interface Bounds {
   min: string | null;
   max: string | null;
 }
 
 /** The days the picker for one end may offer, given both ends as stored. */
-export function pickerBounds(
-  end: 'from' | 'to',
-  from: string,
-  to: string,
-): Bounds {
+export function pickerBounds(end: RangeEnd, from: string, to: string): Bounds {
   if (end === 'to') {
     return ISO_DAY.test(from)
       ? { min: from, max: latestTo(from) }
@@ -42,9 +47,7 @@ export interface CalendarMonth {
   days: CalendarDay[];
 }
 
-export interface MonthMarks extends Bounds {
-  from: string;
-  to: string;
+export interface MonthMarks extends Bounds, DateRange {
   chosen: string;
   today: string;
 }

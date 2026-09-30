@@ -17,26 +17,18 @@ function parse(day: string): number | null {
 
 const format = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 
-/** The last day the picker offers for `to`, given `from`. */
-export function latestTo(from: string): string {
-  const start = parse(from);
-  if (start === null) throw new Error(`Not a date: ${from}`);
-  return format(start + MAX_SPAN_DAYS * ONE_DAY_MS);
-}
-
-/** The first day the picker offers for `from`, given `to`: the cap's mirror. */
-export function earliestFrom(to: string): string {
-  const end = parse(to);
-  if (end === null) throw new Error(`Not a date: ${to}`);
-  return format(end - MAX_SPAN_DAYS * ONE_DAY_MS);
-}
-
 /** The day `days` after (or before) `day`, for the calendar's arrow keys. */
 export function shiftDay(day: string, days: number): string {
   const start = parse(day);
   if (start === null) throw new Error(`Not a date: ${day}`);
   return format(start + days * ONE_DAY_MS);
 }
+
+/** The last day the picker offers for `to`, given `from`. */
+export const latestTo = (from: string) => shiftDay(from, MAX_SPAN_DAYS);
+
+/** The first day the picker offers for `from`, given `to`: the cap's mirror. */
+export const earliestFrom = (to: string) => shiftDay(to, -MAX_SPAN_DAYS);
 
 /** Every day of a month (1–12), as `YYYY-MM-DD`. */
 export function daysOfMonth(year: number, month: number): string[] {

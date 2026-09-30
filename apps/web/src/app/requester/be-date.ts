@@ -1,8 +1,8 @@
-// The one place a date is typed, read and shown in the Buddhist era
+// The one place a date is typed and read in the Buddhist era
 // (docs/design/system.md "Date field"). It stores ISO (Gregorian): the span,
 // the 365-day cap and the Span builder never see a Buddhist year. Month names
 // come from the platform's Thai calendar data, not the copy catalogue, as
-// `formatDay` does for the check page.
+// `formatDay` does for the check page and the popover's long day.
 
 const BUDDHIST_OFFSET = 543;
 /** A year below this is read as the Common Era and shown back in พ.ศ. */
@@ -22,7 +22,7 @@ const monthNames = (month: 'short' | 'long') => {
 export const MONTHS_LONG = monthNames('long');
 const MONTHS_SHORT = monthNames('short');
 
-const AT_REST = new Intl.DateTimeFormat('th-TH-u-ca-buddhist', {
+const SHORT_DAY = new Intl.DateTimeFormat('th-TH-u-ca-buddhist', {
   day: 'numeric',
   month: 'short',
   year: 'numeric',
@@ -78,5 +78,5 @@ export function parseBeDate(text: string): string | null {
 
 /** `2026-03-01` as `1 มี.ค. 2569`, the same form as the check page. */
 export function formatBeDate(iso: string): string {
-  return AT_REST.format(new Date(`${iso}T00:00:00Z`));
+  return SHORT_DAY.format(new Date(`${iso}T00:00:00Z`));
 }

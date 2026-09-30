@@ -16,15 +16,10 @@ import {
   formatBeDate,
   parseBeDate,
 } from './be-date';
-import { type Bounds, calendarMonth } from './calendar';
+import { type Bounds, type DateRange, calendarMonth } from './calendar';
+import { formatDay } from './format-day';
 import { shiftDay } from './span-cap';
 
-const LONG_DAY = new Intl.DateTimeFormat('th-TH-u-ca-buddhist', {
-  day: 'numeric',
-  month: 'long',
-  year: 'numeric',
-  timeZone: 'UTC',
-});
 const WEEKDAY = new Intl.DateTimeFormat('th-TH', {
   weekday: 'narrow',
   timeZone: 'UTC',
@@ -67,7 +62,7 @@ export interface DateChange {
         [attr.aria-invalid]="invalid() ? 'true' : null"
         [attr.aria-describedby]="describedBy()"
         (input)="onType($event)"
-        (blur)="settle()"
+        (blur)="showAtRest()"
       />
       <button
         #trigger
@@ -202,7 +197,7 @@ export class DateField {
   readonly describedBy = input<string | null>(null);
   readonly bounds = input<Bounds>({ min: null, max: null });
   /** The whole range, for the wash between its ends. */
-  readonly range = input<{ from: string; to: string }>({ from: '', to: '' });
+  readonly range = input<DateRange>({ from: '', to: '' });
   /** Which side of the box the popover hangs from, so it stays in the card. */
   readonly align = input<'start' | 'end'>('start');
   readonly capNote = input('');
@@ -261,9 +256,7 @@ export class DateField {
     return (!min || this.today >= min) && (!max || this.today <= max);
   });
 
-  protected longDay(iso: string) {
-    return LONG_DAY.format(new Date(`${iso}T00:00:00Z`));
-  }
+  protected readonly longDay = formatDay;
 
   protected onType(event: Event) {
     const typed = (event.target as HTMLInputElement).value;
@@ -276,7 +269,7 @@ export class DateField {
   }
 
   /** At rest the box reads in its own form, so a typed 2026 shows as 2569. */
-  protected settle() {
+  protected showAtRest() {
     const day = parseBeDate(this.text());
     if (day) this.text.set(formatBeDate(day));
   }
