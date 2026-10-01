@@ -203,8 +203,10 @@ Upstream enforces it (`HTTP 400`, "Date range must not exceed 1 year (365
 days)"). It is a **span** limit, `end - start <= 365 days`, not an absolute floor.
 
 Surfaced, not hidden. Enforced in **two places**: the date picker greys out any
-`to` beyond `from + 365 days`, and the server re-checks on submit as a guard
-against direct API calls. **The server's message names the cap as upstream's**,
+`to` beyond `from + 364 days` (365 days counted inclusively, as its foot says;
+amended 2026-10-01, #123, to `docs/design/system.md` "Date field"), and the
+server re-checks the cap itself on submit as a guard against direct API calls.
+The picker is one day stricter than the cap: a typed `from + 365` is accepted. **The server's message names the cap as upstream's**,
 because when a Requester asks why, "the DDC API caps it" is the true answer.
 
 Splitting a wider Request server-side stays rejected, but **its original reason
@@ -316,10 +318,19 @@ proves nothing. It is an input to human judgement, never a credential.
 
 ### 4.8 Duplicate suppression
 
-Reject a submit from an IP that already has an unfinished Request.
+Reject a submit whose **email and ask** match an unfinished Request: the same
+email address (compared trimmed and case-insensitive), the same Disease group, the
+same `from` and `to`, and the same area as stored: national, or the same
+province list after any region is expanded (so region 13 and the province
+กรุงเทพมหานคร are the same ask, which they are).
 
-This catches the page refresh and the double-posted form. It does **not** catch
-an adversary, who rotates IPs for free. It belongs to the UX section of this
+This catches the page refresh and the double-posted form, which re-send exactly
+the same form. Narrowed from an IP key on 2026-09-30 by the repo owner: a สคร.
+office is one IP, so the IP key held a whole office behind one person's pending
+Request, and it stopped a Requester resubmitting with a corrected email. Matching
+on the email is **not** verifying it: the address is still free text that nobody
+checks, and this rule reads it only to recognise the same form sent twice. It does
+**not** catch an adversary, who changes one character for free. It belongs to the UX section of this
 spec, not the security section — naming it a "limit" is how it gets miscounted as
 a control. It survives the approval gate unchanged: the gate replaces it as a
 *volume* control but not as a double-click guard.
@@ -2632,37 +2643,54 @@ third copy in this document would drift against two it cannot be checked against
 
 | Key | Carries |
 |---|---|
-| `requester_gate_notice` | the approval gate, stated first, before anything else on the page |
-| `requester_no_reason_notice` | the no-reason rejection, said **up front** rather than sprung at rejection time |
-| `requester_span_cap_notice` | the 365-day cap, attributed to **upstream**, not to us |
-| `requester_epidem_area_label` | the `epidem_chw_code` vs `chw_code` trap, made visible at the point of choosing — the address that answers *"cases I investigated"* |
-| `requester_email_warning` | the only place a Requester is told a typo will not be caught |
-| `requester_retention_notice` | §12.9 |
+| `requester_email_warning` | the only place a Requester is told a typo will not be caught; the email field's tooltip |
+| `requester_retention_notice` | §12.9; the consent block's body |
+| `requester_epidem_area_label` | the `epidem_chw_code` vs `chw_code` trap, made visible at the point of choosing — the address that answers *"cases I investigated"*; under the Area switch in the map pane |
+| `error_span_too_long_detail` | the 365-day cap, attributed to **upstream**, not to us, when a longer range is refused |
+
+> **Amended 2026-09-30 to the locked Requester screens** (#123). Three keys were
+> cut from the catalogue: `requester_gate_notice` (the approval gate, stated
+> first), `requester_no_reason_notice` (the no-reason rejection, said up front),
+> and `requester_span_cap_notice` (the cap as a standing notice; the calendar
+> cannot offer a longer range, and the refusal above still names upstream).
+> `docs/design/brief.md` §5 records the same.
 
 ### 16.4 The Requester page
 
 **A single scrolling page**, not a wizard and not a two-column live preview. In
-order: the approval-gate notice, the de-identification block, the parameters, the
-contact fields, submit.
+order: the title, the de-identification block, then the map-first split — the
+Area on a map beside a form card holding the Disease group, the dates and the
+contact fields — then the requirement checklist, the PDPA consent, and submit.
+
+> **Amended 2026-09-30 to the locked Requester screens** (`docs/design/system.md`,
+> ticket #123). The order used to open with an approval-gate notice; the repo
+> owner cut it, with the 24-hour line and the no-reason notice, when the design
+> was locked, and screen 1 no longer states the gate. The 24-hour promise is on
+> the confirmation. The PDPA consent must be ticked before the check page opens;
+> it is a client-side acknowledgement and is not posted.
 
 > **Requirement, not styling: the de-identification block is open, above the form,
 > not collapsed.** A Requester who never opens it receives a CSV with no names in
 > it and files it as broken. *What you will and will not get is visible before any
-> field is filled in, without interaction.*
+> field is filled in, without interaction.* Since 2026-09-30 the block no longer
+> carries a *no names is the correct result* line; its *not received* column,
+> which is not styled as an error, carries that.
 
 **Submit goes to a check page first**, decided with the repo owner 2026-09-18. It
 restates the ask and the contact details, and shows the email address at the size
-of a headline with the warning that it cannot be changed after sending. The
+of a headline. (The warning that it cannot be changed after sending was cut from
+the locked screen on 2026-09-30.) The
 Requester sends from there or goes back to edit with everything kept. Since
 [ADR 0017](adr/0017-a-reviewer-never-corrects-a-requesters-email-address.md) no one
 can correct an address after submit, so this page is the last moment a typo can be
 caught — and it is the only one.
 
-> **A typo discovered after submit cannot be fixed.** The Requester cannot edit,
-> cannot resubmit while the first Request is unfinished (duplicate suppression,
-> §4.8), and a Reviewer cannot correct the address. The Request runs its course,
-> and if approved the Delivery goes to the address as typed. Accepted knowingly by
-> the repo owner, 2026-09-18.
+> **A typo discovered after submit cannot be fixed in place.** The Requester
+> cannot edit, and a Reviewer cannot correct the address. The Request runs its
+> course, and if approved the Delivery goes to the address as typed. Accepted
+> knowingly by the repo owner, 2026-09-18. Since 2026-09-30 the Requester **can**
+> send a new Request with the corrected address: duplicate suppression (§4.8)
+> matches on the email, so a different address is a different form.
 
 **The confirmation page** carries the reference number, a restatement of the ask,
 the 24-business-hour service promise, and the telephone number. It must read as
@@ -2675,6 +2703,11 @@ the 24-business-hour service promise, and the telephone number. It must read as
 > visual layout — an implementer must not read the prototype's styling as
 > normative. Prototype:
 > [`prototype/requester-reviewer-ui`](https://github.com/rawinan-soma/dds-sharing/tree/prototype/requester-reviewer-ui).
+>
+> The wireframe arrived: the design locked on 2026-09-30 in
+> `docs/design/system.md`, drawn on the Lunagraph page "Requester form:
+> prototypes", is the source of visual layout, and the Requester surface is
+> built from it (#123).
 
 **A worked example for acceptance testing:** seed the Reviewer queue with a
 request that is genuinely hard to judge — an "independent researcher" on a

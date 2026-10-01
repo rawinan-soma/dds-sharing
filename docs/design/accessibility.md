@@ -4,6 +4,11 @@
 (spec §18.12 stands). **Date:** 2026-09-18. **Scope:** every screen on the Lunagraph
 canvas `dds-sharing`, the tokens in `source/globals.css`, and the components.
 
+> **2026-09-30: measured against the old tokens.** `system.md` now carries
+> variant B's tokens. Their contrast was measured when they were locked (see
+> "Where B was changed for contrast" there), and the new `input` token answers
+> P2 and P3. The rest of this audit has not been redone against B.
+
 This is a design audit. Contrast is measured exactly from the tokens. Keyboard,
 screen-reader and zoom behaviour are judged against the design and the handoff,
 **not tested**, because nothing is built yet. Test all three again on the Angular
@@ -24,7 +29,7 @@ build with VoiceOver and NVDA.
 | P1 | **The Reviewer surface blocks itself under zoom.** It shows "open this on a computer" below 1024 CSS px. At 125% zoom a 1280px laptop *is* 1024 CSS px; at 150% it is 853. A low-vision Reviewer who zooms is locked out on the computer they were told to use. | 1.4.4 Resize text, 1.4.10 Reflow | 🔴 Critical | Below 1024, degrade to one stacked column (queue, then the request) instead of blocking. Keep the block only for devices that are genuinely small. **Needs the repo owner's decision** — it amends spec §16.1. |
 | P2 | The **quiet button** frame (`border`, `#c8d0c9`) is 1.39:1 against the page. It is the only boundary of ย้อนกลับ, ปิดข้อความ and the code disclosure. | 1.4.11 Non-text contrast | 🟡 Major | Frame quiet buttons in `muted-foreground` (5.69:1). Still visibly quieter than secondary's ink frame. |
 | P3 | In region mode the **map cells are controls**, and unselected cells (`land`) are 1.18:1 against the page. The cell edge is invisible as a boundary. | 1.4.11 Non-text contrast | 🟡 Major | Give each cell a 1px `muted-foreground` frame when the map is the control. Province mode, where the map is decoration, keeps the flat cells. |
-| P4 | The leading queue row's time left is amber where the others are grey, so urgency is carried by colour. | 1.4.1 Use of colour | 🟢 Minor | Acceptable: the text states the hours and the row is first because it is oldest. No change. |
+| P4 | The leading queue row's time left is amber where the others are grey, so urgency is carried by colour. | 1.4.1 Use of colour | 🟢 Minor | Acceptable: the text states the hours and the row is first because it is oldest. No change. **Moot since 2026-10-01 (#124):** the locked queue table draws no amber leader. |
 
 ### Operable
 
@@ -58,38 +63,36 @@ fault.
 
 ## Colour contrast
 
-Measured from `source/globals.css`.
+Re-measured 2026-09-30 against the B tokens in `apps/web/src/styles.css` (#123).
+P2 and P3 are resolved by `input`, the control-edge token.
 
 | Element | Foreground | Background | Ratio | Required | Pass |
 |---|---|---|---|---|---|
-| Body text | `#16241e` | `#eef1ee` | 14.14:1 | 4.5:1 | ✅ |
-| Muted text | `#556159` | `#eef1ee` | 5.69:1 | 4.5:1 | ✅ |
-| Muted on primary wash | `#556159` | `#dceceb` | 5.32:1 | 4.5:1 | ✅ |
-| Muted on amber zone | `#556159` | `#f6eedc` | 5.61:1 | 4.5:1 | ✅ |
-| Muted on grey notice | `#556159` | `#e6e9e6` | 5.30:1 | 4.5:1 | ✅ |
-| Teal text / chip | `#0c6b63` | `#eef1ee` | 5.59:1 | 4.5:1 | ✅ |
-| Teal on wash (selected group) | `#0c6b63` | `#dceceb` | 5.23:1 | 4.5:1 | ✅ |
-| Button text on teal | `#f7f9f7` | `#0c6b63` | 6.02:1 | 4.5:1 | ✅ |
-| Pending tag | `#7f5300` | `#f6eedc` | 5.79:1 | 4.5:1 | ✅ |
-| Ready tag | `#2b5b86` | `#e4edf4` | 6.02:1 | 4.5:1 | ✅ |
-| Failed tag | `#8c2b20` | `#f6e6e3` | 6.99:1 | 4.5:1 | ✅ |
-| **Inert tag** | `#5a6862` | `#e6e9e6` | **4.78:1** | 4.5:1 | ✅ tightest pair — re-measure if either token moves |
-| Header muted on dark | `#a8b5ac` | `#16241e` | 7.56:1 | 4.5:1 | ✅ |
-| Map numbers | `#16241e` | `#d9e0da` | 11.97:1 | 4.5:1 | ✅ |
-| Field frame | `#16241e` | `#eef1ee` | 14.14:1 | 3:1 | ✅ |
-| Focus ring | `#0c6b63` | `#eef1ee` | 5.59:1 | 3:1 | ✅ |
-| Selected vs unselected cell | `#0c6b63` | `#d9e0da` | 4.74:1 | 3:1 | ✅ |
-| **Quiet button frame** | `#c8d0c9` | `#eef1ee` | **1.39:1** | 3:1 | ❌ P2 |
-| **Map cell as a control** | `#d9e0da` | `#eef1ee` | **1.18:1** | 3:1 | ❌ P3 |
+| Body text | `#1b1d24` | `#e4e6ea` | 13.47:1 | 4.5:1 | ✅ |
+| Muted text on the page | `#5f6470` | `#e4e6ea` | 4.74:1 | 4.5:1 | ✅ |
+| Muted text on `quiet` (consent body) | `#5f6470` | `#f7f8fa` | 5.58:1 | 4.5:1 | ✅ |
+| Muted text on primary wash | `#5f6470` | `#eef1ff` | 5.27:1 | 4.5:1 | ✅ |
+| Primary text on card | `#3b5bfd` | `#ffffff` | 5.12:1 | 4.5:1 | ✅ |
+| **Primary on wash** (selected segment, related region) | `#3b5bfd` | `#eef1ff` | **4.55:1** | 4.5:1 | ✅ tightest text pair |
+| Button text on primary | `#ffffff` | `#3b5bfd` | 5.12:1 | 4.5:1 | ✅ |
+| Failed on its wash | `#c42b3a` | `#fbe9eb` | 4.78:1 | 4.5:1 | ✅ |
+| Success on its wash | `#1a7a4f` | `#e6f4ec` | 4.70:1 | 4.5:1 | ✅ |
+| Pending on its wash | `#8a5a00` | `#fdf3dc` | 5.37:1 | 4.5:1 | ✅ |
+| Field, button and map-cell edge (`input`) on card | `#7a7e88` | `#ffffff` | 4.06:1 | 3:1 | ✅ |
+| `input` on the page | `#7a7e88` | `#e4e6ea` | 3.25:1 | 3:1 | ✅ |
+| Consent control edge on `quiet` | `#7a7e88` | `#f7f8fa` | 3.82:1 | 3:1 | ✅ |
+| **`input` on primary wash** (consent control, ticked block) | `#7a7e88` | `#eef1ff` | **3.61:1** | 3:1 | ✅ tightest edge |
+| Focus ring and selected cell (`primary`) on the page | `#3b5bfd` | `#e4e6ea` | 4.10:1 | 3:1 | ✅ |
+| Meter's partial segment | `#b7791f` | `#ffffff` | 3.64:1 | 3:1 | ✅ |
 
 ## Keyboard
 
 | Element | Tab | Enter / Space | Escape | Arrows |
 |---|---|---|---|---|
-| Disease groups | one stop for the group | select | — | move between the ten, **in 1–10 order** |
-| Area segmented | one stop | select | — | move between the three |
-| Region map (region mode) | one stop | select | — | move between regions in number order |
-| Date fields | one stop each | — | — | native |
+| Disease group | one stop (a native select) | open | — | move between the ten, **in 1–10 order** |
+| Area segmented | one stop | select | — | move between the two |
+| Region map (always a control) | one stop | select | — | move between regions in number order |
+| Date fields | one stop each | — | — | text inputs in พ.ศ. plus a calendar button each (`system.md`, Date field), not native date inputs |
 | Check page | ส่งคำขอ, then แก้ไข | activate | — | — |
 | Queue zones | one stop per row | open in the dossier; focus moves to its heading | — | — |
 | Approve / reject | **only after the identity fields and the ask** in DOM order | open the dialog | — | — |
@@ -101,9 +104,9 @@ Measured from `source/globals.css`.
 | Element | Announced as | Issue |
 |---|---|---|
 | Region cell | "เขตสุขภาพที่ 8, radio, selected, 8 of 13" | none if built as specified |
-| Region cell, province mode | not announced (`aria-hidden`) | none |
+| Region cell 13 | "เขตสุขภาพที่ 13 กรุงเทพมหานคร" | none: it sits out of reading order and says why |
 | State tag | its word, e.g. "รอพิจารณา" | none: never colour alone |
-| Date range error | each field "invalid", then the shared message | U1 until `aria-describedby` is added |
+| Date range error | each field "invalid", then the shared message | none: both boxes point `aria-describedby` at it |
 | Disabled resend | "ส่งอีเมลฉบับเดิมซ้ำ, dimmed, ยังทำอะไรไม่ได้…" | R2 until wired |
 | Session warning | interrupts as an alert | R1 until `role="alert"` |
 | Expiry page | one heading and one sentence | none |

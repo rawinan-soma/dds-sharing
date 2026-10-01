@@ -1,20 +1,39 @@
 import * as m from '../../paraglide/messages.js';
 import { type ExtractionState, type InFlightRow } from './queue-api';
 import { formatDuration, minutesSince } from './queue-format';
+import { type TagTone } from './tag';
 
 /**
- * How an in-flight row reads (§10.9): "extracting" is the honest answer to why
- * nothing can be pressed, and a ready link shows its wall-clock time left —
- * a timestamp the system will act on, not a prediction. `now` is the caller's
+ * The in-flight row's link cell (§10.9): a ready link shows its wall-clock
+ * time left, a timestamp the system will act on, not a prediction; while
+ * extracting, the row says why nothing can be pressed. `now` is the caller's
  * clock reading, so a ticking page stays consistent.
  */
-export function inFlightState(entry: InFlightRow, now: number): string {
-  if (entry.extraction !== 'ready') return extractionWord(entry.extraction);
-  return entry.linkExpiresAt
-    ? m.reviewer_inflight_link_left({
-        time: linkLeft(entry.linkExpiresAt, now),
-      })
-    : m.reviewer_state_ready();
+export function inFlightLinkCell(entry: InFlightRow, now: number): string {
+  switch (entry.extraction) {
+    case 'ready':
+      return entry.linkExpiresAt
+        ? m.reviewer_inflight_link_left({
+            time: linkLeft(entry.linkExpiresAt, now),
+          })
+        : '';
+    case 'extracting':
+      return m.reviewer_inflight_extracting_note();
+    case 'failed':
+      return '';
+  }
+}
+
+/** The Tag tone for an extraction state: ready to act on, nothing to do, broken. */
+export function extractionTone(state: ExtractionState): TagTone {
+  switch (state) {
+    case 'ready':
+      return 'success';
+    case 'extracting':
+      return 'inert';
+    case 'failed':
+      return 'failed';
+  }
 }
 
 /** The extraction state as one word, from the catalogue. */

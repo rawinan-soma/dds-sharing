@@ -4,6 +4,20 @@ Specs for the twelve screens on the Lunagraph canvas `dds-sharing`. Tokens and
 components are in [`system.md`](system.md) and are not repeated here; this file
 covers layout, states, edge cases and accessibility per screen.
 
+> **2026-09-30: the visual system changed.** `system.md` was replaced by
+> Requester-form variant B (blue accent, rounded cards, map-first). Every token
+> name in this file that no longer exists (`land`, `border-strong`, `ready`)
+> and every radius-free or teal description is superseded by `system.md`.
+> **Screen 1's layout is now the map-first split** in `system.md`, except that
+> the order below (§16.4) is **superseded**. Every Requester screen (1, 1m, 1b,
+> 2, 3, 7, 7m, 8 and the two Requester emails) and its states are locked in
+> "The Requester screens, as locked" in `system.md`, from the Lunagraph page
+> that is their source of truth. Where this file's layout or copy for those
+> screens differs, `system.md` and the canvas win. **Every Reviewer screen is
+> locked the same way** (4, 5, 6, 11, 12, 13, 14, R and the two Reviewer
+> emails), in "The Reviewer screens, as locked", from the same page.
+> Behaviour, states, edge cases and copy in this file still stand.
+
 **Stack:** Angular SPA, one build, served by NestJS from the same origin
 (ADR 0003). `/d/<token>` is NestJS, not Angular, and its path is fixed because
 it travels in email. Copy comes from the Paraglide catalogue, never from
@@ -86,7 +100,7 @@ control.
 |---|---|---|
 | Disease group row | selected | `primary-wash` ground, `border-b border-primary`, label `primary` + semibold |
 | Date fields | span > 365 | both fields `border-failed`, day count in `failed`, message below with 2px `failed` rule. **Refused inline, never split** |
-| Date `to` picker | always | greyed beyond `from + 365 days`; the server re-checks and attributes the cap to upstream |
+| Date fields | always | typed and shown in พ.ศ., never a native date input, with a พ.ศ. calendar popover as the second way in (`system.md`, Date field). The popover disables days beyond `from + 364` (365 inclusive). The server re-checks the cap and attributes it to upstream |
 | Region tags | 7+ provinces | wrap to a second row. Normal case, not an overflow |
 | Submit | incomplete | summary names the missing fields; each name jumps to its field; typed values are kept |
 | Field | invalid | `border-failed` + message below in `failed` |
@@ -130,15 +144,17 @@ notes side by side, then the telephone line.
 ## 3. Duplicate suppression (#63)
 
 Amber, not red — a hold, not a failure. **Shows no reference number, no submit
-time and no status.** Suppression is keyed on IP and a สคร. office is one IP, so
-the pending request may be a colleague's; showing its reference would be the
-system showing one person another person's request. Decided with the repo owner
-2026-09-18, consistent with `/submitted` holding nothing in its address and the
-expiry page carrying no reference.
+time and no status.** Since 2026-09-30 suppression is keyed on email and ask, not
+IP, so the pending Request is the Requester's own form. It still shows no
+reference: the email is unverified, and anyone who types another person's
+address and ask would otherwise be shown that person's reference.
 
-Two cases, each with its own heading: *you just pressed send twice or refreshed*
-(your first request was saved), and *you have not sent a request* (it is probably
-a colleague's; call if you cannot wait).
+**One case, not two:** *you already sent this request* — it was saved, there is
+no need to send again, the reference is on the confirmation page and in the
+decision email. The old *probably a colleague's* case is gone, because a
+colleague's form carries a different email. Below it, a bordered panel says how
+to send something different (change the ask, or correct the email) with a
+`secondary` **กลับไปแก้ไขคำขอ** that returns to the form with every field kept.
 
 **Do not call it a rate limit** in code, comments, or copy.
 
@@ -162,6 +178,14 @@ Never reveal which factor failed. The audit record keeps it; the screen does not
 
 ## 5. Queue and dossier (#65, #66)
 
+> **2026-09-30: the layout below is superseded.** Screen 5 is locked in "The
+> Reviewer screens, as locked" in `system.md`: the queue is a full-width table
+> under three zone tabs, not a 372px sidebar, and the dossier is two columns
+> with the decision strip beneath both. The rules here still stand: one zone
+> per Request, oldest first, selection follows the dossier, the buttons below
+> what is judged, the row-count states in one slot, no drain estimate.
+> The row count is drawn at body size (*กำลังนับ*), not `text-3xl`.
+
 ### Sidebar, three zones
 
 A request is in **exactly one zone at a time** — whichever carries the action it
@@ -170,7 +194,7 @@ needs.
 | Zone | Ground | Contents |
 |---|---|---|
 | Header | `card` | title, count, `Button secondary md fullWidth` refresh, staleness line with change count, "หน้านี้ไม่อัปเดตเอง" |
-| Queue | `card` | pending only, **oldest first**, amber time-left on the leader |
+| Queue | `card` | pending only, **oldest first**, amber time-left on the leader (not carried into the locked table: system.md draws no amber leader, so #124 dropped it on 2026-10-01; unconfirmed against frame 5, which was unreachable) |
 | ต้องจัดการ | `pending-wash`, `border-y border-border-strong` | one card per alert, kind + reference + requester + assignee + age |
 | กำลังดำเนินการ | `card` | approved, not terminal, **submit order**, with the suppression note above it |
 
@@ -211,7 +235,9 @@ information. Do not add a projected start or finish time.
 ### Alert card
 
 `pending-wash` with a 2px `pending` left rule. Kind, the silence described in
-words, assignee by name, then **three outcome buttons** (`secondary md`) and one
+words, **the Requester's name, workplace, telephone and email in a `card`-filled
+block** (the outcome is a call, so the number comes before the outcomes;
+amended 2026-09-30), assignee by name, then **three outcome buttons** (`secondary md`) and one
 line explaining why there is no free-text field: the counts are the only measure
 of how often this happens.
 
@@ -234,9 +260,10 @@ reads a greyed button as a broken screen.
 
 > **There is no third action and there must not be one. A Reviewer cannot
 > correct a Requester's email address** (ADR 0017). The resend control takes no
-> address field. This is rendered on screen as a stated absence in `failed-wash`,
-> because it is the absence most likely to be "fixed" by someone who has not
-> read it.
+> address field. This is rendered on screen as a stated absence in `inert-wash`
+> with a lock icon (not `failed-wash`, since 2026-09-30: nothing in it is
+> broken), because it is the absence most likely to be "fixed" by someone who
+> has not read it.
 
 ---
 

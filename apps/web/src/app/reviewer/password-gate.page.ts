@@ -38,7 +38,7 @@ const VIOLATION_COPY: Record<PasswordViolation, () => string> = {
   imports: [ReactiveFormsModule, Field],
   template: `
     <div class="column">
-      <section class="notice" aria-labelledby="retention-heading">
+      <section class="retention" aria-labelledby="retention-heading">
         <h3 id="retention-heading">{{ copy.retentionHeading }}</h3>
         <ul>
           <li>{{ copy.retentionSignins }}</li>
@@ -137,26 +137,24 @@ const VIOLATION_COPY: Record<PasswordViolation, () => string> = {
       display: grid;
       gap: 1.5rem;
     }
-    .notice {
-      border-top: 1px solid var(--border-strong);
+    .retention {
+      border-top: 1px solid var(--border);
       padding-top: 1rem;
     }
-    .notice h3 {
+    .retention h3 {
       font-size: 1rem;
       font-weight: 600;
     }
-    .notice ul {
+    .retention ul {
       margin: 0.5rem 0;
       padding-left: 1.25rem;
     }
-    .notice p {
+    .retention p {
       margin: 0;
       font-weight: 600;
     }
     .card {
-      background: var(--card);
-      border: 1px solid var(--border-strong);
-      padding: 2rem;
+      padding: 32px;
     }
     h2 {
       font-size: 1.5rem;
@@ -175,6 +173,7 @@ const VIOLATION_COPY: Record<PasswordViolation, () => string> = {
       padding: 0.75rem 1rem;
       background: var(--failed-wash);
       border-left: 2px solid var(--failed);
+      border-radius: var(--radius-md);
       color: var(--failed);
     }
     .problem p,

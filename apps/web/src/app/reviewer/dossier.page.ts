@@ -9,11 +9,20 @@ import {
   viewChild,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import * as m from '../../paraglide/messages.js';
-import { formatDay } from '../requester/format-day';
-import { areaHeadline, areaProvinces } from './area-copy';
+import {
+  ContactRows,
+  DateRange,
+  DossierMessage,
+  dateRangeText,
+  focusHeadingAfterRender,
+  fullName,
+} from './dossier-parts';
+import { areaLine } from './area-copy';
+import { Dialog } from './dialog';
 import { Field } from './field';
+import { Icon } from './icon';
 import {
   type DecisionOutcome,
   type Dossier,
@@ -22,7 +31,6 @@ import {
 } from './queue-api';
 import { formatDuration, formatInstant } from './queue-format';
 import { QueueStore } from './queue-store';
-import { ReviewerSession } from './reviewer-session';
 
 // The outcomes QueueApi can report, plus the moment before any of them has
 // arrived. Reusing DossierOutcome's union keeps the two from drifting apart.
@@ -36,11 +44,11 @@ type View =
 // server enforces the rule regardless and is the one that can change it.
 const MIN_NOTE_LENGTH = 10;
 
-// The action area's own small state machine (§10.3): idle below the ask,
-// naming the Reviewer before an approval, taking the mandatory note before a
-// rejection, and finally the plain statement of what was recorded. Nothing
-// here auto-advances to another Request (§10.3's warning) and nothing
-// persists the note outside this component (§10.5).
+// The action area's own small state machine (§10.3): the strip beneath the
+// ask, a dialog before an approval, a dialog taking the mandatory note before
+// a rejection, and finally the plain statement of what was recorded in the
+// strip's slot. Nothing here auto-advances to another Request (§10.3's
+// warning) and nothing persists the note outside this component (§10.5).
 type DecisionPhase =
   | { kind: 'idle' }
   | { kind: 'approve-confirm'; problem: DecisionProblem | null }
@@ -50,430 +58,412 @@ type DecisionPhase =
 
 type DecisionProblem = 'gone' | 'invalid_note' | 'failed';
 
-// The review screen: read-only. It shows the five contact fields, the ask in
-// human terms, the clock and the queue position, and only those (§10.2). The
-// Approve and Reject buttons are the next slice's: they will sit BELOW all of
-// this in the DOM as well as on screen, so the tab order says what the layout
-// says, and they must not be floated or pinned.
+const ROW_COUNT_FORMAT = new Intl.NumberFormat('th-TH');
+
+// The review screen (system.md screen 5): the reference over the Requester's
+// name with the clock beside it, then who is asking and what they asked for
+// side by side, then the decision strip beneath BOTH columns. The strip sits
+// after the ask in the DOM as well as on screen, so the tab order says what
+// the layout says: Approve is not reachable without passing what is judged.
+// It must not be floated, pinned or made sticky.
 @Component({
   selector: 'app-reviewer-dossier',
-  imports: [Field],
+  imports: [
+    ContactRows,
+    DateRange,
+    Dialog,
+    DossierMessage,
+    Field,
+    Icon,
+    RouterLink,
+  ],
   template: `
     @switch (view().kind) {
       @case ('ok') {
         @if (currentDossier(); as d) {
           <article class="dossier">
-            <header>
-              <h2 #heading tabindex="-1">{{ d.reference }}</h2>
-              @if (d.expired) {
-                <p class="expired" role="status">{{ copy.expired }}</p>
-              } @else {
-                <p class="ahead">{{ ahead(d.ahead) }}</p>
-              }
+            <header class="dossier-head">
+              <div>
+                <p class="reference figure">{{ d.reference }}</p>
+                <h2 tabindex="-1">{{ fullName(d.contact) }}</h2>
+              </div>
+              <dl class="head-cells">
+                <div>
+                  <dt>{{ copy.submitted }}</dt>
+                  <dd>
+                    <time [attr.datetime]="d.submittedAt">{{
+                      instant(d.submittedAt)
+                    }}</time>
+                  </dd>
+                </div>
+                <div>
+                  <dt>{{ copy.clock }}</dt>
+                  <dd>
+                    {{
+                      expiredNow(d)
+                        ? copy.clockExpired
+                        : timeLeft(d.minutesLeft)
+                    }}
+                  </dd>
+                </div>
+                <div>
+                  <dt>{{ copy.aheadLabel }}</dt>
+                  <dd>{{ ahead(d.ahead) }}</dd>
+                </div>
+              </dl>
             </header>
 
-            <div class="ledger">
+            <div class="dossier-columns">
               <section aria-labelledby="who">
-                <h3 id="who">{{ copy.whoHeading }}</h3>
-                <dl>
-                  <dt>{{ copy.firstName }}</dt>
-                  <dd>{{ d.contact.name }}</dd>
-                  <dt>{{ copy.lastName }}</dt>
-                  <dd>{{ d.contact.surname }}</dd>
-                  <dt>{{ copy.telephone }}</dt>
-                  <dd>{{ d.contact.tel }}</dd>
-                  <dt>{{ copy.email }}</dt>
-                  <dd>{{ d.contact.email }}</dd>
-                  <dt>{{ copy.workplace }}</dt>
-                  <dd>{{ d.contact.workplace }}</dd>
-                </dl>
+                <h3 id="who" class="section-title">{{ copy.whoHeading }}</h3>
+                <app-contact-rows [contact]="d.contact" />
               </section>
 
               <section aria-labelledby="ask">
-                <h3 id="ask">{{ copy.askHeading }}</h3>
-                <dl>
-                  <dt>{{ copy.group }}</dt>
-                  <dd>
-                    {{ d.diseaseGroupName }}
-                    <details>
-                      <summary>
-                        {{ codesDisclosure(d.reportCodes.length) }}
-                      </summary>
-                      <p class="codes figure">{{ d.reportCodes.join(', ') }}</p>
-                    </details>
-                  </dd>
-                  <dt>{{ copy.dates }}</dt>
-                  <dd>
-                    <time [attr.datetime]="d.startDate">{{
-                      day(d.startDate)
-                    }}</time>
-                    –
-                    <time [attr.datetime]="d.endDate">{{
-                      day(d.endDate)
-                    }}</time>
-                    <span class="muted">{{ copy.datesInclusive }}</span>
-                  </dd>
-                  <dt>{{ copy.area }}</dt>
-                  <dd>
-                    {{ areaHeadline(d.area) }}
-                    @if (areaProvinces(d.area); as names) {
-                      <span class="muted">{{ names }}</span>
-                    }
-                  </dd>
+                <h3 id="ask" class="section-title">{{ copy.askHeading }}</h3>
+                <dl class="rows compact">
+                  <div>
+                    <dt>{{ copy.group }}</dt>
+                    <dd>
+                      {{ d.diseaseGroupName }}
+                      <details class="codes">
+                        <summary>
+                          <app-icon name="chevron" [size]="14" />
+                          {{ codesDisclosure(d.reportCodes.length) }}
+                        </summary>
+                        <p class="figure">{{ d.reportCodes.join(', ') }}</p>
+                      </details>
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>{{ copy.dates }}</dt>
+                    <dd>
+                      <app-date-range [start]="d.startDate" [end]="d.endDate" />
+                      <span class="note">{{ copy.datesInclusive }}</span>
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>{{ copy.area }}</dt>
+                    <dd>{{ areaLine(d.area) }}</dd>
+                  </div>
+                  <!-- One slot and one size in every state: a missing count
+                       reads as a fact, not a blocker. Nothing waits on it. -->
+                  <div>
+                    <dt>{{ copy.probe }}</dt>
+                    <dd>
+                      <span class="figure">{{ rowCount(d.rowCount) }}</span>
+                      <span class="note">{{
+                        d.rowCount === 'failed'
+                          ? copy.probeFailedNote
+                          : copy.probeNote
+                      }}</span>
+                    </dd>
+                  </div>
                 </dl>
               </section>
             </div>
 
-            <div class="strip">
-              <div>
-                <p class="cell-label">{{ copy.submitted }}</p>
-                <p>
-                  <time [attr.datetime]="d.submittedAt">{{
-                    instant(d.submittedAt)
-                  }}</time>
-                </p>
-              </div>
-              <div>
-                <p class="cell-label">{{ copy.clock }}</p>
-                <p class="figure" [class.time-left]="!d.expired">
-                  @if (d.expired) {
-                    {{ copy.clockExpired }}
-                  } @else {
-                    {{ timeLeft(d.minutesLeft) }}
-                  }
-                </p>
-                <p class="cell-note muted">{{ copy.clockNote }}</p>
-              </div>
-              <div>
-                <p class="cell-label">{{ copy.probe }}</p>
-                <p class="figure" [class.placeholder]="!isCounted(d.rowCount)">
-                  @if (isCounted(d.rowCount)) {
-                    {{ d.rowCount }}
-                  } @else if (d.rowCount === 'pending') {
-                    {{ copy.probePending }}
-                  } @else {
-                    {{ copy.probeFailed }}
-                  }
-                </p>
-                <p class="cell-note muted">
-                  {{
-                    d.rowCount === 'failed'
-                      ? copy.probeFailedNote
-                      : copy.probeNote
-                  }}
-                </p>
-              </div>
-            </div>
-
-            @if (!d.expired) {
-              <div class="action-rule"></div>
-              @switch (decisionPhase().kind) {
-                @case ('recorded') {
-                  @if (asRecorded(); as rec) {
-                    <section class="decided" role="status" aria-live="polite">
+            <div class="decision-slot">
+              @if (d.expired) {
+                <section class="statement pending" role="status">
+                  <p class="statement-title">{{ copy.clockExpired }}</p>
+                  <p>{{ copy.expired }}</p>
+                </section>
+              } @else {
+                @switch (decisionPhase().kind) {
+                  @case ('recorded') {
+                    @if (asRecorded(); as rec) {
                       @if (rec.decision === 'approved') {
-                        <h3>{{ approvedHeading(rec.decidedAt) }}</h3>
-                        <p>{{ copy.decidedApprovedDetail }}</p>
+                        <section
+                          #statement
+                          tabindex="-1"
+                          class="statement success"
+                          role="status"
+                        >
+                          <p class="statement-title">
+                            {{ approvedHeading(rec.decidedAt) }}
+                          </p>
+                          <p>{{ copy.decidedApprovedDetail }}</p>
+                          <p class="statement-note">
+                            {{ copy.decidedApprovedName }}
+                            <a
+                              [routerLink]="['/reviewer', d.id]"
+                              [queryParams]="{ zone: 'in-flight' }"
+                              >{{ copy.decidedApprovedLink }}</a
+                            >
+                          </p>
+                        </section>
                       } @else {
-                        <h3>{{ copy.decidedRejectedHeading }}</h3>
-                        <p>{{ copy.decidedRejectedDetail }}</p>
-                      }
-                    </section>
-                  }
-                }
-                @case ('request-expired') {
-                  <section class="decided notice" role="alert">
-                    <h3>{{ copy.decisionExpiredHeading }}</h3>
-                    <p>{{ copy.decisionExpiredDetail }}</p>
-                  </section>
-                }
-                @default {
-                  <section class="actions">
-                    <h3>{{ copy.judgementHeading }}</h3>
-                    <p>{{ copy.judgementIdentity }}</p>
-                    <p>{{ copy.judgementSize }}</p>
-                    <p>{{ copy.judgementUncertainty }}</p>
-
-                    @switch (decisionPhase().kind) {
-                      @case ('idle') {
-                        <div class="decision-buttons">
-                          <button
-                            class="btn btn-primary"
-                            type="button"
-                            (click)="startApprove()"
-                          >
-                            {{ copy.approve }}
-                          </button>
-                          <button
-                            class="btn btn-secondary"
-                            type="button"
-                            (click)="startReject()"
-                          >
-                            {{ copy.reject }}
-                          </button>
-                        </div>
-                        <p class="muted">{{ copy.decisionNote }}</p>
-                      }
-                      @case ('approve-confirm') {
-                        <div class="confirm">
-                          <p class="confirm-title">
-                            {{ approveConfirmTitle(d.reference) }}
+                        <section
+                          #statement
+                          tabindex="-1"
+                          class="statement inert"
+                          role="status"
+                        >
+                          <p class="statement-title">
+                            {{ copy.decidedRejectedHeading }}
                           </p>
-                          <p>{{ approveConfirmName() }}</p>
-                          <p>{{ copy.approveConfirmPermanence }}</p>
-                          <p>{{ copy.approveConfirmIrreversible }}</p>
-                          @if (currentProblem(); as problem) {
-                            <p class="problem" role="alert">
-                              {{ problemText(problem) }}
-                            </p>
-                          }
-                          <div class="confirm-actions">
-                            <button
-                              class="btn btn-primary"
-                              type="button"
-                              [disabled]="submitting()"
-                              [attr.aria-busy]="submitting() || null"
-                              (click)="confirmApprove(d.id)"
-                            >
-                              {{
-                                submitting()
-                                  ? copy.approveLoading
-                                  : copy.approveConfirmSubmit
-                              }}
-                            </button>
-                            <button
-                              class="btn btn-quiet"
-                              type="button"
-                              [disabled]="submitting()"
-                              (click)="cancel()"
-                            >
-                              {{ copy.cancel }}
-                            </button>
-                          </div>
-                        </div>
-                      }
-                      @case ('reject-note') {
-                        <div class="reject-form">
-                          <p class="confirm-title">
-                            {{ rejectTitle(d.reference) }}
+                          <p>{{ copy.decidedRejectedDetail }}</p>
+                          <p class="statement-note">
+                            {{ copy.decidedRejectedNote }}
                           </p>
-                          <app-field
-                            [label]="copy.rejectNotePrompt"
-                            inputId="reject-note"
-                          >
-                            <textarea
-                              id="reject-note"
-                              class="field-box"
-                              rows="4"
-                              [value]="noteText()"
-                              (input)="onNoteInput($event)"
-                            ></textarea>
-                          </app-field>
-                          <p class="muted">
-                            {{ copy.rejectNotePrivateHeading }}
-                          </p>
-                          <p class="muted">
-                            {{ copy.rejectNotePrivateDetail }}
-                          </p>
-                          <p class="muted">{{ copy.rejectNoAutosave }}</p>
-                          @if (currentProblem(); as problem) {
-                            <p class="problem" role="alert">
-                              {{ problemText(problem) }}
-                            </p>
-                          }
-                          <div class="confirm-actions">
-                            <button
-                              class="btn btn-primary"
-                              type="button"
-                              [disabled]="!noteValid() || submitting()"
-                              [attr.aria-busy]="submitting() || null"
-                              (click)="confirmReject(d.id)"
-                            >
-                              {{
-                                submitting()
-                                  ? copy.rejectLoading
-                                  : copy.rejectSubmit
-                              }}
-                            </button>
-                            <button
-                              class="btn btn-quiet"
-                              type="button"
-                              [disabled]="submitting()"
-                              (click)="cancel()"
-                            >
-                              {{ copy.cancel }}
-                            </button>
-                          </div>
-                        </div>
+                        </section>
                       }
                     }
-                  </section>
+                  }
+                  @case ('request-expired') {
+                    <section
+                      #statement
+                      tabindex="-1"
+                      class="statement pending"
+                      role="alert"
+                    >
+                      <p class="statement-title">
+                        {{ copy.decisionExpiredHeading }}
+                      </p>
+                      <p>{{ copy.decisionExpiredDetail }}</p>
+                    </section>
+                  }
+                  @default {
+                    <div class="decision-strip">
+                      <div class="question">
+                        <p>{{ copy.question }}</p>
+                        <p class="hint">{{ copy.hint }}</p>
+                      </div>
+                      <div class="decision-buttons">
+                        <button
+                          class="btn btn-secondary btn-lg reject"
+                          type="button"
+                          (click)="startReject()"
+                        >
+                          {{ copy.reject }}
+                        </button>
+                        <button
+                          class="btn btn-primary btn-lg approve"
+                          type="button"
+                          (click)="startApprove()"
+                        >
+                          {{ copy.approve }}
+                        </button>
+                      </div>
+                    </div>
+                  }
                 }
               }
-            }
+            </div>
           </article>
+
+          @switch (decisionPhase().kind) {
+            @case ('approve-confirm') {
+              <!-- 11a, 14b: no name panel and no irreversibility line, by
+                   decision; the strip beneath already says it cannot be undone,
+                   and the statement after says whose name is on the release. -->
+              <app-dialog
+                labelledBy="approve-title"
+                [width]="520"
+                [dismissable]="!submitting()"
+                (dismissed)="cancel()"
+              >
+                <h2 id="approve-title" class="dialog-title">
+                  {{ approveDialogTitle(d) }}
+                </h2>
+                <dl class="rows compact">
+                  <div>
+                    <dt>{{ copy.request }}</dt>
+                    <dd class="figure">{{ d.reference }}</dd>
+                  </div>
+                  <div>
+                    <dt>{{ copy.workplace }}</dt>
+                    <dd>{{ d.contact.workplace }}</dd>
+                  </div>
+                  <div>
+                    <dt>{{ copy.askHeading }}</dt>
+                    <dd>{{ askLine(d) }}</dd>
+                  </div>
+                </dl>
+                @if (currentProblem(); as problem) {
+                  <p class="problem" role="alert">{{ problemText(problem) }}</p>
+                }
+                <div class="pair-actions">
+                  <button
+                    class="btn btn-secondary"
+                    type="button"
+                    [disabled]="submitting()"
+                    (click)="cancel()"
+                  >
+                    {{ copy.cancel }}
+                  </button>
+                  <button
+                    class="btn btn-primary"
+                    type="button"
+                    data-autofocus
+                    [attr.aria-busy]="submitting() || null"
+                    (click)="confirmApprove(d.id)"
+                  >
+                    {{
+                      submitting() ? copy.approveLoading : copy.approveConfirm
+                    }}
+                  </button>
+                </div>
+              </app-dialog>
+            }
+            @case ('reject-note') {
+              <app-dialog
+                labelledBy="reject-title"
+                [width]="560"
+                [dismissable]="!submitting()"
+                (dismissed)="cancel()"
+              >
+                <h2 id="reject-title" class="dialog-title">
+                  {{ rejectDialogTitle(d) }}
+                </h2>
+                <app-field
+                  [label]="copy.rejectNoteLabel"
+                  inputId="reject-note"
+                  messageId="reject-note-hint"
+                  [hint]="copy.rejectNoteHint"
+                  [required]="true"
+                >
+                  <textarea
+                    id="reject-note"
+                    class="field-box note-box"
+                    required
+                    data-autofocus
+                    aria-describedby="reject-note-hint"
+                    [value]="noteText()"
+                    (input)="onNoteInput($event)"
+                  ></textarea>
+                </app-field>
+                <p class="autosave">{{ copy.rejectNoAutosave }}</p>
+                @if (currentProblem(); as problem) {
+                  <p class="problem" role="alert">{{ problemText(problem) }}</p>
+                }
+                <div class="pair-actions">
+                  <button
+                    class="btn btn-secondary"
+                    type="button"
+                    [disabled]="submitting()"
+                    (click)="cancel()"
+                  >
+                    {{ copy.cancel }}
+                  </button>
+                  <button
+                    class="btn btn-primary"
+                    type="button"
+                    [disabled]="!noteValid() && !submitting()"
+                    [attr.aria-busy]="submitting() || null"
+                    (click)="confirmReject(d.id)"
+                  >
+                    {{ submitting() ? copy.rejectLoading : copy.rejectSubmit }}
+                  </button>
+                </div>
+              </app-dialog>
+            }
+          }
         }
       }
       @case ('gone') {
-        <h2 #heading tabindex="-1" class="notice">{{ copy.gone }}</h2>
+        <app-dossier-message [text]="copy.gone" />
       }
       @case ('failed') {
-        <h2 #heading tabindex="-1" class="notice" role="alert">
-          {{ copy.loadFailed }}
-        </h2>
+        <app-dossier-message [text]="copy.loadFailed" [announce]="true" />
       }
     }
   `,
   styles: `
     :host {
       display: block;
-      padding: 32px 40px;
     }
-    h2 {
-      font-size: 1.5rem;
-      font-weight: 600;
+    .codes summary {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 2px;
+      font-size: 13px;
       color: var(--primary);
+      cursor: pointer;
+      list-style: none;
     }
-    h2:focus {
+    .codes summary::-webkit-details-marker {
+      display: none;
+    }
+    .codes app-icon {
+      transition: transform 0.1s;
+    }
+    .codes[open] app-icon {
+      transform: rotate(90deg);
+    }
+    .codes p {
+      margin-top: 4px;
+      font-size: 13px;
+      color: var(--muted-foreground);
+    }
+    .decision-slot .statement:focus {
       outline: none;
     }
-    h2:focus-visible {
-      outline: 2px solid var(--primary);
-      outline-offset: 4px;
-    }
-    .notice {
-      color: var(--foreground);
-      font-size: 1.125rem;
-    }
-    h3 {
-      font-size: 0.875rem;
-      font-weight: 600;
-      color: var(--muted-foreground);
-      margin-bottom: 12px;
-    }
-    header p {
-      margin-top: 4px;
-    }
-    .expired {
-      border-left: 2px solid var(--failed);
-      padding-left: 16px;
-      color: var(--failed);
-    }
-    .ledger {
-      display: grid;
-      gap: 32px 48px;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      margin-top: 32px;
-    }
-    dl {
-      margin: 0;
-    }
-    dt {
-      font-size: 0.875rem;
-      color: var(--muted-foreground);
-      margin-top: 12px;
-    }
-    dd {
-      margin: 0;
-      overflow-wrap: anywhere;
-    }
-    .muted {
-      display: block;
-      color: var(--muted-foreground);
-      font-size: 0.875rem;
-    }
-    summary {
-      cursor: pointer;
-      margin-top: 4px;
-      color: var(--primary);
-      font-size: 0.875rem;
-    }
-    .codes {
-      margin-top: 4px;
-      color: var(--muted-foreground);
-    }
-    .strip {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 24px;
-      margin-top: 32px;
-      padding: 16px 0;
-      border-top: 1px solid var(--border);
-      border-bottom: 1px solid var(--border);
-    }
-    .cell-label {
-      font-size: 0.875rem;
-      color: var(--muted-foreground);
-    }
-    .cell-note {
-      font-size: 0.8125rem;
-    }
-    .time-left {
-      color: var(--pending);
-      font-weight: 600;
-    }
-    /* Same size and slot as the counted state (handoff.md "Row count states"):
-       a missing count must read as a fact, not a smaller, lesser answer. */
-    .placeholder {
-      font-size: 1.875rem;
-      font-weight: 600;
-      color: var(--inert);
-    }
-    /* Requirement, not styling: the decision area sits below everything a
-       Reviewer must read first, in the DOM as well as on screen (spec §10.2). */
-    .action-rule {
-      margin-top: 32px;
-      border-top: 1px solid var(--border-strong);
-    }
-    .actions,
-    .decided {
+    .decision-strip {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px 24px;
       padding-top: 24px;
+      border-top: 1px solid var(--border);
     }
-    .actions p,
-    .decided p {
-      margin: 8px 0 0;
+    .question {
+      flex: 1 1 320px;
+      max-width: 640px;
+      font-size: 14px;
+    }
+    .question .hint {
+      margin-top: 2px;
+      font-size: 12px;
+      color: var(--muted-foreground);
     }
     .decision-buttons {
       display: flex;
       gap: 12px;
-      margin-top: 16px;
     }
-    .confirm,
-    .reject-form {
-      margin-top: 16px;
-      padding: 20px;
-      background: var(--primary-wash);
-      border-left: 2px solid var(--primary);
+    /* The one pair off the 1 : 1.2 grid: it shares its row with the question. */
+    .reject {
+      width: 180px;
     }
-    .confirm-title {
+    .approve {
+      width: 260px;
+    }
+    .dialog-title {
+      font-size: 18px;
       font-weight: 600;
     }
-    .confirm-actions {
-      display: flex;
-      gap: 12px;
-      margin-top: 16px;
+    .dialog-title:focus {
+      outline: none;
+    }
+    .note-box {
+      height: auto;
+      min-height: 112px;
+      padding-top: 10px;
+      padding-bottom: 10px;
+      resize: vertical;
+    }
+    .autosave {
+      padding: 12px 14px;
+      font-size: 13px;
+      color: var(--muted-foreground);
+      background: var(--quiet);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-panel);
     }
     .problem {
       color: var(--failed);
       font-weight: 600;
-    }
-    .decided.notice {
-      border-left: 2px solid var(--failed);
-      padding-left: 16px;
-    }
-    .decided h3 {
-      color: var(--foreground);
-      font-size: 1.125rem;
-      margin-bottom: 0;
     }
   `,
 })
 export class DossierPage {
   private readonly api = inject(QueueApi);
   private readonly store = inject(QueueStore);
-  private readonly session = inject(ReviewerSession);
   private readonly injector = inject(Injector);
-  private readonly heading = viewChild<ElementRef<HTMLElement>>('heading');
+  private readonly statement = viewChild<ElementRef<HTMLElement>>('statement');
 
   protected readonly view = signal<View>({ kind: 'loading' });
   // The narrowed dossier, for the template: null while loading or once the
@@ -488,48 +478,40 @@ export class DossierPage {
   protected readonly copy = {
     whoHeading: m.reviewer_dossier_requester_heading(),
     askHeading: m.reviewer_dossier_ask_heading(),
-    firstName: m.requester_first_name(),
-    lastName: m.requester_last_name(),
-    telephone: m.reviewer_dossier_telephone(),
-    email: m.reviewer_dossier_email(),
     workplace: m.requester_workplace(),
     group: m.reviewer_dossier_group(),
     dates: m.reviewer_dossier_dates(),
     datesInclusive: m.reviewer_dossier_dates_inclusive(),
     area: m.reviewer_dossier_area(),
+    request: m.reviewer_col_request(),
     submitted: m.reviewer_submitted_label(),
     clock: m.reviewer_clock_label(),
-    clockNote: m.reviewer_clock_note(),
     clockExpired: m.reviewer_clock_expired(),
+    aheadLabel: m.reviewer_dossier_ahead_label(),
     probe: m.reviewer_probe_label(),
-    probePending: m.reviewer_probe_pending(),
-    probeFailed: m.reviewer_probe_failed(),
     probeNote: m.reviewer_probe_note(),
     probeFailedNote: m.reviewer_probe_failed_note(),
     expired: m.reviewer_dossier_expired(),
     gone: m.reviewer_dossier_gone(),
     loadFailed: m.reviewer_dossier_load_failed(),
-    judgementHeading: m.reviewer_judgement_heading(),
-    judgementIdentity: m.reviewer_judgement_identity(),
-    judgementSize: m.reviewer_judgement_size(),
-    judgementUncertainty: m.reviewer_judgement_uncertainty(),
+    question: m.reviewer_decision_question(),
+    hint: m.reviewer_decision_hint(),
     approve: m.reviewer_approve(),
     reject: m.reviewer_reject(),
-    decisionNote: m.reviewer_decision_note(),
-    approveConfirmPermanence: m.reviewer_approve_confirm_permanence(),
-    approveConfirmIrreversible: m.reviewer_approve_confirm_irreversible(),
-    approveConfirmSubmit: m.reviewer_approve_confirm_submit(),
+    approveConfirm: m.reviewer_approve_confirm_submit(),
     approveLoading: m.reviewer_approve_loading(),
     cancel: m.reviewer_cancel(),
-    rejectNotePrompt: m.reviewer_reject_note_prompt(),
-    rejectNotePrivateHeading: m.reviewer_reject_note_private_heading(),
-    rejectNotePrivateDetail: m.reviewer_reject_note_private_detail(),
+    rejectNoteLabel: m.reviewer_reject_note_prompt(),
+    rejectNoteHint: m.reviewer_reject_note_hint(),
     rejectNoAutosave: m.reviewer_reject_no_autosave(),
     rejectSubmit: m.reviewer_reject_submit(),
     rejectLoading: m.reviewer_reject_loading(),
+    decidedApprovedDetail: m.reviewer_decided_approved_detail(),
+    decidedApprovedName: m.reviewer_decided_approved_name(),
+    decidedApprovedLink: m.reviewer_decided_approved_link(),
     decidedRejectedHeading: m.reviewer_decided_rejected_heading(),
     decidedRejectedDetail: m.reviewer_decided_rejected_detail(),
-    decidedApprovedDetail: m.reviewer_decided_approved_detail(),
+    decidedRejectedNote: m.reviewer_decided_rejected_note(),
     decisionExpiredHeading: m.reviewer_decision_expired_heading(),
     decisionExpiredDetail: m.reviewer_decision_expired_detail(),
     decisionGone: m.reviewer_decision_gone(),
@@ -563,34 +545,45 @@ export class DossierPage {
         ? { kind: 'ok', dossier: outcome.dossier }
         : { kind: outcome.kind },
     );
-    // Selecting a Request moves focus to its heading, so a keyboard user lands
-    // on what they picked rather than back in the list.
-    afterNextRender(() => this.heading()?.nativeElement.focus(), {
-      injector: this.injector,
-    });
+    focusHeadingAfterRender(this.injector);
   }
 
-  protected day = formatDay;
   protected instant = formatInstant;
   protected timeLeft = formatDuration;
 
+  /** Expired on arrival, or refused as too late while it was open (11e). */
+  protected expiredNow = (d: Dossier) =>
+    d.expired || this.decisionPhase().kind === 'request-expired';
+
+  protected fullName = fullName;
+
   protected ahead(count: number | null): string {
-    if (count === null) return '';
+    if (count === null) return '—';
     if (count === 0) return m.reviewer_dossier_ahead_none();
-    if (count === 1) return m.reviewer_dossier_ahead_one();
-    return m.reviewer_dossier_ahead({ count });
+    return m.reviewer_dossier_ahead_count({ count });
   }
 
-  protected isCounted(rowCount: Dossier['rowCount']): rowCount is number {
-    return typeof rowCount === 'number';
+  protected rowCount(rowCount: Dossier['rowCount']): string {
+    if (rowCount === 'pending') return m.reviewer_probe_pending();
+    if (rowCount === 'failed') return m.reviewer_probe_failed();
+    if (rowCount === 0) return m.reviewer_probe_zero();
+    return m.reviewer_probe_rows({ count: ROW_COUNT_FORMAT.format(rowCount) });
   }
 
   protected codesDisclosure(count: number): string {
     return m.reviewer_dossier_codes_disclosure({ count });
   }
 
-  protected areaHeadline = areaHeadline;
-  protected areaProvinces = areaProvinces;
+  protected areaLine = areaLine;
+
+  /** The ask on one line, for the approve dialog. */
+  protected askLine(d: Dossier): string {
+    return [
+      d.diseaseGroupName,
+      dateRangeText(d.startDate, d.endDate),
+      areaLine(d.area),
+    ].join(' · ');
+  }
 
   // --- The Decision (spec §10.3) ------------------------------------------
 
@@ -616,18 +609,12 @@ export class DossierPage {
     return this.noteText().trim().length >= MIN_NOTE_LENGTH;
   }
 
-  protected approveConfirmTitle(reference: string): string {
-    return m.reviewer_approve_confirm_title({ reference });
+  protected approveDialogTitle(d: Dossier): string {
+    return m.reviewer_approve_dialog_title({ name: fullName(d.contact) });
   }
 
-  protected rejectTitle(reference: string): string {
-    return m.reviewer_reject_title({ reference });
-  }
-
-  protected approveConfirmName(): string {
-    return m.reviewer_approve_confirm_name({
-      reviewer: this.session.current()?.displayName ?? '',
-    });
+  protected rejectDialogTitle(d: Dossier): string {
+    return m.reviewer_reject_dialog_title({ name: fullName(d.contact) });
   }
 
   protected approvedHeading(decidedAt: string): string {
@@ -690,15 +677,19 @@ export class DossierPage {
         // The Request leaves the pending list in this same response — never a
         // fresh GET, and never the next pending Request loaded in its place
         // (§10.3's warning against auto-advance).
-        this.store.removePending(id);
+        if (outcome.decision === 'approved') this.store.approvePending(id);
+        else this.store.removePending(id);
         this.decisionPhase.set({
           kind: 'recorded',
           decision: outcome.decision,
           decidedAt: outcome.decidedAt,
         });
+        this.focusStatement();
         return;
       case 'expired':
+        this.store.markExpired(id);
         this.decisionPhase.set({ kind: 'request-expired' });
+        this.focusStatement();
         return;
       case 'gone':
         this.store.removePending(id);
@@ -710,6 +701,13 @@ export class DossierPage {
       case 'failed':
         this.setProblem('failed');
     }
+  }
+
+  /** The dialog and its trigger are gone: focus lands on what was recorded. */
+  private focusStatement(): void {
+    afterNextRender(() => this.statement()?.nativeElement.focus(), {
+      injector: this.injector,
+    });
   }
 
   private setProblem(problem: DecisionProblem): void {

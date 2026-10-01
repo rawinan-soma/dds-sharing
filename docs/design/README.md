@@ -6,12 +6,16 @@ system.
 | File | What it is |
 |---|---|
 | [`brief.md`](brief.md) | Every screen the service needs, what each must contain, and which rules are requirements rather than styling. The design was built against this |
-| [`system.md`](system.md) | The tokens and the two components, written out. Read before implementing anything |
+| [`system.md`](system.md) | The tokens and the components, written out. Read before implementing anything |
 | [`handoff.md`](handoff.md) | Per-screen layout, states, edge cases, responsive intent and accessibility |
 | [`source/`](source) | The token file and the components, copied from the design tool |
 
 **The design itself lives in the Lunagraph project `dds-sharing`** — twelve
 screens, built in Thai. These documents describe it; they do not replace it.
+
+**Except since 2026-09-30:** the visual system was replaced by Requester-form
+variant B, drawn in the Lunagraph project `dds-prototype`. Until `dds-sharing`
+is redrawn, `system.md` and `source/` are newer than that canvas.
 
 ## Where `source/` goes
 

@@ -1,5 +1,4 @@
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { INestApplication } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { Pool } from 'pg';
@@ -12,8 +11,9 @@ import {
   createScratchDatabase,
   type ScratchDatabase,
 } from './support/scratch-database';
+import { apiPath } from '../src/repo-paths';
 
-const SEED_MIGRATION = join(__dirname, '..', PROVINCE_SEED_MIGRATION);
+const SEED_MIGRATION = apiPath(PROVINCE_SEED_MIGRATION);
 
 describe('reference data at boot (e2e)', () => {
   let db: ScratchDatabase;

@@ -1,7 +1,7 @@
 /*
   Button — three variants, two sizes. Nothing else.
 
-  Copied from the Lunagraph project `dds-sharing`. React here because that is
+  Locked from Requester-form variant B (2026-09-30). React here because that is
   what the design tool renders; the Angular component must carry the same
   variants, the same two sizes and the same states. See docs/design/system.md.
 
@@ -32,7 +32,7 @@ type Variant = "primary" | "secondary" | "quiet";
 type Size = "md" | "lg";
 
 const base =
-  "inline-flex items-center justify-center font-sans transition-colors " +
+  "inline-flex items-center justify-center rounded-md font-sans transition-colors " +
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary " +
   "disabled:cursor-not-allowed disabled:opacity-45";
 
@@ -42,27 +42,27 @@ const variants: Record<Variant, string> = {
     "hover:bg-primary-hover active:bg-primary-hover " +
     "disabled:hover:bg-primary",
   secondary:
-    "border border-border-strong text-foreground " +
-    "hover:bg-land active:bg-land-strong " +
-    "disabled:hover:bg-transparent",
-  // Framed in muted-foreground (5.69:1), not the hairline border colour
-  // (1.39:1): the frame is a quiet button's only boundary, so it must meet
-  // WCAG 1.4.11's 3:1. Still visibly lighter than secondary's ink frame.
+    "border border-input bg-card text-foreground " +
+    "hover:bg-primary-wash active:bg-primary-wash " +
+    "disabled:hover:bg-card",
+  // Framed in input (3.25:1 on the page), not the hairline border colour
+  // (1.31:1): the frame is a quiet button's only boundary, so it must meet
+  // WCAG 1.4.11's 3:1. No fill, so it stays quieter than secondary.
   quiet:
-    "border border-muted-foreground text-muted-foreground " +
-    "hover:bg-land hover:text-foreground active:bg-land-strong " +
+    "border border-input text-muted-foreground " +
+    "hover:bg-primary-wash hover:text-foreground active:bg-primary-wash " +
     "disabled:hover:bg-transparent",
 };
 
 const loadingVariants: Record<Variant, string> = {
   primary: "bg-primary-hover text-primary-foreground font-semibold cursor-progress",
-  secondary: "border border-border-strong bg-land text-foreground cursor-progress",
-  quiet: "border border-muted-foreground bg-land text-foreground cursor-progress",
+  secondary: "border border-input bg-primary-wash text-foreground cursor-progress",
+  quiet: "border border-input bg-primary-wash text-foreground cursor-progress",
 };
 
 const sizes: Record<Size, string> = {
-  md: "px-5 py-2 text-sm",
-  lg: "px-8 py-3 text-base",
+  md: "h-10 px-5 text-sm",
+  lg: "h-11 px-8 text-base",
 };
 
 export function Button({

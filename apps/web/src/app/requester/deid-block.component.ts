@@ -1,39 +1,62 @@
 import { Component } from '@angular/core';
 import * as m from '../../paraglide/messages.js';
 
-// What the file will and will not contain. A Requester who never opens it
+// What the file will and will not contain. A Requester who never reads it
 // receives a CSV with no names in it and files it as broken, so this is open,
-// static and above the form — no disclosure, no interaction (spec §16.4).
+// static and above the form — no disclosure, no interaction (spec §16.4). What
+// is left out is not styled as an error: a ringed inert dash, not a cross.
 @Component({
   selector: 'app-deid-block',
   template: `
-    <section class="section" aria-labelledby="deid-heading">
-      <div class="kicker">
-        <h2 id="deid-heading">{{ m.requester_deid_heading() }}</h2>
-        <span class="muted small">{{ m.requester_deid_column_count() }}</span>
-      </div>
-      <p class="prose">{{ m.requester_deid_lead() }}</p>
-      <div class="two-up" style="margin-top: 16px">
-        <div>
+    <section class="card contents" aria-labelledby="deid-heading">
+      <h2 id="deid-heading" class="card-title">
+        {{ m.requester_deid_heading() }}
+      </h2>
+      <div class="contents-columns">
+        <div class="included">
           <h3>{{ m.requester_deid_included_heading() }}</h3>
-          <ul class="plain-list" style="margin-top: 8px">
+          <ul>
             @for (item of included; track $index) {
-              <li>{{ item() }}</li>
+              <li>
+                <span class="mark tick" aria-hidden="true">
+                  <svg
+                    viewBox="0 0 12 12"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <path d="M2.5 6.2 5 8.5l4.5-5" />
+                  </svg>
+                </span>
+                {{ item() }}
+              </li>
             }
           </ul>
         </div>
-        <div>
+        <div class="excluded">
           <h3>{{ m.requester_deid_excluded_heading() }}</h3>
-          <ul class="plain-list" style="margin-top: 8px">
+          <ul>
             @for (item of excluded; track $index) {
-              <li>{{ item() }}</li>
+              <li>
+                <span class="mark dash" aria-hidden="true">
+                  <svg
+                    viewBox="0 0 12 12"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.8"
+                    stroke-linecap="round"
+                  >
+                    <path d="M3.5 6h5" />
+                  </svg>
+                </span>
+                {{ item() }}
+              </li>
             }
           </ul>
         </div>
       </div>
-      <p class="prose muted small" style="margin-top: 8px">
-        {{ m.requester_deid_allowlist_note() }}
-      </p>
     </section>
   `,
 })

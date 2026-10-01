@@ -4,7 +4,7 @@ import {
   provideHttpClientTesting,
 } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { Router, provideRouter } from '@angular/router';
 import * as m from '../../paraglide/messages.js';
 import { getLocale, overwriteGetLocale } from '../../paraglide/runtime.js';
 import {
@@ -13,7 +13,9 @@ import {
   type QueueList,
   type QueueRow,
 } from './queue-api';
+import { DossierPage } from './dossier.page';
 import { QueuePage } from './queue.page';
+import { QueueStore } from './queue-store';
 
 const row = (id: string, over: Partial<QueueRow> = {}): QueueRow => ({
   id,
@@ -109,28 +111,40 @@ describe('QueuePage', () => {
   }
 
   const text = () => el.textContent!.replace(/\s+/g, ' ');
-  const rows = () => [...el.querySelectorAll('nav li a')];
+  // The rows of whichever zone's table is showing.
+  const rows = () => [
+    ...el.querySelectorAll<HTMLTableRowElement>('[role=tabpanel] tbody tr'),
+  ];
+  const rowHeaders = () =>
+    rows().map((r) => r.querySelector('th')!.textContent!.trim());
   const refresh = () => el.querySelector<HTMLButtonElement>('button.refresh')!;
+  const tabs = () => [...el.querySelectorAll<HTMLElement>('[role=tab]')];
+  const tabNamed = (label: string) =>
+    tabs().find((t) => t.textContent!.includes(label))!;
+  async function openTab(label: string) {
+    tabNamed(label).click();
+    await settle();
+  }
 
-  it('puts the lookup by reference in the sidebar header, above refresh', async () => {
+  it('puts the lookup by reference in the queue band, between the staleness line and refresh', async () => {
     await firstLoad([row('a')]);
-    const head = el.querySelector('.side-head')!;
-    const search = head.querySelector('app-lookup-search');
-    expect(search).not.toBeNull();
+    const band = el.querySelector('.queue-band')!;
+    const search = band.querySelector('app-lookup-search')!;
+    const staleness = band.querySelector('.staleness')!;
     expect(
-      search!.compareDocumentPosition(refresh()) &
+      staleness.compareDocumentPosition(search) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      search.compareDocumentPosition(refresh()) &
         Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
   });
 
   it('lists pending Requests in the order the server gave, oldest first', async () => {
     await firstLoad([row('a'), row('b'), row('c')]);
-    expect(rows().map((r) => r.querySelector('.ref')?.textContent)).toEqual([
-      'REQ-a',
-      'REQ-b',
-      'REQ-c',
-    ]);
-    expect(text()).toContain(m.reviewer_queue_count({ count: 3 }));
+    expect(rowHeaders()).toEqual(['Name a', 'Name b', 'Name c']);
+    expect(tabNamed(m.reviewer_zone_queue()).textContent).toContain('3');
   });
 
   it('shows on each row who, what, and the time left as N h NN m', async () => {
@@ -145,17 +159,135 @@ describe('QueuePage', () => {
     expect(rows()[0].textContent).toContain(m.reviewer_clock_expired());
   });
 
-  it('keeps the queue in a landmark that leaves room for the zones beside it', async () => {
-    await firstLoad([row('a')]);
-    const nav = el.querySelector('nav')!;
-    expect(nav.getAttribute('aria-label')).toBe(m.reviewer_queue_heading());
-    expect(nav.closest('aside')).not.toBeNull();
+  it('reads the queue as a table, each row headed by a link to its dossier', async () => {
+    await firstLoad([row('a'), row('b')]);
+    const table = el.querySelector('[role=tabpanel] table')!;
+    expect(table).not.toBeNull();
+    for (const header of table.querySelectorAll('thead th')) {
+      expect(header.getAttribute('scope')).toBe('col');
+    }
+    const first = rows()[0].querySelector('th')!;
+    expect(first.getAttribute('scope')).toBe('row');
+    const link = first.querySelector('a')!;
+    expect(link.getAttribute('href')).toBe('/a');
   });
 
-  it('says the desk is clear when nothing is pending', async () => {
+  describe('the zone tabs', () => {
+    it('are one tablist of three tabs, each with its count, over one tabpanel', async () => {
+      http
+        .expectOne('/api/reviewer/queue')
+        .flush(
+          list(
+            [row('a'), row('b')],
+            'running',
+            [alert('x')],
+            [inFlightRow('y'), inFlightRow('z'), inFlightRow('w')],
+          ),
+        );
+      await settle();
+      expect(el.querySelectorAll('[role=tablist]')).toHaveLength(1);
+      expect(
+        tabs().map((t) => t.textContent!.replace(/\s+/g, ' ').trim()),
+      ).toEqual([
+        `${m.reviewer_zone_queue()} · 2`,
+        `${m.reviewer_alerts_heading()} · 1`,
+        `${m.reviewer_inflight_heading()} · 3`,
+      ]);
+      const panel = el.querySelector('[role=tabpanel]')!;
+      const selected = tabs().find(
+        (t) => t.getAttribute('aria-selected') === 'true',
+      )!;
+      expect(panel.getAttribute('aria-labelledby')).toBe(selected.id);
+      expect(selected.getAttribute('aria-controls')).toBe(panel.id);
+    });
+
+    it('take one tab stop, and arrow keys move between them', async () => {
+      await firstLoad([row('a')]);
+      expect(tabs().map((t) => t.tabIndex)).toEqual([0, -1, -1]);
+
+      tabs()[0].dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }),
+      );
+      await settle();
+      expect(tabs()[1].getAttribute('aria-selected')).toBe('true');
+      expect(tabs().map((t) => t.tabIndex)).toEqual([-1, 0, -1]);
+      expect(document.activeElement).toBe(tabs()[1]);
+
+      tabs()[1].dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }),
+      );
+      tabs()[0].dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }),
+      );
+      await settle();
+      expect(tabs()[2].getAttribute('aria-selected')).toBe('true');
+    });
+
+    it('follow the zone named in the address, as the 11c link sets it', async () => {
+      await firstLoad([row('a')]);
+      await TestBed.inject(Router).navigate([], {
+        queryParams: { zone: 'in-flight' },
+      });
+      await settle();
+      expect(
+        tabNamed(m.reviewer_inflight_heading()).getAttribute('aria-selected'),
+      ).toBe('true');
+    });
+
+    it('drop the address’s zone once a tab is pressed, so the 11c link works again', async () => {
+      await firstLoad([row('a')]);
+      const router = TestBed.inject(Router);
+      await router.navigate([], { queryParams: { zone: 'in-flight' } });
+      await settle();
+      tabNamed(m.reviewer_zone_queue()).click();
+      await settle();
+      expect(router.url).not.toContain('zone=');
+      expect(
+        tabNamed(m.reviewer_zone_queue()).getAttribute('aria-selected'),
+      ).toBe('true');
+    });
+
+    it('keep the address’s zone over the zone of the dossier that opens', async () => {
+      await firstLoad([row('a')]);
+      await TestBed.inject(Router).navigate([], {
+        queryParams: { zone: 'alerts' },
+      });
+      await settle();
+      // What the outlet hands over when a queue dossier activates.
+      const page = fixture.componentInstance as unknown as {
+        opened(page: unknown): void;
+      };
+      page.opened(Object.create(DossierPage.prototype));
+      await settle();
+      expect(
+        tabNamed(m.reviewer_alerts_heading()).getAttribute('aria-selected'),
+      ).toBe('true');
+    });
+
+    it('show the selected zone only, so a Request appears in exactly one place', async () => {
+      http
+        .expectOne('/api/reviewer/queue')
+        .flush(list([row('a')], 'running', [alert('x')], [inFlightRow('y')]));
+      await settle();
+      expect(rowHeaders()).toEqual(['Name a']);
+      await openTab(m.reviewer_alerts_heading());
+      expect(text()).not.toContain('Name a');
+      expect(text()).toContain('Name x');
+    });
+  });
+
+  it('heads the surface with the signed-in Reviewer and sign-out', async () => {
+    await firstLoad([row('a')]);
+    const header = el.querySelector('header')!;
+    expect(header.textContent).toContain(m.reviewer_brand());
+    expect(header.textContent).toContain(m.reviewer_signout());
+  });
+
+  it('says the desk is clear when nothing is pending, in place of the table', async () => {
     await firstLoad([]);
     expect(text()).toContain(m.reviewer_empty_clear_title());
     expect(text()).toContain(m.reviewer_empty_clear_note());
+    expect(el.querySelector('[role=tabpanel] table')).toBeNull();
   });
 
   describe('the Alerts zone (§10.6)', () => {
@@ -165,13 +297,7 @@ describe('QueuePage', () => {
         .flush(list(requests, 'running', alerts));
       await settle();
     }
-    const zone = () =>
-      el.querySelector<HTMLElement>(
-        `section[aria-label="${m.reviewer_alerts_heading()}"]`,
-      );
-    const cards = () => [...(zone()?.querySelectorAll('li a') ?? [])];
-
-    it('puts one card per Alert in its own zone, apart from the queue', async () => {
+    it('puts one row per Alert in its own zone, apart from the queue', async () => {
       await loadWithAlerts(
         [row('a')],
         [
@@ -182,31 +308,56 @@ describe('QueuePage', () => {
           }),
         ],
       );
-      expect(cards()).toHaveLength(2);
-      const first = cards()[0].textContent!;
+      // Never on the queue's own table as well.
+      expect(rows().some((r) => r.textContent!.includes('Name x'))).toBe(false);
+
+      await openTab(m.reviewer_alerts_heading());
+      expect(rows()).toHaveLength(2);
+      const first = rows()[0].textContent!;
       expect(first).toContain(m.reviewer_alert_lapse_title());
       expect(first).toContain('REQ-x');
       expect(first).toContain('Name x');
-      expect(first).toContain(
-        m.reviewer_alert_assigned_to({ reviewer: 'Alice Reviewer' }),
-      );
-      expect(cards()[1].textContent).toContain(
+      expect(first).toContain('Alice Reviewer');
+      expect(rows()[1].textContent).toContain(
         m.reviewer_alert_extraction_title(),
       );
-      // Never on the queue's own list as well.
-      expect(rows().some((r) => r.textContent!.includes('REQ-x'))).toBe(false);
+      expect(rows()[0].querySelector('th a')!.getAttribute('href')).toBe(
+        '/alerts/x',
+      );
     });
 
-    it('shows no zone at all when nothing is outstanding', async () => {
+    it('marks the tab in pending ink only while it has a count', async () => {
+      await loadWithAlerts([row('a')], [alert('x')]);
+      expect(tabNamed(m.reviewer_alerts_heading()).classList).toContain(
+        'outstanding',
+      );
+    });
+
+    it('says so in place of the table when nothing is outstanding', async () => {
       await loadWithAlerts([row('a')], []);
-      expect(zone()).toBeNull();
+      expect(tabNamed(m.reviewer_alerts_heading()).classList).not.toContain(
+        'outstanding',
+      );
+      await openTab(m.reviewer_alerts_heading());
+      expect(rows()).toHaveLength(0);
+      expect(text()).toContain(m.reviewer_zone_alerts_empty());
     });
 
     it('says the work is not finished when the queue is empty but Alerts are open', async () => {
       await loadWithAlerts([], [alert('x'), alert('y')]);
-      expect(text()).toContain(m.reviewer_empty_alerts_title({ count: 2 }));
-      expect(text()).toContain(m.reviewer_empty_alerts_note());
+      expect(text()).toContain(m.reviewer_empty_alerts_title());
+      expect(text()).toContain(m.reviewer_empty_alerts_count({ count: 2 }));
       expect(text()).not.toContain(m.reviewer_empty_clear_detail());
+
+      const go = [...el.querySelectorAll('button')].find(
+        (b) => b.textContent!.trim() === m.reviewer_empty_alerts_action(),
+      )!;
+      go.click();
+      await settle();
+      expect(
+        tabNamed(m.reviewer_alerts_heading()).getAttribute('aria-selected'),
+      ).toBe('true');
+      expect(rows()).toHaveLength(2);
     });
   });
 
@@ -216,23 +367,20 @@ describe('QueuePage', () => {
         .expectOne('/api/reviewer/queue')
         .flush(list([row('a')], 'running', [], inFlight));
       await settle();
+      await openTab(m.reviewer_inflight_heading());
     }
-    const zone = () =>
-      el.querySelector<HTMLElement>(
-        `section[aria-label="${m.reviewer_inflight_heading()}"]`,
-      );
-    const entries = () => [...(zone()?.querySelectorAll('li a') ?? [])];
+    const zone = () => el.querySelector<HTMLElement>('[role=tabpanel]');
+    const entries = rows;
 
     it('lists approved Requests in the order the server gave, apart from the queue', async () => {
       await loadInFlight([inFlightRow('x'), inFlightRow('y')]);
-      expect(
-        entries().map((e) => e.querySelector('.ref')?.textContent),
-      ).toEqual(['REQ-x', 'REQ-y']);
+      expect(rowHeaders()).toEqual(['REQ-x', 'REQ-y']);
       expect(entries()[0].textContent).toContain('Name x');
-      expect(rows().some((r) => r.textContent!.includes('REQ-x'))).toBe(false);
       expect(zone()!.textContent).toContain(
-        m.reviewer_inflight_suppression_note(),
+        m.reviewer_inflight_suppression_note({ count: 0 }),
       );
+      await openTab(m.reviewer_zone_queue());
+      expect(rows().some((r) => r.textContent!.includes('Name x'))).toBe(false);
     });
 
     it('reads a queued or running job as extracting, and a failure as failed', async () => {
@@ -246,8 +394,16 @@ describe('QueuePage', () => {
           actions: { rerun: true, resend: false },
         }),
       ]);
-      expect(entries()[0].textContent).toContain(m.reviewer_state_extracting());
-      expect(entries()[1].textContent).toContain(m.reviewer_state_failed());
+      expect(entries()[0].querySelector('.tag')!.textContent).toContain(
+        m.reviewer_state_extracting(),
+      );
+      // Why nothing can be pressed, said on the row.
+      expect(entries()[0].textContent).toContain(
+        m.reviewer_inflight_extracting_note(),
+      );
+      expect(entries()[1].querySelector('.tag')!.textContent).toContain(
+        m.reviewer_state_failed(),
+      );
     });
 
     it('shows the wall-clock time left on a ready link, ticking without asking the server', async () => {
@@ -273,9 +429,32 @@ describe('QueuePage', () => {
       );
     });
 
-    it('shows no zone when nothing is in flight', async () => {
+    it('marks a Request approved on this screen as known only here until refresh', async () => {
+      await loadInFlight([inFlightRow('x')]);
+      TestBed.inject(QueueStore).approvePending('a');
+      await settle();
+      const local = rows().find((r) => r.textContent!.includes('Name a'))!;
+      expect(local.querySelector('.tag')!.textContent).toContain(
+        m.reviewer_state_just_approved(),
+      );
+      expect(local.textContent).toContain(m.reviewer_inflight_local_note());
+      // Never a guessed extraction state.
+      expect(local.textContent).not.toContain(m.reviewer_state_extracting());
+
+      refresh().click();
+      await settle();
+      http
+        .expectOne('/api/reviewer/queue')
+        .flush(list([], 'running', [], [inFlightRow('x'), inFlightRow('a')]));
+      await settle();
+      const read = rows().find((r) => r.textContent!.includes('REQ-a'))!;
+      expect(read.textContent).not.toContain(m.reviewer_inflight_local_note());
+    });
+
+    it('says so in place of the table when nothing is in flight', async () => {
       await loadInFlight([]);
-      expect(zone()).toBeNull();
+      expect(rows()).toHaveLength(0);
+      expect(text()).toContain(m.reviewer_zone_inflight_empty());
     });
   });
 
@@ -342,6 +521,8 @@ describe('QueuePage', () => {
     expect(text()).toContain(
       m.reviewer_queue_refresh_failed_detail({ minutes: 8 }),
     );
+    expect(el.querySelector('.staleness')!.classList).toContain('failed-text');
+    expect(refresh().textContent).toContain(m.reviewer_queue_retry());
     expect(refresh().getAttribute('aria-busy')).toBeNull();
   });
 

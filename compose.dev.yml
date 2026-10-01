@@ -11,6 +11,11 @@
 services:
   app:
     image: dds-sharing-dev
+    # Bull Board on 3101, not the base file's 3100: the Pilot (ADR 0022) holds
+    # 127.0.0.1:3100 when it runs on the same host.
+    ports: !override
+      - '3000:3000'
+      - '127.0.0.1:3101:3100'
     # `docker compose logs` in development; the hour files are still written.
     logging:
       driver: json-file
@@ -42,13 +47,15 @@ services:
     environment:
       FAKE_UPSTREAM_PORT: 4010
 
+  # Loopback only: these hold the dev stack's change-me credentials, and the
+  # host may be a server others can reach.
   mailpit:
     image: axllent/mailpit:latest
     ports:
-      - '8025:8025'
-      - '1025:1025'
+      - '127.0.0.1:8025:8025'
+      - '127.0.0.1:1025:1025'
 
   minio:
     ports:
-      - '9000:9000'
-      - '9001:9001'
+      - '127.0.0.1:9000:9000'
+      - '127.0.0.1:9001:9001'

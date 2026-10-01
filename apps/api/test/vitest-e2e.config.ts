@@ -1,9 +1,9 @@
-import { fileURLToPath } from 'node:url';
 import swc from 'unplugin-swc';
 import { defineConfig } from 'vitest/config';
+import { apiPath } from '../src/repo-paths';
 
 export default defineConfig({
-  root: fileURLToPath(new URL('..', import.meta.url)),
+  root: apiPath(),
   plugins: [swc.vite()],
   test: {
     globals: true,

@@ -29,6 +29,8 @@ export interface FormState {
   tel: string;
   email: string;
   workplace: string;
+  /** The PDPA acknowledgement. Required to send, never posted. */
+  consent: boolean;
 }
 
 export const emptyForm = (): FormState => ({
@@ -43,9 +45,10 @@ export const emptyForm = (): FormState => ({
   tel: '',
   email: '',
   workplace: '',
+  consent: false,
 });
 
-/** A field the incomplete-submit summary can jump to, in page order. */
+/** A field the requirement checklist can jump to, in form-card order. */
 export type FieldKey =
   | 'diseaseGroupId'
   | 'from'
@@ -53,16 +56,16 @@ export type FieldKey =
   | 'area'
   | 'name'
   | 'surname'
+  | 'workplace'
   | 'tel'
-  | 'email'
-  | 'workplace';
+  | 'email';
 
 export const CONTACT_KEYS = [
   'name',
   'surname',
+  'workplace',
   'tel',
   'email',
-  'workplace',
 ] as const;
 
 export interface Problems {
@@ -89,6 +92,67 @@ export function problemsOf(form: FormState): Problems {
     reversed:
       Boolean(form.from && form.to) && dayCount(form.from, form.to) === null,
   };
+}
+
+export type RequirementKey =
+  'group' | 'dates' | 'area' | 'identity' | 'contact';
+
+/**
+ * `unmet` is not done yet; `broken` is filled in but against a rule (a range
+ * over the cap, backwards, or a date that does not read), shown as failed
+ * before any attempt to send.
+ */
+export type RequirementState = 'met' | 'unmet' | 'broken';
+
+export interface Requirement {
+  key: RequirementKey;
+  state: RequirementState;
+  /** The fields to jump to, first one first; empty when met. */
+  fields: FieldKey[];
+}
+
+const REQUIREMENT_FIELDS: Record<RequirementKey, FieldKey[]> = {
+  group: ['diseaseGroupId'],
+  dates: ['from', 'to'],
+  area: ['area'],
+  identity: ['name', 'surname', 'workplace'],
+  contact: ['tel', 'email'],
+};
+
+/**
+ * The form's rules in the Requester's words, the five items of the requirement
+ * checklist (docs/design/system.md). `unreadableDate` is a date field holding
+ * text that is not a day, which the form state cannot see: it stores ISO only.
+ */
+export function requirementsOf(
+  problems: Problems,
+  unreadableDate: boolean,
+): Requirement[] {
+  const missing = new Set(problems.missing);
+  return (Object.keys(REQUIREMENT_FIELDS) as RequirementKey[]).map((key) => {
+    const fields = REQUIREMENT_FIELDS[key].filter((f) => missing.has(f));
+    const broken =
+      key === 'dates' &&
+      (problems.spanTooLong || problems.reversed || unreadableDate);
+    return {
+      key,
+      state: broken ? 'broken' : fields.length > 0 ? 'unmet' : 'met',
+      fields: broken && fields.length === 0 ? ['to'] : fields,
+    };
+  });
+}
+
+export interface Meter {
+  lit: 0 | 1 | 2 | 3;
+  tone: 'failed' | 'pending' | 'success' | null;
+}
+
+/** Three segments: none, one failed, two pending, three success. */
+export function meterOf(met: number): Meter {
+  if (met >= 5) return { lit: 3, tone: 'success' };
+  if (met >= 3) return { lit: 2, tone: 'pending' };
+  if (met >= 1) return { lit: 1, tone: 'failed' };
+  return { lit: 0, tone: null };
 }
 
 export interface SubmissionBody {

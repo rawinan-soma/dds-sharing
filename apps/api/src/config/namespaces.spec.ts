@@ -1,12 +1,14 @@
 import { readFileSync } from 'node:fs';
 import { parseEnv } from 'node:util';
+import { apiPath } from '../repo-paths';
 import { describe, expect, it } from 'vitest';
 import { httpAppSchema, validateEnv } from './env.schema';
 import { NAMESPACE_MAPPERS } from './namespaces';
 
-const testEnv = parseEnv(
-  readFileSync(new URL('../../.env.test', import.meta.url), 'utf8'),
-) as Record<string, string>;
+const testEnv = parseEnv(readFileSync(apiPath('.env.test'), 'utf8')) as Record<
+  string,
+  string
+>;
 
 const schemaKeys = Object.keys(
   httpAppSchema.describe().keys as Record<string, unknown>,

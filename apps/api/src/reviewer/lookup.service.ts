@@ -16,7 +16,7 @@ import { type RequestState } from '../requests/request-state';
 import { type SurfaceZone, surfaceZone } from '../requests/surface-zone';
 import { openAlertsOf } from './alert-records';
 import { type LinkState, linkState } from './lookup';
-import { type Area, describeArea } from './review-queue';
+import { ASK_COLUMNS, type Ask, askOf } from '../requests/ask';
 import { type ProbeRowCount } from '../requests/probe-row-count';
 
 /**
@@ -32,16 +32,12 @@ export type LookupResult =
  * A terminal Request, read-only (§10.10). The record, never the contact
  * fields (ADR 0015): the only `workplace` here is the Snapshot's.
  */
-export interface RequestRecord {
+export interface RequestRecord extends Ask {
   requestId: string;
   reference: string;
   state: RequestState;
   submittedAt: string;
-  diseaseGroupName: string;
   reportCodes: string[];
-  startDate: string;
-  endDate: string;
-  area: Area;
   /** Null for a Request that expired with no Decision. */
   decision: {
     outcome: 'approved' | 'rejected';
@@ -94,11 +90,8 @@ export class RequestLookup {
         reference: request.reference,
         state: request.state,
         submittedAt: request.submittedAt,
-        diseaseGroupName: request.diseaseGroupName,
+        ...ASK_COLUMNS,
         reportCodes: request.reportCodes,
-        startDate: request.startDate,
-        endDate: request.endDate,
-        provinces: request.provinces,
       })
       .from(request)
       .where(eq(request.reference, reference));
@@ -122,11 +115,8 @@ export class RequestLookup {
         reference: r.reference,
         state,
         submittedAt: r.submittedAt.toISOString(),
-        diseaseGroupName: r.diseaseGroupName,
+        ...askOf(r, this.provinces.provinces),
         reportCodes: r.reportCodes,
-        startDate: r.startDate,
-        endDate: r.endDate,
-        area: describeArea(r.provinces, this.provinces.provinces),
         decision: await this.decisionOf(r.requestId),
         files: await this.filesOf(r.requestId, now),
         events: await this.eventsOf(r.requestId),

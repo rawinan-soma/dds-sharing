@@ -14,30 +14,29 @@ const NOINDEX = { name: 'robots', content: 'noindex, nofollow' };
   selector: 'app-reviewer-shell',
   imports: [RouterOutlet, SessionToast],
   template: `
-    <div class="surface"><router-outlet /></div>
-    <section class="narrow">
+    <div class="surface">
+      <router-outlet />
+    </div>
+    <section class="narrow card">
+      <p class="kicker">{{ narrow.brand }} · {{ narrow.surface }}</p>
       <h1>{{ narrow.title }}</h1>
       <p>{{ narrow.detail }}</p>
-      <p>{{ narrow.desk }}</p>
     </section>
     <app-session-toast />
   `,
-  // Under 1024 CSS px every Reviewer route is this one sentence and nothing
-  // else (§16.1): no queue, no partial layout. Hidden with display:none, so the
-  // screen behind it is out of the accessibility tree too.
+  // Under 1024 CSS px every Reviewer route is this one card and nothing else
+  // (§16.1, screen R): no queue, no partial layout. Hidden with display:none,
+  // so the screen behind it is out of the accessibility tree too.
   styles: `
     .narrow {
       display: none;
       max-width: 460px;
-      margin: 3rem auto;
-      padding: 0 1rem;
+      margin: 48px auto;
     }
     .narrow h1 {
-      font-size: 1.25rem;
-      margin-bottom: 0.75rem;
-    }
-    .narrow p + p {
-      margin-top: 0.75rem;
+      margin: 4px 0 12px;
+      font-size: 22px;
+      font-weight: 600;
     }
     @media (max-width: 1023.98px) {
       .surface {
@@ -47,13 +46,19 @@ const NOINDEX = { name: 'robots', content: 'noindex, nofollow' };
         display: block;
       }
     }
+    @media (max-width: 499.98px) {
+      .narrow {
+        margin: 24px 16px;
+      }
+    }
   `,
 })
 export class ReviewerShell implements OnInit, OnDestroy {
   protected readonly narrow = {
+    brand: m.reviewer_brand(),
+    surface: m.reviewer_surface(),
     title: m.reviewer_narrow_title(),
     detail: m.reviewer_narrow_detail(),
-    desk: m.reviewer_narrow_desk(),
   };
   private readonly meta = inject(Meta);
   private readonly session = inject(ReviewerSession);

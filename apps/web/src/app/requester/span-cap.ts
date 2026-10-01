@@ -1,12 +1,22 @@
-// The 365-day cap as the picker enforces it (spec §4.2): `to` may not be later
-// than `from` + 365 days. The server re-checks the same rule and names it as
-// upstream's; this is the first of the two places, and the only date arithmetic
-// in the SPA — which is why the tripwire in the API's span-builder-only spec
-// allows this file by name. It never computes upstream's half-open `end_date`;
-// that conversion has one home, in the API.
+// Two date rules, and the only date arithmetic in the SPA, the calendar's day
+// stepping included — which is why the tripwire in the API's span-builder-only
+// spec allows this file by name.
+//
+// - The 365-day cap (spec §4.2): `to` may not be later than `from` + 365 days.
+//   The server re-checks the same rule and names it as upstream's.
+// - The picker span: the calendar offers one day less, `from` + 364.
+//
+// It never computes upstream's half-open `end_date`; that conversion has one
+// home, in the API.
 
 const ONE_DAY_MS = 86_400_000;
 const MAX_SPAN_DAYS = 365;
+/**
+ * The picker is stricter than the cap: it offers `from` + 364, 365 days
+ * inclusive, as its foot says (docs/design/system.md "Date field"). A typed
+ * `from` + 365 still passes the cap.
+ */
+const PICKER_SPAN_DAYS = MAX_SPAN_DAYS - 1;
 const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
 
 function parse(day: string): number | null {
@@ -17,11 +27,26 @@ function parse(day: string): number | null {
 
 const format = (ms: number) => new Date(ms).toISOString().slice(0, 10);
 
+/** The day `days` after (or before) `day`, for the calendar's arrow keys. */
+export function shiftDay(day: string, days: number): string {
+  const start = parse(day);
+  if (start === null) throw new Error(`Not a date: ${day}`);
+  return format(start + days * ONE_DAY_MS);
+}
+
 /** The last day the picker offers for `to`, given `from`. */
-export function latestTo(from: string): string {
-  const start = parse(from);
-  if (start === null) throw new Error(`Not a date: ${from}`);
-  return format(start + MAX_SPAN_DAYS * ONE_DAY_MS);
+export const latestTo = (from: string) => shiftDay(from, PICKER_SPAN_DAYS);
+
+/** The first day the picker offers for `from`, given `to`: the cap's mirror. */
+export const earliestFrom = (to: string) => shiftDay(to, -PICKER_SPAN_DAYS);
+
+/** Every day of a month (1–12), as `YYYY-MM-DD`. */
+export function daysOfMonth(year: number, month: number): string[] {
+  const first = Date.UTC(year, month - 1, 1);
+  const next = Date.UTC(year, month, 1);
+  const days: string[] = [];
+  for (let ms = first; ms < next; ms += ONE_DAY_MS) days.push(format(ms));
+  return days;
 }
 
 export function exceedsCap(from: string, to: string): boolean {

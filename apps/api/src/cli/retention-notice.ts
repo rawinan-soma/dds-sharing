@@ -1,11 +1,10 @@
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { repoPath } from '../repo-paths';
 
 /** §12.9: what is recorded about a Reviewer, in the catalogue's own words. */
 export function loadRetentionNotice(): string[] {
   const messages = JSON.parse(
-    // dist/cli or src/cli, four levels below the repository root.
-    readFileSync(join(__dirname, '../../../../messages/en.json'), 'utf-8'),
+    readFileSync(repoPath('messages/en.json'), 'utf-8'),
   ) as Record<string, string>;
   return [
     messages.reviewer_retention_heading,

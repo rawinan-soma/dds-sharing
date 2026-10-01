@@ -107,3 +107,7 @@ Merged in #107 (bc98ae6b347a5f1797c8419e028daef08c1c4739).
 
 **rawinan-soma** — 2026-09-23
 Superseded in part: the holiday list this ticket added is removed, and the business-hours clock now skips weekends only (ADR 0021, ticket 72). A stale list omitted holidays, which narrowed the window rather than widening it.
+
+**rawinan-soma** — 2026-09-30
+
+**Design re-drawn in the B system, layout chosen.** Question: what should the Reviewer screen look like in the Requester's system (blue accent, rounded cards)? Three layouts were drawn on the Lunagraph page "Requester form: prototypes" (`dds-prototype`): A, a split with the queue on the left; B, a dossier led by a judgement panel with name and Workplace large; C, the queue as a full-width table under three zone tabs, with the dossier in two columns and the decision strip beneath both. **C was picked**; A and B were deleted. The frame is now `5 · คิวและแฟ้มคำขอ`, and it is locked in `docs/design/system.md` under "The Reviewer screen, as locked". The rules of this ticket are unchanged; only the layout moved.

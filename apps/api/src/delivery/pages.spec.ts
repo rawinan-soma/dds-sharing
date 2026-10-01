@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { B, DRAWN } from '../design/b-tokens';
 import { catalogue } from '../i18n/copy-catalogue';
 import { renderCollectionPage, renderExpiredPage } from './pages';
 
@@ -45,4 +46,33 @@ describe('renderExpiredPage', () => {
   it('carries no script tag', () => {
     expect(html).not.toContain('<script');
   });
+});
+
+describe('both pages', () => {
+  const pages = {
+    collection: renderCollectionPage(catalogue, {
+      reference: 'REQ-2569-0001',
+      archiveFilename: 'REQ-2569-0001.zip',
+      sizeBytes: 1024,
+      attemptsUsed: 0,
+      timeLeftMs: 60 * 60 * 1000,
+      archiveUrl: 'https://frontend.test/d/abc123/archive',
+    }),
+    expired: renderExpiredPage(catalogue),
+  };
+
+  it.each(Object.entries(pages))(
+    'colours the %s page with B tokens and drawn values only',
+    (_, html) => {
+      const allowed = new Set<string>([
+        ...Object.values(B),
+        ...Object.values(DRAWN),
+      ]);
+      const used = [...html.matchAll(/#[0-9a-fA-F]{3,8}\b/g)].map(([c]) =>
+        c.toLowerCase(),
+      );
+      expect(used.length).toBeGreaterThan(0);
+      expect(used.filter((c) => !allowed.has(c))).toEqual([]);
+    },
+  );
 });

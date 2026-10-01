@@ -1,12 +1,11 @@
 import { readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join } from 'node:path';
+import { apiPath, repoPath } from '../repo-paths';
 import { describe, expect, it } from 'vitest';
 import { catalogue, interpolate, loadCatalogue } from './copy-catalogue';
 
-const here = dirname(fileURLToPath(import.meta.url));
-const messagesDir = join(here, '../../../../messages');
-const fixtureRoot = join(here, '../../test/fixtures/catalogue');
+const messagesDir = repoPath('messages');
+const fixtureRoot = apiPath('test/fixtures/catalogue');
 
 const en = JSON.parse(
   readFileSync(join(messagesDir, 'en.json'), 'utf-8'),
@@ -18,10 +17,12 @@ const th = JSON.parse(
 const THAI_CHAR = /[฀-๿]/;
 
 // §17.1's checked-in exemption list: values that are legitimately not Thai
-// even in the Thai catalogue (telephone number, DDS, email addresses).
+// even in the Thai catalogue (telephone number, DDS, the product name *DDS
+// Sharing* as the Reviewer frames draw it, email addresses).
 const EXEMPT_VALUE_PATTERNS = [
   /^[\d\s()+-]+$/,
   /^DDS$/,
+  /^DDS Sharing$/,
   /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
 ];
 

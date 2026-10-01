@@ -95,12 +95,20 @@ describe('SignInPage', () => {
     expect(input('password').type).toBe('password');
   });
 
-  it('shows the notes beneath: audit, recovery through the other Reviewer, and unlisted as tidiness', async () => {
+  it('shows one note beneath: accounts by the operator, no email reset, the other Reviewer', async () => {
     await setup();
-    const text = el.textContent!;
-    expect(text).toContain(m.reviewer_signin_audit_note());
-    expect(text).toContain(m.reviewer_signin_recovery_detail());
-    expect(text).toContain(m.reviewer_signin_unlisted_note());
+    expect(el.querySelector('.note')?.textContent).toContain(
+      m.reviewer_signin_note(),
+    );
+  });
+
+  it('says beneath the code box that the code changes every 30 seconds', async () => {
+    await setup();
+    const code = input('code');
+    expect(
+      el.querySelector(`#${code.getAttribute('aria-describedby')}`)
+        ?.textContent,
+    ).toContain(m.reviewer_signin_code_hint());
   });
 
   it('submits all three together in a single request', async () => {
@@ -124,6 +132,8 @@ describe('SignInPage', () => {
     );
 
     const alert = el.querySelector('[role=alert]')!;
+    expect(alert.classList).toContain('failed');
+    expect(alert.textContent).toContain(m.reviewer_signin_failed_title());
     expect(alert.textContent).toContain(m.reviewer_signin_failed());
     expect(alert.textContent).toContain(m.reviewer_signin_no_lockout());
     // Nothing on screen names a factor as the culprit.

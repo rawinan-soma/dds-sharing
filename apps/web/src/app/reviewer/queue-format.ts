@@ -46,3 +46,18 @@ const INSTANT = new Intl.DateTimeFormat('th-TH-u-ca-buddhist', {
 
 export const formatInstant = (iso: string): string =>
   INSTANT.format(new Date(iso));
+
+// The same instant in a table cell: the abbreviated month, so a row stays one
+// line in its column.
+const SHORT_INSTANT = new Intl.DateTimeFormat('th-TH-u-ca-buddhist', {
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+  hourCycle: 'h23',
+  timeZone: 'Asia/Bangkok',
+});
+
+export const formatShortInstant = (iso: string): string =>
+  SHORT_INSTANT.format(new Date(iso));

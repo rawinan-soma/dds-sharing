@@ -210,13 +210,7 @@ export const requestEvent = pgTable(
       .references(() => request.id),
     type: requestEventType('type').notNull(),
   },
-  (table) => [
-    ...actorChecks(table),
-    // Duplicate suppression asks "which Requests came from this IP".
-    index('request_event_submitted_ip')
-      .on(table.ip)
-      .where(sql`${table.type} = 'submitted'`),
-  ],
+  (table) => [...actorChecks(table)],
 );
 
 export const reviewerEvent = pgTable(
