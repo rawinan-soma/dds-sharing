@@ -417,5 +417,8 @@
   "reviewer_lookup_headline": "Request {reference}",
   "reviewer_lookup_ended_tag": "Ended",
   "reviewer_approved_at_label": "Approved at",
-  "reviewer_lookup_outcome": "Outcome"
+  "reviewer_lookup_outcome": "Outcome",
+  "reviewer_state_just_approved": "Just approved",
+  "reviewer_inflight_local_note": "Approved on this screen. Refresh to see where it stands.",
+  "reviewer_lookup_placeholder": "e.g. REQ-2569-0142"
 }

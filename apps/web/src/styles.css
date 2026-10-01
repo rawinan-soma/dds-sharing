@@ -22,6 +22,10 @@
   --primary-hover: #3050e8;
   --primary-wash: #eef1ff;
   --primary-foreground: #ffffff;
+  /* Text on a `foreground` panel (the Field tooltip, the Toast): the title,
+     and the body at 10.47:1. */
+  --inverse: #ffffff;
+  --inverse-muted: #c9ccd3;
 
   --success: #1a7a4f;
   --success-wash: #e6f4ec;
@@ -47,6 +51,10 @@
   --shadow-card: 0 30px 60px rgb(0 0 0 / 0.06);
   --shadow-focus: 0 0 0 3px rgb(59 91 253 / 0.18);
   --shadow-float: 0 12px 32px rgb(0 0 0 / 0.18);
+  /* A Dialog over its scrim. */
+  --shadow-dialog: 0 30px 60px rgb(0 0 0 / 0.18);
+  /* The selected segment of the Reviewer's zone tabs, lifted off its track. */
+  --shadow-segment: 0 1px 2px rgb(0 0 0 / 0.08);
 
   /* Self-hosted through @fontsource (400, 500 and 600), loaded by the `styles`
      array in angular.json: no request leaves the ministry network. */
@@ -634,13 +642,13 @@ select.field-box.placeholder {
 .tip-title {
   font-size: 13px;
   font-weight: 600;
-  color: #ffffff;
+  color: var(--inverse);
 }
 
 .tip-body {
   font-size: 12px;
   line-height: 1.5;
-  color: #c9ccd3;
+  color: var(--inverse-muted);
 }
 
 /* ---- The request page: title, file contents, map-first split ----------- */
@@ -1628,4 +1636,62 @@ app-phone-text strong {
 
 .zone-table tbody th {
   font-weight: 400;
+}
+
+/* A table whose rows open a dossier: the link in each row header stretches
+   over its row, so the whole row is the target and the link its one tab
+   stop. The selected row is the dossier below. */
+.zone-table.linked tbody tr {
+  position: relative;
+}
+
+.zone-table.linked tbody tr:hover {
+  background: var(--quiet);
+}
+
+.zone-table.linked tbody th a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.zone-table.linked tbody th a::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+
+.zone-table.linked tbody th a:focus-visible {
+  outline: none;
+}
+
+.zone-table.linked tbody tr:has(a:focus-visible) {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
+
+.zone-table.linked tbody tr:has(a.selected) {
+  background: var(--primary-wash);
+  box-shadow: inset 3px 0 0 var(--primary);
+}
+
+.zone-table.linked tbody tr:has(a.selected) th {
+  font-weight: 600;
+}
+
+/* An Alert's selected row is pending, not primary (6a). */
+.zone-table.linked.alerts tbody tr:has(a.selected) {
+  background: var(--pending-wash);
+  box-shadow: inset 3px 0 0 var(--pending);
+}
+
+.zone-table .w-220 {
+  width: 220px;
+}
+
+.zone-table .w-180 {
+  width: 180px;
+}
+
+.zone-table .w-160 {
+  width: 160px;
 }

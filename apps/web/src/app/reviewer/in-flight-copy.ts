@@ -1,6 +1,7 @@
 import * as m from '../../paraglide/messages.js';
 import { type ExtractionState, type InFlightRow } from './queue-api';
 import { formatDuration, minutesSince } from './queue-format';
+import { type TagTone } from './tag';
 
 /**
  * The in-flight row's link cell (§10.9): a ready link shows its wall-clock
@@ -24,9 +25,7 @@ export function inFlightLinkCell(entry: InFlightRow, now: number): string {
 }
 
 /** The Tag tone for an extraction state: ready to act on, nothing to do, broken. */
-export function extractionTone(
-  state: ExtractionState,
-): 'success' | 'inert' | 'failed' {
+export function extractionTone(state: ExtractionState): TagTone {
   switch (state) {
     case 'ready':
       return 'success';

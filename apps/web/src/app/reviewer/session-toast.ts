@@ -33,7 +33,7 @@ import { ReviewerSession } from './reviewer-session';
       width: 400px;
       max-width: calc(100vw - 48px);
       padding: 16px 18px;
-      color: #ffffff;
+      color: var(--inverse);
       background: var(--foreground);
       border-radius: var(--radius-lg);
       box-shadow: var(--shadow-float);
@@ -47,7 +47,7 @@ import { ReviewerSession } from './reviewer-session';
       margin-top: 4px;
       font-size: 13px;
       line-height: 1.5;
-      color: #c9ccd3;
+      color: var(--inverse-muted);
     }
     .actions {
       display: flex;
@@ -56,10 +56,10 @@ import { ReviewerSession } from './reviewer-session';
       margin-top: 12px;
     }
     /* The quiet variant on the dark panel: its muted ink would be too faint
-       here, so it takes the body's #c9ccd3 for both ink and edge. */
+       here, so it takes the body's ink for both ink and edge. */
     .btn-quiet {
-      color: #c9ccd3;
-      border-color: #c9ccd3;
+      color: var(--inverse-muted);
+      border-color: var(--inverse-muted);
     }
     .btn-quiet:hover,
     .btn-quiet:active {
@@ -67,7 +67,7 @@ import { ReviewerSession } from './reviewer-session';
     }
     /* primary on the dark panel is too close to read as a ring. */
     .toast :focus-visible {
-      outline-color: #ffffff;
+      outline-color: var(--inverse);
     }
   `,
 })

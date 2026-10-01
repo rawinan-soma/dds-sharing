@@ -6,14 +6,20 @@ import {
   afterNextRender,
   inject,
   signal,
-  viewChild,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
 import * as m from '../../paraglide/messages.js';
-import { formatDay } from '../requester/format-day';
+import {
+  ContactRows,
+  DateRange,
+  DossierMessage,
+  focusHeading,
+  fullName,
+} from './dossier-parts';
 import { areaLine } from './area-copy';
 import { Icon } from './icon';
+import { Tag } from './tag';
 import { extractionTone, extractionWord, linkLeft } from './in-flight-copy';
 import {
   type ActionOutcome,
@@ -50,18 +56,14 @@ type Acting =
 // in-flight dossier, so red there would teach Reviewers to ignore red.
 @Component({
   selector: 'app-reviewer-in-flight',
-  imports: [Icon],
+  imports: [ContactRows, DateRange, DossierMessage, Icon, Tag],
   template: `
     @switch (view().kind) {
       @case ('gone') {
-        <div class="dossier-message">
-          <h2 #heading tabindex="-1">{{ copy.gone }}</h2>
-        </div>
+        <app-dossier-message [text]="copy.gone" />
       }
       @case ('failed') {
-        <div class="dossier-message">
-          <h2 #heading tabindex="-1" role="alert">{{ copy.loadFailed }}</h2>
-        </div>
+        <app-dossier-message [text]="copy.loadFailed" [alert]="true" />
       }
       @case ('ok') {
         @if (detail(); as d) {
@@ -69,11 +71,13 @@ type Acting =
             <header class="dossier-head">
               <div>
                 <div class="head-tags">
-                  <span [class]="'tag md ' + tone(d)">{{ stateWord(d) }}</span>
+                  <app-tag size="md" [tone]="tone(d)">{{
+                    stateWord(d)
+                  }}</app-tag>
                 </div>
                 <p class="reference figure">{{ d.reference }}</p>
-                <h2 #heading tabindex="-1">
-                  {{ d.contact.name }} {{ d.contact.surname }}
+                <h2 tabindex="-1">
+                  {{ fullName(d.contact) }}
                 </h2>
               </div>
               <dl class="head-cells">
@@ -111,28 +115,7 @@ type Acting =
             <div class="dossier-columns">
               <section aria-labelledby="who">
                 <h3 id="who" class="section-title">{{ copy.whoHeading }}</h3>
-                <dl class="rows compact">
-                  <div>
-                    <dt>{{ copy.firstName }}</dt>
-                    <dd>{{ d.contact.name }}</dd>
-                  </div>
-                  <div>
-                    <dt>{{ copy.lastName }}</dt>
-                    <dd>{{ d.contact.surname }}</dd>
-                  </div>
-                  <div>
-                    <dt>{{ copy.workplace }}</dt>
-                    <dd>{{ d.contact.workplace }}</dd>
-                  </div>
-                  <div>
-                    <dt>{{ copy.telephone }}</dt>
-                    <dd class="figure">{{ d.contact.tel }}</dd>
-                  </div>
-                  <div>
-                    <dt>{{ copy.email }}</dt>
-                    <dd class="email">{{ d.contact.email }}</dd>
-                  </div>
-                </dl>
+                <app-contact-rows [contact]="d.contact" />
                 <p class="contact-note">{{ copy.contactVisible }}</p>
               </section>
               <section aria-labelledby="ask">
@@ -145,13 +128,7 @@ type Acting =
                   <div>
                     <dt>{{ copy.dates }}</dt>
                     <dd>
-                      <time [attr.datetime]="d.startDate">{{
-                        day(d.startDate)
-                      }}</time>
-                      –
-                      <time [attr.datetime]="d.endDate">{{
-                        day(d.endDate)
-                      }}</time>
+                      <app-date-range [start]="d.startDate" [end]="d.endDate" />
                     </dd>
                   </div>
                   <div>
@@ -166,15 +143,15 @@ type Acting =
               <div class="action">
                 <h3>{{ copy.resendTitle }}</h3>
                 <p id="resend-note">{{ copy.resendNote }}</p>
-                @if (!may(d, 'resend')) {
+                @if (!isAvailable(d, 'resend')) {
                   <p id="resend-held" class="held">{{ heldReason(d) }}</p>
                 }
                 <button
                   class="btn btn-secondary resend"
                   type="button"
-                  [attr.aria-disabled]="!may(d, 'resend') || null"
+                  [attr.aria-disabled]="!isAvailable(d, 'resend') || null"
                   [attr.aria-describedby]="
-                    may(d, 'resend') ? 'resend-note' : 'resend-held'
+                    isAvailable(d, 'resend') ? 'resend-note' : 'resend-held'
                   "
                   [attr.aria-busy]="busyWith('resend') || null"
                   (click)="act(d, 'resend')"
@@ -185,7 +162,7 @@ type Acting =
               <div class="action">
                 <h3>{{ copy.rerunTitle }}</h3>
                 <p id="rerun-note">{{ copy.rerunNote }}</p>
-                @if (!may(d, 'rerun')) {
+                @if (!isAvailable(d, 'rerun')) {
                   <p id="rerun-held" class="held">
                     {{ copy.extractingNote }}
                   </p>
@@ -193,9 +170,9 @@ type Acting =
                 <button
                   class="btn btn-secondary rerun"
                   type="button"
-                  [attr.aria-disabled]="!may(d, 'rerun') || null"
+                  [attr.aria-disabled]="!isAvailable(d, 'rerun') || null"
                   [attr.aria-describedby]="
-                    may(d, 'rerun') ? 'rerun-note' : 'rerun-held'
+                    isAvailable(d, 'rerun') ? 'rerun-note' : 'rerun-held'
                   "
                   [attr.aria-busy]="busyWith('rerun') || null"
                   (click)="act(d, 'rerun')"
@@ -205,7 +182,7 @@ type Acting =
                 </button>
               </div>
             </section>
-            @if (said(); as s) {
+            @if (lastOutcome(); as s) {
               <p
                 class="said"
                 [class.problem]="s.problem"
@@ -280,7 +257,7 @@ export class InFlightPage {
   private readonly api = inject(QueueApi);
   private readonly store = inject(QueueStore);
   private readonly injector = inject(Injector);
-  private readonly heading = viewChild<ElementRef<HTMLElement>>('heading');
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   protected readonly view = signal<View>({ kind: 'loading' });
   private readonly acting = signal<Acting>({ kind: 'idle' });
   private asked = 0;
@@ -340,12 +317,12 @@ export class InFlightPage {
         ? { kind: 'ok', detail: outcome.detail }
         : { kind: outcome.kind },
     );
-    afterNextRender(() => this.heading()?.nativeElement.focus(), {
+    afterNextRender(() => focusHeading(this.host.nativeElement), {
       injector: this.injector,
     });
   }
 
-  protected may(d: InFlightDetail, action: Action): boolean {
+  protected isAvailable(d: InFlightDetail, action: Action): boolean {
     return d.actions[action];
   }
 
@@ -354,13 +331,13 @@ export class InFlightPage {
     return acting.kind === 'busy' && acting.action === action;
   }
 
-  protected said(): { message: string; problem: boolean } | null {
+  protected lastOutcome(): { message: string; problem: boolean } | null {
     const acting = this.acting();
     return acting.kind === 'said' ? acting : null;
   }
 
   protected async act(d: InFlightDetail, action: Action): Promise<void> {
-    if (!this.may(d, action) || this.acting().kind === 'busy') return;
+    if (!this.isAvailable(d, action) || this.acting().kind === 'busy') return;
     this.acting.set({ kind: 'busy', action });
     const outcome =
       action === 'rerun'
@@ -421,7 +398,7 @@ export class InFlightPage {
   protected attempts = (count: number) =>
     m.reviewer_file_attempts_value({ count });
   protected left = (expiresAt: string) => linkLeft(expiresAt, Date.now());
-  protected day = formatDay;
   protected shortInstant = formatShortInstant;
   protected areaLine = areaLine;
+  protected fullName = fullName;
 }

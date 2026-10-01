@@ -417,5 +417,8 @@
   "reviewer_lookup_headline": "คำขอ {reference}",
   "reviewer_lookup_ended_tag": "สิ้นสุดแล้ว",
   "reviewer_approved_at_label": "อนุมัติเมื่อ",
-  "reviewer_lookup_outcome": "ผล"
+  "reviewer_lookup_outcome": "ผล",
+  "reviewer_state_just_approved": "เพิ่งอนุมัติ",
+  "reviewer_inflight_local_note": "อนุมัติจากหน้านี้ กดรีเฟรชเพื่อดูสถานะล่าสุด",
+  "reviewer_lookup_placeholder": "เช่น REQ-2569-0142"
 }

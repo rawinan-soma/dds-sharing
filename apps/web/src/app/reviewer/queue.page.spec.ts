@@ -4,7 +4,7 @@ import {
   provideHttpClientTesting,
 } from '@angular/common/http/testing';
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideRouter } from '@angular/router';
+import { Router, provideRouter } from '@angular/router';
 import * as m from '../../paraglide/messages.js';
 import { getLocale, overwriteGetLocale } from '../../paraglide/runtime.js';
 import {
@@ -14,6 +14,7 @@ import {
   type QueueRow,
 } from './queue-api';
 import { QueuePage } from './queue.page';
+import { QueueStore } from './queue-store';
 
 const row = (id: string, over: Partial<QueueRow> = {}): QueueRow => ({
   id,
@@ -221,6 +222,17 @@ describe('QueuePage', () => {
       expect(tabs()[2].getAttribute('aria-selected')).toBe('true');
     });
 
+    it('follow the zone named in the address, as the 11c link sets it', async () => {
+      await firstLoad([row('a')]);
+      await TestBed.inject(Router).navigate([], {
+        queryParams: { zone: 'in-flight' },
+      });
+      await settle();
+      expect(
+        tabNamed(m.reviewer_inflight_heading()).getAttribute('aria-selected'),
+      ).toBe('true');
+    });
+
     it('show the selected zone only, so a Request appears in exactly one place', async () => {
       http
         .expectOne('/api/reviewer/queue')
@@ -384,6 +396,28 @@ describe('QueuePage', () => {
       expect(zone()!.textContent).not.toContain(
         m.reviewer_approved_by({ reviewer: '' }).trim(),
       );
+    });
+
+    it('marks a Request approved on this screen as known only here until refresh', async () => {
+      await loadInFlight([inFlightRow('x')]);
+      TestBed.inject(QueueStore).approvePending('a');
+      await settle();
+      const local = rows().find((r) => r.textContent!.includes('Name a'))!;
+      expect(local.querySelector('.tag')!.textContent).toContain(
+        m.reviewer_state_just_approved(),
+      );
+      expect(local.textContent).toContain(m.reviewer_inflight_local_note());
+      // Never a guessed extraction state.
+      expect(local.textContent).not.toContain(m.reviewer_state_extracting());
+
+      refresh().click();
+      await settle();
+      http
+        .expectOne('/api/reviewer/queue')
+        .flush(list([], 'running', [], [inFlightRow('x'), inFlightRow('a')]));
+      await settle();
+      const read = rows().find((r) => r.textContent!.includes('REQ-a'))!;
+      expect(read.textContent).not.toContain(m.reviewer_inflight_local_note());
     });
 
     it('says so in place of the table when nothing is in flight', async () => {

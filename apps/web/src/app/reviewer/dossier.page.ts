@@ -11,7 +11,14 @@ import {
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import * as m from '../../paraglide/messages.js';
-import { formatDay } from '../requester/format-day';
+import {
+  ContactRows,
+  DateRange,
+  DossierMessage,
+  dateRangeText,
+  focusHeading,
+  fullName,
+} from './dossier-parts';
 import { areaLine } from './area-copy';
 import { Dialog } from './dialog';
 import { Field } from './field';
@@ -61,7 +68,15 @@ const ROW_COUNT_FORMAT = new Intl.NumberFormat('th-TH');
 // It must not be floated, pinned or made sticky.
 @Component({
   selector: 'app-reviewer-dossier',
-  imports: [Dialog, Field, Icon, RouterLink],
+  imports: [
+    ContactRows,
+    DateRange,
+    Dialog,
+    DossierMessage,
+    Field,
+    Icon,
+    RouterLink,
+  ],
   template: `
     @switch (view().kind) {
       @case ('ok') {
@@ -70,7 +85,7 @@ const ROW_COUNT_FORMAT = new Intl.NumberFormat('th-TH');
             <header class="dossier-head">
               <div>
                 <p class="reference figure">{{ d.reference }}</p>
-                <h2 #heading tabindex="-1">{{ fullName(d) }}</h2>
+                <h2 tabindex="-1">{{ fullName(d.contact) }}</h2>
               </div>
               <dl class="head-cells">
                 <div>
@@ -101,28 +116,7 @@ const ROW_COUNT_FORMAT = new Intl.NumberFormat('th-TH');
             <div class="dossier-columns">
               <section aria-labelledby="who">
                 <h3 id="who" class="section-title">{{ copy.whoHeading }}</h3>
-                <dl class="rows compact">
-                  <div>
-                    <dt>{{ copy.firstName }}</dt>
-                    <dd>{{ d.contact.name }}</dd>
-                  </div>
-                  <div>
-                    <dt>{{ copy.lastName }}</dt>
-                    <dd>{{ d.contact.surname }}</dd>
-                  </div>
-                  <div>
-                    <dt>{{ copy.workplace }}</dt>
-                    <dd>{{ d.contact.workplace }}</dd>
-                  </div>
-                  <div>
-                    <dt>{{ copy.telephone }}</dt>
-                    <dd class="figure">{{ d.contact.tel }}</dd>
-                  </div>
-                  <div>
-                    <dt>{{ copy.email }}</dt>
-                    <dd class="email">{{ d.contact.email }}</dd>
-                  </div>
-                </dl>
+                <app-contact-rows [contact]="d.contact" />
               </section>
 
               <section aria-labelledby="ask">
@@ -144,13 +138,7 @@ const ROW_COUNT_FORMAT = new Intl.NumberFormat('th-TH');
                   <div>
                     <dt>{{ copy.dates }}</dt>
                     <dd>
-                      <time [attr.datetime]="d.startDate">{{
-                        day(d.startDate)
-                      }}</time>
-                      –
-                      <time [attr.datetime]="d.endDate">{{
-                        day(d.endDate)
-                      }}</time>
+                      <app-date-range [start]="d.startDate" [end]="d.endDate" />
                       <span class="note">{{ copy.datesInclusive }}</span>
                     </dd>
                   </div>
@@ -199,7 +187,8 @@ const ROW_COUNT_FORMAT = new Intl.NumberFormat('th-TH');
                           <p class="statement-note">
                             {{ copy.decidedApprovedName }}
                             <a
-                              [routerLink]="['/reviewer', 'in-flight', d.id]"
+                              [routerLink]="['/reviewer', d.id]"
+                              [queryParams]="{ zone: 'in-flight' }"
                               >{{ copy.decidedApprovedLink }}</a
                             >
                           </p>
@@ -374,14 +363,10 @@ const ROW_COUNT_FORMAT = new Intl.NumberFormat('th-TH');
         }
       }
       @case ('gone') {
-        <div class="dossier-message">
-          <h2 #heading tabindex="-1">{{ copy.gone }}</h2>
-        </div>
+        <app-dossier-message [text]="copy.gone" />
       }
       @case ('failed') {
-        <div class="dossier-message">
-          <h2 #heading tabindex="-1" role="alert">{{ copy.loadFailed }}</h2>
-        </div>
+        <app-dossier-message [text]="copy.loadFailed" [alert]="true" />
       }
     }
   `,
@@ -481,7 +466,7 @@ export class DossierPage {
   private readonly api = inject(QueueApi);
   private readonly store = inject(QueueStore);
   private readonly injector = inject(Injector);
-  private readonly heading = viewChild<ElementRef<HTMLElement>>('heading');
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly statement = viewChild<ElementRef<HTMLElement>>('statement');
 
   protected readonly view = signal<View>({ kind: 'loading' });
@@ -570,12 +555,11 @@ export class DossierPage {
     );
     // Selecting a Request moves focus to its heading, so a keyboard user lands
     // on what they picked rather than back in the list.
-    afterNextRender(() => this.heading()?.nativeElement.focus(), {
+    afterNextRender(() => focusHeading(this.host.nativeElement), {
       injector: this.injector,
     });
   }
 
-  protected day = formatDay;
   protected instant = formatInstant;
   protected timeLeft = formatDuration;
 
@@ -583,7 +567,7 @@ export class DossierPage {
   protected expiredNow = (d: Dossier) =>
     d.expired || this.decisionPhase().kind === 'request-expired';
 
-  protected fullName = (d: Dossier) => `${d.contact.name} ${d.contact.surname}`;
+  protected fullName = fullName;
 
   protected ahead(count: number | null): string {
     if (count === null) return '—';
@@ -608,7 +592,7 @@ export class DossierPage {
   protected askLine(d: Dossier): string {
     return [
       d.diseaseGroupName,
-      `${this.day(d.startDate)} – ${this.day(d.endDate)}`,
+      dateRangeText(d.startDate, d.endDate),
       areaLine(d.area),
     ].join(' · ');
   }
@@ -638,11 +622,11 @@ export class DossierPage {
   }
 
   protected approveDialogTitle(d: Dossier): string {
-    return m.reviewer_approve_dialog_title({ name: this.fullName(d) });
+    return m.reviewer_approve_dialog_title({ name: fullName(d.contact) });
   }
 
   protected rejectDialogTitle(d: Dossier): string {
-    return m.reviewer_reject_dialog_title({ name: this.fullName(d) });
+    return m.reviewer_reject_dialog_title({ name: fullName(d.contact) });
   }
 
   protected approvedHeading(decidedAt: string): string {

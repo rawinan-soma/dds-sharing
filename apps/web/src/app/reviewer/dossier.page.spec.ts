@@ -341,8 +341,9 @@ describe('DossierPage', () => {
       expect(el.querySelector('button')).toBeNull();
       expect(dialog()).toBeNull();
       expect(text()).toContain(m.reviewer_decided_approved_detail());
+      // A link to the in-flight tab, the dossier staying where it is (11c).
       expect(
-        el.querySelector('a[href="/reviewer/in-flight/r1"]')?.textContent,
+        el.querySelector('a[href="/reviewer/r1?zone=in-flight"]')?.textContent,
       ).toContain(m.reviewer_decided_approved_link());
       // Never auto-advances: the same Request stays on screen (§10.3).
       expect(text()).toContain('REQ-2569-0001');

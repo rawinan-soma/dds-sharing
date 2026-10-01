@@ -15,11 +15,9 @@ type Problem = 'not_found' | 'failed' | null;
   selector: 'app-lookup-search',
   template: `
     <form role="search" (submit)="$event.preventDefault(); find()">
-      <!-- The label is the field's name for a screen reader; on screen the
-           box carries it, as drawn. -->
-      <label class="visually-hidden" for="lookup-reference">{{
-        copy.label
-      }}</label>
+      <!-- A Field (system.md): the label above, an example in the box,
+           never the label again. -->
+      <label class="field-label" for="lookup-reference">{{ copy.label }}</label>
       <div class="line">
         <input
           id="lookup-reference"
@@ -28,7 +26,7 @@ type Problem = 'not_found' | 'failed' | null;
           autocapitalize="characters"
           spellcheck="false"
           aria-describedby="lookup-message"
-          [attr.placeholder]="copy.label"
+          [attr.placeholder]="copy.placeholder"
           [attr.aria-invalid]="problem() === 'not_found' ? 'true' : null"
           [value]="reference()"
           (input)="typed($event)"
@@ -84,6 +82,7 @@ export class LookupSearch {
 
   protected readonly copy = {
     label: m.reviewer_lookup_label(),
+    placeholder: m.reviewer_lookup_placeholder(),
     hint: m.reviewer_lookup_hint(),
     submit: m.reviewer_lookup_submit(),
     loading: m.reviewer_lookup_loading(),

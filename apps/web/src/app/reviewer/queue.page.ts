@@ -1,43 +1,86 @@
-import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
-import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import {
+  Component,
+  DestroyRef,
+  type Signal,
+  type Type,
+  computed,
+  inject,
+  signal,
+} from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ActivatedRoute, Router, RouterOutlet } from '@angular/router';
 import * as m from '../../paraglide/messages.js';
 import { AlertPage } from './alert.page';
-import { alertRaisedAgo, alertTitle } from './alert-copy';
 import { DossierPage } from './dossier.page';
 import { Icon } from './icon';
-import {
-  extractionTone,
-  extractionWord,
-  inFlightLinkCell,
-} from './in-flight-copy';
 import { InFlightPage } from './in-flight.page';
-import { type AlertRow, type InFlightRow } from './queue-api';
 import { LookupSearch } from './lookup-search';
-import {
-  formatDuration,
-  formatShortInstant,
-  minutesSince,
-} from './queue-format';
+import { minutesSince } from './queue-format';
 import { QueueStore } from './queue-store';
 import { ReviewerSession } from './reviewer-session';
+import { AlertsZone, InFlightZone, QueueZone } from './zone-tables';
 
 // How often the staleness line re-reads the local clock. It asks the server for
 // nothing: a page that polled would keep the session alive for ever, and an
 // idle timeout that never fires is no timeout (§10.5).
 const STALENESS_TICK_MS = 30_000;
 
-type Zone = 'queue' | 'alerts' | 'in_flight';
-const ZONES: readonly Zone[] = ['queue', 'alerts', 'in_flight'];
+type ZoneId = 'queue' | 'alerts' | 'in_flight';
+
+/** One zone of the surface: its tab, its rows, its dossier, its address. */
+interface Zone {
+  id: ZoneId;
+  label: () => string;
+  rows: (store: QueueStore) => Signal<readonly unknown[] | null>;
+  /** The routed dossier that belongs to this zone. */
+  page: Type<unknown>;
+  /** Its value in the `?zone=` address, as the 11c link writes it. */
+  param: string;
+}
+
+const ZONES: readonly Zone[] = [
+  {
+    id: 'queue',
+    label: () => m.reviewer_zone_queue(),
+    rows: (store) => store.rows,
+    page: DossierPage,
+    param: 'queue',
+  },
+  {
+    id: 'alerts',
+    label: () => m.reviewer_alerts_heading(),
+    rows: (store) => store.alerts,
+    page: AlertPage,
+    param: 'alerts',
+  },
+  {
+    id: 'in_flight',
+    label: () => m.reviewer_inflight_heading(),
+    rows: (store) => store.inFlight,
+    page: InFlightPage,
+    param: 'in-flight',
+  },
+];
 
 // The Reviewer's desk (system.md "The Reviewer screens, as locked"): one card,
 // the queue band above (the three zones as tabs over one table) and the routed
 // dossier below. A Request is in exactly one zone at a time (an open Alert
-// takes it out of the in-flight list), and the table shows the selected zone
-// only, so it appears in one place; each tab carries its count, so an open
-// Alert is visible from the queue without a badge.
+// takes it out of the in-flight list), and the tabpanel shows the selected
+// zone only, so it appears in one place; each tab carries its count, so an
+// open Alert is visible from the queue without a badge.
+//
+// The selected zone follows, in order: a tab pressed here; `?zone=` in the
+// address (the 11c link); and otherwise the zone of the dossier opened.
 @Component({
   selector: 'app-reviewer-queue',
-  imports: [Icon, LookupSearch, RouterLink, RouterLinkActive, RouterOutlet],
+  imports: [
+    AlertsZone,
+    Icon,
+    InFlightZone,
+    LookupSearch,
+    QueueZone,
+    RouterOutlet,
+  ],
   template: `
     <div class="desk">
       <div class="desk-card">
@@ -71,19 +114,21 @@ const ZONES: readonly Zone[] = ['queue', 'alerts', 'in_flight'];
               role="tablist"
               [attr.aria-label]="copy.zones"
             >
-              @for (zone of zones; track zone) {
+              @for (zone of zones; track zone.id; let at = $index) {
                 <button
                   type="button"
                   role="tab"
-                  [id]="tabId(zone)"
+                  [id]="tabId(zone.id)"
                   aria-controls="zone-panel"
-                  [attr.aria-selected]="zone === selected()"
-                  [tabIndex]="zone === selected() ? 0 : -1"
-                  [class.outstanding]="zone === 'alerts' && !!alerts()?.length"
-                  (click)="select(zone)"
-                  (keydown)="onTabKey($event)"
+                  [attr.aria-selected]="zone.id === selected()"
+                  [tabIndex]="zone.id === selected() ? 0 : -1"
+                  [class.outstanding]="
+                    zone.id === 'alerts' && !!alerts()?.length
+                  "
+                  (click)="select(zone.id)"
+                  (keydown)="onTabKey($event, at)"
                 >
-                  {{ zoneLabel(zone) }}
+                  {{ zone.label() }}
                   @if (count(zone); as n) {
                     · <span class="figure">{{ n.value }}</span>
                   }
@@ -133,196 +178,20 @@ const ZONES: readonly Zone[] = ['queue', 'alerts', 'in_flight'];
             } @else {
               @switch (selected()) {
                 @case ('queue') {
-                  @if (rows(); as list) {
-                    @if (list.length) {
-                      <table class="zone-table queue-table">
-                        <colgroup>
-                          <col class="w-220" />
-                          <col />
-                          <col class="w-180" />
-                          <col class="w-160" />
-                        </colgroup>
-                        <thead>
-                          <tr>
-                            <th scope="col">{{ copy.colRequester }}</th>
-                            <th scope="col">{{ copy.colGroup }}</th>
-                            <th scope="col">{{ copy.colSubmitted }}</th>
-                            <th scope="col">{{ copy.colTimeLeft }}</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          @for (row of list; track row.id) {
-                            <tr>
-                              <th scope="row">
-                                <a
-                                  [routerLink]="[row.id]"
-                                  routerLinkActive="selected"
-                                  ariaCurrentWhenActive="page"
-                                  >{{ row.requesterName }}</a
-                                >
-                              </th>
-                              <td>{{ row.diseaseGroupName }}</td>
-                              <td>
-                                <time [attr.datetime]="row.submittedAt">{{
-                                  shortInstant(row.submittedAt)
-                                }}</time>
-                              </td>
-                              <td>
-                                @if (row.expired) {
-                                  <span class="tag pending">{{
-                                    copy.expired
-                                  }}</span>
-                                } @else {
-                                  <span
-                                    class="figure"
-                                    [class.leader]="row.id === leaderId()"
-                                    >{{ duration(row.minutesLeft) }}</span
-                                  >
-                                }
-                              </td>
-                            </tr>
-                          }
-                        </tbody>
-                      </table>
-                    } @else if (alerts()?.length) {
-                      <!-- 12b: never says the desk is clear while an Alert is open. -->
-                      <div class="empty-state">
-                        <span class="status-mark pending" aria-hidden="true"
-                          >!</span
-                        >
-                        <h2>{{ copy.alertsEmptyTitle }}</h2>
-                        <p>{{ alertsEmptyCount() }}</p>
-                        <button
-                          class="btn btn-secondary"
-                          type="button"
-                          (click)="select('alerts')"
-                        >
-                          {{ copy.alertsEmptyAction }}
-                        </button>
-                      </div>
-                    } @else {
-                      <div class="empty-state">
-                        <span class="status-mark success" aria-hidden="true">
-                          <app-icon name="check" [size]="22" />
-                        </span>
-                        <h2>{{ copy.emptyTitle }}</h2>
-                        <p>{{ copy.emptyDetail }}</p>
-                        <p>{{ copy.emptyNote }}</p>
-                      </div>
-                    }
-                  }
+                  <app-queue-zone (showAlerts)="select('alerts')" />
                 }
                 @case ('alerts') {
-                  @if (alerts(); as list) {
-                    @if (list.length) {
-                      <table class="zone-table alerts-table">
-                        <colgroup>
-                          <col class="w-220" />
-                          <col class="w-160" />
-                          <col />
-                          <col class="w-180" />
-                          <col class="w-160" />
-                        </colgroup>
-                        <thead>
-                          <tr>
-                            <th scope="col">{{ copy.colKind }}</th>
-                            <th scope="col">{{ copy.colRequest }}</th>
-                            <th scope="col">{{ copy.colRequester }}</th>
-                            <th scope="col">{{ copy.colAssigned }}</th>
-                            <th scope="col">{{ copy.colRaised }}</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          @for (
-                            alert of list;
-                            track alert.requestId + alert.kind
-                          ) {
-                            <tr>
-                              <td class="kind">{{ alertTitle(alert.kind) }}</td>
-                              <th scope="row" class="figure">
-                                <a
-                                  [routerLink]="['alerts', alert.requestId]"
-                                  routerLinkActive="selected"
-                                  ariaCurrentWhenActive="page"
-                                  >{{ alert.reference }}</a
-                                >
-                              </th>
-                              <td>{{ alert.requesterName }}</td>
-                              <td>{{ alert.assignedTo.displayName }}</td>
-                              <td>{{ raisedAgo(alert) }}</td>
-                            </tr>
-                          }
-                        </tbody>
-                      </table>
-                    } @else {
-                      <div class="empty-state">
-                        <span class="status-mark success" aria-hidden="true">
-                          <app-icon name="check" [size]="22" />
-                        </span>
-                        <h2>{{ copy.alertsZoneEmpty }}</h2>
-                      </div>
-                    }
-                  }
+                  <app-alerts-zone [now]="now()" />
                 }
                 @case ('in_flight') {
-                  @if (inFlight(); as list) {
-                    <p class="zone-note">{{ suppressionNote() }}</p>
-                    @if (list.length) {
-                      <table class="zone-table inflight-table">
-                        <colgroup>
-                          <col class="w-220" />
-                          <col />
-                          <col class="w-180" />
-                          <col />
-                        </colgroup>
-                        <thead>
-                          <tr>
-                            <th scope="col">{{ copy.colRequest }}</th>
-                            <th scope="col">{{ copy.colRequester }}</th>
-                            <th scope="col">{{ copy.colState }}</th>
-                            <th scope="col">{{ copy.colLink }}</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          @for (entry of list; track entry.requestId) {
-                            <tr>
-                              <th scope="row" class="figure">
-                                <a
-                                  [routerLink]="['in-flight', entry.requestId]"
-                                  routerLinkActive="selected"
-                                  ariaCurrentWhenActive="page"
-                                  >{{ entry.reference }}</a
-                                >
-                              </th>
-                              <td>{{ entry.requesterName }}</td>
-                              <td>
-                                <span [class]="'tag ' + tone(entry)">{{
-                                  stateWord(entry)
-                                }}</span>
-                              </td>
-                              <td class="muted figure">
-                                {{ linkCell(entry) }}
-                              </td>
-                            </tr>
-                          }
-                        </tbody>
-                      </table>
-                    } @else {
-                      <div class="empty-state">
-                        <span class="status-mark inert" aria-hidden="true">
-                          <app-icon name="check" [size]="22" />
-                        </span>
-                        <h2>{{ copy.inFlightZoneEmpty }}</h2>
-                      </div>
-                    }
-                  }
+                  <app-in-flight-zone [now]="now()" />
                 }
               }
             }
           </div>
         </section>
 
-        <div class="dossier-slot">
+        <div>
           @if (rows()?.length && !dossierOpen()) {
             <p class="dossier-message muted">{{ copy.noneSelected }}</p>
           }
@@ -440,7 +309,7 @@ const ZONES: readonly Zone[] = ['queue', 'alerts', 'in_flight'];
       color: var(--foreground);
       font-weight: 600;
       background: var(--card);
-      box-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
+      box-shadow: var(--shadow-segment);
     }
     /* An open Alert is visible from any tab, in words and in ink. */
     [role='tab'].outstanding {
@@ -452,9 +321,10 @@ const ZONES: readonly Zone[] = ['queue', 'alerts', 'in_flight'];
       gap: 16px;
       margin-left: auto;
     }
+    /* Down by the lookup's label, so the line and refresh sit by its box. */
     .staleness {
       max-width: 300px;
-      padding-top: 10px;
+      padding-top: 34px;
       font-size: 12px;
       line-height: 1.5;
       color: var(--muted-foreground);
@@ -464,6 +334,7 @@ const ZONES: readonly Zone[] = ['queue', 'alerts', 'in_flight'];
     }
     .refresh {
       flex: none;
+      margin-top: 27px;
     }
     .zone-panel {
       background: var(--card);
@@ -471,93 +342,29 @@ const ZONES: readonly Zone[] = ['queue', 'alerts', 'in_flight'];
       border-radius: var(--radius-lg);
       overflow: hidden;
     }
-    .zone-note {
-      padding: 10px 20px;
-      font-size: 12px;
-      color: var(--muted-foreground);
-      border-bottom: 1px solid var(--border);
-    }
     .panel-message {
       padding: 24px 20px;
-    }
-    .w-220 {
-      width: 220px;
-    }
-    .w-180 {
-      width: 180px;
-    }
-    .w-160 {
-      width: 160px;
-    }
-    /* Each row is its link: the link in the row header stretches over the
-       row, so the whole row is the target and the link is its one tab stop. */
-    tbody tr {
-      position: relative;
-    }
-    tbody tr:hover {
-      background: var(--quiet);
-    }
-    tbody th a {
-      color: inherit;
-      text-decoration: none;
-    }
-    tbody th a::after {
-      content: '';
-      position: absolute;
-      inset: 0;
-    }
-    tbody th a:focus-visible {
-      outline: none;
-    }
-    tbody tr:has(a:focus-visible) {
-      outline: 2px solid var(--primary);
-      outline-offset: -2px;
-    }
-    /* The selected row: the dossier below is this one. */
-    tbody tr:has(a.selected) {
-      background: var(--primary-wash);
-      box-shadow: inset 3px 0 0 var(--primary);
-    }
-    tbody tr:has(a.selected) th {
-      font-weight: 600;
-    }
-    .alerts-table tbody tr:has(a.selected) {
-      background: var(--pending-wash);
-      box-shadow: inset 3px 0 0 var(--pending);
-    }
-    .kind {
-      font-weight: 600;
-      color: var(--pending);
-    }
-    /* The oldest Request's clock: the text states the hours, the ink only
-       repeats it (accessibility.md P4). */
-    .leader {
-      color: var(--pending);
-      font-weight: 600;
     }
   `,
 })
 export class QueuePage {
   private readonly store = inject(QueueStore);
   private readonly session = inject(ReviewerSession);
+  private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
 
   protected readonly zones = ZONES;
   protected readonly rows = this.store.rows;
   protected readonly alerts = this.store.alerts;
-  protected readonly inFlight = this.store.inFlight;
   protected readonly loading = this.store.loading;
   protected readonly failed = this.store.failed;
   protected readonly automaticProcessing = this.store.automaticProcessing;
   // Whether the routed dossier (the child route) currently has a Request open.
   protected readonly dossierOpen = signal(false);
-  protected readonly selected = signal<Zone>('queue');
+  protected readonly selected = signal<ZoneId>('queue');
+  protected readonly now = signal(Date.now());
   private readonly changes = this.store.changes;
   private readonly loadedAt = this.store.loadedAt;
-  private readonly now = signal(Date.now());
-
-  protected readonly leaderId = computed(
-    () => this.rows()?.find((r) => !r.expired)?.id ?? null,
-  );
 
   private readonly staleMinutes = computed(() =>
     minutesSince(this.loadedAt(), this.now()),
@@ -575,69 +382,53 @@ export class QueuePage {
     loadFailed: m.reviewer_queue_load_failed(),
     noAutoRefresh: m.reviewer_queue_no_autorefresh(),
     signOut: m.reviewer_signout(),
-    expired: m.reviewer_clock_expired(),
     noneSelected: m.reviewer_dossier_none_selected(),
-    colRequester: m.reviewer_col_requester(),
-    colGroup: m.reviewer_dossier_group(),
-    colSubmitted: m.reviewer_col_submitted(),
-    colTimeLeft: m.reviewer_col_time_left(),
-    colKind: m.reviewer_col_kind(),
-    colRequest: m.reviewer_col_request(),
-    colAssigned: m.reviewer_col_assigned(),
-    colRaised: m.reviewer_col_raised(),
-    colState: m.reviewer_col_state(),
-    colLink: m.reviewer_col_link(),
-    emptyTitle: m.reviewer_empty_clear_title(),
-    emptyDetail: m.reviewer_empty_clear_detail(),
-    emptyNote: m.reviewer_empty_clear_note(),
-    alertsEmptyTitle: m.reviewer_empty_alerts_title(),
-    alertsEmptyAction: m.reviewer_empty_alerts_action(),
-    alertsZoneEmpty: m.reviewer_zone_alerts_empty(),
-    inFlightZoneEmpty: m.reviewer_zone_inflight_empty(),
     schedulerStoppedTitle: m.reviewer_scheduler_stopped_title(),
     schedulerStoppedDetail: m.reviewer_scheduler_stopped_detail(),
   };
 
   constructor() {
+    const destroyRef = inject(DestroyRef);
     const tick = setInterval(() => this.now.set(Date.now()), STALENESS_TICK_MS);
-    inject(DestroyRef).onDestroy(() => clearInterval(tick));
+    destroyRef.onDestroy(() => clearInterval(tick));
+    this.route.queryParamMap
+      .pipe(takeUntilDestroyed(destroyRef))
+      .subscribe((params) => {
+        const zone = ZONES.find((z) => z.param === params.get('zone'));
+        if (zone) this.selected.set(zone.id);
+      });
     void this.reload();
   }
 
   protected reviewerName = () => this.session.current()?.displayName ?? '';
 
-  protected tabId = (zone: Zone) => `zone-tab-${zone}`;
-
-  protected zoneLabel(zone: Zone): string {
-    switch (zone) {
-      case 'queue':
-        return m.reviewer_zone_queue();
-      case 'alerts':
-        return m.reviewer_alerts_heading();
-      case 'in_flight':
-        return m.reviewer_inflight_heading();
-    }
-  }
+  protected tabId = (zone: ZoneId) => `zone-tab-${zone}`;
 
   /** Boxed, so a zero count still renders; null until the first list. */
   protected count(zone: Zone): { value: number } | null {
-    const list =
-      zone === 'queue'
-        ? this.rows()
-        : zone === 'alerts'
-          ? this.alerts()
-          : this.inFlight();
+    const list = zone.rows(this.store)();
     return list ? { value: list.length } : null;
   }
 
-  protected select(zone: Zone): void {
+  /**
+   * A tab pressed here wins, and drops any `?zone=` the address carried, so
+   * pressing the 11c link again later still moves the tab.
+   */
+  protected select(zone: ZoneId): void {
     this.selected.set(zone);
+    if (this.route.snapshot.queryParamMap.has('zone')) {
+      void this.router.navigate([], {
+        relativeTo: this.route,
+        queryParams: { zone: null },
+        queryParamsHandling: 'merge',
+        replaceUrl: true,
+      });
+    }
   }
 
   /** Selection follows focus across the tabs, wrapping at either end. */
-  protected onTabKey(event: KeyboardEvent): void {
+  protected onTabKey(event: KeyboardEvent, at: number): void {
     const last = ZONES.length - 1;
-    const at = ZONES.indexOf(this.selected());
     const next =
       event.key === 'ArrowRight'
         ? at === last
@@ -654,39 +445,26 @@ export class QueuePage {
               : null;
     if (next === null) return;
     event.preventDefault();
-    this.selected.set(ZONES[next]);
+    this.select(ZONES[next].id);
     const tablist = (event.currentTarget as HTMLElement).parentElement;
     tablist?.querySelectorAll<HTMLElement>('[role=tab]')[next]?.focus();
   }
 
-  /** Selection follows the dossier: an opened Request shows its own zone. */
+  /**
+   * Selection follows the dossier: an opened Request shows its own zone,
+   * unless the address names one.
+   */
   protected opened(page: unknown): void {
     this.dossierOpen.set(true);
-    if (page instanceof DossierPage) this.selected.set('queue');
-    else if (page instanceof AlertPage) this.selected.set('alerts');
-    else if (page instanceof InFlightPage) this.selected.set('in_flight');
+    if (this.route.snapshot.queryParamMap.has('zone')) return;
+    const zone = ZONES.find((z) => page instanceof z.page);
+    if (zone) this.selected.set(zone.id);
   }
 
   protected refreshLabel(): string {
     if (this.loading()) return this.copy.refreshLoading;
     return this.failed() ? this.copy.refreshRetry : this.copy.refresh;
   }
-
-  protected alertTitle = alertTitle;
-  protected alertsEmptyCount = () =>
-    m.reviewer_empty_alerts_count({ count: this.alerts()?.length ?? 0 });
-  protected suppressionNote = () =>
-    m.reviewer_inflight_suppression_note({
-      count: this.alerts()?.length ?? 0,
-    });
-  protected raisedAgo = (alert: AlertRow) => alertRaisedAgo(alert, this.now());
-  protected duration = formatDuration;
-  protected shortInstant = formatShortInstant;
-  protected stateWord = (entry: InFlightRow) =>
-    extractionWord(entry.extraction);
-  protected tone = (entry: InFlightRow) => extractionTone(entry.extraction);
-  protected linkCell = (entry: InFlightRow) =>
-    inFlightLinkCell(entry, this.now());
 
   protected staleness = () =>
     m.reviewer_queue_staleness({

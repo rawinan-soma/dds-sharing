@@ -6,12 +6,11 @@ import {
   afterNextRender,
   inject,
   signal,
-  viewChild,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import * as m from '../../paraglide/messages.js';
-import { formatDay } from '../requester/format-day';
+import { DateRange, DossierMessage, focusHeading } from './dossier-parts';
 import { areaLine } from './area-copy';
 import {
   QueueApi,
@@ -28,6 +27,7 @@ import {
   terminalStateWord,
 } from './record-copy';
 import { zonePath } from './surface-paths';
+import { Tag } from './tag';
 
 type View =
   | { kind: 'loading' }
@@ -44,17 +44,14 @@ type View =
 // a lookup must not become the way round that.
 @Component({
   selector: 'app-reviewer-record',
+  imports: [DateRange, DossierMessage, Tag],
   template: `
     @switch (view().kind) {
       @case ('not_found') {
-        <div class="dossier-message">
-          <h2 #heading tabindex="-1">{{ copy.notFound }}</h2>
-        </div>
+        <app-dossier-message [text]="copy.notFound" />
       }
       @case ('failed') {
-        <div class="dossier-message">
-          <h2 #heading tabindex="-1" role="alert">{{ copy.loadFailed }}</h2>
-        </div>
+        <app-dossier-message [text]="copy.loadFailed" [alert]="true" />
       }
       @case ('ok') {
         @if (record(); as r) {
@@ -63,10 +60,10 @@ type View =
             <header class="dossier-head">
               <div>
                 <div class="head-tags">
-                  <span class="tag md inert">{{ copy.endedTag }}</span>
+                  <app-tag size="md" tone="inert">{{ copy.endedTag }}</app-tag>
                   <span class="readonly">{{ copy.readonly }}</span>
                 </div>
-                <h2 #heading tabindex="-1" class="figure">
+                <h2 tabindex="-1" class="figure">
                   {{ headline(r.reference) }}
                 </h2>
               </div>
@@ -93,13 +90,7 @@ type View =
                   <div>
                     <dt>{{ copy.dates }}</dt>
                     <dd>
-                      <time [attr.datetime]="r.startDate">{{
-                        day(r.startDate)
-                      }}</time>
-                      –
-                      <time [attr.datetime]="r.endDate">{{
-                        day(r.endDate)
-                      }}</time>
+                      <app-date-range [start]="r.startDate" [end]="r.endDate" />
                     </dd>
                   </div>
                   <div>
@@ -268,7 +259,7 @@ export class RecordPage {
   private readonly api = inject(QueueApi);
   private readonly router = inject(Router);
   private readonly injector = inject(Injector);
-  private readonly heading = viewChild<ElementRef<HTMLElement>>('heading');
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   protected readonly view = signal<View>({ kind: 'loading' });
   private asked = 0;
 
@@ -348,7 +339,7 @@ export class RecordPage {
 
   private show(view: View): void {
     this.view.set(view);
-    afterNextRender(() => this.heading()?.nativeElement.focus(), {
+    afterNextRender(() => focusHeading(this.host.nativeElement), {
       injector: this.injector,
     });
   }
@@ -371,7 +362,6 @@ export class RecordPage {
     m.reviewer_file_attempts_value({ count });
   protected eventWord = eventWord;
   protected actorWord = actorWord;
-  protected day = formatDay;
   protected instant = formatInstant;
   protected areaLine = areaLine;
   protected headline = (reference: string) =>

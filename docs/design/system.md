@@ -36,6 +36,7 @@ is always clickable.
 | `primary-hover` | `#3050e8` | hover and active on the primary action |
 | `primary-wash` | `#eef1ff` | *context*, not a commitment: the selected segment, a related region |
 | `primary-foreground` | `#ffffff` | text on primary |
+| `inverse` / `inverse-muted` | `#ffffff` / `#c9ccd3` | text on a `foreground` panel: the title and the body (10.47:1) of the Field tooltip and the Toast. Added 2026-10-01 (#124) so neither carries raw values; not `on-dark`, which is a different pair and stays unused |
 
 **The colour rule:** solid `primary` means *this is what you asked for*: the
 selected region on the map, and the one action the screen exists for.
@@ -104,6 +105,9 @@ One radius per kind of thing. A screen never picks its own.
 |---|---|
 | `shadow-card` | the card, and nothing else that is not a card |
 | `shadow-focus` | a focused field's halo, beside its `primary` edge. The halo is decoration; the edge is what meets 3:1 |
+| `shadow-float` | what floats over a card: the calendar popover, the Field tooltip, the Toast |
+| `shadow-dialog` | a Dialog over its scrim |
+| `shadow-segment` | the selected zone tab, lifted 1px off its `inert-wash` track |
 
 **Motion:** `transition-colors` on controls, and one lift: a map cell rises 2px
 on hover over 100ms. `prefers-reduced-motion` removes both.
@@ -327,7 +331,7 @@ no email reset, the other Reviewer is the way back in.
 |---|---|
 | `11a · ยืนยันการอนุมัติ` | **Dialog** over the dimmed dossier: title *อนุมัติและปล่อยข้อมูลให้ {name}?*, three rows (คำขอ, หน่วยงาน, สิ่งที่ขอ as one line), `secondary` **ย้อนกลับ** and `primary` **ยืนยันอนุมัติ** at 1 : 1.2. Nothing else: the repo owner cut the name panel and the irreversibility line; the strip beneath already says approval cannot be undone |
 | `11b · ไม่อนุมัติและบันทึกภายใน` | **Dialog**: title *ไม่อนุมัติคำขอของ {name}?*, the required **บันทึกภายใน** textarea (focused, 112px min), its hint (at least 10 characters, kept on the record, never shown or sent to the Requester), a `#f7f8fa` bordered note that it is not saved as you type, **ย้อนกลับ** and `primary` **ยืนยันไม่อนุมัติ** |
-| `11c · หลังอนุมัติ` | The decision strip is replaced by a `success-wash` statement with a `success` edge: *อนุมัติแล้ว โดยท่าน เวลา 14:32*, the job has started and the Requester is emailed when the file is ready, the Reviewer's name is on the release, and a link to the **กำลังดำเนินการ** tab. The request has left the queue table (count down by one, in-flight up by one); the dossier stays on it. **No auto-advance** |
+| `11c · หลังอนุมัติ` | The decision strip is replaced by a `success-wash` statement with a `success` edge: *อนุมัติแล้ว โดยท่าน เวลา 14:32*, the job has started and the Requester is emailed when the file is ready, the Reviewer's name is on the release, and a link to the **กำลังดำเนินการ** tab. The request has left the queue table (count down by one, in-flight up by one); the dossier stays on it. **No auto-advance**. Built: the link adds `?zone=in-flight` to the dossier's address, so it selects the tab without leaving the dossier; the new in-flight row reads *เพิ่งอนุมัติ* and *กดรีเฟรชเพื่อดูสถานะล่าสุด* until the next refresh, because its job state is the server's to report, not the screen's to guess |
 | `11d · หลังไม่อนุมัติ` | The same slot, `inert-wash`, no edge: *ไม่อนุมัติแล้ว…*, the Requester was emailed that it was not approved with no reason, the internal note is on the record, the request has ended and will not appear here again |
 | `11e · หมดเวลาระหว่างอ่าน` | The same slot, `pending-wash`: *คำขอนี้หมดเวลาระหว่างที่ท่านอ่าน* and one sentence (24 business hours passed before the decision reached the server, so nothing was recorded). The queue row and header read *หมดเวลา* and *0 ชม. 00 น.* |
 | `11f · จำนวนแถว สามสถานะ` | The จำนวนแถว row in its states, one slot and one size: counted (*1,284 แถว*), *กำลังนับ*, *นับไม่สำเร็จ*, and counted-zero (*0 แถว · ไม่มีรายงานตรงกับที่ขอ*). Approve works the same in all of them |
@@ -351,7 +355,9 @@ no email reset, the other Reviewer is the way back in.
 ### Screen 13: looking up a finished request
 
 A lookup field (**ค้นหาด้วยเลขที่คำขอ**, exact reference, `primary` edge while
-in use) sits in the queue band between the staleness line and refresh; the
+in use) sits in the queue band between the staleness line and refresh. Built
+as a Field: the words are its label above the box, and the box holds an
+example reference (*เช่น REQ-2569-0142*), never the label again; the
 queue table stays, with no row selected. The dossier is read-only: an `inert`
 Tag *สิ้นสุดแล้ว* and *อ่านอย่างเดียว* over *คำขอ {reference}* as the
 headline (**no name**), an `inert-wash` notice that it has ended and no contact

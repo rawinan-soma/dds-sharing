@@ -6,11 +6,11 @@ import {
   afterNextRender,
   inject,
   signal,
-  viewChild,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
 import * as m from '../../paraglide/messages.js';
+import { DossierMessage, focusHeading, fullName } from './dossier-parts';
 import {
   alertAssignedTo,
   alertRaisedAgo,
@@ -54,18 +54,14 @@ type Clearing =
 // The two undrawn kinds (collection lapse, send abandoned) follow the same card.
 @Component({
   selector: 'app-reviewer-alert',
-  imports: [Icon],
+  imports: [DossierMessage, Icon],
   template: `
     @switch (view().kind) {
       @case ('gone') {
-        <div class="dossier-message">
-          <h2 #heading tabindex="-1">{{ copy.gone }}</h2>
-        </div>
+        <app-dossier-message [text]="copy.gone" />
       }
       @case ('failed') {
-        <div class="dossier-message">
-          <h2 #heading tabindex="-1" role="alert">{{ copy.loadFailed }}</h2>
-        </div>
+        <app-dossier-message [text]="copy.loadFailed" [alert]="true" />
       }
       @case ('ok') {
         @if (detail(); as d) {
@@ -73,9 +69,12 @@ type Clearing =
             <header class="dossier-head">
               <div>
                 <p class="reference figure">{{ d.alerts[0].reference }}</p>
-                <h2 #heading tabindex="-1">{{ name(d) }}</h2>
+                <h2 tabindex="-1">{{ name(d) }}</h2>
               </div>
               <dl class="head-cells">
+                <!-- Every Alert kind is assigned to the Reviewer on the
+                     Request's approved event (approvingReviewerId in the API's
+                     alert-records.ts), so the assignee is the approver. -->
                 <div>
                   <dt>{{ copy.approvedBy }}</dt>
                   <dd>{{ d.alerts[0].assignedTo.displayName }}</dd>
@@ -112,7 +111,7 @@ type Clearing =
                     <div>
                       <dt>{{ copy.requester }}</dt>
                       <dd>
-                        {{ c.name }} {{ c.surname }}
+                        {{ fullName(c) }}
                         <span class="muted">· {{ c.workplace }}</span>
                       </dd>
                     </div>
@@ -303,7 +302,7 @@ export class AlertPage {
   private readonly api = inject(QueueApi);
   private readonly store = inject(QueueStore);
   private readonly injector = inject(Injector);
-  private readonly heading = viewChild<ElementRef<HTMLElement>>('heading');
+  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   protected readonly view = signal<View>({ kind: 'loading' });
   private readonly clearing = signal<Record<string, Clearing>>({});
   private asked = 0;
@@ -346,7 +345,7 @@ export class AlertPage {
         ? { kind: 'ok', detail: outcome.detail }
         : { kind: outcome.kind },
     );
-    afterNextRender(() => this.heading()?.nativeElement.focus(), {
+    afterNextRender(() => focusHeading(this.host.nativeElement), {
       injector: this.injector,
     });
   }
@@ -446,10 +445,9 @@ export class AlertPage {
 
   protected title = (alert: AlertRow) => alertTitle(alert.kind);
   protected shortInstant = formatShortInstant;
+  protected fullName = fullName;
   protected name = (d: AlertDetail) =>
-    d.contact
-      ? `${d.contact.name} ${d.contact.surname}`
-      : d.alerts[0].requesterName;
+    d.contact ? fullName(d.contact) : d.alerts[0].requesterName;
 
   /** Re-run is offered until a press on this card has settled it. */
   protected offersRerun(alert: AlertRow): boolean {

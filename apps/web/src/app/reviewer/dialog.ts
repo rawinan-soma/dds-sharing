@@ -54,7 +54,7 @@ const FOCUSABLE =
       padding: 32px;
       background: var(--card);
       border-radius: var(--radius-xl);
-      box-shadow: 0 30px 60px rgb(0 0 0 / 0.18);
+      box-shadow: var(--shadow-dialog);
     }
   `,
 })

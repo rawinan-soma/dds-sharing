@@ -29,6 +29,12 @@ export class QueueStore {
   readonly failed = signal(false);
   readonly loadedAt = signal(0);
   readonly changes = signal(0);
+  /**
+   * In-flight rows this screen added itself, on an approval, rather than read
+   * from the server: their state is not known until the next refresh, so the
+   * row says so instead of guessing. Emptied by every successful read.
+   */
+  readonly localInFlight = signal<ReadonlySet<string>>(new Set());
   /** As of the last read, like the rows: the page never polls for it either. */
   readonly automaticProcessing =
     signal<QueueList['automaticProcessing']>('running');
@@ -45,6 +51,7 @@ export class QueueStore {
       this.rows.set(list.requests);
       this.alerts.set(list.alerts);
       this.inFlight.set(list.inFlight);
+      this.localInFlight.set(new Set());
       this.automaticProcessing.set(list.automaticProcessing);
       this.loadedAt.set(Date.now());
     } catch {
@@ -88,9 +95,10 @@ export class QueueStore {
   }
 
   /**
-   * Approved here: it leaves the pending list and joins the in-flight one,
-   * extracting and with nothing to press yet, in submit order as the server
-   * keeps it. The tabs' counts then say what happened without a re-read.
+   * Approved here: it leaves the pending list and joins the in-flight one in
+   * submit order, as the server keeps it, so the tabs' counts say what
+   * happened without a re-read (11c). Its state is not known until the next
+   * read, so it is marked local; nothing can be pressed on it meanwhile.
    */
   approvePending(id: string): void {
     const row = this.rows()?.find((r) => r.id === id);
@@ -107,6 +115,7 @@ export class QueueStore {
       linkExpiresAt: null,
       actions: { rerun: false, resend: false },
     };
+    this.localInFlight.update((ids) => new Set(ids).add(id));
     const at = inFlight.findIndex((r) => r.submittedAt > entry.submittedAt);
     this.inFlight.set(
       at === -1
