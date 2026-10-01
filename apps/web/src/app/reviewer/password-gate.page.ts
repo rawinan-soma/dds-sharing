@@ -138,7 +138,7 @@ const VIOLATION_COPY: Record<PasswordViolation, () => string> = {
       gap: 1.5rem;
     }
     .notice {
-      border-top: 1px solid var(--border-strong);
+      border-top: 1px solid var(--border);
       padding-top: 1rem;
     }
     .notice h3 {
@@ -155,7 +155,7 @@ const VIOLATION_COPY: Record<PasswordViolation, () => string> = {
     }
     .card {
       background: var(--card);
-      border: 1px solid var(--border-strong);
+      border: 1px solid var(--border);
       padding: 2rem;
     }
     h2 {

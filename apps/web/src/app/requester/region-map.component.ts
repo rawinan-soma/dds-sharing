@@ -1,18 +1,18 @@
 import { Component, computed, input, output } from '@angular/core';
 import * as m from '../../paraglide/messages.js';
 
-// Where each health region sits on the schematic (column, row on a 5 × 7
-// lattice). Schematic, not cartographic: a polygon map would put a geography
-// dependency in the bundle for one control (docs/design/handoff.md).
+// Where each health region sits on the schematic (column, row on a 4 × 7
+// lattice, docs/design/system.md "Region map"). Schematic, not cartographic: a
+// polygon map would put a geography dependency in the bundle for one control.
 const LAYOUT: Record<number, [number, number]> = {
   1: [1, 0],
   2: [1, 1],
-  8: [3, 1],
+  8: [2, 1],
   3: [1, 2],
-  7: [3, 2],
+  7: [2, 2],
   4: [1, 3],
-  9: [3, 3],
-  10: [4, 3],
+  9: [2, 3],
+  10: [3, 3],
   5: [0, 4],
   13: [1, 4],
   6: [2, 4],
@@ -20,63 +20,44 @@ const LAYOUT: Record<number, [number, number]> = {
   12: [0, 6],
 };
 
-// One component, two roles. In region mode the cells are the radiogroup and the
-// map is the control; in province mode they are `aria-hidden` decoration
-// showing where the chosen province is.
+// The Requester's area control, and always clickable: pressing a cell asks for
+// that health region whatever mode was showing. In province mode the chosen
+// province's region is `related`, context rather than an answer.
 @Component({
   selector: 'app-region-map',
   template: `
-    @if (interactive()) {
-      <div
-        class="region-map"
-        role="radiogroup"
-        tabindex="-1"
-        data-field="area"
-        [attr.aria-label]="m.requester_area_region()"
-      >
-        @for (cell of cells; track cell.region) {
-          <button
-            type="button"
-            role="radio"
-            class="region-cell"
-            [style.grid-column]="cell.column"
-            [style.grid-row]="cell.row"
-            [attr.aria-checked]="cell.region === selected()"
-            [tabindex]="cell.region === focusable() ? 0 : -1"
-            [attr.aria-label]="
-              m.requester_area_region_selected({ region: cell.region })
-            "
-            (click)="pick(cell.region)"
-            (keydown)="onKey($event, cell.region)"
-          >
-            {{ cell.region }}
-          </button>
-        }
-      </div>
-    } @else {
-      <div class="region-map" aria-hidden="true">
-        @for (cell of cells; track cell.region) {
-          <div
-            class="region-cell"
-            [class.related]="cell.region === highlighted()"
-            [style.grid-column]="cell.column"
-            [style.grid-row]="cell.row"
-          >
-            {{ cell.region }}
-          </div>
-        }
-      </div>
-    }
-    <p class="small muted">{{ m.requester_area_region_13_caption() }}</p>
+    <div
+      class="region-map"
+      role="radiogroup"
+      data-field="area"
+      [attr.aria-label]="m.requester_area_region()"
+    >
+      @for (cell of cells; track cell.region) {
+        <button
+          type="button"
+          role="radio"
+          class="region-cell"
+          [class.related]="cell.region === related()"
+          [style.grid-column]="cell.column"
+          [style.grid-row]="cell.row"
+          [attr.aria-checked]="cell.region === selected()"
+          [tabindex]="cell.region === focusable() ? 0 : -1"
+          [attr.aria-label]="cell.name"
+          (click)="pick(cell.region)"
+          (keydown)="onKey($event, cell.region)"
+        >
+          {{ cell.region }}
+        </button>
+      }
+    </div>
   `,
 })
 export class RegionMap {
   protected readonly m = m;
 
-  readonly interactive = input(false);
   readonly selected = input<number | null>(null);
-  /** The region to tint when the map is decoration (the chosen province's). */
-  readonly highlighted = input<number | null>(null);
+  /** The region of a chosen province, shown for its location only. */
+  readonly related = input<number | null>(null);
   readonly picked = output<number>();
 
   protected readonly cells = Object.entries(LAYOUT)
@@ -84,12 +65,18 @@ export class RegionMap {
       region: Number(region),
       column: column + 1,
       row: row + 1,
+      // 13 sits out of reading order; its name says why.
+      name:
+        region === '13'
+          ? m.requester_area_region_13_name()
+          : m.requester_area_region_selected({ region: Number(region) }),
     }))
     .sort((a, b) => a.region - b.region);
 
-  // The roving tab stop: the chosen region, or the first when none is.
-  protected readonly focusable = computed(() => this.selected() ?? 1);
-
+  // The roving tab stop: the chosen region, else the related one, else 1.
+  protected readonly focusable = computed(
+    () => this.selected() ?? this.related() ?? 1,
+  );
   protected pick(region: number) {
     this.picked.emit(region);
   }

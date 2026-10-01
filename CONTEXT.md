@@ -17,7 +17,7 @@ _Avoid_: Admin, approver, moderator
 ### The request
 
 **Request**:
-A Requester's parameterized ask — one Disease group, one inclusive date range of at most 365 days, and an optional single area — together with the contact details they supplied. A stored Request names Report codes, never a Disease group alone: the group is expanded at submit and the expansion is what a Re-run refetches.
+A Requester's parameterized ask — one Disease group, one inclusive date range whose last day is at most 365 days after its first (the 365-day cap, `to − from ≤ 365`; the date picker offers one day less), and an optional single area — together with the contact details they supplied. A stored Request names Report codes, never a Disease group alone: the group is expanded at submit and the expansion is what a Re-run refetches.
 _Avoid_: Query, job, application
 
 **Decision**:

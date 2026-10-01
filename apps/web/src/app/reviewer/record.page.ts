@@ -277,7 +277,7 @@ type View =
       font-size: 0.875rem;
       font-weight: 400;
       color: var(--muted-foreground);
-      border-bottom: 1px solid var(--border-strong);
+      border-bottom: 1px solid var(--border);
     }
     th,
     td {

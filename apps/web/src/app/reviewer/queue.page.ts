@@ -212,7 +212,7 @@ const STALENESS_TICK_MS = 30_000;
       align-items: center;
       padding: 12px 24px;
       background: var(--card);
-      border-bottom: 1px solid var(--border-strong);
+      border-bottom: 1px solid var(--border);
     }
     .who {
       font-weight: 600;
@@ -290,7 +290,7 @@ const STALENESS_TICK_MS = 30_000;
       border-left: 2px solid transparent;
     }
     .row:hover {
-      background: var(--land);
+      background: var(--inert-wash);
     }
     .row.selected {
       background: var(--primary-wash);
@@ -325,8 +325,8 @@ const STALENESS_TICK_MS = 30_000;
     /* handoff.md screen 5: the Alerts zone on pending-wash between rules. */
     .alerts-zone {
       background: var(--pending-wash);
-      border-top: 1px solid var(--border-strong);
-      border-bottom: 1px solid var(--border-strong);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
     }
     .zone-heading {
       padding: 16px 20px 4px;

@@ -423,7 +423,7 @@ type DecisionProblem = 'gone' | 'invalid_note' | 'failed';
        Reviewer must read first, in the DOM as well as on screen (spec §10.2). */
     .action-rule {
       margin-top: 32px;
-      border-top: 1px solid var(--border-strong);
+      border-top: 1px solid var(--border);
     }
     .actions,
     .decided {

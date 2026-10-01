@@ -32,7 +32,7 @@ import { ReviewerSession } from './reviewer-session';
       max-width: 22rem;
       padding: 1rem;
       background: var(--pending-wash);
-      border: 1px solid var(--border-strong);
+      border: 1px solid var(--border);
       border-left: 2px solid var(--pending);
     }
     .toast p {
