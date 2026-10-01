@@ -14,6 +14,9 @@ export const B = {
   primaryHover: '#3050e8',
   primaryWash: '#eef1ff',
   primaryForeground: '#ffffff',
+  /** Text on a `foreground` panel; no API page draws one yet. */
+  inverse: '#ffffff',
+  inverseMuted: '#c9ccd3',
   success: '#1a7a4f',
   successWash: '#e6f4ec',
   pending: '#8a5a00',
