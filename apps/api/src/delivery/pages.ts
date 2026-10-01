@@ -1,4 +1,4 @@
-import { B } from '../design/b-tokens';
+import { B, DRAWN } from '../design/b-tokens';
 import { type Catalogue } from '../i18n/copy-catalogue';
 import { ATTEMPT_CAP } from './resolve-token';
 import { formatBytes, formatHoursLeft } from './format';
@@ -14,7 +14,7 @@ import { formatBytes, formatHoursLeft } from './format';
 const STYLE = `
   :root { --background:${B.background}; --card:${B.card}; --foreground:${B.foreground}; --muted:${B.mutedForeground}; --border:${B.border};
     --primary:${B.primary}; --primary-hover:${B.primaryHover}; --primary-wash:${B.primaryWash}; --primary-foreground:${B.primaryForeground};
-    --success:${B.success}; --success-wash:${B.successWash}; --pending:${B.pending}; --inert:${B.inert}; --inert-wash:${B.inertWash}; --quiet:${B.quiet}; }
+    --success:${B.success}; --success-wash:${B.successWash}; --pending:${B.pending}; --inert:${B.inert}; --inert-wash:${B.inertWash}; --quiet:${DRAWN.bandGrey}; }
   * { box-sizing: border-box; }
   body { margin: 0; padding: 48px 16px; background: var(--background); color: var(--foreground);
     font-family: 'IBM Plex Sans Thai', 'IBM Plex Sans', system-ui, sans-serif; font-size: 15px; line-height: 1.65; }
@@ -45,7 +45,7 @@ const STYLE = `
   .note h2 { font-size: 15px; font-weight: 600; }
   .note p { color: var(--muted); font-size: 14px; }
   .mark { flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center;
-    color: var(--card); background: var(--inert); font-size: 13px; font-weight: 700; }
+    color: ${DRAWN.onStateFill}; background: var(--inert); font-size: 13px; font-weight: 700; }
   .mark.pending { background: var(--pending); }
   .phone { color: var(--muted); font-size: 14px; }
   .centered { text-align: center; }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { catalogue } from './copy-catalogue';
+import { REPO_ROOT, catalogue, projectLocales } from './copy-catalogue';
 import { areaHeadline, formatDay } from './ask-copy';
 
 describe('formatDay', () => {
@@ -13,6 +13,12 @@ describe('formatDay', () => {
 
   it('reads the day as a calendar day, whatever the server timezone', () => {
     expect(formatDay('en', '2025-12-31')).toBe('31 December 2025');
+  });
+
+  it('has a day form for every locale the project declares', () => {
+    for (const locale of projectLocales(REPO_ROOT).locales) {
+      expect(() => formatDay(locale, '2025-01-01')).not.toThrow();
+    }
   });
 
   it('refuses a locale it has no day form for, rather than guess one', () => {

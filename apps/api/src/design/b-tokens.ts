@@ -22,6 +22,12 @@ export const B = {
   failedWash: '#fbe9eb',
   inert: '#5f6470',
   inertWash: '#eceef2',
-  /** Not a named token: the grey screens 5 and 7 draw as a literal. */
-  quiet: '#f7f8fa',
+} as const;
+
+// Values the screens draw that system.md names no token for.
+export const DRAWN = {
+  /** The grey of the queue band and the collection page's tiles. */
+  bandGrey: '#f7f8fa',
+  /** The white mark or tick on a solid state fill. */
+  onStateFill: '#ffffff',
 } as const;

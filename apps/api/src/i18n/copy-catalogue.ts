@@ -13,8 +13,9 @@ import { join } from 'node:path';
 // automatically starts serving Thai the moment that file flips, with no code
 // change here.
 
-interface ProjectSettings {
+export interface ProjectSettings {
   baseLocale: string;
+  locales: string[];
 }
 
 export interface Catalogue {
@@ -35,12 +36,22 @@ export function interpolate(
   );
 }
 
-/** `root` holds `project.inlang/settings.json` and `messages/` as siblings, exactly as the repo root does. */
-export function loadCatalogue(root: string): Catalogue {
-  const settings = JSON.parse(
+/** The locales `root`'s `project.inlang/settings.json` declares, and its base. */
+export function projectLocales(root: string): ProjectSettings {
+  return JSON.parse(
     readFileSync(join(root, 'project.inlang/settings.json'), 'utf-8'),
   ) as ProjectSettings;
-  const locale = settings.baseLocale;
+}
+
+/**
+ * `root` holds `project.inlang/settings.json` and `messages/` as siblings,
+ * exactly as the repo root does. `locale` defaults to the served base locale;
+ * naming another is for tests that render a language before #96 serves it.
+ */
+export function loadCatalogue(
+  root: string,
+  locale = projectLocales(root).baseLocale,
+): Catalogue {
   const messages = JSON.parse(
     readFileSync(join(root, 'messages', `${locale}.json`), 'utf-8'),
   ) as Record<string, unknown>;
@@ -62,7 +73,7 @@ export function loadCatalogue(root: string): Catalogue {
 // apps/api/src/i18n -> repo root is four levels up. `__dirname` (not
 // `import.meta.url`) because this file compiles into CommonJS output
 // (`nest build`), unlike the `.spec.ts` files vitest transforms as ESM.
-const REPO_ROOT = join(__dirname, '../../../..');
+export const REPO_ROOT = join(__dirname, '../../../..');
 
 /** The app-wide singleton, reading the real repository's catalogue. */
 export const catalogue: Catalogue = loadCatalogue(REPO_ROOT);

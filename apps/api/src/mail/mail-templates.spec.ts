@@ -1,31 +1,11 @@
-import { readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { B } from '../design/b-tokens';
-import { type Catalogue, catalogue, interpolate } from '../i18n/copy-catalogue';
+import { REPO_ROOT, catalogue, loadCatalogue } from '../i18n/copy-catalogue';
 import {
   renderMail,
   type DeliveryParams,
   type MailParams,
 } from './mail-templates';
-
-/** The real th.json, as the catalogue will serve it once #96 flips the base locale. */
-function thaiCatalogue(): Catalogue {
-  const messages = JSON.parse(
-    readFileSync(
-      join(
-        dirname(fileURLToPath(import.meta.url)),
-        '../../../../messages/th.json',
-      ),
-      'utf-8',
-    ),
-  ) as Record<string, string>;
-  return {
-    locale: 'th',
-    t: (key, params) => interpolate(messages[key], params),
-  };
-}
 
 const ASK: DeliveryParams['ask'] = {
   diseaseGroupName: 'โรคจากตะกั่วและสารประกอบของตะกั่ว',
@@ -152,10 +132,21 @@ describe('renderMail', () => {
     };
     const all = [delivery, rejection, failure, queue];
 
-    // The B tokens, held to system.md by b-tokens.spec.ts, and nothing else.
-    const B_TOKENS = new Set<string>(Object.values(B));
-    // The old system's colours, named so a regression to them reads as one.
-    const OLD_SYSTEM = ['#1a1a1a', '#f4f4f4', '#0b5fff', '#e0e0e0', '#666666'];
+    // The tokens screen 9 draws with (values held to system.md by
+    // b-tokens.spec.ts), and no other colour, B's or not.
+    const SCREEN_9 = new Set<string>([
+      B.background,
+      B.card,
+      B.foreground,
+      B.mutedForeground,
+      B.border,
+      B.primary,
+      B.primaryForeground,
+      B.pending,
+      B.pendingWash,
+      B.inert,
+      B.inertWash,
+    ]);
     const colours = (html: string) =>
       [...html.matchAll(/#[0-9a-fA-F]{3,8}\b/g)].map(([c]) => c.toLowerCase());
 
@@ -163,8 +154,7 @@ describe('renderMail', () => {
       const { html } = renderMail(catalogue, params);
       const used = colours(html);
       expect(used.length).toBeGreaterThan(0);
-      expect(used.filter((c) => !B_TOKENS.has(c))).toEqual([]);
-      expect(used.filter((c) => OLD_SYSTEM.includes(c))).toEqual([]);
+      expect(used.filter((c) => !SCREEN_9.has(c))).toEqual([]);
     });
 
     it.each(all)(
@@ -180,7 +170,7 @@ describe('renderMail', () => {
 
     it('puts the ask in a bordered box in the delivery email, and no row count', () => {
       const { html } = renderMail(catalogue, delivery);
-      expect(html).toContain('border: 1px solid #dfe1e6');
+      expect(html).toContain(`border: 1px solid ${B.border}`);
       expect(html).toContain(catalogue.t('requester_confirm_ask_heading'));
       expect(html).toContain('โรคจากตะกั่วและสารประกอบของตะกั่ว');
       expect(html).toContain(catalogue.t('requester_area_national'));
@@ -195,7 +185,7 @@ describe('renderMail', () => {
     });
 
     it("words the dates in the email's language: Buddhist-era Thai days for a Thai catalogue", () => {
-      const { html } = renderMail(thaiCatalogue(), delivery);
+      const { html } = renderMail(loadCatalogue(REPO_ROOT, 'th'), delivery);
       expect(html).toContain('1 มกราคม 2568 – 31 พฤษภาคม 2568');
       expect(html).toContain('กลุ่มโรค');
     });
@@ -203,16 +193,16 @@ describe('renderMail', () => {
     it('keeps the delivery download link the fixed /d/<token> URL, on a primary button', () => {
       const { html } = renderMail(catalogue, delivery);
       expect(html).toContain('href="https://frontend.test/d/tok_abc-123"');
-      expect(html).toContain('background-color: #3b5bfd');
+      expect(html).toContain(`background-color: ${B.primary}`);
       expect(html).toContain(catalogue.t('email_delivery_download'));
     });
 
     it('sets do-not-forward in pending on pending-wash in the delivery email', () => {
       const { html } = renderMail(catalogue, delivery);
-      expect(html).toContain('background-color: #fdf3dc');
+      expect(html).toContain(`background-color: ${B.pendingWash}`);
       expect(html).toMatch(
         new RegExp(
-          `color: #8a5a00[^>]*>${catalogue.t('email_delivery_no_forward')}`,
+          `color: ${B.pending}[^>]*>${catalogue.t('email_delivery_no_forward')}`,
         ),
       );
     });
@@ -242,9 +232,10 @@ describe('renderMail', () => {
     it('sets the rejection outcome on an inert-wash panel, not a failure colour, with no reason', () => {
       const { html } = renderMail(catalogue, rejection);
       expect(html).toMatch(
-        new RegExp(`background-color: #eceef2[^>]*>[^]*?REQ-2569-0011`),
+        new RegExp(`background-color: ${B.inertWash}[^>]*>[^]*?REQ-2569-0011`),
       );
-      expect(html).not.toMatch(/#c42b3a|#fbe9eb/i);
+      expect(html).not.toContain(B.failed);
+      expect(html).not.toContain(B.failedWash);
       expect(html).toContain(catalogue.t('email_rejection_no_reason'));
     });
 
@@ -258,7 +249,7 @@ describe('renderMail', () => {
 
     it('puts the queue notification facts in a bordered box, with no patient data and no download link', () => {
       const { html } = renderMail(catalogue, queue);
-      expect(html).toContain('border: 1px solid #dfe1e6');
+      expect(html).toContain(`border: 1px solid ${B.border}`);
       expect(html).not.toContain('/d/');
       expect(html).toContain(catalogue.t('email_queue_no_data_note'));
     });
@@ -266,7 +257,9 @@ describe('renderMail', () => {
     it('sets the extraction failure on a pending-wash panel and points at the Alert under its zone', () => {
       const { html } = renderMail(catalogue, failure);
       expect(html).toMatch(
-        new RegExp(`background-color: #fdf3dc[^>]*>[^]*?REQ-2569-0012`),
+        new RegExp(
+          `background-color: ${B.pendingWash}[^>]*>[^]*?REQ-2569-0012`,
+        ),
       );
       expect(html).toContain(catalogue.t('email_failure_requester_unaware'));
       expect(html).toContain(catalogue.t('email_failure_not_your_job_detail'));

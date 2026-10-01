@@ -164,10 +164,11 @@ function escapeHtml(text: string): string {
 }
 
 function renderDelivery(
-  t: Catalogue['t'],
-  locale: string,
+  catalogueInstance: Catalogue,
   p: DeliveryParams,
 ): RenderedMail {
+  const { locale } = catalogueInstance;
+  const t = catalogueInstance.t.bind(catalogueInstance);
   return {
     subject: t('email_delivery_subject', { reference: p.reference }),
     html: wrap(
@@ -288,7 +289,7 @@ export function renderMail(
   const t = catalogueInstance.t.bind(catalogueInstance);
   switch (params.kind) {
     case 'delivery':
-      return renderDelivery(t, catalogueInstance.locale, params);
+      return renderDelivery(catalogueInstance, params);
     case 'rejection':
       return renderRejection(t, params);
     case 'extraction_failure':

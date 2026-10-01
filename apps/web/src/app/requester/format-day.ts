@@ -1,7 +1,7 @@
 // Buddhist-era display for a `YYYY-MM-DD` day. Screen readers still get the
 // Gregorian value through `<time datetime>`, so the display never has to be
-// parsed back. Mirrored by apps/api/src/i18n/ask-copy.ts's formatDay for the
-// emails, which picks the day form by the catalogue's locale.
+// parsed back. apps/api/src/i18n/ask-copy.ts mirrors this for the emails,
+// except that there the day follows the email's language.
 const BUDDHIST = new Intl.DateTimeFormat('th-TH-u-ca-buddhist', {
   day: 'numeric',
   month: 'long',

@@ -1,12 +1,16 @@
 import { type Area } from '../reviewer/review-queue';
 import { type Catalogue } from './copy-catalogue';
 
-// How the API words an ask: its days and its area, in the catalogue's
-// language. Mirrored, not shared, by apps/web's requester/format-day.ts and
-// reviewer/area-copy.ts: the two apps have no common package, and the web
-// copies read Paraglide where this reads the JSON catalogue (ADR 0010).
+// How the API words an ask: its days and its Area selection, in the
+// catalogue's language. Mirrors apps/web's requester/format-day.ts and
+// reviewer/area-copy.ts rather than sharing them: the two apps have no common
+// package, and the web copies read Paraglide where this reads the JSON
+// catalogue (ADR 0010). The area wording is the same; the day is not quite —
+// the web shows Buddhist-era Thai in every locale, while an email's day
+// follows the email's language.
 
-// One form per catalogue locale (project.inlang/settings.json). Thai readers
+// One form per catalogue locale (project.inlang/settings.json; ask-copy.spec.ts
+// fails when a locale is added there without one here). Thai readers
 // get the Buddhist era the Requester screens use; English readers get the
 // Gregorian day, so a date never reads in a different language from its label.
 const DAY_FORMATS: Record<string, Intl.DateTimeFormat> = {
