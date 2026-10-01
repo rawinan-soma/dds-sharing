@@ -1,4 +1,10 @@
-import { Component, input } from '@angular/core';
+import {
+  Component,
+  ElementRef,
+  type Injector,
+  afterNextRender,
+  input,
+} from '@angular/core';
 import * as m from '../../paraglide/messages.js';
 import { formatDay } from '../requester/format-day';
 import { type Dossier } from './queue-api';
@@ -19,10 +25,15 @@ export const dateRangeText = (start: string, end: string): string =>
 /**
  * Selecting a Request moves focus to its heading, so a keyboard user lands on
  * what they picked rather than back in the list. Every dossier marks that
- * heading as the first focusable `h2`.
+ * heading as its first focusable `h2`; `injector` is the dossier component's
+ * own, which also hands over its host element.
  */
-export function focusHeading(host: HTMLElement): void {
-  host.querySelector<HTMLElement>('h2[tabindex="-1"]')?.focus();
+export function focusHeadingAfterRender(injector: Injector): void {
+  const host = injector.get<ElementRef<HTMLElement>>(ElementRef).nativeElement;
+  afterNextRender(
+    () => host.querySelector<HTMLElement>('h2[tabindex="-1"]')?.focus(),
+    { injector },
+  );
 }
 
 // The five contact fields, one row each, as screen 5 and 6b draw them.
@@ -84,12 +95,12 @@ export class DateRange {
 
 // The one sentence a dossier shows in its own place when there is nothing to
 // show: the Request has gone, or could not be read. Focusable like any
-// dossier heading; `alert` when it reports a failure.
+// dossier heading; `announce` when it reports a failure, so it is read out.
 @Component({
   selector: 'app-dossier-message',
   template: `
     <div class="dossier-message">
-      <h2 tabindex="-1" [attr.role]="alert() ? 'alert' : null">
+      <h2 tabindex="-1" [attr.role]="announce() ? 'alert' : null">
         {{ text() }}
       </h2>
     </div>
@@ -97,5 +108,5 @@ export class DateRange {
 })
 export class DossierMessage {
   readonly text = input.required<string>();
-  readonly alert = input(false);
+  readonly announce = input(false);
 }

@@ -1,12 +1,4 @@
-import {
-  Component,
-  DestroyRef,
-  ElementRef,
-  Injector,
-  afterNextRender,
-  inject,
-  signal,
-} from '@angular/core';
+import { Component, DestroyRef, Injector, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
 import * as m from '../../paraglide/messages.js';
@@ -14,7 +6,7 @@ import {
   ContactRows,
   DateRange,
   DossierMessage,
-  focusHeading,
+  focusHeadingAfterRender,
   fullName,
 } from './dossier-parts';
 import { areaLine } from './area-copy';
@@ -63,7 +55,7 @@ type Acting =
         <app-dossier-message [text]="copy.gone" />
       }
       @case ('failed') {
-        <app-dossier-message [text]="copy.loadFailed" [alert]="true" />
+        <app-dossier-message [text]="copy.loadFailed" [announce]="true" />
       }
       @case ('ok') {
         @if (detail(); as d) {
@@ -210,9 +202,6 @@ type Acting =
     :host {
       display: block;
     }
-    .email {
-      overflow-wrap: anywhere;
-    }
     .contact-note {
       margin-top: 8px;
       font-size: 13px;
@@ -257,7 +246,6 @@ export class InFlightPage {
   private readonly api = inject(QueueApi);
   private readonly store = inject(QueueStore);
   private readonly injector = inject(Injector);
-  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   protected readonly view = signal<View>({ kind: 'loading' });
   private readonly acting = signal<Acting>({ kind: 'idle' });
   private asked = 0;
@@ -267,11 +255,6 @@ export class InFlightPage {
     loadFailed: m.reviewer_inflight_load_failed(),
     whoHeading: m.reviewer_dossier_requester_heading(),
     askHeading: m.reviewer_dossier_ask_heading(),
-    firstName: m.requester_first_name(),
-    lastName: m.requester_last_name(),
-    telephone: m.reviewer_dossier_telephone(),
-    email: m.reviewer_dossier_email(),
-    workplace: m.requester_workplace(),
     contactVisible: m.reviewer_contact_visible_note(),
     group: m.reviewer_dossier_group(),
     dates: m.reviewer_dossier_dates(),
@@ -317,9 +300,7 @@ export class InFlightPage {
         ? { kind: 'ok', detail: outcome.detail }
         : { kind: outcome.kind },
     );
-    afterNextRender(() => focusHeading(this.host.nativeElement), {
-      injector: this.injector,
-    });
+    focusHeadingAfterRender(this.injector);
   }
 
   protected isAvailable(d: InFlightDetail, action: Action): boolean {

@@ -13,6 +13,7 @@ import {
   type QueueList,
   type QueueRow,
 } from './queue-api';
+import { DossierPage } from './dossier.page';
 import { QueuePage } from './queue.page';
 import { QueueStore } from './queue-store';
 
@@ -230,6 +231,36 @@ describe('QueuePage', () => {
       await settle();
       expect(
         tabNamed(m.reviewer_inflight_heading()).getAttribute('aria-selected'),
+      ).toBe('true');
+    });
+
+    it('drop the address’s zone once a tab is pressed, so the 11c link works again', async () => {
+      await firstLoad([row('a')]);
+      const router = TestBed.inject(Router);
+      await router.navigate([], { queryParams: { zone: 'in-flight' } });
+      await settle();
+      tabNamed(m.reviewer_zone_queue()).click();
+      await settle();
+      expect(router.url).not.toContain('zone=');
+      expect(
+        tabNamed(m.reviewer_zone_queue()).getAttribute('aria-selected'),
+      ).toBe('true');
+    });
+
+    it('keep the address’s zone over the zone of the dossier that opens', async () => {
+      await firstLoad([row('a')]);
+      await TestBed.inject(Router).navigate([], {
+        queryParams: { zone: 'alerts' },
+      });
+      await settle();
+      // What the outlet hands over when a queue dossier activates.
+      const page = fixture.componentInstance as unknown as {
+        opened(page: unknown): void;
+      };
+      page.opened(Object.create(DossierPage.prototype));
+      await settle();
+      expect(
+        tabNamed(m.reviewer_alerts_heading()).getAttribute('aria-selected'),
       ).toBe('true');
     });
 

@@ -25,7 +25,8 @@ import { AlertsZone, InFlightZone, QueueZone } from './zone-tables';
 // idle timeout that never fires is no timeout (§10.5).
 const STALENESS_TICK_MS = 30_000;
 
-type ZoneId = 'queue' | 'alerts' | 'in_flight';
+/** Also the zone's value in the `?zone=` address, as the 11c link writes it. */
+type ZoneId = 'queue' | 'alerts' | 'in-flight';
 
 /** One zone of the surface: its tab, its rows, its dossier, its address. */
 interface Zone {
@@ -34,8 +35,6 @@ interface Zone {
   rows: (store: QueueStore) => Signal<readonly unknown[] | null>;
   /** The routed dossier that belongs to this zone. */
   page: Type<unknown>;
-  /** Its value in the `?zone=` address, as the 11c link writes it. */
-  param: string;
 }
 
 const ZONES: readonly Zone[] = [
@@ -44,21 +43,18 @@ const ZONES: readonly Zone[] = [
     label: () => m.reviewer_zone_queue(),
     rows: (store) => store.rows,
     page: DossierPage,
-    param: 'queue',
   },
   {
     id: 'alerts',
     label: () => m.reviewer_alerts_heading(),
     rows: (store) => store.alerts,
     page: AlertPage,
-    param: 'alerts',
   },
   {
-    id: 'in_flight',
+    id: 'in-flight',
     label: () => m.reviewer_inflight_heading(),
     rows: (store) => store.inFlight,
     page: InFlightPage,
-    param: 'in-flight',
   },
 ];
 
@@ -183,7 +179,7 @@ const ZONES: readonly Zone[] = [
                 @case ('alerts') {
                   <app-alerts-zone [now]="now()" />
                 }
-                @case ('in_flight') {
+                @case ('in-flight') {
                   <app-in-flight-zone [now]="now()" />
                 }
               }
@@ -315,16 +311,19 @@ const ZONES: readonly Zone[] = [
     [role='tab'].outstanding {
       color: var(--pending);
     }
+    /* The lookup is a Field, its box one label row (14px at 1.65) and the
+       Field's 6px gap down; the line and refresh are centred on that box. */
     .band-tools {
+      --box-top: calc(14px * 1.65 + 6px);
       display: flex;
       align-items: flex-start;
       gap: 16px;
       margin-left: auto;
     }
-    /* Down by the lookup's label, so the line and refresh sit by its box. */
+    /* Two 12px lines at 1.5 (36px) in the 44px box. */
     .staleness {
       max-width: 300px;
-      padding-top: 34px;
+      padding-top: calc(var(--box-top) + 4px);
       font-size: 12px;
       line-height: 1.5;
       color: var(--muted-foreground);
@@ -332,9 +331,10 @@ const ZONES: readonly Zone[] = [
     .staleness.failed-text {
       color: var(--failed);
     }
+    /* The 40px button in the 44px box. */
     .refresh {
       flex: none;
-      margin-top: 27px;
+      margin-top: calc(var(--box-top) + 2px);
     }
     .zone-panel {
       background: var(--card);
@@ -394,7 +394,7 @@ export class QueuePage {
     this.route.queryParamMap
       .pipe(takeUntilDestroyed(destroyRef))
       .subscribe((params) => {
-        const zone = ZONES.find((z) => z.param === params.get('zone'));
+        const zone = ZONES.find((z) => z.id === params.get('zone'));
         if (zone) this.selected.set(zone.id);
       });
     void this.reload();

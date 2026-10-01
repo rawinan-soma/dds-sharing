@@ -2,7 +2,7 @@ import { Component, inject, input, output } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import * as m from '../../paraglide/messages.js';
 import { alertRaisedAgo, alertTitle } from './alert-copy';
-import { Icon } from './icon';
+import { EmptyState } from './empty-state';
 import {
   extractionTone,
   extractionWord,
@@ -22,7 +22,7 @@ import { Tag } from './tag';
 /** Pending Requests, oldest first (§10.1). */
 @Component({
   selector: 'app-queue-zone',
-  imports: [Icon, RouterLink, RouterLinkActive, Tag],
+  imports: [EmptyState, RouterLink, RouterLinkActive, Tag],
   template: `
     @if (store.rows(); as list) {
       @if (list.length) {
@@ -71,9 +71,7 @@ import { Tag } from './tag';
         </table>
       } @else if (store.alerts()?.length) {
         <!-- 12b: never says the desk is clear while an Alert is open. -->
-        <div class="empty-state">
-          <span class="status-mark pending" aria-hidden="true">!</span>
-          <h2>{{ copy.alertsOpenTitle }}</h2>
+        <app-empty-state tone="pending" [title]="copy.alertsOpenTitle">
           <p>{{ alertsOpenCount() }}</p>
           <button
             class="btn btn-secondary"
@@ -82,16 +80,12 @@ import { Tag } from './tag';
           >
             {{ copy.alertsOpenAction }}
           </button>
-        </div>
+        </app-empty-state>
       } @else {
-        <div class="empty-state">
-          <span class="status-mark success" aria-hidden="true">
-            <app-icon name="check" [size]="22" />
-          </span>
-          <h2>{{ copy.clearTitle }}</h2>
+        <app-empty-state tone="success" [title]="copy.clearTitle">
           <p>{{ copy.clearDetail }}</p>
           <p>{{ copy.clearNote }}</p>
-        </div>
+        </app-empty-state>
       }
     }
   `,
@@ -123,7 +117,7 @@ export class QueueZone {
 /** Must-clear items (§10.6), the selected row in pending, not primary. */
 @Component({
   selector: 'app-alerts-zone',
-  imports: [Icon, RouterLink, RouterLinkActive],
+  imports: [EmptyState, RouterLink, RouterLinkActive],
   template: `
     @if (store.alerts(); as list) {
       @if (list.length) {
@@ -164,12 +158,7 @@ export class QueueZone {
           </tbody>
         </table>
       } @else {
-        <div class="empty-state">
-          <span class="status-mark success" aria-hidden="true">
-            <app-icon name="check" [size]="22" />
-          </span>
-          <h2>{{ copy.empty }}</h2>
-        </div>
+        <app-empty-state tone="success" [title]="copy.empty" />
       }
     }
   `,
@@ -201,7 +190,7 @@ export class AlertsZone {
 /** Approved and not yet terminal (§10.9), in submit order. */
 @Component({
   selector: 'app-in-flight-zone',
-  imports: [Icon, RouterLink, RouterLinkActive, Tag],
+  imports: [EmptyState, RouterLink, RouterLinkActive, Tag],
   template: `
     @if (store.inFlight(); as list) {
       <p class="zone-note">{{ suppressionNote() }}</p>
@@ -253,12 +242,7 @@ export class AlertsZone {
           </tbody>
         </table>
       } @else {
-        <div class="empty-state">
-          <span class="status-mark inert" aria-hidden="true">
-            <app-icon name="check" [size]="22" />
-          </span>
-          <h2>{{ copy.empty }}</h2>
-        </div>
+        <app-empty-state tone="inert" [title]="copy.empty" />
       }
     }
   `,

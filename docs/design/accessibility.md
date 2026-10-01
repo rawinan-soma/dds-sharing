@@ -29,7 +29,7 @@ build with VoiceOver and NVDA.
 | P1 | **The Reviewer surface blocks itself under zoom.** It shows "open this on a computer" below 1024 CSS px. At 125% zoom a 1280px laptop *is* 1024 CSS px; at 150% it is 853. A low-vision Reviewer who zooms is locked out on the computer they were told to use. | 1.4.4 Resize text, 1.4.10 Reflow | 🔴 Critical | Below 1024, degrade to one stacked column (queue, then the request) instead of blocking. Keep the block only for devices that are genuinely small. **Needs the repo owner's decision** — it amends spec §16.1. |
 | P2 | The **quiet button** frame (`border`, `#c8d0c9`) is 1.39:1 against the page. It is the only boundary of ย้อนกลับ, ปิดข้อความ and the code disclosure. | 1.4.11 Non-text contrast | 🟡 Major | Frame quiet buttons in `muted-foreground` (5.69:1). Still visibly quieter than secondary's ink frame. |
 | P3 | In region mode the **map cells are controls**, and unselected cells (`land`) are 1.18:1 against the page. The cell edge is invisible as a boundary. | 1.4.11 Non-text contrast | 🟡 Major | Give each cell a 1px `muted-foreground` frame when the map is the control. Province mode, where the map is decoration, keeps the flat cells. |
-| P4 | The leading queue row's time left is amber where the others are grey, so urgency is carried by colour. | 1.4.1 Use of colour | 🟢 Minor | Acceptable: the text states the hours and the row is first because it is oldest. No change. |
+| P4 | The leading queue row's time left is amber where the others are grey, so urgency is carried by colour. | 1.4.1 Use of colour | 🟢 Minor | Acceptable: the text states the hours and the row is first because it is oldest. No change. **Moot since 2026-10-01 (#124):** the locked queue table draws no amber leader. |
 
 ### Operable
 

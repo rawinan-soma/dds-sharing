@@ -194,7 +194,7 @@ needs.
 | Zone | Ground | Contents |
 |---|---|---|
 | Header | `card` | title, count, `Button secondary md fullWidth` refresh, staleness line with change count, "หน้านี้ไม่อัปเดตเอง" |
-| Queue | `card` | pending only, **oldest first**, amber time-left on the leader |
+| Queue | `card` | pending only, **oldest first**, amber time-left on the leader (not carried into the locked table: system.md draws no amber leader, so #124 dropped it on 2026-10-01; unconfirmed against frame 5, which was unreachable) |
 | ต้องจัดการ | `pending-wash`, `border-y border-border-strong` | one card per alert, kind + reference + requester + assignee + age |
 | กำลังดำเนินการ | `card` | approved, not terminal, **submit order**, with the suppression note above it |
 

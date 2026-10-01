@@ -1,16 +1,12 @@
-import {
-  Component,
-  DestroyRef,
-  ElementRef,
-  Injector,
-  afterNextRender,
-  inject,
-  signal,
-} from '@angular/core';
+import { Component, DestroyRef, Injector, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
 import * as m from '../../paraglide/messages.js';
-import { DossierMessage, focusHeading, fullName } from './dossier-parts';
+import {
+  DossierMessage,
+  focusHeadingAfterRender,
+  fullName,
+} from './dossier-parts';
 import {
   alertAssignedTo,
   alertRaisedAgo,
@@ -61,7 +57,7 @@ type Clearing =
         <app-dossier-message [text]="copy.gone" />
       }
       @case ('failed') {
-        <app-dossier-message [text]="copy.loadFailed" [alert]="true" />
+        <app-dossier-message [text]="copy.loadFailed" [announce]="true" />
       }
       @case ('ok') {
         @if (detail(); as d) {
@@ -261,9 +257,6 @@ type Clearing =
       font-size: 18px;
       font-weight: 600;
     }
-    .email {
-      overflow-wrap: anywhere;
-    }
     .outcomes {
       display: flex;
       flex-wrap: wrap;
@@ -302,7 +295,6 @@ export class AlertPage {
   private readonly api = inject(QueueApi);
   private readonly store = inject(QueueStore);
   private readonly injector = inject(Injector);
-  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   protected readonly view = signal<View>({ kind: 'loading' });
   private readonly clearing = signal<Record<string, Clearing>>({});
   private asked = 0;
@@ -345,9 +337,7 @@ export class AlertPage {
         ? { kind: 'ok', detail: outcome.detail }
         : { kind: outcome.kind },
     );
-    afterNextRender(() => focusHeading(this.host.nativeElement), {
-      injector: this.injector,
-    });
+    focusHeadingAfterRender(this.injector);
   }
 
   protected clearingOf(alert: AlertRow): Clearing {

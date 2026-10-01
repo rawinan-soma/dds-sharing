@@ -51,18 +51,18 @@ type Problem = 'not_found' | 'failed' | null;
     </form>
   `,
   styles: `
+    /* A Field: the label above, the 44px box, one line beneath, at the
+       Field's own 6px gap. */
     form {
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 6px;
       width: 300px;
     }
     .line {
       display: flex;
+      align-items: center;
       gap: 8px;
-    }
-    .field-box {
-      height: 40px;
     }
     .find {
       flex: none;

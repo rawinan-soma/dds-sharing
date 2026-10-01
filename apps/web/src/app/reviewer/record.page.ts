@@ -1,16 +1,12 @@
-import {
-  Component,
-  DestroyRef,
-  ElementRef,
-  Injector,
-  afterNextRender,
-  inject,
-  signal,
-} from '@angular/core';
+import { Component, DestroyRef, Injector, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import * as m from '../../paraglide/messages.js';
-import { DateRange, DossierMessage, focusHeading } from './dossier-parts';
+import {
+  DateRange,
+  DossierMessage,
+  focusHeadingAfterRender,
+} from './dossier-parts';
 import { areaLine } from './area-copy';
 import {
   QueueApi,
@@ -51,7 +47,7 @@ type View =
         <app-dossier-message [text]="copy.notFound" />
       }
       @case ('failed') {
-        <app-dossier-message [text]="copy.loadFailed" [alert]="true" />
+        <app-dossier-message [text]="copy.loadFailed" [announce]="true" />
       }
       @case ('ok') {
         @if (record(); as r) {
@@ -259,7 +255,6 @@ export class RecordPage {
   private readonly api = inject(QueueApi);
   private readonly router = inject(Router);
   private readonly injector = inject(Injector);
-  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   protected readonly view = signal<View>({ kind: 'loading' });
   private asked = 0;
 
@@ -339,9 +334,7 @@ export class RecordPage {
 
   private show(view: View): void {
     this.view.set(view);
-    afterNextRender(() => focusHeading(this.host.nativeElement), {
-      injector: this.injector,
-    });
+    focusHeadingAfterRender(this.injector);
   }
 
   protected decidedBy(d: RecordDecision): string {

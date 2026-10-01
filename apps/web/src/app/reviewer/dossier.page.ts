@@ -16,7 +16,7 @@ import {
   DateRange,
   DossierMessage,
   dateRangeText,
-  focusHeading,
+  focusHeadingAfterRender,
   fullName,
 } from './dossier-parts';
 import { areaLine } from './area-copy';
@@ -366,16 +366,13 @@ const ROW_COUNT_FORMAT = new Intl.NumberFormat('th-TH');
         <app-dossier-message [text]="copy.gone" />
       }
       @case ('failed') {
-        <app-dossier-message [text]="copy.loadFailed" [alert]="true" />
+        <app-dossier-message [text]="copy.loadFailed" [announce]="true" />
       }
     }
   `,
   styles: `
     :host {
       display: block;
-    }
-    .email {
-      overflow-wrap: anywhere;
     }
     .codes summary {
       display: inline-flex;
@@ -466,7 +463,6 @@ export class DossierPage {
   private readonly api = inject(QueueApi);
   private readonly store = inject(QueueStore);
   private readonly injector = inject(Injector);
-  private readonly host = inject<ElementRef<HTMLElement>>(ElementRef);
   private readonly statement = viewChild<ElementRef<HTMLElement>>('statement');
 
   protected readonly view = signal<View>({ kind: 'loading' });
@@ -482,10 +478,6 @@ export class DossierPage {
   protected readonly copy = {
     whoHeading: m.reviewer_dossier_requester_heading(),
     askHeading: m.reviewer_dossier_ask_heading(),
-    firstName: m.requester_first_name(),
-    lastName: m.requester_last_name(),
-    telephone: m.reviewer_dossier_telephone(),
-    email: m.reviewer_dossier_email(),
     workplace: m.requester_workplace(),
     group: m.reviewer_dossier_group(),
     dates: m.reviewer_dossier_dates(),
@@ -553,11 +545,7 @@ export class DossierPage {
         ? { kind: 'ok', dossier: outcome.dossier }
         : { kind: outcome.kind },
     );
-    // Selecting a Request moves focus to its heading, so a keyboard user lands
-    // on what they picked rather than back in the list.
-    afterNextRender(() => focusHeading(this.host.nativeElement), {
-      injector: this.injector,
-    });
+    focusHeadingAfterRender(this.injector);
   }
 
   protected instant = formatInstant;
