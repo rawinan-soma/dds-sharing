@@ -1,30 +1,26 @@
 import { Component, inject, signal } from '@angular/core';
 import { Router } from '@angular/router';
 import * as m from '../../paraglide/messages.js';
-import { Field } from './field';
 import { QueueApi } from './queue-api';
 import { recordPath, zonePath } from './surface-paths';
 
 type Problem = 'not_found' | 'failed' | null;
 
-// The search field in the sidebar header, above refresh (spec §10.10,
-// handoff screen 13). Exact reference only: there is deliberately no search by
-// name, email, workplace or telephone, because a search by person is the
-// prior-Request history §10.2 declined, by another route.
+// The search field in the queue band, between the staleness line and refresh
+// (spec §10.10, system.md screen 13). Exact reference only: there is
+// deliberately no search by name, email, workplace or telephone, because a
+// search by person is the prior-Request history §10.2 declined, by another
+// route.
 @Component({
   selector: 'app-lookup-search',
-  imports: [Field],
   template: `
     <form role="search" (submit)="$event.preventDefault(); find()">
-      <!-- Polite, like the refresh result: "not found" must be heard too. -->
-      <app-field
-        aria-live="polite"
-        [label]="copy.label"
-        inputId="lookup-reference"
-        messageId="lookup-message"
-        [hint]="copy.hint"
-        [error]="problemText()"
-      >
+      <!-- The label is the field's name for a screen reader; on screen the
+           box carries it, as drawn. -->
+      <label class="visually-hidden" for="lookup-reference">{{
+        copy.label
+      }}</label>
+      <div class="line">
         <input
           id="lookup-reference"
           class="field-box figure"
@@ -32,25 +28,49 @@ type Problem = 'not_found' | 'failed' | null;
           autocapitalize="characters"
           spellcheck="false"
           aria-describedby="lookup-message"
+          [attr.placeholder]="copy.label"
           [attr.aria-invalid]="problem() === 'not_found' ? 'true' : null"
           [value]="reference()"
           (input)="typed($event)"
         />
-      </app-field>
-      <button
-        class="btn btn-secondary btn-full find"
-        type="submit"
-        [attr.aria-busy]="loading() || null"
+        <button
+          class="btn btn-secondary find"
+          type="submit"
+          [attr.aria-busy]="loading() || null"
+        >
+          {{ loading() ? copy.loading : copy.submit }}
+        </button>
+      </div>
+      <!-- Polite, like the refresh result: "not found" must be heard too. -->
+      <p
+        id="lookup-message"
+        class="field-message"
+        [class.error]="problem()"
+        aria-live="polite"
       >
-        {{ loading() ? copy.loading : copy.submit }}
-      </button>
+        {{ problem() ? problemText() : copy.hint }}
+      </p>
     </form>
   `,
   styles: `
     form {
-      display: grid;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      width: 300px;
+    }
+    .line {
+      display: flex;
       gap: 8px;
-      margin-bottom: 16px;
+    }
+    .field-box {
+      height: 40px;
+    }
+    .find {
+      flex: none;
+    }
+    .field-message {
+      font-size: 12px;
     }
   `,
 })

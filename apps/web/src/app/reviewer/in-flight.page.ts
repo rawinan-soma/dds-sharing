@@ -12,15 +12,16 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute } from '@angular/router';
 import * as m from '../../paraglide/messages.js';
 import { formatDay } from '../requester/format-day';
-import { areaHeadline, areaProvinces } from './area-copy';
-import { extractionWord, linkLeft } from './in-flight-copy';
+import { areaLine } from './area-copy';
+import { Icon } from './icon';
+import { extractionTone, extractionWord, linkLeft } from './in-flight-copy';
 import {
   type ActionOutcome,
   type InFlightDetail,
   type InFlightDetailOutcome,
   QueueApi,
 } from './queue-api';
-import { formatInstant } from './queue-format';
+import { formatShortInstant } from './queue-format';
 import { QueueStore } from './queue-store';
 
 type View =
@@ -36,103 +37,138 @@ type Acting =
   | { kind: 'busy'; action: Action }
   | { kind: 'said'; message: string; problem: boolean };
 
-// One in-flight Request (spec §10.9, handoff screen 6): who, what, the
-// decision line, the file, and the two things a Reviewer can do to it. The
-// actions are gated by what is physically possible; a held one stays
-// focusable and says why (`aria-disabled`, never `disabled`), because a
-// greyed button with no reason reads as a broken screen.
+// One in-flight Request (spec §10.9, system.md frame 6b): who, what, the
+// decision and the link in the header, and the two things a Reviewer can do
+// to it side by side. The actions are gated by what is physically possible; a
+// held one stays focusable and says why (`aria-disabled`, never `disabled`),
+// because a greyed button with no reason reads as a broken screen.
 //
 // ⚠️ There is no third action and there must not be one: a Reviewer never
 // corrects a Requester's email address (ADR 0017). Neither button sends a
-// body, and nothing here takes an address. The absence is stated on screen.
+// body, and nothing here takes an address. The absence is stated on screen,
+// on inert-wash with a lock: it is a rule, not a fault, and it is on every
+// in-flight dossier, so red there would teach Reviewers to ignore red.
 @Component({
   selector: 'app-reviewer-in-flight',
+  imports: [Icon],
   template: `
-    <article class="pane-body">
-      @switch (view().kind) {
-        @case ('gone') {
-          <h2 #heading tabindex="-1" class="notice">{{ copy.gone }}</h2>
-        }
-        @case ('failed') {
-          <h2 #heading tabindex="-1" class="notice" role="alert">
-            {{ copy.loadFailed }}
-          </h2>
-        }
-        @case ('ok') {
-          @if (detail(); as d) {
-            <h2 #heading tabindex="-1" class="figure">{{ d.reference }}</h2>
-            <p class="muted">
-              {{ approvedBy(d) }} ·
-              <time [attr.datetime]="d.approvedAt">{{
-                instant(d.approvedAt)
-              }}</time>
-            </p>
+    @switch (view().kind) {
+      @case ('gone') {
+        <div class="dossier-message">
+          <h2 #heading tabindex="-1">{{ copy.gone }}</h2>
+        </div>
+      }
+      @case ('failed') {
+        <div class="dossier-message">
+          <h2 #heading tabindex="-1" role="alert">{{ copy.loadFailed }}</h2>
+        </div>
+      }
+      @case ('ok') {
+        @if (detail(); as d) {
+          <article class="dossier">
+            <header class="dossier-head">
+              <div>
+                <div class="head-tags">
+                  <span [class]="'tag md ' + tone(d)">{{ stateWord(d) }}</span>
+                </div>
+                <p class="reference figure">{{ d.reference }}</p>
+                <h2 #heading tabindex="-1">
+                  {{ d.contact.name }} {{ d.contact.surname }}
+                </h2>
+              </div>
+              <dl class="head-cells">
+                <div>
+                  <dt>{{ copy.approvedBy }}</dt>
+                  <dd>{{ d.approvedBy }}</dd>
+                </div>
+                <div>
+                  <dt>{{ copy.approvedAt }}</dt>
+                  <dd>
+                    <time [attr.datetime]="d.approvedAt">{{
+                      shortInstant(d.approvedAt)
+                    }}</time>
+                  </dd>
+                </div>
+                <div>
+                  <dt>{{ copy.linkLeft }}</dt>
+                  @if (d.file && d.linkExpiresAt) {
+                    <dd class="success">
+                      <time [attr.datetime]="d.linkExpiresAt">{{
+                        left(d.linkExpiresAt)
+                      }}</time>
+                    </dd>
+                  } @else {
+                    <dd>{{ copy.noFile }}</dd>
+                  }
+                </div>
+                <div>
+                  <dt>{{ copy.attempts }}</dt>
+                  <dd>{{ d.file ? attempts(d.file.attempts) : '—' }}</dd>
+                </div>
+              </dl>
+            </header>
 
-            <div class="ledger">
-              <section>
-                <h3>{{ copy.whoHeading }}</h3>
-                <dl>
-                  <dt>{{ copy.requester }}</dt>
-                  <dd>{{ d.contact.name }} {{ d.contact.surname }}</dd>
-                  <dt>{{ copy.telephone }}</dt>
-                  <dd class="figure">{{ d.contact.tel }}</dd>
-                  <dt>{{ copy.email }}</dt>
-                  <dd>{{ d.contact.email }}</dd>
-                  <dt>{{ copy.workplace }}</dt>
-                  <dd>{{ d.contact.workplace }}</dd>
+            <div class="dossier-columns">
+              <section aria-labelledby="who">
+                <h3 id="who" class="section-title">{{ copy.whoHeading }}</h3>
+                <dl class="rows compact">
+                  <div>
+                    <dt>{{ copy.firstName }}</dt>
+                    <dd>{{ d.contact.name }}</dd>
+                  </div>
+                  <div>
+                    <dt>{{ copy.lastName }}</dt>
+                    <dd>{{ d.contact.surname }}</dd>
+                  </div>
+                  <div>
+                    <dt>{{ copy.workplace }}</dt>
+                    <dd>{{ d.contact.workplace }}</dd>
+                  </div>
+                  <div>
+                    <dt>{{ copy.telephone }}</dt>
+                    <dd class="figure">{{ d.contact.tel }}</dd>
+                  </div>
+                  <div>
+                    <dt>{{ copy.email }}</dt>
+                    <dd class="email">{{ d.contact.email }}</dd>
+                  </div>
                 </dl>
-                <p class="muted small">{{ copy.contactVisible }}</p>
+                <p class="contact-note">{{ copy.contactVisible }}</p>
               </section>
-              <section>
-                <h3>{{ copy.askHeading }}</h3>
-                <dl>
-                  <dt>{{ copy.group }}</dt>
-                  <dd>{{ d.diseaseGroupName }}</dd>
-                  <dt>{{ copy.dates }}</dt>
-                  <dd>
-                    <time [attr.datetime]="d.startDate">{{
-                      day(d.startDate)
-                    }}</time>
-                    –
-                    <time [attr.datetime]="d.endDate">{{
-                      day(d.endDate)
-                    }}</time>
-                  </dd>
-                  <dt>{{ copy.area }}</dt>
-                  <dd>
-                    {{ areaHeadline(d.area) }}
-                    @if (areaProvinces(d.area); as names) {
-                      <span class="muted">{{ names }}</span>
-                    }
-                  </dd>
+              <section aria-labelledby="ask">
+                <h3 id="ask" class="section-title">{{ copy.askHeading }}</h3>
+                <dl class="rows compact">
+                  <div>
+                    <dt>{{ copy.group }}</dt>
+                    <dd>{{ d.diseaseGroupName }}</dd>
+                  </div>
+                  <div>
+                    <dt>{{ copy.dates }}</dt>
+                    <dd>
+                      <time [attr.datetime]="d.startDate">{{
+                        day(d.startDate)
+                      }}</time>
+                      –
+                      <time [attr.datetime]="d.endDate">{{
+                        day(d.endDate)
+                      }}</time>
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>{{ copy.area }}</dt>
+                    <dd>{{ areaLine(d.area) }}</dd>
+                  </div>
                 </dl>
               </section>
             </div>
 
-            <section class="file">
-              <h3>{{ copy.fileHeading }}</h3>
-              <p class="state">{{ stateWord(d) }}</p>
-              @if (d.file; as f) {
-                <dl>
-                  <dt>{{ copy.archive }}</dt>
-                  <dd class="figure">{{ f.archiveFilename }}</dd>
-                  <dt>{{ copy.expiresIn }}</dt>
-                  <dd class="figure">
-                    <time [attr.datetime]="d.linkExpiresAt">{{
-                      left(d.linkExpiresAt!)
-                    }}</time>
-                  </dd>
-                  <dt>{{ copy.attempts }}</dt>
-                  <dd class="figure">{{ attempts(f.attempts) }}</dd>
-                </dl>
-              } @else {
-                <p class="muted">{{ copy.noFile }}</p>
-              }
-            </section>
-
-            <section class="actions">
-              <h3>{{ copy.actionsHeading }}</h3>
+            <section class="actions" [attr.aria-label]="copy.actionsHeading">
               <div class="action">
+                <h3>{{ copy.resendTitle }}</h3>
+                <p id="resend-note">{{ copy.resendNote }}</p>
+                @if (!may(d, 'resend')) {
+                  <p id="resend-held" class="held">{{ heldReason(d) }}</p>
+                }
                 <button
                   class="btn btn-secondary resend"
                   type="button"
@@ -145,14 +181,15 @@ type Acting =
                 >
                   {{ busyWith('resend') ? copy.resendLoading : copy.resend }}
                 </button>
-                <p id="resend-note" class="muted small">
-                  {{ copy.resendNote }}
-                </p>
-                @if (!may(d, 'resend')) {
-                  <p id="resend-held" class="small">{{ heldReason(d) }}</p>
-                }
               </div>
               <div class="action">
+                <h3>{{ copy.rerunTitle }}</h3>
+                <p id="rerun-note">{{ copy.rerunNote }}</p>
+                @if (!may(d, 'rerun')) {
+                  <p id="rerun-held" class="held">
+                    {{ copy.extractingNote }}
+                  </p>
+                }
                 <button
                   class="btn btn-secondary rerun"
                   type="button"
@@ -163,121 +200,79 @@ type Acting =
                   [attr.aria-busy]="busyWith('rerun') || null"
                   (click)="act(d, 'rerun')"
                 >
+                  <app-icon name="refresh" />
                   {{ busyWith('rerun') ? copy.rerunLoading : copy.rerun }}
                 </button>
-                <p id="rerun-note" class="muted small">{{ copy.rerunNote }}</p>
-                @if (!may(d, 'rerun')) {
-                  <p id="rerun-held" class="small">
-                    {{ copy.extractingNote }}
-                  </p>
-                }
               </div>
-              @if (said(); as s) {
-                <p
-                  class="said"
-                  [class.problem]="s.problem"
-                  [attr.role]="s.problem ? 'alert' : 'status'"
-                >
-                  {{ s.message }}
-                </p>
-              }
             </section>
+            @if (said(); as s) {
+              <p
+                class="said"
+                [class.problem]="s.problem"
+                [attr.role]="s.problem ? 'alert' : 'status'"
+              >
+                {{ s.message }}
+              </p>
+            }
 
             <!-- ADR 0017: the absence most likely to be "fixed", so it is
                  stated rather than left invisible. -->
-            <section class="no-email-edit">
-              <h3>{{ copy.noEmailEditHeading }}</h3>
-              <p>{{ copy.noEmailEditDetail }}</p>
+            <section class="absence">
+              <app-icon name="lock" />
+              <div>
+                <h3 class="absence-title">{{ copy.noEmailEditHeading }}</h3>
+                <p>{{ copy.noEmailEditDetail }}</p>
+              </div>
             </section>
-          }
+          </article>
         }
       }
-    </article>
+    }
   `,
   styles: `
-    .pane-body {
-      padding: 32px 40px;
-      max-width: 880px;
+    :host {
+      display: block;
     }
-    h2 {
-      font-size: 1.5rem;
-      font-weight: 600;
-      color: var(--primary);
-    }
-    h2:focus {
-      outline: none;
-    }
-    h2:focus-visible {
-      outline: 2px solid var(--primary);
-      outline-offset: 4px;
-    }
-    h3 {
-      font-size: 1.125rem;
-      font-weight: 600;
-    }
-    .notice {
-      color: var(--foreground);
-      font-size: 1.125rem;
-    }
-    .ledger {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 48px;
-      margin-top: 24px;
-    }
-    dl {
-      display: grid;
-      grid-template-columns: max-content 1fr;
-      gap: 4px 24px;
-      margin: 12px 0 8px;
-    }
-    dt {
-      color: var(--muted-foreground);
-      font-size: 0.875rem;
-    }
-    dd {
-      margin: 0;
+    .email {
       overflow-wrap: anywhere;
     }
-    .muted {
+    .contact-note {
+      margin-top: 8px;
+      font-size: 13px;
       color: var(--muted-foreground);
     }
-    .small {
-      font-size: 0.875rem;
-    }
-    .file,
     .actions {
-      margin-top: 24px;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 40px;
       padding-top: 24px;
       border-top: 1px solid var(--border);
     }
-    .state {
-      margin-top: 8px;
+    .action {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 6px;
+    }
+    .action h3 {
+      font-size: 14px;
       font-weight: 600;
     }
-    .action {
-      margin-top: 16px;
-    }
     .action p {
-      margin-top: 4px;
-      max-width: 720px;
+      font-size: 14px;
+      color: var(--muted-foreground);
+    }
+    .action p.held {
+      color: var(--foreground);
+    }
+    .action .btn {
+      margin-top: 6px;
     }
     .said {
-      margin-top: 16px;
       font-weight: 600;
     }
     .said.problem {
       color: var(--failed);
-    }
-    /* handoff.md screen 6: the stated absence, in failed-wash. */
-    .no-email-edit {
-      margin-top: 24px;
-      padding: 20px 24px;
-      background: var(--failed-wash);
-    }
-    .no-email-edit p {
-      margin-top: 8px;
-      max-width: 720px;
     }
   `,
 })
@@ -295,7 +290,8 @@ export class InFlightPage {
     loadFailed: m.reviewer_inflight_load_failed(),
     whoHeading: m.reviewer_dossier_requester_heading(),
     askHeading: m.reviewer_dossier_ask_heading(),
-    requester: m.reviewer_dossier_requester_heading(),
+    firstName: m.requester_first_name(),
+    lastName: m.requester_last_name(),
     telephone: m.reviewer_dossier_telephone(),
     email: m.reviewer_dossier_email(),
     workplace: m.requester_workplace(),
@@ -303,15 +299,17 @@ export class InFlightPage {
     group: m.reviewer_dossier_group(),
     dates: m.reviewer_dossier_dates(),
     area: m.reviewer_dossier_area(),
-    fileHeading: m.reviewer_file_heading(),
-    archive: m.reviewer_file_name(),
-    expiresIn: m.reviewer_file_expires_in(),
+    approvedBy: m.reviewer_approved_by_label(),
+    approvedAt: m.reviewer_approved_at_label(),
+    linkLeft: m.reviewer_link_left_label(),
     attempts: m.reviewer_file_attempts(),
     noFile: m.reviewer_file_none(),
     actionsHeading: m.reviewer_actions_heading(),
+    resendTitle: m.reviewer_resend_title(),
     resend: m.reviewer_resend(),
     resendLoading: m.reviewer_resend_loading(),
     resendNote: m.reviewer_resend_note(),
+    rerunTitle: m.reviewer_rerun_title(),
     rerun: m.reviewer_rerun(),
     rerunLoading: m.reviewer_rerun_loading(),
     rerunNote: m.reviewer_rerun_note(),
@@ -412,6 +410,7 @@ export class InFlightPage {
   }
 
   protected stateWord = (d: InFlightDetail) => extractionWord(d.extraction);
+  protected tone = (d: InFlightDetail) => extractionTone(d.extraction);
 
   protected heldReason(d: InFlightDetail): string {
     return d.extraction === 'failed'
@@ -419,13 +418,10 @@ export class InFlightPage {
       : m.reviewer_inflight_extracting_note();
   }
 
-  protected approvedBy = (d: InFlightDetail) =>
-    m.reviewer_approved_by({ reviewer: d.approvedBy });
   protected attempts = (count: number) =>
     m.reviewer_file_attempts_value({ count });
   protected left = (expiresAt: string) => linkLeft(expiresAt, Date.now());
   protected day = formatDay;
-  protected instant = formatInstant;
-  protected areaHeadline = areaHeadline;
-  protected areaProvinces = areaProvinces;
+  protected shortInstant = formatShortInstant;
+  protected areaLine = areaLine;
 }

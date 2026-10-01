@@ -108,6 +108,25 @@ describe('AlertPage', () => {
     );
   });
 
+  it('puts the contact details inside the Alert card, above its outcomes', async () => {
+    await load([lapse()]);
+    const card = el.querySelector('.alert-card')!;
+    const contact = card.querySelector('.contact')!;
+    expect(contact.textContent).toContain('081 234 5678');
+    expect(contact.textContent).toContain('Regional Office 1');
+    const firstOutcome = card.querySelector('.outcomes button')!;
+    expect(
+      contact.compareDocumentPosition(firstOutcome) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it('heads the dossier with the reference over the requester’s name', async () => {
+    await load([lapse()]);
+    expect(el.querySelector('h2')!.textContent).toContain('Somchai Jaidee');
+    expect(el.querySelector('.reference')!.textContent).toContain('REQ-');
+  });
+
   it('offers exactly the kind’s closed set, and no way to type anything', async () => {
     await load([lapse()]);
     expect(buttons()).toEqual([

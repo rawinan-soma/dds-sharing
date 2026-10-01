@@ -690,9 +690,15 @@ the block was not carried into `apps/web/src/styles.css`.
   on review of #123); no frame on "Requester form: prototypes" shows it yet.
 - **The PDPA notice has no address.** The consent label names it as text, not a
   link, until it does.
-- **The Reviewer surface is on these tokens but not restyled** (#124). It keeps
-  the old service header, moved from the app shell into the Reviewer shell
-  because no Requester frame draws one.
+- **Three Reviewer frames draw columns the API does not send** (#124 built
+  without them; it changed no API). The queue's หน่วยงาน (the list reads only a
+  name and a group, §10.2), the in-flight table's อนุมัติโดย and download count,
+  6b's ไฟล์พร้อมเมื่อ header cell (shown as อนุมัติเมื่อ instead), and 6a's *สิ่งที่ขอ* and อนุมัติเมื่อ / ดึงข้อมูล header cells. 6a's header shows
+  อนุมัติโดย and เกิดขึ้นเมื่อ instead.
+- **4c and 12c are drawn but have no behaviour behind them.** Nothing tells the
+  sign-in page that a decision was lost to an ended session, and nothing
+  watches idle time (accessibility.md O1), so neither notice can appear yet.
+  12d's ceiling Toast keeps its existing *เข้าสู่ระบบใหม่ตอนนี้* and dismiss.
 - **The Lunagraph project `dds-sharing` has not been redrawn.** Its twelve screens,
   and every screenshot in `handoff.md`, still show the square teal system.
 - **Two Alert kinds are not drawn.** 6a draws extraction failure; the

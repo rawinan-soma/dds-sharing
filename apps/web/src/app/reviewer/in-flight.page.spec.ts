@@ -121,18 +121,26 @@ describe('InFlightPage', () => {
     expect(text()).toContain(m.reviewer_contact_visible_note());
   });
 
-  it('names the approving Reviewer on the decision line', async () => {
+  const cell = (label: string) =>
+    [...el.querySelectorAll('.head-cells > div')]
+      .find((c) => c.querySelector('dt')!.textContent!.trim() === label)
+      ?.querySelector('dd')
+      ?.textContent?.trim();
+
+  it('names the approving Reviewer in the dossier header', async () => {
     await load(ready());
-    expect(text()).toContain(
-      m.reviewer_approved_by({ reviewer: 'Alice Reviewer' }),
-    );
+    expect(cell(m.reviewer_approved_by_label())).toBe('Alice Reviewer');
   });
 
-  it('shows the file, the time left on its link and the downloads, never the link', async () => {
+  it('heads the dossier with the time left on its link and the downloads, never the link', async () => {
     await load(ready());
-    expect(text()).toContain('dds-envocc-sharing-20260920-090000.zip');
-    expect(text()).toContain(m.reviewer_file_expires_in());
-    expect(text()).toContain(m.reviewer_file_attempts_value({ count: 2 }));
+    expect(cell(m.reviewer_link_left_label())).toMatch(/\d+ h \d{2} m/);
+    expect(
+      el.querySelector('.head-cells dd.success')?.textContent?.trim(),
+    ).toBe(cell(m.reviewer_link_left_label()));
+    expect(cell(m.reviewer_file_attempts())).toBe(
+      m.reviewer_file_attempts_value({ count: 2 }),
+    );
     expect(el.querySelector('a[href*="/d/"]')).toBeNull();
   });
 
@@ -166,6 +174,14 @@ describe('InFlightPage', () => {
       m.reviewer_inflight_failed_note(),
     );
     expect(rerunButton().getAttribute('aria-disabled')).toBeNull();
+  });
+
+  it('states the absence on inert-wash with a lock, never styled as failed', async () => {
+    await load(ready());
+    const absence = el.querySelector<HTMLElement>('.absence')!;
+    expect(absence.textContent).toContain(m.reviewer_no_email_edit_heading());
+    expect(absence.querySelector('app-icon svg')).not.toBeNull();
+    expect(absence.outerHTML).not.toMatch(/failed/);
   });
 
   it('states that there is no way to correct the email address, and has no field for one', async () => {

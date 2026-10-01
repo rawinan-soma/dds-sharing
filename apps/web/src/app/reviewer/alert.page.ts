@@ -24,7 +24,9 @@ import {
   type AlertRow,
   QueueApi,
 } from './queue-api';
+import { formatShortInstant } from './queue-format';
 import { QueueStore } from './queue-store';
+import { Icon } from './icon';
 
 type View =
   | { kind: 'loading' }
@@ -43,48 +45,58 @@ type Clearing =
   | { kind: 'deferred' }
   | { kind: 'problem'; message: string };
 
-// An open Alert (spec §10.6, handoff screen 6): the silence in words, the
-// number to ring, whose it is, and the kind's closed set as buttons. There is
-// no text field anywhere on it, and there must never be one: the count of
-// each outcome is the only measure the service has of how often this happens.
+// An open Alert (spec §10.6, system.md frame 6a): the silence in words, then
+// the Requester's contact block INSIDE the card, above the outcome buttons:
+// the outcome is a call, so the number is read before the outcomes, not after
+// them. Whose it is, and the kind's closed set as buttons. There is no text
+// field anywhere on it, and there must never be one: the count of each
+// outcome is the only measure the service has of how often this happens.
+// The two undrawn kinds (collection lapse, send abandoned) follow the same card.
 @Component({
   selector: 'app-reviewer-alert',
+  imports: [Icon],
   template: `
-    <article class="pane-body">
-      @switch (view().kind) {
-        @case ('gone') {
-          <h2 #heading tabindex="-1" class="notice">{{ copy.gone }}</h2>
-        }
-        @case ('failed') {
-          <h2 #heading tabindex="-1" class="notice" role="alert">
-            {{ copy.loadFailed }}
-          </h2>
-        }
-        @case ('ok') {
-          @if (detail(); as d) {
-            <h2 #heading tabindex="-1" class="figure">
-              {{ d.alerts[0].reference }}
-            </h2>
-            @if (d.contact; as c) {
-              <dl class="contact">
-                <dt>{{ copy.requester }}</dt>
-                <dd>{{ c.name }} {{ c.surname }}</dd>
-                <dt>{{ copy.telephone }}</dt>
-                <dd class="figure">{{ c.tel }}</dd>
-                <dt>{{ copy.email }}</dt>
-                <dd>{{ c.email }}</dd>
-                <dt>{{ copy.workplace }}</dt>
-                <dd>{{ c.workplace }}</dd>
+    @switch (view().kind) {
+      @case ('gone') {
+        <div class="dossier-message">
+          <h2 #heading tabindex="-1">{{ copy.gone }}</h2>
+        </div>
+      }
+      @case ('failed') {
+        <div class="dossier-message">
+          <h2 #heading tabindex="-1" role="alert">{{ copy.loadFailed }}</h2>
+        </div>
+      }
+      @case ('ok') {
+        @if (detail(); as d) {
+          <article class="dossier">
+            <header class="dossier-head">
+              <div>
+                <p class="reference figure">{{ d.alerts[0].reference }}</p>
+                <h2 #heading tabindex="-1">{{ name(d) }}</h2>
+              </div>
+              <dl class="head-cells">
+                <div>
+                  <dt>{{ copy.approvedBy }}</dt>
+                  <dd>{{ d.alerts[0].assignedTo.displayName }}</dd>
+                </div>
+                <div>
+                  <dt>{{ copy.raised }}</dt>
+                  <dd>
+                    <time [attr.datetime]="d.alerts[0].raisedAt">{{
+                      shortInstant(d.alerts[0].raisedAt)
+                    }}</time>
+                  </dd>
+                </div>
               </dl>
-              <p class="muted">{{ copy.contactVisible }}</p>
-            }
+            </header>
 
             @for (alert of d.alerts; track alert.kind) {
               <section class="alert-card" [attr.aria-label]="title(alert)">
-                <h3>{{ title(alert) }}</h3>
+                <h3 class="alert-title">{{ title(alert) }}</h3>
                 <p>{{ describe(alert) }}</p>
                 <p>{{ instruct(alert) }}</p>
-                <p class="muted">
+                <p class="meta">
                   {{ assignedTo(alert) }} · {{ raisedAgo(alert) }}
                 </p>
                 @if (alert.kind !== 'extraction_failure') {
@@ -93,6 +105,26 @@ type Clearing =
                   } @else if (!alert.clearable) {
                     <p>{{ assignedOnly(alert) }}</p>
                   }
+                }
+
+                @if (d.contact; as c) {
+                  <dl class="contact">
+                    <div>
+                      <dt>{{ copy.requester }}</dt>
+                      <dd>
+                        {{ c.name }} {{ c.surname }}
+                        <span class="muted">· {{ c.workplace }}</span>
+                      </dd>
+                    </div>
+                    <div>
+                      <dt>{{ copy.telephone }}</dt>
+                      <dd class="tel figure">{{ c.tel }}</dd>
+                    </div>
+                    <div>
+                      <dt>{{ copy.email }}</dt>
+                      <dd class="email">{{ c.email }}</dd>
+                    </div>
+                  </dl>
                 }
 
                 @switch (clearingOf(alert).kind) {
@@ -118,7 +150,9 @@ type Clearing =
                           <button
                             class="btn btn-secondary"
                             type="button"
-                            [disabled]="busy(alert)"
+                            [disabled]="
+                              busy(alert) && !savingWith(alert, outcome)
+                            "
                             [attr.aria-busy]="
                               savingWith(alert, outcome) || null
                             "
@@ -132,106 +166,109 @@ type Clearing =
                           </button>
                         }
                       </div>
-                      @if (alert.kind === 'extraction_failure') {
-                        <!-- §10.9: Re-run lives here while the Alert holds
-                             the Request; it defers the Alert, never clears
-                             it (ADR 0014). -->
-                        <div class="rerun-action">
-                          <button
-                            class="btn btn-secondary rerun"
-                            type="button"
-                            aria-describedby="alert-rerun-note"
-                            [disabled]="busy(alert)"
-                            [attr.aria-busy]="starting(alert) || null"
-                            (click)="rerun(alert)"
-                          >
-                            {{
-                              starting(alert) ? copy.rerunLoading : copy.rerun
-                            }}
-                          </button>
-                          <p id="alert-rerun-note" class="muted small">
-                            {{ copy.rerunNote }}
-                          </p>
-                        </div>
-                      }
                       @if (problemOf(alert); as problem) {
                         <p class="problem" role="alert">{{ problem }}</p>
                       }
                     }
-                    <p class="muted small">{{ copy.closedSetNote }}</p>
+                    <p class="meta">{{ copy.closedSetNote }}</p>
                   }
                 }
               </section>
+
+              <!-- §10.9: Re-run lives here while the Alert holds the Request;
+                   it defers the Alert, never clears it (ADR 0014). -->
+              @if (
+                alert.kind === 'extraction_failure' &&
+                alert.clearable &&
+                !alert.deferred &&
+                offersRerun(alert)
+              ) {
+                <div class="rerun-strip">
+                  <p id="alert-rerun-note" class="rerun-note">
+                    {{ copy.rerunNote }}
+                  </p>
+                  <button
+                    class="btn btn-secondary btn-lg rerun"
+                    type="button"
+                    aria-describedby="alert-rerun-note"
+                    [disabled]="busy(alert) && !starting(alert)"
+                    [attr.aria-busy]="starting(alert) || null"
+                    (click)="rerun(alert)"
+                  >
+                    <app-icon name="refresh" />
+                    {{ starting(alert) ? copy.rerunLoading : copy.rerun }}
+                  </button>
+                </div>
+              }
             }
-          }
+
+            @if (d.contact) {
+              <p class="contact-note">{{ copy.contactVisible }}</p>
+            }
+          </article>
         }
       }
-    </article>
+    }
   `,
   styles: `
-    .pane-body {
-      padding: 32px 40px;
+    :host {
+      display: block;
+    }
+    /* The Statement's compact form: pending-wash, a 2px pending rule. */
+    .alert-card {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
       max-width: 880px;
+      padding: 24px;
+      background: var(--pending-wash);
+      border-left: 2px solid var(--pending);
+      border-radius: var(--radius-lg);
     }
-    h2 {
-      font-size: 1.5rem;
+    .alert-card > p {
+      max-width: 720px;
+    }
+    .alert-title {
+      font-size: 18px;
       font-weight: 600;
-      color: var(--primary);
+      color: var(--pending);
     }
-    h2:focus {
-      outline: none;
-    }
-    h2:focus-visible {
-      outline: 2px solid var(--primary);
-      outline-offset: 4px;
-    }
-    .notice {
-      color: var(--foreground);
-      font-size: 1.125rem;
+    .meta {
+      font-size: 13px;
+      color: var(--muted-foreground);
     }
     .contact {
       display: grid;
-      grid-template-columns: max-content 1fr;
-      gap: 4px 24px;
-      margin: 24px 0 8px;
+      gap: 6px;
+      margin: 8px 0;
+      padding: 16px 20px;
+      background: var(--card);
+      border-radius: var(--radius-panel);
     }
-    dt {
+    .contact > div {
+      display: grid;
+      grid-template-columns: 96px minmax(0, 1fr);
+      gap: 16px;
+      align-items: baseline;
+    }
+    .contact dt {
+      font-size: 13px;
       color: var(--muted-foreground);
-      font-size: 0.875rem;
     }
-    dd {
+    .contact dd {
       margin: 0;
-      overflow-wrap: anywhere;
     }
-    .muted {
-      color: var(--muted-foreground);
-    }
-    .small {
-      font-size: 0.875rem;
-    }
-    /* handoff.md screen 6: pending-wash with a 2px pending left rule. */
-    .alert-card {
-      margin-top: 24px;
-      padding: 20px 24px;
-      background: var(--pending-wash);
-      border-left: 2px solid var(--pending);
-    }
-    .alert-card h3 {
-      font-size: 1.125rem;
+    .tel {
+      font-size: 18px;
       font-weight: 600;
     }
-    .alert-card p {
-      margin-top: 8px;
-      max-width: 720px;
+    .email {
+      overflow-wrap: anywhere;
     }
     .outcomes {
       display: flex;
       flex-wrap: wrap;
       gap: 12px;
-      margin-top: 16px;
-    }
-    .rerun-action {
-      margin-top: 16px;
     }
     .problem {
       color: var(--failed);
@@ -240,6 +277,25 @@ type Clearing =
     .cleared,
     .rerunning {
       font-weight: 600;
+    }
+    .rerun-strip {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px 24px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+    }
+    .rerun-note {
+      flex: 1 1 320px;
+      max-width: 640px;
+      font-size: 14px;
+      color: var(--muted-foreground);
+    }
+    .contact-note {
+      font-size: 13px;
+      color: var(--muted-foreground);
     }
   `,
 })
@@ -255,10 +311,11 @@ export class AlertPage {
   protected readonly copy = {
     gone: m.reviewer_alert_gone(),
     loadFailed: m.reviewer_alert_load_failed(),
-    requester: m.reviewer_dossier_requester_heading(),
+    requester: m.reviewer_col_requester(),
+    approvedBy: m.reviewer_approved_by_label(),
+    raised: m.reviewer_col_raised(),
     telephone: m.reviewer_dossier_telephone(),
     email: m.reviewer_dossier_email(),
-    workplace: m.requester_workplace(),
     contactVisible: m.reviewer_contact_visible_note(),
     closedSetNote: m.reviewer_alert_closed_set_note(),
     saving: m.reviewer_alert_clearing(),
@@ -388,6 +445,17 @@ export class AlertPage {
   }
 
   protected title = (alert: AlertRow) => alertTitle(alert.kind);
+  protected shortInstant = formatShortInstant;
+  protected name = (d: AlertDetail) =>
+    d.contact
+      ? `${d.contact.name} ${d.contact.surname}`
+      : d.alerts[0].requesterName;
+
+  /** Re-run is offered until a press on this card has settled it. */
+  protected offersRerun(alert: AlertRow): boolean {
+    const kind = this.clearingOf(alert).kind;
+    return kind !== 'cleared' && kind !== 'deferred';
+  }
   protected label = outcomeLabel;
 
   protected describe(alert: AlertRow): string {

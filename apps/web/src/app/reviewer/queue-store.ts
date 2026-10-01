@@ -86,4 +86,46 @@ export class QueueStore {
     const rows = this.rows();
     if (rows) this.rows.set(rows.filter((r) => r.id !== id));
   }
+
+  /**
+   * Approved here: it leaves the pending list and joins the in-flight one,
+   * extracting and with nothing to press yet, in submit order as the server
+   * keeps it. The tabs' counts then say what happened without a re-read.
+   */
+  approvePending(id: string): void {
+    const row = this.rows()?.find((r) => r.id === id);
+    this.removePending(id);
+    const inFlight = this.inFlight();
+    if (!row || !inFlight || inFlight.some((r) => r.requestId === id)) return;
+    const entry: InFlightRow = {
+      requestId: row.id,
+      reference: row.reference,
+      submittedAt: row.submittedAt,
+      requesterName: row.requesterName,
+      diseaseGroupName: row.diseaseGroupName,
+      extraction: 'extracting',
+      linkExpiresAt: null,
+      actions: { rerun: false, resend: false },
+    };
+    const at = inFlight.findIndex((r) => r.submittedAt > entry.submittedAt);
+    this.inFlight.set(
+      at === -1
+        ? [...inFlight, entry]
+        : [...inFlight.slice(0, at), entry, ...inFlight.slice(at)],
+    );
+  }
+
+  /** The server refused a Decision as too late: the row reads expired. */
+  markExpired(id: string): void {
+    const rows = this.rows();
+    if (rows) {
+      this.rows.set(
+        rows.map((r) =>
+          r.id === id
+            ? { ...r, expired: true, minutesLeft: 0, ahead: null }
+            : r,
+        ),
+      );
+    }
+  }
 }

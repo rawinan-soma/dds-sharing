@@ -22,3 +22,15 @@ export function areaProvinces(area: Area): string | null {
 function provinceNames(area: Extract<Area, { kind: 'provinces' }>): string {
   return area.provinces.map((p) => p.name).join(', ');
 }
+
+// The area on one line, as the dossier's row reads it: a region by its name
+// and how many provinces it is stored as (*เขตสุขภาพที่ 4 · 8 จังหวัด*), no
+// chips; a hand-picked list by its names; the whole country in words.
+export function areaLine(area: Area): string {
+  if (area.kind === 'provinces' && area.region !== null) {
+    return `${areaHeadline(area)} · ${m.reviewer_area_province_count({
+      count: area.provinces.length,
+    })}`;
+  }
+  return areaHeadline(area);
+}
