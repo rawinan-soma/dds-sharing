@@ -203,8 +203,10 @@ Upstream enforces it (`HTTP 400`, "Date range must not exceed 1 year (365
 days)"). It is a **span** limit, `end - start <= 365 days`, not an absolute floor.
 
 Surfaced, not hidden. Enforced in **two places**: the date picker greys out any
-`to` beyond `from + 365 days`, and the server re-checks on submit as a guard
-against direct API calls. **The server's message names the cap as upstream's**,
+`to` beyond `from + 364 days` (365 days counted inclusively, as its foot says;
+amended 2026-10-01, #123, to `docs/design/system.md` "Date field"), and the
+server re-checks the cap itself on submit as a guard against direct API calls.
+The picker is one day stricter than the cap: a typed `from + 365` is accepted. **The server's message names the cap as upstream's**,
 because when a Requester asks why, "the DDC API caps it" is the true answer.
 
 Splitting a wider Request server-side stays rejected, but **its original reason

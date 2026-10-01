@@ -1,8 +1,13 @@
-// The 365-day cap (spec §4.2): `to` may not be later than `from` + 365 days.
-// The server re-checks the same rule and names it as upstream's; this is the first of the two places, and the only date arithmetic
-// in the SPA, the calendar's day stepping included — which is why the tripwire in the API's span-builder-only spec
-// allows this file by name. It never computes upstream's half-open `end_date`;
-// that conversion has one home, in the API.
+// Two date rules, and the only date arithmetic in the SPA, the calendar's day
+// stepping included — which is why the tripwire in the API's span-builder-only
+// spec allows this file by name.
+//
+// - The 365-day cap (spec §4.2): `to` may not be later than `from` + 365 days.
+//   The server re-checks the same rule and names it as upstream's.
+// - The picker span: the calendar offers one day less, `from` + 364.
+//
+// It never computes upstream's half-open `end_date`; that conversion has one
+// home, in the API.
 
 const ONE_DAY_MS = 86_400_000;
 const MAX_SPAN_DAYS = 365;

@@ -8,7 +8,7 @@ import {
   shiftDay,
 } from './span-cap';
 
-describe('the 365-day cap', () => {
+describe('the picker span', () => {
   it('lets the picker offer `to` up to from + 364 days: 365 days inclusive', () => {
     expect(latestTo('2025-01-01')).toBe('2025-12-31');
     expect(dayCount('2025-01-01', latestTo('2025-01-01'))).toBe(365);
@@ -18,8 +18,10 @@ describe('the 365-day cap', () => {
     expect(latestTo('2024-01-01')).toBe('2024-12-30');
     expect(latestTo('2023-03-01')).toBe('2024-02-28');
   });
+});
 
-  it('agrees with the server: 365 is allowed, 366 is not', () => {
+describe('the 365-day cap', () => {
+  it('agrees with the server: to - from of 365 is allowed, 366 is not', () => {
     expect(exceedsCap('2025-01-01', '2026-01-01')).toBe(false);
     expect(exceedsCap('2025-01-01', '2026-01-02')).toBe(true);
   });

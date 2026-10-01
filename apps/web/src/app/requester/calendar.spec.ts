@@ -9,7 +9,7 @@ describe('the bounds the picker offers', () => {
     });
   });
 
-  it('mirrors the cap under `from` once `to` is set', () => {
+  it('mirrors the picker span under `from` once `to` is set', () => {
     expect(pickerBounds('from', { from: '', to: '2026-01-01' })).toEqual({
       min: '2025-01-02',
       max: '2026-01-01',

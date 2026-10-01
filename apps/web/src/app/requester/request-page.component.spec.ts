@@ -243,14 +243,14 @@ describe('RequestPage', () => {
       expect(root.textContent).not.toMatch(/split (it )?for you:/i);
     });
 
-    it('accepts exactly 365 days without complaint', async () => {
+    it('accepts a typed range at the cap, to - from of 365, without complaint', async () => {
       await type('#date-from', '1/1/2568');
       await type('#date-to', '1/1/2569');
 
       expect($('#span-error')).toBeNull();
     });
 
-    it('opens a พ.ศ. calendar under "to" that offers nothing before `from` or past the cap', async () => {
+    it('opens a พ.ศ. calendar under "to" that offers nothing before `from` or past from + 364', async () => {
       await type('#date-from', '1/1/2568');
       const buttons = $$<HTMLButtonElement>('.calendar-button');
       await click(buttons[1]);
@@ -263,11 +263,6 @@ describe('RequestPage', () => {
       expect($<HTMLButtonElement>('[data-day="2025-12-31"]')!.disabled).toBe(
         false,
       );
-      await click($$<HTMLButtonElement>('.calendar-step')[1]);
-      expect($<HTMLButtonElement>('[data-day="2026-01-01"]')!.disabled).toBe(
-        true,
-      );
-      await click($$<HTMLButtonElement>('.calendar-step')[0]);
       expect($('.calendar-foot')!.textContent).toContain(
         m.requester_calendar_cap_to(),
       );
@@ -280,6 +275,16 @@ describe('RequestPage', () => {
       );
       await click($$<HTMLButtonElement>('.calendar-step')[0]);
       expect($<HTMLButtonElement>('[data-day="2024-12-31"]')!.disabled).toBe(
+        true,
+      );
+    });
+
+    it('disables the first day past from + 364 under "to"', async () => {
+      await type('#date-from', '1/1/2568');
+      await click($$<HTMLButtonElement>('.calendar-button')[1]);
+      await click($$<HTMLButtonElement>('.calendar-step')[1]);
+
+      expect($<HTMLButtonElement>('[data-day="2026-01-01"]')!.disabled).toBe(
         true,
       );
     });
