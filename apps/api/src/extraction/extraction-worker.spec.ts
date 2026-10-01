@@ -130,6 +130,7 @@ function fakeJob(
 }
 
 const REQUEST_ROW = {
+  diseaseGroupName: 'โรคจากความร้อน',
   reportCodes: ['999'],
   startDate: '2025-01-01',
   endDate: '2025-01-31',
@@ -318,6 +319,12 @@ describe('processExtractionJob', () => {
         kind: 'delivery',
         reference: 'REQ-2569-0001',
         name: 'Somchai Devkul',
+        ask: {
+          diseaseGroupName: 'โรคจากความร้อน',
+          startDate: '2025-01-01',
+          endDate: '2025-01-31',
+          area: { kind: 'national' },
+        },
       },
     });
   });

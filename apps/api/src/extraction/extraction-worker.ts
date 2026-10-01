@@ -39,6 +39,7 @@ import {
   type UpstreamPager,
 } from './extraction-pipeline';
 import { raiseExtractionAlert } from '../reviewer/alert-records';
+import { describeArea } from '../reviewer/review-queue';
 import { StallError, StallGuard } from './stall-guard';
 import { CallCount } from '../upstream/call-count';
 
@@ -200,7 +201,12 @@ async function publishExtract(
 async function deliver(
   deps: Pick<
     ExtractionWorkerDeps,
-    'db' | 'downloadTokens' | 'mailSender' | 'frontendUrl' | 'archiveStore'
+    | 'db'
+    | 'downloadTokens'
+    | 'mailSender'
+    | 'frontendUrl'
+    | 'archiveStore'
+    | 'provinceLookup'
   >,
   requestId: string,
   reference: string,
@@ -238,6 +244,15 @@ async function deliver(
     })
     .from(requestContact)
     .where(eq(requestContact.requestId, requestId));
+  const [ask] = await deps.db
+    .select({
+      diseaseGroupName: request.diseaseGroupName,
+      startDate: request.startDate,
+      endDate: request.endDate,
+      provinces: request.provinces,
+    })
+    .from(request)
+    .where(eq(request.id, requestId));
   await deps.mailSender.send(
     requestId,
     contact.email,
@@ -246,6 +261,12 @@ async function deliver(
       name: `${contact.name} ${contact.surname}`,
       reference,
       downloadUrl: `${deps.frontendUrl}/d/${rawToken}`,
+      ask: {
+        diseaseGroupName: ask.diseaseGroupName,
+        startDate: ask.startDate,
+        endDate: ask.endDate,
+        area: describeArea(ask.provinces, deps.provinceLookup.provinces),
+      },
     },
     { downloadTokenId: token.id },
   );
