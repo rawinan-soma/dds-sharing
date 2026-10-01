@@ -1,12 +1,17 @@
-// The 365-day cap as the picker enforces it (spec §4.2): `to` may not be later
-// than `from` + 365 days. The server re-checks the same rule and names it as
-// upstream's; this is the first of the two places, and the only date arithmetic
+// The 365-day cap (spec §4.2): `to` may not be later than `from` + 365 days.
+// The server re-checks the same rule and names it as upstream's; this is the first of the two places, and the only date arithmetic
 // in the SPA, the calendar's day stepping included — which is why the tripwire in the API's span-builder-only spec
 // allows this file by name. It never computes upstream's half-open `end_date`;
 // that conversion has one home, in the API.
 
 const ONE_DAY_MS = 86_400_000;
 const MAX_SPAN_DAYS = 365;
+/**
+ * The picker is stricter than the cap: it offers `from` + 364, 365 days
+ * inclusive, as its foot says (docs/design/system.md "Date field"). A typed
+ * `from` + 365 still passes the cap.
+ */
+const PICKER_SPAN_DAYS = MAX_SPAN_DAYS - 1;
 const ISO_DAY = /^\d{4}-\d{2}-\d{2}$/;
 
 function parse(day: string): number | null {
@@ -25,10 +30,10 @@ export function shiftDay(day: string, days: number): string {
 }
 
 /** The last day the picker offers for `to`, given `from`. */
-export const latestTo = (from: string) => shiftDay(from, MAX_SPAN_DAYS);
+export const latestTo = (from: string) => shiftDay(from, PICKER_SPAN_DAYS);
 
 /** The first day the picker offers for `from`, given `to`: the cap's mirror. */
-export const earliestFrom = (to: string) => shiftDay(to, -MAX_SPAN_DAYS);
+export const earliestFrom = (to: string) => shiftDay(to, -PICKER_SPAN_DAYS);
 
 /** Every day of a month (1–12), as `YYYY-MM-DD`. */
 export function daysOfMonth(year: number, month: number): string[] {

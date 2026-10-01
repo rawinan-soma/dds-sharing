@@ -255,21 +255,24 @@ describe('RequestPage', () => {
       const buttons = $$<HTMLButtonElement>('.calendar-button');
       await click(buttons[1]);
 
-      // It opens on the last day it allows, since today is past it.
+      // It opens on the last day it allows, since today is past it: from + 364,
+      // 365 days inclusive.
       expect(buttons[1].getAttribute('aria-expanded')).toBe('true');
       const year = $<HTMLSelectElement>('.calendar select.figure')!;
-      expect(year.selectedOptions[0].textContent?.trim()).toBe('2569');
-      expect($<HTMLButtonElement>('[data-day="2026-01-01"]')!.disabled).toBe(
+      expect(year.selectedOptions[0].textContent?.trim()).toBe('2568');
+      expect($<HTMLButtonElement>('[data-day="2025-12-31"]')!.disabled).toBe(
         false,
       );
-      expect($<HTMLButtonElement>('[data-day="2026-01-02"]')!.disabled).toBe(
+      await click($$<HTMLButtonElement>('.calendar-step')[1]);
+      expect($<HTMLButtonElement>('[data-day="2026-01-01"]')!.disabled).toBe(
         true,
       );
+      await click($$<HTMLButtonElement>('.calendar-step')[0]);
       expect($('.calendar-foot')!.textContent).toContain(
         m.requester_calendar_cap_to(),
       );
 
-      for (let i = 0; i < 12; i++) {
+      for (let i = 0; i < 11; i++) {
         await click($$<HTMLButtonElement>('.calendar-step')[0]);
       }
       expect($<HTMLButtonElement>('[data-day="2025-01-01"]')!.disabled).toBe(
@@ -284,12 +287,12 @@ describe('RequestPage', () => {
     it('sets the day picked from the calendar and closes it', async () => {
       await type('#date-from', '1/1/2568');
       await click($$<HTMLButtonElement>('.calendar-button')[1]);
-      await click($<HTMLButtonElement>('[data-day="2026-01-01"]')!);
+      await click($<HTMLButtonElement>('[data-day="2025-12-31"]')!);
 
       expect($('.calendar')).toBeNull();
-      expect($<HTMLInputElement>('#date-to')!.value).toBe('1 ม.ค. 2569');
+      expect($<HTMLInputElement>('#date-to')!.value).toBe('31 ธ.ค. 2568');
       expect(root.textContent).toContain(
-        m.requester_dates_day_count({ days: 366 }),
+        m.requester_dates_day_count({ days: 365 }),
       );
     });
   });

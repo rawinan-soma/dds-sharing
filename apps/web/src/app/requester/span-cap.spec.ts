@@ -9,13 +9,14 @@ import {
 } from './span-cap';
 
 describe('the 365-day cap', () => {
-  it('lets `to` reach exactly from + 365 days, and no further', () => {
-    expect(latestTo('2025-01-01')).toBe('2026-01-01');
+  it('lets the picker offer `to` up to from + 364 days: 365 days inclusive', () => {
+    expect(latestTo('2025-01-01')).toBe('2025-12-31');
+    expect(dayCount('2025-01-01', latestTo('2025-01-01'))).toBe(365);
   });
 
   it('crosses a leap day by the calendar', () => {
-    expect(latestTo('2024-01-01')).toBe('2024-12-31');
-    expect(latestTo('2023-03-01')).toBe('2024-02-29');
+    expect(latestTo('2024-01-01')).toBe('2024-12-30');
+    expect(latestTo('2023-03-01')).toBe('2024-02-28');
   });
 
   it('agrees with the server: 365 is allowed, 366 is not', () => {
@@ -41,7 +42,8 @@ describe('the 365-day cap', () => {
 
 describe("the calendar's day arithmetic", () => {
   it('bounds `from` by the mirror of the cap once `to` is set', () => {
-    expect(earliestFrom('2026-01-01')).toBe('2025-01-01');
+    expect(earliestFrom('2026-01-01')).toBe('2025-01-02');
+    expect(dayCount(earliestFrom('2026-01-01'), '2026-01-01')).toBe(365);
     expect(exceedsCap(earliestFrom('2024-12-31'), '2024-12-31')).toBe(false);
   });
 
