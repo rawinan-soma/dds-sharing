@@ -1,5 +1,4 @@
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { apiPath, repoPath } from '../repo-paths';
 import { describe, expect, it } from 'vitest';
 import {
@@ -17,7 +16,6 @@ import {
   type ProvinceRow,
 } from './province-rows';
 
-const here = apiPath('src/reference');
 const csv = readFileSync(repoPath('docs/provinces.csv'), 'utf-8');
 
 describe('docs/provinces.csv', () => {
@@ -67,7 +65,10 @@ describe('the generated province seed', () => {
       provinceSeedMigrationSql(rows),
     );
     expect(
-      readFileSync(join(here, 'province-seed.generated.ts'), 'utf-8'),
+      readFileSync(
+        apiPath('src/reference/province-seed.generated.ts'),
+        'utf-8',
+      ),
     ).toBe(provinceSeedModuleSource(rows));
   });
 

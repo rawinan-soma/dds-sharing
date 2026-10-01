@@ -53,7 +53,11 @@ const FONT_FAMILY =
   "font-family: 'IBM Plex Sans Thai', 'IBM Plex Sans', Tahoma, Arial, sans-serif;";
 const FONT = `${FONT_FAMILY} color: ${B.foreground}; font-size: 15px; line-height: 1.65;`;
 const FIGURE = 'font-variant-numeric: tabular-nums;';
-const TITLE = 'font-size: 16px; font-weight: 600; line-height: 1.35;';
+// 16/600 is shared by the service-name header, a panel's title and the `lg`
+// button's label (system.md "Type", "Button"); each is named for its role.
+const SEMIBOLD_16 = 'font-size: 16px; font-weight: 600;';
+const TITLE = `${SEMIBOLD_16} line-height: 1.35;`;
+const BUTTON_LG_LABEL = `${SEMIBOLD_16} line-height: 1.35;`;
 
 /** Every figure is tabular (system.md "Type"): references, dates, phone numbers. */
 function figure(text: string): string {
@@ -64,13 +68,9 @@ function strong(text: string): string {
   return `<strong style="font-weight: 600;">${text}</strong>`;
 }
 
-/** A layout table; `width` null lets it shrink to its content. */
-function table(
-  style: string,
-  rows: string,
-  width: string | null = '100%',
-): string {
-  const widthAttr = width === null ? '' : ` width="${width}"`;
+/** A layout table, `width` wide; with no width it shrinks to its content. */
+function table(style: string, rows: string, width?: string): string {
+  const widthAttr = width === undefined ? '' : ` width="${width}"`;
   return `<table role="presentation"${widthAttr} cellpadding="0" cellspacing="0" style="${style}">${rows}</table>`;
 }
 
@@ -78,8 +78,7 @@ function table(
 function button(href: string, label: string): string {
   return table(
     'margin: 0 0 24px;',
-    `<tr><td style="background-color: ${B.primary}; border-radius: 10px;"><a href="${href}" style="display: inline-block; padding: 11px 32px; ${FONT_FAMILY} color: ${B.primaryForeground}; ${TITLE} text-decoration: none;">${label}</a></td></tr>`,
-    null,
+    `<tr><td style="background-color: ${B.primary}; border-radius: 10px;"><a href="${href}" style="display: inline-block; padding: 11px 32px; ${FONT_FAMILY} color: ${B.primaryForeground}; ${BUTTON_LG_LABEL} text-decoration: none;">${label}</a></td></tr>`,
   );
 }
 
@@ -88,11 +87,18 @@ function panel(style: string, content: string): string {
   return table(
     `margin: 0 0 24px; border-collapse: separate; border-radius: 14px; ${style}`,
     `<tr><td style="padding: 20px; ${FONT}">${content}</td></tr>`,
+    '100%',
   );
 }
 
 function borderedBox(content: string): string {
   return panel(`border: 1px solid ${B.border};`, content);
+}
+
+/** A panel's 16/600 title line, in `ink` when given. */
+function titleLine(text: string, margin: string, ink?: string): string {
+  const colour = ink === undefined ? '' : `color: ${ink}; `;
+  return `<p style="margin: ${margin}; ${colour}${TITLE}">${text}</p>`;
 }
 
 /** The Statement: a title in the tone's ink, then a sentence in `foreground`. */
@@ -109,7 +115,7 @@ function statement(
   const { ink, wash } = TONES[tone];
   return panel(
     `background-color: ${wash};`,
-    `<p style="margin: 0 0 4px; color: ${ink}; ${TITLE}">${title}</p><p style="margin: 0;">${detail}</p>`,
+    `${titleLine(title, '0 0 4px', ink)}<p style="margin: 0;">${detail}</p>`,
   );
 }
 
@@ -123,6 +129,7 @@ function rows(entries: [label: string, value: string][]): string {
         return `<tr><td width="120" valign="top" style="padding: 10px 16px 10px 0; ${rule}${FONT} color: ${B.mutedForeground}; font-size: 14px;">${label}</td><td valign="top" style="padding: 10px 0; ${rule}${FONT} font-size: 14px;">${value}</td></tr>`;
       })
       .join(''),
+    '100%',
   );
 }
 
@@ -138,11 +145,12 @@ function wrap(t: Catalogue['t'], body: string): string {
       `background-color: ${B.background};`,
       `<tr><td align="center" style="padding: 32px 12px;">${table(
         `background-color: ${B.card}; max-width: 680px; width: 100%; border-collapse: separate; border-radius: 20px;`,
-        `<tr><td style="padding: 20px 32px; border-bottom: 1px solid ${B.border}; ${FONT} font-size: 16px; font-weight: 600;">${t('app_service_name')}</td></tr>` +
+        `<tr><td style="padding: 20px 32px; border-bottom: 1px solid ${B.border}; ${FONT} ${SEMIBOLD_16}">${t('app_service_name')}</td></tr>` +
           `<tr><td style="padding: 32px 32px 8px; ${FONT}">${body}</td></tr>` +
           `<tr><td style="padding: 20px 32px; border-top: 1px solid ${B.border}; ${FONT} font-size: 13px; color: ${B.mutedForeground};">${t('app_department')}<br>${figure(t('app_telephone'))}</td></tr>`,
         '680',
       )}</td></tr>`,
+      '100%',
     )}
   </body>
 </html>`;
@@ -185,7 +193,7 @@ function renderDelivery(
         paragraph(t('email_delivery_body', { reference: figure(p.reference) })),
         button(p.downloadUrl, t('email_delivery_download')),
         borderedBox(
-          `<p style="margin: 0 0 8px; ${TITLE}">${t('requester_confirm_ask_heading')}</p>` +
+          titleLine(t('requester_confirm_ask_heading'), '0 0 8px') +
             rows([
               [
                 t('requester_group_heading'),

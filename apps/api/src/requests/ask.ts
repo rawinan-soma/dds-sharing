@@ -16,25 +16,42 @@ export interface Ask {
   area: Area;
 }
 
-/** A stored Request's ask, its provinces named through `provinces`. */
-export async function readAsk(
-  db: NodePgDatabase,
-  requestId: string,
+/** The `request` columns an Ask is read from, for a select to spread. */
+export const ASK_COLUMNS = {
+  diseaseGroupName: request.diseaseGroupName,
+  startDate: request.startDate,
+  endDate: request.endDate,
+  provinces: request.provinces,
+};
+
+/** A row selected with {@link ASK_COLUMNS}, its provinces named through `provinces`. */
+export function askOf(
+  row: {
+    diseaseGroupName: string;
+    startDate: string;
+    endDate: string;
+    provinces: readonly string[];
+  },
   provinces: readonly ProvinceName[],
-): Promise<Ask> {
-  const [row] = await db
-    .select({
-      diseaseGroupName: request.diseaseGroupName,
-      startDate: request.startDate,
-      endDate: request.endDate,
-      provinces: request.provinces,
-    })
-    .from(request)
-    .where(eq(request.id, requestId));
+): Ask {
   return {
     diseaseGroupName: row.diseaseGroupName,
     startDate: row.startDate,
     endDate: row.endDate,
     area: describeArea(row.provinces, provinces),
   };
+}
+
+/** A stored Request's ask. */
+export async function readAsk(
+  db: NodePgDatabase,
+  requestId: string,
+  provinces: readonly ProvinceName[],
+): Promise<Ask> {
+  const [row] = await db
+    .select(ASK_COLUMNS)
+    .from(request)
+    .where(eq(request.id, requestId));
+  if (!row) throw new Error(`readAsk: request ${requestId} does not exist`);
+  return askOf(row, provinces);
 }

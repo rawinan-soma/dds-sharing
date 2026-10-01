@@ -1,14 +1,16 @@
 import { readFileSync } from 'node:fs';
 import { parseEnv } from 'node:util';
+import { apiPath } from '../repo-paths';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // The real AppModule, booted the way main.ts boots it, against an environment
 // this test controls. None of these reach a database: a boot that failed for any
 // reason but configuration would say so.
 
-const testEnv = parseEnv(
-  readFileSync(new URL('../../.env.test', import.meta.url), 'utf8'),
-) as Record<string, string>;
+const testEnv = parseEnv(readFileSync(apiPath('.env.test'), 'utf8')) as Record<
+  string,
+  string
+>;
 
 const SENTINEL = 'SENTINEL-must-never-be-printed';
 

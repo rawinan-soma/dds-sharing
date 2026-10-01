@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { parseEnv } from 'node:util';
+import { apiPath } from '../repo-paths';
 import { describe, expect, it } from 'vitest';
 import {
   EnvValidationError,
@@ -12,9 +13,7 @@ import {
 } from './env.schema';
 
 // The checked-in test environment is a valid environment for the HTTP app.
-const testEnv = parseEnv(
-  readFileSync(new URL('../../.env.test', import.meta.url), 'utf8'),
-) as Env;
+const testEnv = parseEnv(readFileSync(apiPath('.env.test'), 'utf8')) as Env;
 
 const without = (env: Env, ...names: string[]): Env =>
   Object.fromEntries(Object.entries(env).filter(([k]) => !names.includes(k)));
