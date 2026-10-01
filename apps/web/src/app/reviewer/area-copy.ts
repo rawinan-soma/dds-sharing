@@ -2,7 +2,8 @@ import * as m from '../../paraglide/messages.js';
 import { type Area } from './queue-api';
 
 // The area in the Reviewer's words. One place, so the dossier and the
-// in-flight detail cannot name the same ask two ways.
+// in-flight detail cannot name the same ask two ways. Mirrored by
+// apps/api/src/i18n/ask-copy.ts's areaHeadline for the delivery email.
 
 export function areaHeadline(area: Area): string {
   if (area.kind === 'national') return m.requester_area_national();

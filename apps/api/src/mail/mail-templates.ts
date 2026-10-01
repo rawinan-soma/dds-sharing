@@ -1,3 +1,5 @@
+import { B } from '../design/b-tokens';
+import { areaHeadline, formatDay } from '../i18n/ask-copy';
 import { type Catalogue } from '../i18n/copy-catalogue';
 import { type Area } from '../reviewer/review-queue';
 
@@ -50,22 +52,9 @@ export type MailParams =
   | QueueNotificationParams;
 
 // Table-based layout, every style inline, no external assets or CSS — the
-// usual constraints for Gmail/Outlook. The colours are B's token values
-// (docs/design/system.md), inlined as literals because an email cannot load
+// usual constraints for Gmail/Outlook. The colours are B's tokens
+// (src/design/b-tokens.ts), inlined as literals because an email cannot load
 // the app's stylesheet; the screen-9 frames are the reference.
-const B = {
-  background: '#e4e6ea',
-  card: '#ffffff',
-  foreground: '#1b1d24',
-  muted: '#5f6470',
-  border: '#dfe1e6',
-  primary: '#3b5bfd',
-  pending: '#8a5a00',
-  pendingWash: '#fdf3dc',
-  inert: '#5f6470',
-  inertWash: '#eceef2',
-} as const;
-
 const FONT_FAMILY =
   "font-family: 'IBM Plex Sans Thai', 'IBM Plex Sans', Tahoma, Arial, sans-serif;";
 const FONT = `${FONT_FAMILY} color: ${B.foreground}; font-size: 15px; line-height: 1.65;`;
@@ -83,7 +72,7 @@ function table(style: string, rows: string): string {
 
 /** The `primary` `lg` button: the one action the email exists for. */
 function button(href: string, label: string): string {
-  return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 0 24px;"><tr><td style="background-color: ${B.primary}; border-radius: 10px;"><a href="${href}" style="display: inline-block; padding: 11px 32px; ${FONT_FAMILY} color: ${B.card}; font-size: 16px; font-weight: 600; line-height: 1.35; text-decoration: none;">${label}</a></td></tr></table>`;
+  return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 0 24px;"><tr><td style="background-color: ${B.primary}; border-radius: 10px;"><a href="${href}" style="display: inline-block; padding: 11px 32px; ${FONT_FAMILY} color: ${B.primaryForeground}; font-size: 16px; font-weight: 600; line-height: 1.35; text-decoration: none;">${label}</a></td></tr></table>`;
 }
 
 /** A panel inside the card: `radius-panel`, 20px padding, on a wash or behind a hairline. */
@@ -123,7 +112,7 @@ function rows(entries: [label: string, value: string][]): string {
     entries
       .map(
         ([label, value], i) =>
-          `<tr><td width="120" valign="top" style="padding: 10px 16px 10px 0; ${i ? `border-top: 1px solid ${B.border}; ` : ''}${FONT} color: ${B.muted}; font-size: 14px;">${label}</td><td valign="top" style="padding: 10px 0; ${i ? `border-top: 1px solid ${B.border}; ` : ''}${FONT} font-size: 14px;">${value}</td></tr>`,
+          `<tr><td width="120" valign="top" style="padding: 10px 16px 10px 0; ${i ? `border-top: 1px solid ${B.border}; ` : ''}${FONT} color: ${B.mutedForeground}; font-size: 14px;">${label}</td><td valign="top" style="padding: 10px 0; ${i ? `border-top: 1px solid ${B.border}; ` : ''}${FONT} font-size: 14px;">${value}</td></tr>`,
       )
       .join(''),
   );
@@ -143,7 +132,7 @@ function wrap(t: Catalogue['t'], body: string): string {
           <table role="presentation" width="680" cellpadding="0" cellspacing="0" style="background-color: ${B.card}; max-width: 680px; width: 100%; border-collapse: separate; border-radius: 20px;">
             <tr><td style="padding: 20px 32px; border-bottom: 1px solid ${B.border}; ${FONT} font-size: 16px; font-weight: 600;">${t('app_service_name')}</td></tr>
             <tr><td style="padding: 32px 32px 8px; ${FONT}">${body}</td></tr>
-            <tr><td style="padding: 20px 32px; border-top: 1px solid ${B.border}; ${FONT} font-size: 13px; color: ${B.muted};">${t('app_department')}<br>${figure(t('app_telephone'))}</td></tr>
+            <tr><td style="padding: 20px 32px; border-top: 1px solid ${B.border}; ${FONT} font-size: 13px; color: ${B.mutedForeground};">${t('app_department')}<br>${figure(t('app_telephone'))}</td></tr>
           </table>
         </td>
       </tr>
@@ -157,29 +146,7 @@ function paragraph(text: string, style = ''): string {
 }
 
 function muted(text: string): string {
-  return paragraph(text, `color: ${B.muted}; font-size: 13px;`);
-}
-
-// The Requester screens' Buddhist-era day (apps/web format-day.ts), so the
-// email names the dates exactly as the form and its confirmation did.
-const BUDDHIST_DAY = new Intl.DateTimeFormat('th-TH-u-ca-buddhist', {
-  day: 'numeric',
-  month: 'long',
-  year: 'numeric',
-  timeZone: 'UTC',
-});
-
-function formatDay(day: string): string {
-  return BUDDHIST_DAY.format(new Date(`${day}T00:00:00Z`));
-}
-
-/** The area in the Requester's own terms: the whole country, a region, or provinces. */
-function areaLabel(t: Catalogue['t'], area: Area): string {
-  if (area.kind === 'national') return t('requester_area_national');
-  if (area.region !== null) {
-    return t('requester_area_region_selected', { region: area.region });
-  }
-  return area.provinces.map((p) => p.name).join(', ');
+  return paragraph(text, `color: ${B.mutedForeground}; font-size: 13px;`);
 }
 
 // `name`/`requesterName`/`workplace` are free text a Requester typed into the
@@ -196,7 +163,11 @@ function escapeHtml(text: string): string {
     .replace(/'/g, '&#39;');
 }
 
-function renderDelivery(t: Catalogue['t'], p: DeliveryParams): RenderedMail {
+function renderDelivery(
+  t: Catalogue['t'],
+  locale: string,
+  p: DeliveryParams,
+): RenderedMail {
   return {
     subject: t('email_delivery_subject', { reference: p.reference }),
     html: wrap(
@@ -215,12 +186,12 @@ function renderDelivery(t: Catalogue['t'], p: DeliveryParams): RenderedMail {
               [
                 t('requester_dates_heading'),
                 figure(
-                  `${formatDay(p.ask.startDate)} – ${formatDay(p.ask.endDate)}`,
+                  `${formatDay(locale, p.ask.startDate)} – ${formatDay(locale, p.ask.endDate)}`,
                 ),
               ],
               [
                 t('requester_area_heading'),
-                escapeHtml(areaLabel(t, p.ask.area)),
+                escapeHtml(areaHeadline(t, p.ask.area)),
               ],
             ]),
         ),
@@ -317,7 +288,7 @@ export function renderMail(
   const t = catalogueInstance.t.bind(catalogueInstance);
   switch (params.kind) {
     case 'delivery':
-      return renderDelivery(t, params);
+      return renderDelivery(t, catalogueInstance.locale, params);
     case 'rejection':
       return renderRejection(t, params);
     case 'extraction_failure':

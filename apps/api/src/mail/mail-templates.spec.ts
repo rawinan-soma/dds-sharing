@@ -1,10 +1,31 @@
+import { readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
-import { catalogue } from '../i18n/copy-catalogue';
+import { B } from '../design/b-tokens';
+import { type Catalogue, catalogue, interpolate } from '../i18n/copy-catalogue';
 import {
   renderMail,
   type DeliveryParams,
   type MailParams,
 } from './mail-templates';
+
+/** The real th.json, as the catalogue will serve it once #96 flips the base locale. */
+function thaiCatalogue(): Catalogue {
+  const messages = JSON.parse(
+    readFileSync(
+      join(
+        dirname(fileURLToPath(import.meta.url)),
+        '../../../../messages/th.json',
+      ),
+      'utf-8',
+    ),
+  ) as Record<string, string>;
+  return {
+    locale: 'th',
+    t: (key, params) => interpolate(messages[key], params),
+  };
+}
 
 const ASK: DeliveryParams['ask'] = {
   diseaseGroupName: 'โรคจากตะกั่วและสารประกอบของตะกั่ว',
@@ -131,18 +152,10 @@ describe('renderMail', () => {
     };
     const all = [delivery, rejection, failure, queue];
 
-    // The B token values (system.md "Colour" and "State"), and nothing else.
-    const B_TOKENS = new Set([
-      '#e4e6ea', // background
-      '#ffffff', // card, primary-foreground
-      '#1b1d24', // foreground
-      '#5f6470', // muted-foreground, inert
-      '#dfe1e6', // border
-      '#3b5bfd', // primary
-      '#8a5a00', // pending
-      '#fdf3dc', // pending-wash
-      '#eceef2', // inert-wash
-    ]);
+    // The B tokens, held to system.md by b-tokens.spec.ts, and nothing else.
+    const B_TOKENS = new Set<string>(Object.values(B));
+    // The old system's colours, named so a regression to them reads as one.
+    const OLD_SYSTEM = ['#1a1a1a', '#f4f4f4', '#0b5fff', '#e0e0e0', '#666666'];
     const colours = (html: string) =>
       [...html.matchAll(/#[0-9a-fA-F]{3,8}\b/g)].map(([c]) => c.toLowerCase());
 
@@ -151,6 +164,7 @@ describe('renderMail', () => {
       const used = colours(html);
       expect(used.length).toBeGreaterThan(0);
       expect(used.filter((c) => !B_TOKENS.has(c))).toEqual([]);
+      expect(used.filter((c) => OLD_SYSTEM.includes(c))).toEqual([]);
     });
 
     it.each(all)(
@@ -169,10 +183,21 @@ describe('renderMail', () => {
       expect(html).toContain('border: 1px solid #dfe1e6');
       expect(html).toContain(catalogue.t('requester_confirm_ask_heading'));
       expect(html).toContain('โรคจากตะกั่วและสารประกอบของตะกั่ว');
-      expect(html).toContain('1 มกราคม 2568');
-      expect(html).toContain('31 พฤษภาคม 2568');
       expect(html).toContain(catalogue.t('requester_area_national'));
       expect(html.toLowerCase()).not.toMatch(/\brows?\b|แถว/);
+    });
+
+    it("words the dates in the email's language: English days for an English catalogue", () => {
+      expect(catalogue.locale).toBe('en');
+      const { html } = renderMail(catalogue, delivery);
+      expect(html).toContain('1 January 2025 – 31 May 2025');
+      expect(html).not.toContain('2568');
+    });
+
+    it("words the dates in the email's language: Buddhist-era Thai days for a Thai catalogue", () => {
+      const { html } = renderMail(thaiCatalogue(), delivery);
+      expect(html).toContain('1 มกราคม 2568 – 31 พฤษภาคม 2568');
+      expect(html).toContain('กลุ่มโรค');
     });
 
     it('keeps the delivery download link the fixed /d/<token> URL, on a primary button', () => {
