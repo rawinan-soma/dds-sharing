@@ -1,13 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { B } from '../design/b-tokens';
-import { REPO_ROOT, catalogue, loadCatalogue } from '../i18n/copy-catalogue';
-import {
-  renderMail,
-  type DeliveryParams,
-  type MailParams,
-} from './mail-templates';
+import { catalogue, loadCatalogue } from '../i18n/copy-catalogue';
+import { type Area } from '../reference/area';
+import { type Ask } from '../requests/ask';
+import { repoPath } from '../repo-paths';
+import { renderMail, type MailParams } from './mail-templates';
 
-const ASK: DeliveryParams['ask'] = {
+const ASK: Ask = {
   diseaseGroupName: 'โรคจากตะกั่วและสารประกอบของตะกั่ว',
   startDate: '2025-01-01',
   endDate: '2025-05-31',
@@ -185,7 +184,7 @@ describe('renderMail', () => {
     });
 
     it("words the dates in the email's language: Buddhist-era Thai days for a Thai catalogue", () => {
-      const { html } = renderMail(loadCatalogue(REPO_ROOT, 'th'), delivery);
+      const { html } = renderMail(loadCatalogue(repoPath(), 'th'), delivery);
       expect(html).toContain('1 มกราคม 2568 – 31 พฤษภาคม 2568');
       expect(html).toContain('กลุ่มโรค');
     });
@@ -208,7 +207,7 @@ describe('renderMail', () => {
     });
 
     it('names the area as the Requester picked it', () => {
-      const area = (a: DeliveryParams['ask']['area']) =>
+      const area = (a: Area) =>
         renderMail(catalogue, { ...delivery, ask: { ...ASK, area: a } }).html;
       expect(
         area({

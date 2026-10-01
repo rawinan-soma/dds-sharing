@@ -15,6 +15,7 @@ import { generateToken } from '../delivery/token';
 import { type DownloadTokens } from '../delivery/download-tokens.repository';
 import { type MailSender } from '../mail/mail-sender';
 import { type ProvinceLookup } from '../reference/province-lookup.service';
+import { readAsk } from '../requests/ask';
 import { type ArchiveStore } from './archive-store';
 import { buildExtractArchive } from './build-extract-archive';
 import { DATA_DICTIONARY_CHECKSUM } from './data-dictionary';
@@ -39,7 +40,6 @@ import {
   type UpstreamPager,
 } from './extraction-pipeline';
 import { raiseExtractionAlert } from '../reviewer/alert-records';
-import { describeArea } from '../reviewer/review-queue';
 import { StallError, StallGuard } from './stall-guard';
 import { CallCount } from '../upstream/call-count';
 
@@ -244,15 +244,6 @@ async function deliver(
     })
     .from(requestContact)
     .where(eq(requestContact.requestId, requestId));
-  const [ask] = await deps.db
-    .select({
-      diseaseGroupName: request.diseaseGroupName,
-      startDate: request.startDate,
-      endDate: request.endDate,
-      provinces: request.provinces,
-    })
-    .from(request)
-    .where(eq(request.id, requestId));
   await deps.mailSender.send(
     requestId,
     contact.email,
@@ -261,12 +252,7 @@ async function deliver(
       name: `${contact.name} ${contact.surname}`,
       reference,
       downloadUrl: `${deps.frontendUrl}/d/${rawToken}`,
-      ask: {
-        diseaseGroupName: ask.diseaseGroupName,
-        startDate: ask.startDate,
-        endDate: ask.endDate,
-        area: describeArea(ask.provinces, deps.provinceLookup.provinces),
-      },
+      ask: await readAsk(deps.db, requestId, deps.provinceLookup.provinces),
     },
     { downloadTokenId: token.id },
   );

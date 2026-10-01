@@ -1,16 +1,9 @@
 import { readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { repoPath } from '../repo-paths';
 import { describe, expect, it } from 'vitest';
 import { B, DRAWN } from './b-tokens';
 
-const systemMd = readFileSync(
-  join(
-    dirname(fileURLToPath(import.meta.url)),
-    '../../../../docs/design/system.md',
-  ),
-  'utf-8',
-);
+const systemMd = readFileSync(repoPath('docs/design/system.md'), 'utf-8');
 
 // system.md retires these but still lists them.
 const RETIRED = ['on-dark', 'on-dark-muted'];

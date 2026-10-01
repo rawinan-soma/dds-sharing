@@ -1,4 +1,4 @@
-import { type Area } from '../reviewer/review-queue';
+import { type Area } from '../reference/area';
 import { type Catalogue } from './copy-catalogue';
 
 // How the API words an ask: its days and its Area selection, in the

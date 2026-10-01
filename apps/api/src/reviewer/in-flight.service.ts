@@ -24,7 +24,7 @@ import {
 import { type CurrentToken, factsOf } from '../requests/in-flight-records';
 import { alertEventsOf } from './alert-records';
 import { openAlerts } from './alerts';
-import { type Area, describeArea } from './review-queue';
+import { type Area, describeArea } from '../reference/area';
 
 /** One row of the in-flight list: what it reads, never who approved it. */
 export interface InFlightListRow {

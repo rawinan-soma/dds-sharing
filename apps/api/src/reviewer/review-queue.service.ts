@@ -11,13 +11,8 @@ import { schedulerHealth } from '../scheduler/scheduler-health';
 import { CLOCK, type Clock } from '../clock/clock';
 import { type AlertRow, Alerts } from './alerts.service';
 import { InFlight, type InFlightListRow } from './in-flight.service';
-import {
-  type Area,
-  type PendingRow,
-  type Ranked,
-  describeArea,
-  rankPending,
-} from './review-queue';
+import { type Area, describeArea } from '../reference/area';
+import { type PendingRow, type Ranked, rankPending } from './review-queue';
 
 export interface QueueRow {
   id: string;

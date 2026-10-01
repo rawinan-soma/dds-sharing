@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { repoPath } from '../repo-paths';
 
 // The copy catalogue, read directly from the JSON files (spec §16.3, ADR
 // 0010) rather than through Paraglide: Paraglide has no Node/Nest adapter, and
@@ -70,10 +71,5 @@ export function loadCatalogue(
   };
 }
 
-// apps/api/src/i18n -> repo root is four levels up. `__dirname` (not
-// `import.meta.url`) because this file compiles into CommonJS output
-// (`nest build`), unlike the `.spec.ts` files vitest transforms as ESM.
-export const REPO_ROOT = join(__dirname, '../../../..');
-
 /** The app-wide singleton, reading the real repository's catalogue. */
-export const catalogue: Catalogue = loadCatalogue(REPO_ROOT);
+export const catalogue: Catalogue = loadCatalogue(repoPath());

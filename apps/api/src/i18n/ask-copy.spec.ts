@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { REPO_ROOT, catalogue, projectLocales } from './copy-catalogue';
+import { repoPath } from '../repo-paths';
+import { catalogue, projectLocales } from './copy-catalogue';
 import { areaHeadline, formatDay } from './ask-copy';
 
 describe('formatDay', () => {
@@ -16,7 +17,7 @@ describe('formatDay', () => {
   });
 
   it('has a day form for every locale the project declares', () => {
-    for (const locale of projectLocales(REPO_ROOT).locales) {
+    for (const locale of projectLocales(repoPath()).locales) {
       expect(() => formatDay(locale, '2025-01-01')).not.toThrow();
     }
   });

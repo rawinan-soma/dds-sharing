@@ -1,7 +1,7 @@
 import { B } from '../design/b-tokens';
 import { areaHeadline, formatDay } from '../i18n/ask-copy';
 import { type Catalogue } from '../i18n/copy-catalogue';
-import { type Area } from '../reviewer/review-queue';
+import { type Ask } from '../requests/ask';
 
 export interface RenderedMail {
   subject: string;
@@ -14,13 +14,7 @@ export interface DeliveryParams {
   reference: string;
   downloadUrl: string;
   /** What was asked for, as stored. Never the row count (screen 9). */
-  ask: {
-    diseaseGroupName: string;
-    /** Inclusive `YYYY-MM-DD` days, as the Requester gave them. */
-    startDate: string;
-    endDate: string;
-    area: Area;
-  };
+  ask: Ask;
 }
 
 export interface RejectionParams {
@@ -66,13 +60,27 @@ function figure(text: string): string {
   return `<span style="${FIGURE}">${text}</span>`;
 }
 
-function table(style: string, rows: string): string {
-  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="${style}">${rows}</table>`;
+function strong(text: string): string {
+  return `<strong style="font-weight: 600;">${text}</strong>`;
+}
+
+/** A layout table; `width` null lets it shrink to its content. */
+function table(
+  style: string,
+  rows: string,
+  width: string | null = '100%',
+): string {
+  const widthAttr = width === null ? '' : ` width="${width}"`;
+  return `<table role="presentation"${widthAttr} cellpadding="0" cellspacing="0" style="${style}">${rows}</table>`;
 }
 
 /** The `primary` `lg` button: the one action the email exists for. */
 function button(href: string, label: string): string {
-  return `<table role="presentation" cellpadding="0" cellspacing="0" style="margin: 0 0 24px;"><tr><td style="background-color: ${B.primary}; border-radius: 10px;"><a href="${href}" style="display: inline-block; padding: 11px 32px; ${FONT_FAMILY} color: ${B.primaryForeground}; font-size: 16px; font-weight: 600; line-height: 1.35; text-decoration: none;">${label}</a></td></tr></table>`;
+  return table(
+    'margin: 0 0 24px;',
+    `<tr><td style="background-color: ${B.primary}; border-radius: 10px;"><a href="${href}" style="display: inline-block; padding: 11px 32px; ${FONT_FAMILY} color: ${B.primaryForeground}; ${TITLE} text-decoration: none;">${label}</a></td></tr>`,
+    null,
+  );
 }
 
 /** A panel inside the card: `radius-panel`, 20px padding, on a wash or behind a hairline. */
@@ -110,10 +118,10 @@ function rows(entries: [label: string, value: string][]): string {
   return table(
     'border-collapse: collapse;',
     entries
-      .map(
-        ([label, value], i) =>
-          `<tr><td width="120" valign="top" style="padding: 10px 16px 10px 0; ${i ? `border-top: 1px solid ${B.border}; ` : ''}${FONT} color: ${B.mutedForeground}; font-size: 14px;">${label}</td><td valign="top" style="padding: 10px 0; ${i ? `border-top: 1px solid ${B.border}; ` : ''}${FONT} font-size: 14px;">${value}</td></tr>`,
-      )
+      .map(([label, value], i) => {
+        const rule = i ? `border-top: 1px solid ${B.border}; ` : '';
+        return `<tr><td width="120" valign="top" style="padding: 10px 16px 10px 0; ${rule}${FONT} color: ${B.mutedForeground}; font-size: 14px;">${label}</td><td valign="top" style="padding: 10px 0; ${rule}${FONT} font-size: 14px;">${value}</td></tr>`;
+      })
       .join(''),
   );
 }
@@ -126,17 +134,16 @@ function wrap(t: Catalogue['t'], body: string): string {
     <meta name="viewport" content="width=device-width, initial-scale=1">
   </head>
   <body style="margin: 0; padding: 0; background-color: ${B.background};">
-    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color: ${B.background};">
-      <tr>
-        <td align="center" style="padding: 32px 12px;">
-          <table role="presentation" width="680" cellpadding="0" cellspacing="0" style="background-color: ${B.card}; max-width: 680px; width: 100%; border-collapse: separate; border-radius: 20px;">
-            <tr><td style="padding: 20px 32px; border-bottom: 1px solid ${B.border}; ${FONT} font-size: 16px; font-weight: 600;">${t('app_service_name')}</td></tr>
-            <tr><td style="padding: 32px 32px 8px; ${FONT}">${body}</td></tr>
-            <tr><td style="padding: 20px 32px; border-top: 1px solid ${B.border}; ${FONT} font-size: 13px; color: ${B.mutedForeground};">${t('app_department')}<br>${figure(t('app_telephone'))}</td></tr>
-          </table>
-        </td>
-      </tr>
-    </table>
+    ${table(
+      `background-color: ${B.background};`,
+      `<tr><td align="center" style="padding: 32px 12px;">${table(
+        `background-color: ${B.card}; max-width: 680px; width: 100%; border-collapse: separate; border-radius: 20px;`,
+        `<tr><td style="padding: 20px 32px; border-bottom: 1px solid ${B.border}; ${FONT} font-size: 16px; font-weight: 600;">${t('app_service_name')}</td></tr>` +
+          `<tr><td style="padding: 32px 32px 8px; ${FONT}">${body}</td></tr>` +
+          `<tr><td style="padding: 20px 32px; border-top: 1px solid ${B.border}; ${FONT} font-size: 13px; color: ${B.mutedForeground};">${t('app_department')}<br>${figure(t('app_telephone'))}</td></tr>`,
+        '680',
+      )}</td></tr>`,
+    )}
   </body>
 </html>`;
 }
@@ -245,11 +252,11 @@ function renderExtractionFailure(
           t('email_failure_requester_unaware'),
         ),
         paragraph(
-          `<strong style="font-weight: 600;">${t('email_failure_not_your_job_heading')}</strong><br>${t('email_failure_not_your_job_detail')}`,
+          `${strong(t('email_failure_not_your_job_heading'))}<br>${t('email_failure_not_your_job_detail')}`,
         ),
         paragraph(
           t('email_failure_action_note', {
-            zone: `<strong style="font-weight: 600;">${t('reviewer_alerts_heading')}</strong>`,
+            zone: strong(t('reviewer_alerts_heading')),
           }),
         ),
       ].join(''),

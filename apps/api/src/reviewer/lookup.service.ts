@@ -16,7 +16,7 @@ import { type RequestState } from '../requests/request-state';
 import { type SurfaceZone, surfaceZone } from '../requests/surface-zone';
 import { openAlertsOf } from './alert-records';
 import { type LinkState, linkState } from './lookup';
-import { type Area, describeArea } from './review-queue';
+import { type Area, describeArea } from '../reference/area';
 import { type ProbeRowCount } from '../requests/probe-row-count';
 
 /**
