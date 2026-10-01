@@ -256,7 +256,9 @@ page padding. Top to bottom:
 - **Queue band.** `#f7f8fa`, a `border` hairline beneath, `20px 40px`.
   - One row: the **zone tabs** left and the staleness line (*อัปเดตเมื่อ 6
     นาทีที่แล้ว. รายการนี้ไม่รีเฟรชเอง*, 12, `muted-foreground`) beside a
-    `secondary` **↻ รีเฟรช** right.
+    `secondary` **↻ รีเฟรช** right. Built (#124): the lookup between them is a
+    Field with its label above, so the staleness line and refresh sit one
+    label row down, centred on the lookup's 44px box rather than on the tabs.
   - The **queue table**: a `card` with a `border` hairline and 12px radius
     (`radius-lg`), columns 220 / fluid / 200 / 180 / 160: ผู้ขอ, หน่วยงาน,
     กลุ่มโรค, ส่งเมื่อ, เวลาที่เหลือ. The header row is 12px `muted-foreground`;
