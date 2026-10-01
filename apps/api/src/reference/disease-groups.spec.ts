@@ -1,6 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { repoPath } from '../repo-paths';
 import { describe, expect, it } from 'vitest';
 import {
   DISEASE_GROUPS,
@@ -9,8 +8,7 @@ import {
   type DiseaseGroup,
 } from './disease-groups';
 
-const docs = join(dirname(fileURLToPath(import.meta.url)), '../../../../docs');
-const read = (path: string) => readFileSync(join(docs, path), 'utf-8');
+const read = (path: string) => readFileSync(repoPath('docs', path), 'utf-8');
 
 // The Report code seed: every `group_code` row of the code list in
 // docs/research/003-disease-group-codes.md. Stops before the companion-ICD

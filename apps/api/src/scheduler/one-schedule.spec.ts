@@ -1,7 +1,8 @@
 import { readFileSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { relative } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { sourceFiles } from '../../test/support/source-files';
+import { apiPath } from '../repo-paths';
 
 // "One pass … there is no second schedule anywhere" (spec §15.3). The tick is
 // the only timer that finds work; a schedule added anywhere else — a cron, a
@@ -11,7 +12,7 @@ import { sourceFiles } from '../../test/support/source-files';
 // schedule nobody starts in a test is still a schedule. A tripwire, not a
 // proof: each exception below is argued for here, so the next has to be too.
 
-const SRC = join(__dirname, '..');
+const SRC = apiPath('src');
 const FILES = sourceFiles(SRC).map((path) => ({
   path: relative(SRC, path),
   text: readFileSync(path, 'utf8'),

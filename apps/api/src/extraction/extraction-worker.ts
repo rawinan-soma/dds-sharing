@@ -15,6 +15,7 @@ import { generateToken } from '../delivery/token';
 import { type DownloadTokens } from '../delivery/download-tokens.repository';
 import { type MailSender } from '../mail/mail-sender';
 import { type ProvinceLookup } from '../reference/province-lookup.service';
+import { readAsk } from '../requests/ask';
 import { type ArchiveStore } from './archive-store';
 import { buildExtractArchive } from './build-extract-archive';
 import { DATA_DICTIONARY_CHECKSUM } from './data-dictionary';
@@ -200,7 +201,12 @@ async function publishExtract(
 async function deliver(
   deps: Pick<
     ExtractionWorkerDeps,
-    'db' | 'downloadTokens' | 'mailSender' | 'frontendUrl' | 'archiveStore'
+    | 'db'
+    | 'downloadTokens'
+    | 'mailSender'
+    | 'frontendUrl'
+    | 'archiveStore'
+    | 'provinceLookup'
   >,
   requestId: string,
   reference: string,
@@ -246,6 +252,7 @@ async function deliver(
       name: `${contact.name} ${contact.surname}`,
       reference,
       downloadUrl: `${deps.frontendUrl}/d/${rawToken}`,
+      ask: await readAsk(deps.db, requestId, deps.provinceLookup.provinces),
     },
     { downloadTokenId: token.id },
   );

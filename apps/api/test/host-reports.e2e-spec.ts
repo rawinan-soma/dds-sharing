@@ -21,6 +21,7 @@ import {
   createScratchDatabase,
   type ScratchDatabase,
 } from './support/scratch-database';
+import { apiPath } from '../src/repo-paths';
 
 function fakeIo() {
   const out: string[] = [];
@@ -365,7 +366,7 @@ describe('the host-only acts have no web path', () => {
           ? [join(dir, e.name)]
           : [],
     );
-  const controllers = sources(join(__dirname, '../src')).filter((f) =>
+  const controllers = sources(apiPath('src')).filter((f) =>
     readFileSync(f, 'utf-8').includes('@Controller('),
   );
 

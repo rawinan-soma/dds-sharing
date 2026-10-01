@@ -1,3 +1,4 @@
+import { B, DRAWN } from '../design/b-tokens';
 import { type Catalogue } from '../i18n/copy-catalogue';
 import { ATTEMPT_CAP } from './resolve-token';
 import { formatBytes, formatHoursLeft } from './format';
@@ -7,13 +8,13 @@ import { formatBytes, formatHoursLeft } from './format';
 // Deliberately plain, semantic HTML rather than a templating engine: two
 // pages does not earn a dependency.
 
-// The B tokens (docs/design/system.md), inlined: these pages load no bundle,
+// The B tokens (src/design/b-tokens.ts), inlined: these pages load no bundle,
 // so they cannot share the SPA's stylesheet or its self-hosted fonts, and fall
 // back to the platform's Thai face where IBM Plex is not installed.
 const STYLE = `
-  :root { --background:#e4e6ea; --card:#fff; --foreground:#1b1d24; --muted:#5f6470; --border:#dfe1e6;
-    --primary:#3b5bfd; --primary-hover:#3050e8; --primary-wash:#eef1ff; --success:#1a7a4f; --success-wash:#e6f4ec;
-    --pending:#8a5a00; --inert:#5f6470; --inert-wash:#eceef2; --quiet:#f7f8fa; }
+  :root { --background:${B.background}; --card:${B.card}; --foreground:${B.foreground}; --muted:${B.mutedForeground}; --border:${B.border};
+    --primary:${B.primary}; --primary-hover:${B.primaryHover}; --primary-wash:${B.primaryWash}; --primary-foreground:${B.primaryForeground};
+    --success:${B.success}; --success-wash:${B.successWash}; --pending:${B.pending}; --inert:${B.inert}; --inert-wash:${B.inertWash}; --quiet:${DRAWN.bandGrey}; }
   * { box-sizing: border-box; }
   body { margin: 0; padding: 48px 16px; background: var(--background); color: var(--foreground);
     font-family: 'IBM Plex Sans Thai', 'IBM Plex Sans', system-ui, sans-serif; font-size: 15px; line-height: 1.65; }
@@ -36,7 +37,7 @@ const STYLE = `
   .tile .value { font-size: 16px; font-weight: 600; }
   .tile.left { background: var(--success-wash); color: var(--success); }
   .button { display: flex; align-items: center; justify-content: center; min-height: 44px; border-radius: 10px;
-    background: var(--primary); color: #fff; font-size: 16px; font-weight: 600; text-decoration: none; }
+    background: var(--primary); color: var(--primary-foreground); font-size: 16px; font-weight: 600; text-decoration: none; }
   .button:hover { background: var(--primary-hover); }
   :focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
   .notes { display: flex; flex-direction: column; gap: 12px; }
@@ -44,7 +45,7 @@ const STYLE = `
   .note h2 { font-size: 15px; font-weight: 600; }
   .note p { color: var(--muted); font-size: 14px; }
   .mark { flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center;
-    color: #fff; background: var(--inert); font-size: 13px; font-weight: 700; }
+    color: ${DRAWN.onStateFill}; background: var(--inert); font-size: 13px; font-weight: 700; }
   .mark.pending { background: var(--pending); }
   .phone { color: var(--muted); font-size: 14px; }
   .centered { text-align: center; }
