@@ -14,6 +14,7 @@ import { BehaviorSubject } from 'rxjs';
 import * as m from '../../paraglide/messages.js';
 import { DossierPage } from './dossier.page';
 import { type Dossier } from './queue-api';
+import { ReviewerSession } from './reviewer-session';
 
 const dossier = (over: Partial<Dossier> = {}): Dossier => ({
   id: 'r1',
@@ -98,7 +99,8 @@ describe('DossierPage', () => {
     ]) {
       expect(text()).toContain(value);
     }
-    expect(el.querySelector('dl')?.textContent).toContain(
+    const who = el.querySelector('section[aria-labelledby=who]')!;
+    expect(who.querySelector('dl')?.textContent).toContain(
       m.requester_workplace(),
     );
   });
@@ -114,7 +116,16 @@ describe('DossierPage', () => {
     expect(dates).toContain('2025-01-31');
   });
 
-  it('names a whole health region and lists its provinces', async () => {
+  it('heads the dossier with the reference over the requester’s full name', async () => {
+    await load();
+    const heading = el.querySelector('h2')!;
+    expect(heading.textContent).toContain('Somchai Jaidee');
+    expect(el.querySelector('.reference')!.textContent).toContain(
+      'REQ-2569-0001',
+    );
+  });
+
+  it('names a whole health region and counts its provinces, without chips', async () => {
     await load({
       area: {
         kind: 'provinces',
@@ -126,7 +137,8 @@ describe('DossierPage', () => {
       },
     });
     expect(text()).toContain(m.requester_area_region_selected({ region: 1 }));
-    expect(text()).toContain('ลำพูน');
+    expect(text()).toContain(m.reviewer_area_province_count({ count: 2 }));
+    expect(el.querySelector('.chip')).toBeNull();
   });
 
   it('says the whole country for a national Request', async () => {
@@ -154,10 +166,11 @@ describe('DossierPage', () => {
     const sent = el.querySelector('time[datetime="2026-09-21T02:00:00.000Z"]');
     expect(sent).not.toBeNull();
     expect(text()).toContain('21 h 05 m');
-    expect(text()).toContain(m.reviewer_dossier_ahead({ count: 3 }));
+    expect(text()).toContain(m.reviewer_dossier_ahead_label());
+    expect(text()).toContain(m.reviewer_dossier_ahead_count({ count: 3 }));
   });
 
-  it('phrases none and one ahead as sentences', async () => {
+  it('says none are ahead in a word', async () => {
     await load({ ahead: 0 });
     expect(text()).toContain(m.reviewer_dossier_ahead_none());
   });
@@ -177,9 +190,19 @@ describe('DossierPage', () => {
   });
 
   it('shows the summed count as a number once the Probe has landed', async () => {
-    await load({ rowCount: 129 });
-    expect(text()).toContain('129');
+    await load({ rowCount: 1284 });
+    expect(text()).toContain(m.reviewer_probe_rows({ count: '1,284' }));
     expect(text()).toContain(m.reviewer_probe_note());
+  });
+
+  it('says a count of zero means no reports match, and still offers approve', async () => {
+    await load({ rowCount: 0 });
+    expect(text()).toContain(m.reviewer_probe_zero());
+    expect(
+      [...el.querySelectorAll('button')].some(
+        (b) => b.textContent!.trim() === m.reviewer_approve(),
+      ),
+    ).toBe(true);
   });
 
   it('shows a Request past the threshold as not actionable', async () => {
@@ -240,19 +263,74 @@ describe('DossierPage', () => {
       buttonNamed(m.reviewer_approve_confirm_submit());
     const rejectSubmitButton = () => buttonNamed(m.reviewer_reject_submit());
 
+    const dialog = () => el.querySelector<HTMLElement>('[role=dialog]');
+    const after = (a: Element, b: Element) =>
+      !!(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+
     it('sits below the identity fields and the ask, in the DOM as well as on screen', async () => {
       await load();
-      const html = el.innerHTML;
-      expect(html.indexOf('class="strip"')).toBeLessThan(
-        html.indexOf(m.reviewer_approve()),
+      const who = el.querySelector('section[aria-labelledby=who]')!;
+      const ask = el.querySelector('section[aria-labelledby=ask]')!;
+      expect(after(who, approveButton())).toBe(true);
+      expect(after(ask, approveButton())).toBe(true);
+      expect(after(ask, rejectButton())).toBe(true);
+    });
+
+    it('confirms in a modal dialog naming the requester, with the confirm focused', async () => {
+      await load();
+      approveButton().click();
+      await settle();
+      const d = dialog()!;
+      expect(d.getAttribute('aria-modal')).toBe('true');
+      const title = el.querySelector(`#${d.getAttribute('aria-labelledby')}`)!;
+      expect(title.textContent).toContain(
+        m.reviewer_approve_dialog_title({ name: 'Somchai Jaidee' }),
       );
+      expect(d.textContent).toContain('REQ-2569-0001');
+      expect(d.textContent).toContain('Regional Office 1');
+      expect(document.activeElement).toBe(confirmButton());
+    });
+
+    it('never names the Reviewer in the confirm or while it is approving', async () => {
+      const session = TestBed.inject(ReviewerSession);
+      vi.spyOn(session, 'current').mockReturnValue({
+        displayName: 'Alice Reviewer',
+        mustChangePassword: false,
+        expiresAt: '2026-09-21T09:00:00.000Z',
+      } as ReturnType<ReviewerSession['current']>);
+      await load();
+      approveButton().click();
+      await settle();
+      expect(dialog()!.textContent).not.toContain('Alice Reviewer');
+
+      confirmButton().click();
+      await settle();
+      const loading = buttonNamed(m.reviewer_approve_loading());
+      expect(loading.getAttribute('aria-busy')).toBe('true');
+      expect(dialog()!.textContent).not.toContain('Alice Reviewer');
+      // An approval that has gone cannot come back.
+      expect(buttonNamed(m.reviewer_cancel()).disabled).toBe(true);
+      http.expectOne('/api/reviewer/queue/r1/approve');
+    });
+
+    it('closes on Escape and returns focus to the button that opened it', async () => {
+      await load();
+      approveButton().focus();
+      approveButton().click();
+      await settle();
+      dialog()!.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }),
+      );
+      await settle();
+      expect(dialog()).toBeNull();
+      expect(document.activeElement).toBe(approveButton());
+      http.expectNone(() => true);
     });
 
     it('states plainly what was recorded once approved, without asking again', async () => {
       await load();
       approveButton().click();
       fixture.detectChanges();
-      expect(text()).toContain(m.reviewer_approve_confirm_permanence());
 
       confirmButton().click();
       http
@@ -261,7 +339,12 @@ describe('DossierPage', () => {
       await settle();
 
       expect(el.querySelector('button')).toBeNull();
+      expect(dialog()).toBeNull();
       expect(text()).toContain(m.reviewer_decided_approved_detail());
+      // A link to the in-flight tab, the dossier staying where it is (11c).
+      expect(
+        el.querySelector('a[href="/reviewer/r1?zone=in-flight"]')?.textContent,
+      ).toContain(m.reviewer_decided_approved_link());
       // Never auto-advances: the same Request stays on screen (§10.3).
       expect(text()).toContain('REQ-2569-0001');
     });
@@ -269,7 +352,15 @@ describe('DossierPage', () => {
     it('requires a note of at least 10 characters before reject can be submitted', async () => {
       await load();
       rejectButton().click();
-      fixture.detectChanges();
+      await settle();
+      const textarea0 = el.querySelector('textarea')!;
+      expect(document.activeElement).toBe(textarea0);
+      // The hint saying why the confirm is held, and that the note is never sent.
+      expect(
+        el.querySelector(`#${textarea0.getAttribute('aria-describedby')}`)
+          ?.textContent,
+      ).toContain(m.reviewer_reject_note_hint());
+      expect(text()).toContain(m.reviewer_reject_no_autosave());
       expect(rejectSubmitButton().disabled).toBe(true);
 
       const textarea = el.querySelector('textarea')!;
@@ -306,6 +397,7 @@ describe('DossierPage', () => {
 
       expect(el.querySelector('button')).toBeNull();
       expect(text()).toContain(m.reviewer_decided_rejected_detail());
+      expect(text()).toContain(m.reviewer_decided_rejected_note());
     });
 
     it('lets the Reviewer cancel an approve confirm without submitting', async () => {
@@ -331,6 +423,10 @@ describe('DossierPage', () => {
 
       expect(el.querySelector('button')).toBeNull();
       expect(text()).toContain(m.reviewer_decision_expired_heading());
+      // The header's clock and the queue row both read expired (11e).
+      expect(el.querySelector('.head-cells')!.textContent).toContain(
+        m.reviewer_clock_expired(),
+      );
     });
 
     it('never carries a half-typed note across Requests', async () => {

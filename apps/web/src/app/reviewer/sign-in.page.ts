@@ -29,22 +29,26 @@ type Problem =
   template: `
     <div class="column">
       <section class="card">
-        <p class="kicker">{{ copy.subtitle }}</p>
-        <h2>{{ copy.title }}</h2>
+        <div>
+          <p class="kicker">{{ copy.brand }} · {{ copy.surface }}</p>
+          <h1>{{ copy.title }}</h1>
+        </div>
 
         @if (problem(); as p) {
-          <div #problemBox class="problem" role="alert" tabindex="-1">
+          <div #problemBox class="notice failed" role="alert" tabindex="-1">
             @switch (p.kind) {
               @case ('failed') {
-                <p class="first">{{ copy.failed }}</p>
+                <p class="notice-title">{{ copy.failedTitle }}</p>
+                <p>{{ copy.failed }}</p>
                 <p class="second">{{ copy.noLockout }}</p>
               }
               @case ('throttled') {
-                <p class="first">{{ throttledCopy(p.seconds) }}</p>
+                <p class="notice-title">{{ copy.failedTitle }}</p>
+                <p>{{ throttledCopy(p.seconds) }}</p>
                 <p class="second">{{ copy.noLockout }}</p>
               }
               @case ('unavailable') {
-                <p class="first">{{ copy.unavailable }}</p>
+                <p>{{ copy.unavailable }}</p>
               }
             }
           </div>
@@ -72,7 +76,12 @@ type Problem =
               [attr.aria-invalid]="problem() ? 'true' : null"
             />
           </app-field>
-          <app-field [label]="copy.code" inputId="code">
+          <app-field
+            [label]="copy.code"
+            inputId="code"
+            messageId="code-hint"
+            [hint]="copy.codeHint"
+          >
             <input
               id="code"
               class="field-box code"
@@ -80,6 +89,7 @@ type Problem =
               inputmode="numeric"
               autocomplete="one-time-code"
               maxlength="6"
+              aria-describedby="code-hint"
               [attr.aria-invalid]="problem() ? 'true' : null"
             />
           </app-field>
@@ -91,66 +101,48 @@ type Problem =
             {{ loading() ? copy.loading : copy.submit }}
           </button>
         </form>
-      </section>
 
-      <section class="notes">
-        <p>{{ copy.auditNote }}</p>
-        <h3>{{ copy.recoveryHeading }}</h3>
-        <p>{{ copy.recoveryDetail }}</p>
-        <p>{{ copy.unlistedNote }}</p>
+        <hr class="divider" />
+        <p class="note">{{ copy.note }}</p>
       </section>
     </div>
   `,
   styles: `
     .column {
       max-width: 460px;
-      margin: 3rem auto;
-      padding: 0 1rem;
+      margin: 0 auto;
+      padding: 96px 16px 48px;
     }
     .card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      padding: 2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      padding: 32px;
     }
-    .kicker {
-      margin: 0;
-      color: var(--muted-foreground);
-      font-size: 0.875rem;
-    }
-    h2 {
-      font-size: 1.5rem;
+    h1 {
+      font-size: 26px;
       font-weight: 600;
-      margin-bottom: 1.25rem;
     }
     form {
       display: grid;
-      gap: 1.25rem;
+      gap: 20px;
     }
-    .problem {
-      margin-bottom: 1.25rem;
-      padding: 0.75rem 1rem;
-      background: var(--failed-wash);
-      border-left: 2px solid var(--failed);
-      color: var(--failed);
+    .notice .second {
+      margin-top: 4px;
+      font-size: 13px;
     }
-    .problem p {
-      margin: 0;
+    .notice:focus {
+      outline: none;
     }
-    .problem .second {
-      font-size: 0.875rem;
+    .notice:focus-visible {
+      outline: 2px solid var(--primary);
+      outline-offset: 2px;
     }
-    .notes {
-      margin-top: 1.5rem;
+    .note {
+      margin-top: -8px;
+      font-size: 12px;
+      line-height: 1.5;
       color: var(--muted-foreground);
-      font-size: 0.875rem;
-    }
-    .notes h3 {
-      font-size: 0.875rem;
-      font-weight: 600;
-      color: var(--foreground);
-    }
-    .notes p {
-      margin: 0.25rem 0 0.75rem;
     }
   `,
 })
@@ -163,20 +155,20 @@ export class SignInPage {
     viewChild<ElementRef<HTMLElement>>('problemBox');
 
   protected readonly copy = {
-    subtitle: m.reviewer_signin_subtitle(),
+    brand: m.reviewer_brand(),
+    surface: m.reviewer_surface(),
     title: m.reviewer_signin_title(),
     username: m.reviewer_signin_username(),
     password: m.reviewer_signin_password(),
     code: m.reviewer_signin_code(),
+    codeHint: m.reviewer_signin_code_hint(),
     submit: m.reviewer_signin_submit(),
     loading: m.reviewer_signin_loading(),
+    failedTitle: m.reviewer_signin_failed_title(),
     failed: m.reviewer_signin_failed(),
     noLockout: m.reviewer_signin_no_lockout(),
     unavailable: m.reviewer_signin_unavailable(),
-    auditNote: m.reviewer_signin_audit_note(),
-    recoveryHeading: m.reviewer_signin_recovery_heading(),
-    recoveryDetail: m.reviewer_signin_recovery_detail(),
-    unlistedNote: m.reviewer_signin_unlisted_note(),
+    note: m.reviewer_signin_note(),
   };
   protected readonly throttledCopy = (seconds: number) =>
     m.reviewer_signin_throttled({ seconds });

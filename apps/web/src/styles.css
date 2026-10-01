@@ -22,6 +22,10 @@
   --primary-hover: #3050e8;
   --primary-wash: #eef1ff;
   --primary-foreground: #ffffff;
+  /* Text on a `foreground` panel (the Field tooltip, the Toast): the title,
+     and the body at 10.47:1. */
+  --inverse: #ffffff;
+  --inverse-muted: #c9ccd3;
 
   --success: #1a7a4f;
   --success-wash: #e6f4ec;
@@ -47,6 +51,10 @@
   --shadow-card: 0 30px 60px rgb(0 0 0 / 0.06);
   --shadow-focus: 0 0 0 3px rgb(59 91 253 / 0.18);
   --shadow-float: 0 12px 32px rgb(0 0 0 / 0.18);
+  /* A Dialog over its scrim. */
+  --shadow-dialog: 0 30px 60px rgb(0 0 0 / 0.18);
+  /* The selected segment of the Reviewer's zone tabs, lifted off its track. */
+  --shadow-segment: 0 1px 2px rgb(0 0 0 / 0.08);
 
   /* Self-hosted through @fontsource (400, 500 and 600), loaded by the `styles`
      array in angular.json: no request leaves the ministry network. */
@@ -203,6 +211,7 @@ data,
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  gap: 8px;
   min-height: 40px;
   padding: 0 20px;
   font: inherit;
@@ -633,13 +642,13 @@ select.field-box.placeholder {
 .tip-title {
   font-size: 13px;
   font-weight: 600;
-  color: #ffffff;
+  color: var(--inverse);
 }
 
 .tip-body {
   font-size: 12px;
   line-height: 1.5;
-  color: #c9ccd3;
+  color: var(--inverse-muted);
 }
 
 /* ---- The request page: title, file contents, map-first split ----------- */
@@ -1323,23 +1332,366 @@ app-phone-text strong {
   white-space: nowrap;
 }
 
-/* ---- The site header, on the Reviewer surface until #124 -------------- */
+/* ---- Tag: the state of a Request, a word on its own wash --------------- */
 
-.site-header {
-  background: var(--card);
+.tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 8px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+
+.tag.md {
+  padding: 2px 10px;
+  font-size: 13px;
+}
+
+.tag.success {
+  color: var(--success);
+  background: var(--success-wash);
+}
+
+.tag.pending {
+  color: var(--pending);
+  background: var(--pending-wash);
+}
+
+.tag.failed {
+  color: var(--failed);
+  background: var(--failed-wash);
+}
+
+.tag.inert {
+  color: var(--inert);
+  background: var(--inert-wash);
+}
+
+/* ---- Statement: what happened, in the slot where the action was -------- */
+
+.statement {
+  padding: 20px;
+  border-radius: var(--radius-panel);
+}
+
+.statement-title {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.statement p + p {
+  margin-top: 4px;
+}
+
+.statement .statement-note {
+  font-size: 13px;
+  color: var(--muted-foreground);
+}
+
+.statement a {
+  color: var(--primary);
+}
+
+.statement.success {
+  background: var(--success-wash);
+  border: 1px solid var(--success);
+}
+
+.statement.success .statement-title {
+  color: var(--success);
+}
+
+/* A rejection is a normal outcome: calm, not red. */
+.statement.inert {
+  background: var(--inert-wash);
+}
+
+.statement.pending {
+  background: var(--pending-wash);
+}
+
+.statement.pending .statement-title {
+  color: var(--pending);
+}
+
+/* The compact form: a notice above a form, and the Alert card. */
+.notice {
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  border-left: 2px solid transparent;
+}
+
+.notice-title {
+  font-weight: 600;
+}
+
+.notice.failed {
+  background: var(--failed-wash);
+  border-left-color: var(--failed);
+}
+
+.notice.failed .notice-title {
+  color: var(--failed);
+}
+
+.notice.pending {
+  background: var(--pending-wash);
+  border-left-color: var(--pending);
+}
+
+.notice.pending .notice-title {
+  color: var(--pending);
+}
+
+/* A stated absence: a rule, not a fault, so never failed. */
+.absence {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 20px;
+  border-radius: var(--radius-panel);
+  background: var(--inert-wash);
+}
+
+.absence app-icon {
+  margin-top: 2px;
+  color: var(--inert);
+}
+
+.absence-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.absence p + p {
+  margin-top: 4px;
+  font-size: 14px;
+}
+
+/* ---- Empty state: in place of a table, never beside it ---------------- */
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 48px 24px;
+  text-align: center;
+}
+
+.empty-state .status-mark {
+  margin-bottom: 8px;
+}
+
+.empty-state h2 {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.empty-state p {
+  max-width: 560px;
+  color: var(--muted-foreground);
+}
+
+.empty-state .btn {
+  margin-top: 8px;
+}
+
+.status-mark.inert {
+  background: var(--inert-wash);
+  color: var(--inert);
+}
+
+/* ---- The Reviewer's dossier: header row, two columns, the strip -------- */
+
+.dossier {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  padding: 36px 40px 48px;
+}
+
+.dossier-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 24px;
+}
+
+.dossier-head .reference {
+  font-size: 13px;
+  color: var(--muted-foreground);
+}
+
+.dossier-head h2 {
+  font-size: 26px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.dossier-head h2:focus {
+  outline: none;
+}
+
+.dossier-head h2:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 4px;
+}
+
+.head-tags {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.head-cells {
+  display: flex;
+  gap: 32px;
+  margin: 0;
+}
+
+.head-cells dt {
+  font-size: 12px;
+  color: var(--muted-foreground);
+}
+
+.head-cells dd {
+  margin: 0;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.head-cells dd.success {
+  color: var(--success);
+  font-weight: 600;
+}
+
+.dossier-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 40px;
+}
+
+.dossier .section-title {
+  padding-bottom: 12px;
+}
+
+.rows.compact > div {
+  grid-template-columns: 120px minmax(0, 1fr);
+  padding: 10px 0;
+}
+
+.rows dd .note {
+  display: block;
+  font-size: 13px;
+  color: var(--muted-foreground);
+}
+
+/* The one line of a notice or a "none" message in place of the dossier. */
+.dossier-message {
+  padding: 36px 40px 48px;
+}
+
+.dossier-message h2 {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.dossier-message h2:focus {
+  outline: none;
+}
+
+/* ---- The Reviewer's tables --------------------------------------------- */
+
+.zone-table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 14px;
+}
+
+.zone-table th,
+.zone-table td {
+  padding: 10px 20px;
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+
+.zone-table thead th {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--muted-foreground);
   border-bottom: 1px solid var(--border);
 }
 
-.site-header .inner {
-  max-width: 1040px;
-  margin: 0 auto;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  gap: 4px 24px;
-  padding: 12px 40px;
+.zone-table tbody tr + tr > * {
+  border-top: 1px solid var(--border);
 }
 
-.brand {
+.zone-table tbody th {
+  font-weight: 400;
+}
+
+/* A table whose rows open a dossier: the link in each row header stretches
+   over its row, so the whole row is the target and the link its one tab
+   stop. The selected row is the dossier below. */
+.zone-table.linked tbody tr {
+  position: relative;
+}
+
+.zone-table.linked tbody tr:hover {
+  background: var(--quiet);
+}
+
+.zone-table.linked tbody th a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.zone-table.linked tbody th a::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+
+.zone-table.linked tbody th a:focus-visible {
+  outline: none;
+}
+
+.zone-table.linked tbody tr:has(a:focus-visible) {
+  outline: 2px solid var(--primary);
+  outline-offset: -2px;
+}
+
+.zone-table.linked tbody tr:has(a.selected) {
+  background: var(--primary-wash);
+  box-shadow: inset 3px 0 0 var(--primary);
+}
+
+.zone-table.linked tbody tr:has(a.selected) th {
   font-weight: 600;
+}
+
+/* An Alert's selected row is pending, not primary (6a). */
+.zone-table.linked.alerts tbody tr:has(a.selected) {
+  background: var(--pending-wash);
+  box-shadow: inset 3px 0 0 var(--pending);
+}
+
+.zone-table .w-220 {
+  width: 220px;
+}
+
+.zone-table .w-180 {
+  width: 180px;
+}
+
+.zone-table .w-160 {
+  width: 160px;
 }

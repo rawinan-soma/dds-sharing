@@ -17,10 +17,12 @@ const th = JSON.parse(
 const THAI_CHAR = /[฀-๿]/;
 
 // §17.1's checked-in exemption list: values that are legitimately not Thai
-// even in the Thai catalogue (telephone number, DDS, email addresses).
+// even in the Thai catalogue (telephone number, DDS, the product name *DDS
+// Sharing* as the Reviewer frames draw it, email addresses).
 const EXEMPT_VALUE_PATTERNS = [
   /^[\d\s()+-]+$/,
   /^DDS$/,
+  /^DDS Sharing$/,
   /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
 ];
 

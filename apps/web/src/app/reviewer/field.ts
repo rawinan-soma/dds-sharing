@@ -6,32 +6,22 @@ import { Component, input } from '@angular/core';
 // `for` and the message's id are the caller's to pair (inputId, messageId).
 @Component({
   selector: 'app-field',
+  host: { class: 'field', '[class.is-required]': 'required()' },
   template: `
-    <label class="label" [attr.for]="inputId()">{{ label() }}</label>
+    <label class="field-label" [attr.for]="inputId()">{{ label() }}</label>
     <ng-content />
     @if (error()) {
-      <p class="message error" [id]="messageId()">{{ error() }}</p>
+      <p class="field-message error" [id]="messageId()">{{ error() }}</p>
     } @else if (hint()) {
-      <p class="message hint" [id]="messageId()">{{ hint() }}</p>
+      <p class="field-message" [id]="messageId()">{{ hint() }}</p>
     }
   `,
+  // The mark is drawn, not written, so the label's text stays the field's
+  // name; the control's own `required` is what a screen reader announces.
   styles: `
-    :host {
-      display: block;
-    }
-    .label {
-      font-size: 0.875rem;
-      color: var(--muted-foreground);
-    }
-    .message {
-      margin: 0.25rem 0 0;
-      font-size: 0.875rem;
-    }
-    .error {
-      color: var(--failed);
-    }
-    .hint {
-      color: var(--muted-foreground);
+    :host(.is-required) .field-label::after {
+      content: '\\00a0*' / '';
+      color: var(--primary);
     }
   `,
 })
@@ -41,4 +31,6 @@ export class Field {
   readonly messageId = input<string>('');
   readonly hint = input<string>('');
   readonly error = input<string>('');
+  /** The `*` in `primary`; the control itself carries `required`. */
+  readonly required = input(false);
 }

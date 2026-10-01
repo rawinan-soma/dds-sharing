@@ -74,6 +74,14 @@ describe('LookupSearch', () => {
         req.params.get('reference') === reference,
     );
 
+  it('shows its label above the box and an example reference inside it', () => {
+    const label = el.querySelector('label[for=lookup-reference]')!;
+    expect(label.classList).not.toContain('visually-hidden');
+    expect(input().getAttribute('placeholder')).toBe(
+      m.reviewer_lookup_placeholder(),
+    );
+  });
+
   it('is a labelled field that says it reaches finished requests too', () => {
     const label = el.querySelector(`label[for="${input().id}"]`);
     expect(label?.textContent).toContain(m.reviewer_lookup_label());
