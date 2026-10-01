@@ -1,8 +1,8 @@
 import { randomBytes } from 'node:crypto';
-import { join } from 'node:path';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { migrate } from 'drizzle-orm/node-postgres/migrator';
 import { Client, Pool } from 'pg';
+import { apiPath } from '../../src/repo-paths';
 
 export interface ScratchDatabase {
   /** Owner connection: migrates, and may tamper with the data. */
@@ -32,7 +32,7 @@ export async function migrateSerialised(
   try {
     await lock.query('SELECT pg_advisory_lock($1)', [MIGRATION_LOCK]);
     await migrate(drizzle(owner), {
-      migrationsFolder: join(__dirname, '../../src/db/migrations'),
+      migrationsFolder: apiPath('src/db/migrations'),
     });
   } finally {
     await lock.end();

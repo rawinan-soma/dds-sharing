@@ -24,7 +24,7 @@ import {
 import { type CurrentToken, factsOf } from '../requests/in-flight-records';
 import { alertEventsOf } from './alert-records';
 import { openAlerts } from './alerts';
-import { type Area, describeArea } from './review-queue';
+import { ASK_COLUMNS, type Ask, askOf } from '../requests/ask';
 
 /** One row of the in-flight list: what it reads, never who approved it. */
 export interface InFlightListRow {
@@ -39,7 +39,7 @@ export interface InFlightListRow {
   actions: InFlightActions;
 }
 
-export interface InFlightDetail extends InFlightListRow {
+export interface InFlightDetail extends InFlightListRow, Ask {
   /** Live, from the Request, never the Snapshot (ADR 0015). */
   contact: {
     name: string;
@@ -49,9 +49,6 @@ export interface InFlightDetail extends InFlightListRow {
     workplace: string;
   };
   reportCodes: string[];
-  startDate: string;
-  endDate: string;
-  area: Area;
   /** The decision line: accountability, not permission. */
   approvedBy: string;
   approvedAt: string;
@@ -150,11 +147,8 @@ export class InFlight {
         state: request.state,
         reference: request.reference,
         submittedAt: request.submittedAt,
-        diseaseGroupName: request.diseaseGroupName,
+        ...ASK_COLUMNS,
         reportCodes: request.reportCodes,
-        startDate: request.startDate,
-        endDate: request.endDate,
-        provinces: request.provinces,
         name: requestContact.name,
         surname: requestContact.surname,
         tel: requestContact.tel,
@@ -181,9 +175,7 @@ export class InFlight {
         workplace: r.workplace,
       },
       reportCodes: r.reportCodes,
-      startDate: r.startDate,
-      endDate: r.endDate,
-      area: describeArea(r.provinces, this.provinces.provinces),
+      ...askOf(r, this.provinces.provinces),
       approvedBy: decision.approvedBy,
       approvedAt: decision.approvedAt.toISOString(),
       file: token

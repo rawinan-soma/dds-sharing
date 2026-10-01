@@ -1,6 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { apiPath, repoPath } from '../repo-paths';
 import { describe, expect, it } from 'vitest';
 import {
   PROVINCE_SEED_MIGRATION,
@@ -17,9 +16,7 @@ import {
   type ProvinceRow,
 } from './province-rows';
 
-const here = dirname(fileURLToPath(import.meta.url));
-const apiRoot = join(here, '../..');
-const csv = readFileSync(join(here, '../../../../docs/provinces.csv'), 'utf-8');
+const csv = readFileSync(repoPath('docs/provinces.csv'), 'utf-8');
 
 describe('docs/provinces.csv', () => {
   const rows = parseProvincesCsv(csv);
@@ -64,11 +61,14 @@ describe('the generated province seed', () => {
   it('is what the CSV generates: regenerate with `pnpm db:generate-province-seed`', () => {
     const rows = parseProvincesCsv(csv);
 
-    expect(readFileSync(join(apiRoot, PROVINCE_SEED_MIGRATION), 'utf-8')).toBe(
+    expect(readFileSync(apiPath(PROVINCE_SEED_MIGRATION), 'utf-8')).toBe(
       provinceSeedMigrationSql(rows),
     );
     expect(
-      readFileSync(join(here, 'province-seed.generated.ts'), 'utf-8'),
+      readFileSync(
+        apiPath('src/reference/province-seed.generated.ts'),
+        'utf-8',
+      ),
     ).toBe(provinceSeedModuleSource(rows));
   });
 

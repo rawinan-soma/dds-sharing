@@ -1,7 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unsafe-assignment, @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-unsafe-argument --
    rows from pg and JSON bodies over HTTP are untyped by nature; the assertions are the types. */
 import { readFileSync, readdirSync } from 'node:fs';
-import { join } from 'node:path';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -17,10 +16,11 @@ import {
   createScratchDatabase,
   type ScratchDatabase,
 } from './support/scratch-database';
+import { apiPath, repoPath } from '../src/repo-paths';
 
 const notice = loadRetentionNotice();
 const messages = JSON.parse(
-  readFileSync(join(__dirname, '../../../messages/en.json'), 'utf-8'),
+  readFileSync(repoPath('messages/en.json'), 'utf-8'),
 ) as Record<string, string>;
 
 function fakeIo(answers: string[] = []) {
@@ -474,10 +474,8 @@ describe('the reviewer host commands', () => {
 // operator by environment variable or login name either.
 describe('host commands read no operator name (ADR 0020)', () => {
   const files = [
-    ...readdirSync(join(__dirname, '../src/cli')).map((f) =>
-      join(__dirname, '../src/cli', f),
-    ),
-    join(__dirname, '../src/reviewer/reviewer-accounts.ts'),
+    ...readdirSync(apiPath('src/cli')).map((f) => apiPath('src/cli', f)),
+    apiPath('src/reviewer/reviewer-accounts.ts'),
   ];
 
   it.each(files)('%s', (file) => {

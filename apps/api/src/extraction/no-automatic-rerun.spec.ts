@@ -1,7 +1,8 @@
 import { readFileSync } from 'node:fs';
-import { join, relative } from 'node:path';
+import { relative } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { sourceFiles } from '../../test/support/source-files';
+import { apiPath } from '../repo-paths';
 
 // "It is a button, never automatic" (spec §10.7). Code-atomic retry is already
 // spent by the time a job is `failed`, so a self-retry burns another run
@@ -11,7 +12,7 @@ import { sourceFiles } from '../../test/support/source-files';
 // exists and never reached `failed`; it makes none. A tripwire that reads the
 // source, not a proof.
 
-const SRC = join(__dirname, '..');
+const SRC = apiPath('src');
 const FILES = sourceFiles(SRC).map((path) => ({
   path: relative(SRC, path),
   text: readFileSync(path, 'utf8'),

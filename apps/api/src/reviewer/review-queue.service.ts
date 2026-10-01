@@ -11,13 +11,8 @@ import { schedulerHealth } from '../scheduler/scheduler-health';
 import { CLOCK, type Clock } from '../clock/clock';
 import { type AlertRow, Alerts } from './alerts.service';
 import { InFlight, type InFlightListRow } from './in-flight.service';
-import {
-  type Area,
-  type PendingRow,
-  type Ranked,
-  describeArea,
-  rankPending,
-} from './review-queue';
+import { ASK_COLUMNS, type Ask, askOf } from '../requests/ask';
+import { type PendingRow, type Ranked, rankPending } from './review-queue';
 
 export interface QueueRow {
   id: string;
@@ -48,7 +43,7 @@ export interface QueueList {
   inFlight: InFlightListRow[];
 }
 
-export interface Dossier extends QueueRow {
+export interface Dossier extends QueueRow, Ask {
   contact: {
     name: string;
     surname: string;
@@ -58,9 +53,6 @@ export interface Dossier extends QueueRow {
   };
   reportCodes: string[];
   /** Inclusive, as the Requester gave them. */
-  startDate: string;
-  endDate: string;
-  area: Area;
   rowCount: ProbeRowCount;
 }
 
@@ -119,11 +111,8 @@ export class ReviewQueue {
         id: request.id,
         reference: request.reference,
         submittedAt: request.submittedAt,
-        diseaseGroupName: request.diseaseGroupName,
+        ...ASK_COLUMNS,
         reportCodes: request.reportCodes,
-        startDate: request.startDate,
-        endDate: request.endDate,
-        provinces: request.provinces,
         name: requestContact.name,
         surname: requestContact.surname,
         tel: requestContact.tel,
@@ -145,9 +134,7 @@ export class ReviewQueue {
         workplace: entry.workplace,
       },
       reportCodes: entry.reportCodes,
-      startDate: entry.startDate,
-      endDate: entry.endDate,
-      area: describeArea(entry.provinces, this.provinces.provinces),
+      ...askOf(entry, this.provinces.provinces),
       rowCount: await probeRowCountOf(this.db, id),
     };
   }
