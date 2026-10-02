@@ -115,6 +115,14 @@ The rule rejecting a submit whose email and ask (Disease group, dates, Area sele
 One immutable entry in the Request's history — an occurrence, an actor, and a moment. Never edited and never deleted; a correction is a further event citing the one it corrects. The Request's own state is a projection of its events, not a separate truth.
 _Avoid_: Log entry, audit row, history record
 
+**Standing**:
+Where a Request stands now — what is already true of it, read from its events at the moment of asking and never stored. It is that projection of the events, answered once: its state as already true, its Zone, its open Alerts and its current Download token. A Request whose Download token lapsed with no Attempt has ended, and its standing says so before anything has recorded the end (ADR 0016). A pending Request past its 24 business hours is deliberately not settled that way: it stays in the queue, shown and not actionable, until the expiry is recorded.
+_Avoid_: Status, view
+
+**Zone**:
+The one place on the Reviewer surface where a Request appears — whichever carries the action it needs: the queue while it awaits a Decision, Alerts while an Alert on it is open, in flight while it is approved and not yet ended, or none once nothing remains to be done to it. An open Alert wins over in flight: the Request moves rather than being marked. Read from its Standing, never assigned.
+_Avoid_: Tab, list, bucket
+
 **Reviewer event**:
 One immutable entry in a Reviewer's own history — a sign-in, a failed sign-in, a deactivation. Kept apart from Request events because it belongs to a person rather than to a Request, and it accumulates whether or not any Request was ever decided.
 
