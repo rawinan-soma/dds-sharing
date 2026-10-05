@@ -1,16 +1,16 @@
 # The Pilot's deploy (ADR 0022, #101): deploy/pilot/README.md's steps as
 # targets, run from the laptop. From the repository root:
 #
-#   make -C deploy/pilot env        # once: the server's .env, secrets typed there
-#   make -C deploy/pilot deploy     # every time: build, push, sync, run, check
-#   make -C deploy/pilot rollback TAG=<sha>
+#   make -C deploy/pilot env HOST=<ssh host>        # once: the server's .env
+#   make -C deploy/pilot deploy HOST=<ssh host>     # every time: build … check
+#   make -C deploy/pilot rollback HOST=<ssh host> TAG=<sha>
 #
 # Every target deploys a commit, never the working tree: TAG defaults to the
-# tip of the `pilot` branch. `make -n <target>` prints what it would run.
+# tip of the `pilot` branch. HOST has no default, so no command reaches a
+# server it did not name. `make -n <target>` prints what it would run.
 
 SHELL := /bin/bash
 
-HOST  ?= personal-test-server
 TAG   ?= $(shell git rev-parse --short pilot)
 IMAGE := rawinan/dds-sharing-pilot
 ROOT  := $(shell git rev-parse --show-toplevel)
@@ -21,6 +21,14 @@ D  := ~/dds-pilot
 DC := docker compose --project-name dds-pilot --env-file $(D)/.env --env-file $(D)/release.env -f $(D)/docker-compose.yml -f $(D)/compose.pilot.yml
 
 .DEFAULT_GOAL := help
+
+# Every target but help and build talks to the server, so it must be named on
+# the command line (a `make rollback` passes it on to its sub-make).
+ifneq ($(filter-out help build,$(or $(MAKECMDGOALS),help)),)
+ifneq ($(origin HOST),command line)
+$(error HOST is required: make $(MAKECMDGOALS) HOST=<ssh host>)
+endif
+endif
 .PHONY: help env build sync run seed check deploy rollback ps logs board dc down retire
 
 help:
@@ -30,7 +38,8 @@ help:
 	@echo 'Steps:      build  sync  run  check'
 	@echo 'Operate:    ps  logs  board  dc ARGS="<compose args>"'
 	@echo 'Stop:       down (the kill switch)    retire (deletes the Pilot)'
-	@echo 'Now:        HOST=$(HOST) TAG=$(TAG)'
+	@echo 'Every target but build needs HOST=<ssh host>.'
+	@echo 'Now:        TAG=$(TAG)'
 
 # Step 2. write-env.sh runs on the server without being copied there. It
 # refuses to replace an existing .env; FORCE=1 replaces it (new secrets).
@@ -74,7 +83,8 @@ check:
 	if body=$$(curl -fsS "$$url/api/health") && grep -q '"insecureFlags":\[\]' <<<"$$body"; \
 	  then echo "ok    $$url/api/health through the tunnel, no insecure flags"; \
 	  else echo "FAIL  $$url/api/health: $$body"; fail=1; fi; \
-	open=; for p in 3000 3100 5432 6379 9000 9001; do nc -z -w 3 $(HOST) $$p 2>/dev/null && open="$$open $$p"; done; \
+	addr=$$(ssh -G $(HOST) | awk '/^hostname /{print $$2}'); \
+	open=; for p in 3000 3100 5432 6379 9000 9001; do nc -z -w 3 $$addr $$p 2>/dev/null && open="$$open $$p"; done; \
 	if [ -z "$$open" ]; \
 	  then echo "ok    app, Bull Board, Postgres, Redis, MinIO closed from the tailnet"; \
 	  else echo "FAIL  open from the tailnet:$$open"; fail=1; fi; \

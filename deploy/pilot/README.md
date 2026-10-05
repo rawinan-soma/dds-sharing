@@ -2,7 +2,7 @@
 
 The Pilot is a second, disposable service for real Requesters on the repo
 owner's server (ADR 0022, spec §18.15, `CONTEXT.md`). It runs from the `pilot`
-branch, which is never merged into `main`, on `personal-test-server`, and is
+branch, which is never merged into `main`, on a server named by `HOST`, and is
 reached only through a Cloudflare Tunnel on the owner's domain. This file is
 #101's runbook: first deploy, update, teardown. Its steps are the targets of
 `deploy/pilot/Makefile`.
@@ -17,7 +17,7 @@ the two compose files, `docker/postgres-init/`, the `.env` written there, and
 
 1. **Create the tunnel** in the Cloudflare dashboard (Zero Trust → Networks →
    Tunnels → Create, type *cloudflared*). Copy its **token**; you paste it in
-   `pilot-dds-sharing env`.
+   `pilot-dds-sharing env HOST=<host>`.
 2. **Give it a public hostname** on your domain, e.g. `pilot.example.com`, with
    service **`http://app:3000`**. That is the app's name on the Compose network,
    so no port is published on the host. Add no Access policy: the Pilot is open
@@ -30,7 +30,9 @@ Every step below is a target of `deploy/pilot/Makefile`, run **from the
 repository root on the laptop**. `make -C deploy/pilot` lists them, and
 `make -C deploy/pilot -n <target>` prints the commands a target would run
 without running them. Each target deploys the commit `TAG` (default: the tip
-of `pilot`) on `HOST` (default: `personal-test-server`).
+of `pilot`) on `HOST`, an SSH host the laptop can reach (e.g. a `Host` entry in
+`~/.ssh/config`). `HOST` has no default and must be given on the command line
+to every target but `build`, so no command reaches a server it did not name.
 
 ```sh
 alias pilot-dds-sharing='make -C deploy/pilot'   # optional; the examples use it
@@ -39,20 +41,20 @@ alias pilot-dds-sharing='make -C deploy/pilot'   # optional; the examples use it
 ## Once: the server's `.env`
 
 ```sh
-pilot-dds-sharing env
+pilot-dds-sharing env HOST=<host>
 ```
 
 `write-env.sh` runs on the server without being copied there, so the secrets
 are typed into the server and nowhere else. It asks for the Pilot URL, the
 tunnel token, the relay account and the upstream token, and generates every
 internal password. It refuses to overwrite an existing `.env`;
-`pilot-dds-sharing env FORCE=1` replaces it with new secrets. After this, no
+`pilot-dds-sharing env HOST=<host> FORCE=1` replaces it with new secrets. After this, no
 deploy asks for a secret again.
 
 ## Deploy
 
 ```sh
-pilot-dds-sharing deploy
+pilot-dds-sharing deploy HOST=<host>
 ```
 
 That is four steps, each also a target of its own:
@@ -74,12 +76,12 @@ After the first deploy, seed yourself as the Pilot's one Reviewer (§17.5) and
 sign in with TOTP:
 
 ```sh
-pilot-dds-sharing seed USERNAME=<you> EMAIL=<you@…>
+pilot-dds-sharing seed HOST=<host> USERNAME=<you> EMAIL=<you@…>
 ```
 
 ## Check
 
-`pilot-dds-sharing check` verifies (#101):
+`pilot-dds-sharing check HOST=<host>` verifies (#101):
 
 - `/api/health` answers through the tunnel, with `"insecureFlags": []`;
 - the app, Bull Board, Postgres, Redis and MinIO (ports 3000, 3100, 5432, 6379,
@@ -95,34 +97,34 @@ By hand, once, because they need a person:
   each gets a `PLT-` reference. If the second is refused, `TRUST_PROXY` is wrong.
 - **An end-to-end Request**: submit, approve, the Delivery email arrives through
   the real relay, the archive downloads against the real upstream.
-- **The kill switch**: `pilot-dds-sharing down`, and the URL stops answering.
+- **The kill switch**: `pilot-dds-sharing down HOST=<host>`, and the URL stops answering.
 
 ## Updating and rolling back
 
 New work reaches the Pilot only through `pilot`. Merge `main` into `pilot`
-(e.g. #96's flip), commit, then `pilot-dds-sharing deploy`. `release.env` on
-the server names the commit running; `pilot-dds-sharing check` prints it.
+(e.g. #96's flip), commit, then `pilot-dds-sharing deploy HOST=<host>`. `release.env` on
+the server names the commit running; `pilot-dds-sharing check HOST=<host>` prints it.
 
-**Rolling back** is `pilot-dds-sharing rollback TAG=<sha>`, for an older commit
+**Rolling back** is `pilot-dds-sharing rollback HOST=<host> TAG=<sha>`, for an older commit
 whose image is already on Docker Hub. It syncs that commit's compose files too.
 
 ## Operating
 
 ```sh
-pilot-dds-sharing ps
+pilot-dds-sharing ps HOST=<host>
 # cloudflared, and the app's latest hour file under /logs (§14.5)
-pilot-dds-sharing logs
+pilot-dds-sharing logs HOST=<host>
 # Bull Board at http://localhost:3100, loopback only
-pilot-dds-sharing board
+pilot-dds-sharing board HOST=<host>
 # any compose command on the server
-pilot-dds-sharing dc ARGS="restart app"
+pilot-dds-sharing dc HOST=<host> ARGS="restart app"
 ```
 
 ## Stopping and retiring
 
-- **Stop serving data** (the kill switch): `pilot-dds-sharing down`. The tunnel
+- **Stop serving data** (the kill switch): `pilot-dds-sharing down HOST=<host>`. The tunnel
   stops with it.
-- **Retire the Pilot**: `pilot-dds-sharing retire` asks you to type a
+- **Retire the Pilot**: `pilot-dds-sharing retire HOST=<host>` asks you to type a
   confirmation, then deletes the volumes and `~/dds-pilot` on the server. Then
   delete the tunnel in Cloudflare and the `rawinan/dds-sharing-pilot`
   repository on Docker Hub. The Pilot's record is disposable and has no backup
