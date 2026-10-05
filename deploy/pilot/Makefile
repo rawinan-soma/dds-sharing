@@ -98,7 +98,9 @@ check:
 	echo "running: $$(ssh $(HOST) 'cat $(D)/release.env')"; \
 	exit $$fail
 
-deploy: build run check
+deploy: build run
+	@sleep 5
+	$(MAKE) check
 
 # An older commit whose image is already on Docker Hub.
 rollback:
