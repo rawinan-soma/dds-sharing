@@ -24,4 +24,9 @@ describe('formatHoursLeft', () => {
   it('floors a negative duration to 0 rather than reading as still live', () => {
     expect(formatHoursLeft(-1000)).toBe('0 hours');
   });
+
+  it('words the unit in Thai for a Thai catalogue', () => {
+    expect(formatHoursLeft(48 * 60 * 60 * 1000, 'th')).toBe('48 ชั่วโมง');
+    expect(formatHoursLeft(60 * 60 * 1000, 'th')).toBe('1 ชั่วโมง');
+  });
 });

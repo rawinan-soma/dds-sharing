@@ -177,8 +177,7 @@ describe('renderMail', () => {
     });
 
     it("words the dates in the email's language: English days for an English catalogue", () => {
-      expect(catalogue.locale).toBe('en');
-      const { html } = renderMail(catalogue, delivery);
+      const { html } = renderMail(loadCatalogue(repoPath(), 'en'), delivery);
       expect(html).toContain('1 January 2025 – 31 May 2025');
       expect(html).not.toContain('2568');
     });

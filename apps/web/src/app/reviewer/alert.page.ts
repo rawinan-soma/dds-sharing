@@ -165,7 +165,6 @@ type Clearing =
                         <p class="problem" role="alert">{{ problem }}</p>
                       }
                     }
-                    <p class="meta">{{ copy.closedSetNote }}</p>
                   }
                 }
               </section>
@@ -308,7 +307,6 @@ export class AlertPage {
     telephone: m.reviewer_dossier_telephone(),
     email: m.reviewer_dossier_email(),
     contactVisible: m.reviewer_contact_visible_note(),
-    closedSetNote: m.reviewer_alert_closed_set_note(),
     saving: m.reviewer_alert_clearing(),
     rerun: m.reviewer_rerun(),
     rerunLoading: m.reviewer_rerun_loading(),

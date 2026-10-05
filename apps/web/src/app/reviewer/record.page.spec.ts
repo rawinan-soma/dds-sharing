@@ -173,12 +173,11 @@ describe('RecordPage', () => {
     expect(text()).toContain(m.reviewer_lookup_load_failed());
   });
 
-  it('heads the record with its state, in words, and says it is read-only', async () => {
+  it('heads the record with its state, in words', async () => {
     await open(collected());
     const heading = el.querySelector('h2')!;
     expect(heading.textContent).toContain(REFERENCE);
     expect(text()).toContain(m.reviewer_state_collected());
-    expect(text()).toContain(m.reviewer_lookup_readonly());
     expect(text()).toContain(m.reviewer_lookup_ended_title());
     expect(text()).toContain(m.reviewer_lookup_ended_detail());
   });
@@ -277,7 +276,6 @@ describe('RecordPage', () => {
       'Alice Reviewer',
       m.reviewer_actor_requester(),
     ]);
-    expect(text()).toContain(m.reviewer_lookup_events_note());
   });
 
   it('pairs every time with its machine-readable instant', async () => {

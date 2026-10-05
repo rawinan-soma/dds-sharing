@@ -1,14 +1,19 @@
+import * as m from '../../paraglide/messages.js';
 import { countChanges, formatDuration, minutesSince } from './queue-format';
 
 describe('formatDuration', () => {
-  it('reads hours and minutes as N h NN m', () => {
-    expect(formatDuration(21 * 60 + 5)).toBe('21 h 05 m');
-    expect(formatDuration(23 * 60 + 40)).toBe('23 h 40 m');
+  it('reads hours and minutes, the minutes padded to two digits', () => {
+    expect(formatDuration(21 * 60 + 5)).toBe(
+      m.reviewer_duration_hm({ hours: 21, minutes: '05' }),
+    );
+    expect(formatDuration(23 * 60 + 40)).toBe(
+      m.reviewer_duration_hm({ hours: 23, minutes: '40' }),
+    );
   });
 
   it('drops the hours when there are none', () => {
-    expect(formatDuration(40)).toBe('40 m');
-    expect(formatDuration(0)).toBe('0 m');
+    expect(formatDuration(40)).toBe(m.reviewer_duration_m({ minutes: 40 }));
+    expect(formatDuration(0)).toBe(m.reviewer_duration_m({ minutes: 0 }));
   });
 });
 

@@ -1,6 +1,7 @@
 // The Filter stage (spec §7.3, §4.4): a post-fetch row predicate on
 // `epidem_chw_code`, never `chw_code` — that is the question a สคร. is
-// asking, "cases I investigated", not "cases among my registered residents".
+// asking, "cases reported in my provinces", not "cases among my registered
+// residents".
 
 /**
  * Upstream sends geography codes as JSON numbers (`10`, not `"10"`). No

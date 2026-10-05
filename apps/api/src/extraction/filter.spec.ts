@@ -42,7 +42,7 @@ describe('filterRow', () => {
   });
 
   it('never matches on chw_code, even when epidem_chw_code disagrees', () => {
-    // The registered-residence province matches, the survey-time one does
+    // The registered-residence province matches, the reporting one does
     // not: the row must be dropped (spec §4.4) — this is the exact failure
     // shape a filter written against the wrong column would miss.
     expect(filterRow({ chw_code: 10, epidem_chw_code: 99 }, ['10'])).toEqual({

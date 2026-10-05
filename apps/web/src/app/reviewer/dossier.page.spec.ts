@@ -165,7 +165,9 @@ describe('DossierPage', () => {
     await load();
     const sent = el.querySelector('time[datetime="2026-09-21T02:00:00.000Z"]');
     expect(sent).not.toBeNull();
-    expect(text()).toContain('21 h 05 m');
+    expect(text()).toContain(
+      m.reviewer_duration_hm({ hours: 21, minutes: '05' }),
+    );
     expect(text()).toContain(m.reviewer_dossier_ahead_label());
     expect(text()).toContain(m.reviewer_dossier_ahead_count({ count: 3 }));
   });
@@ -182,11 +184,10 @@ describe('DossierPage', () => {
     expect(text()).toContain(m.reviewer_probe_note());
   });
 
-  it('shows the count as failed, with a different note, when the Probe was abandoned', async () => {
+  it('shows the count as failed, with the same note, when the Probe was abandoned', async () => {
     await load({ rowCount: 'failed' });
     expect(text()).toContain(m.reviewer_probe_failed());
-    expect(text()).toContain(m.reviewer_probe_failed_note());
-    expect(text()).not.toContain(m.reviewer_probe_note());
+    expect(text()).toContain(m.reviewer_probe_note());
   });
 
   it('shows the summed count as a number once the Probe has landed', async () => {

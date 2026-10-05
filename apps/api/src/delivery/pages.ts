@@ -146,7 +146,7 @@ export function renderCollectionPage(
   )}</p></div>
 <div class="tile left"><p class="small">${t('requester_collect_time_left_label')}</p><p class="value figure">${t(
     'requester_collect_time_left',
-    { time: formatHoursLeft(data.timeLeftMs) },
+    { time: formatHoursLeft(data.timeLeftMs, catalogueInstance.locale) },
   )}</p></div>
 </div>
 <a class="button" href="${data.archiveUrl}">${t('requester_collect_download')}</a>

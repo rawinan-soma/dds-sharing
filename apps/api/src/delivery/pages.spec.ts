@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { B, DRAWN } from '../design/b-tokens';
 import { catalogue } from '../i18n/copy-catalogue';
+import { formatHoursLeft } from './format';
 import { renderCollectionPage, renderExpiredPage } from './pages';
 
 describe('renderCollectionPage', () => {
@@ -17,8 +18,14 @@ describe('renderCollectionPage', () => {
     expect(html).toContain('REQ-2569-0001');
     expect(html).toContain('REQ-2569-0001.zip');
     expect(html).toContain('5.0 MB');
-    expect(html).toContain('3 of 10 times');
-    expect(html).toContain('48 hours');
+    expect(html).toContain(
+      catalogue.t('requester_collect_attempts_value', { used: 3, cap: 10 }),
+    );
+    expect(html).toContain(
+      catalogue.t('requester_collect_time_left', {
+        time: formatHoursLeft(48 * 60 * 60 * 1000, catalogue.locale),
+      }),
+    );
   });
 
   it('links the download button at the archive route', () => {

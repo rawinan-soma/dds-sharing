@@ -190,7 +190,6 @@ type Acting =
               <app-icon name="lock" />
               <div>
                 <h3 class="absence-title">{{ copy.noEmailEditHeading }}</h3>
-                <p>{{ copy.noEmailEditDetail }}</p>
               </div>
             </section>
           </article>
@@ -275,7 +274,6 @@ export class InFlightPage {
     rerunNote: m.reviewer_rerun_note(),
     extractingNote: m.reviewer_inflight_extracting_note(),
     noEmailEditHeading: m.reviewer_no_email_edit_heading(),
-    noEmailEditDetail: m.reviewer_no_email_edit_detail(),
   };
 
   constructor() {

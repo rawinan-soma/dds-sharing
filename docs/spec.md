@@ -230,20 +230,22 @@ zero rows.
 
 **The filter matches `epidem_chw_code`. It never matches `chw_code`.**
 
-Upstream's own dictionary defines it as *ที่อยู่ รหัสจังหวัด ขณะสำรวจว่าเป็นโรค* — the
-province the patient was living in when the case was surveyed. It is neither the
-reporting unit's province (`hospital_code` is a facility code, not a province)
-nor the treating unit's (`isolate_chw_code`, dropped from the Extract). Confirmed
-against the dictionary with the repo owner 2026-09-18, after a copy edit briefly
-described it as *the province that reported the data*; that reading was
-considered and declined. The copy uses the dictionary's wording.
+It is **the province that reported the case**. It is neither the patient's
+registered address (`chw_code`) nor the treating unit's (`isolate_chw_code`,
+dropped from the Extract).
+
+> **Amended 2026-10-05 (#96).** On 2026-09-18 this section followed upstream's
+> dictionary, *ที่อยู่ รหัสจังหวัด ขณะสำรวจว่าเป็นโรค* (the province the patient was
+> living in when the case was surveyed), and declined the reporting-province
+> reading. The repo owner reversed that in the Thai copy pass: the copy, the
+> glossary and this section now say *reported*. The filter column is unchanged.
 
 Both columns ship in the Extract and both use the same province codes, so a
 filter written against the wrong one produces a plausible, well-formed,
 **silently wrong** Extract that no gate in this system would catch. This is the
-question a สคร. is asking — *"cases I investigated"*, not *"cases among my
-registered residents"* — and for EnvOcc groups it matters, because workers are
-frequently surveyed far from where they are registered.
+question a สคร. is asking — *"cases reported in my provinces"*, not *"cases
+among my registered residents"* — and for EnvOcc groups it matters, because
+workers are frequently reported far from where they are registered.
 
 - Filtering is a **post-fetch row predicate**, applied client-side. It does not
   reduce upstream cost: a provincial Request costs the queue exactly what a
@@ -679,9 +681,9 @@ the dev-cycle ask in §17.2.
 | 10 | `marital_status_id` | person | upstream |
 | 11 | `chw_code` | geography (registered) | upstream |
 | 12 | `amp_code` | geography (registered) | upstream |
-| 13 | `epidem_chw_code` | geography (survey-time) | upstream |
-| 14 | `epidem_health_zone` | geography (survey-time) | **derived** from 13 |
-| 15 | `epidem_amp_code` | geography (survey-time) | upstream |
+| 13 | `epidem_chw_code` | geography (reporting) | upstream |
+| 14 | `epidem_health_zone` | geography (reporting) | **derived** from 13 |
+| 15 | `epidem_amp_code` | geography (reporting) | upstream |
 | 16 | `hospital_code` | facility | upstream |
 | 17 | `onset_date` | dates | upstream |
 | 18 | `onset_age` | person | **derived** from 17 + 5 |
@@ -1417,8 +1419,10 @@ Too broad? Reject and let them resubmit narrower.
   invites the Reviewer to write something that becomes a disclosure or a
   negotiation. Silence about *whether* a Request was refused would guarantee
   resubmission loops, so the refusal itself is stated; only the reason is not.
-  **The no-reason rule is stated to the Requester up front, on the form**, rather
-  than sprung at rejection time.
+  **The no-reason rule itself is not stated to the Requester.** The form's
+  up-front notice was cut on 2026-09-30 (§16.3), and the rejection email's
+  sentence saying no reason is given was cut on 2026-10-05 (#96): the email
+  states the refusal and gives no reason, without announcing that it will not.
 - The Decision copies a **Snapshot** of what the Reviewer had on screen (§12.3).
 
 ### 10.4 Expiry beats a late Decision
@@ -1807,8 +1811,8 @@ nobody's fault.**
 a confirmation *page* instead (§16.3). **Accepted cost, recorded knowingly: bounce
 detection is lost.** A mistyped address now surfaces only after a Reviewer has
 spent time and an extraction job has run. Mitigated by §11.4, not eliminated —
-and by an explicit warning on the email field, which is the only place a Requester
-is told a typo will not be caught.
+and by a warning on the email field that the address is not checked. Since
+2026-10-05 (#96) nothing tells the Requester that a typo goes unnoticed.
 
 ### 11.4 Collection lapse
 
@@ -2643,17 +2647,34 @@ third copy in this document would drift against two it cannot be checked against
 
 | Key | Carries |
 |---|---|
-| `requester_email_warning` | the only place a Requester is told a typo will not be caught; the email field's tooltip |
+| `requester_email_warning` | the only place a Requester is told the address is not checked; the email field's tooltip |
 | `requester_retention_notice` | §12.9; the consent block's body |
-| `requester_epidem_area_label` | the `epidem_chw_code` vs `chw_code` trap, made visible at the point of choosing — the address that answers *"cases I investigated"*; under the Area switch in the map pane |
-| `error_span_too_long_detail` | the 365-day cap, attributed to **upstream**, not to us, when a longer range is refused |
+| `requester_epidem_area_label` | the `epidem_chw_code` vs `chw_code` trap, made visible at the point of choosing — the address that answers *"cases reported in my provinces"*; under the Area switch in the map pane |
+| `error_span_too_long_detail` | the 365-day cap, stated when a longer range is refused |
 
 > **Amended 2026-09-30 to the locked Requester screens** (#123). Three keys were
 > cut from the catalogue: `requester_gate_notice` (the approval gate, stated
 > first), `requester_no_reason_notice` (the no-reason rejection, said up front),
 > and `requester_span_cap_notice` (the cap as a standing notice; the calendar
-> cannot offer a longer range, and the refusal above still names upstream).
+> cannot offer a longer range, and the refusal above states the cap).
 > `docs/design/brief.md` §5 records the same.
+
+> **Amended 2026-10-05 in the Thai copy pass** (#96). `reviewer_no_email_edit_detail`
+> was cut. The in-flight list still states the absence of an email correction
+> (ADR 0017) in its heading, `reviewer_no_email_edit_heading`, but no longer gives
+> the reason on screen. `email_rejection_no_reason` no longer says that no reason
+> is given; it keeps only that a new request may be sent and is unaffected (§10.3).
+> `requester_email_warning` keeps that the address is not checked, and no longer
+> says that a typo goes unnoticed and the file will not arrive.
+> `error_span_too_long_detail` no longer attributes the cap to upstream or says
+> that the range is not split for the Requester; it states the cap as the
+> system's. The behaviour is unchanged: a longer range is refused, never split.
+> Six keys whose Thai was left empty were cut from both catalogues and their
+> templates: `reviewer_signin_no_lockout`, `reviewer_alert_closed_set_note`,
+> `email_queue_notification_note`, `reviewer_lookup_readonly`,
+> `reviewer_lookup_events_note` and `requester_epidem_area_detail`.
+> `reviewer_probe_failed_note` was cut: a failed row count shows the same note
+> as a counted one, `reviewer_probe_note`.
 
 ### 16.4 The Requester page
 

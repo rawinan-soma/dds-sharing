@@ -40,12 +40,10 @@ type Problem =
               @case ('failed') {
                 <p class="notice-title">{{ copy.failedTitle }}</p>
                 <p>{{ copy.failed }}</p>
-                <p class="second">{{ copy.noLockout }}</p>
               }
               @case ('throttled') {
                 <p class="notice-title">{{ copy.failedTitle }}</p>
                 <p>{{ throttledCopy(p.seconds) }}</p>
-                <p class="second">{{ copy.noLockout }}</p>
               }
               @case ('unavailable') {
                 <p>{{ copy.unavailable }}</p>
@@ -127,10 +125,6 @@ type Problem =
       display: grid;
       gap: 20px;
     }
-    .notice .second {
-      margin-top: 4px;
-      font-size: 13px;
-    }
     .notice:focus {
       outline: none;
     }
@@ -166,7 +160,6 @@ export class SignInPage {
     loading: m.reviewer_signin_loading(),
     failedTitle: m.reviewer_signin_failed_title(),
     failed: m.reviewer_signin_failed(),
-    noLockout: m.reviewer_signin_no_lockout(),
     unavailable: m.reviewer_signin_unavailable(),
     note: m.reviewer_signin_note(),
   };

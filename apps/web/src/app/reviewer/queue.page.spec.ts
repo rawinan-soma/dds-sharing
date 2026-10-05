@@ -147,11 +147,13 @@ describe('QueuePage', () => {
     expect(tabNamed(m.reviewer_zone_queue()).textContent).toContain('3');
   });
 
-  it('shows on each row who, what, and the time left as N h NN m', async () => {
+  it('shows on each row who, what, and the time left in hours and minutes', async () => {
     await firstLoad([row('a', { minutesLeft: 21 * 60 + 5 })]);
     expect(text()).toContain('Name a');
     expect(text()).toContain('โรคซิลิโคสิส');
-    expect(text()).toContain('21 h 05 m');
+    expect(text()).toContain(
+      m.reviewer_duration_hm({ hours: 21, minutes: '05' }),
+    );
   });
 
   it('marks a Request past the threshold with a word, not a colour', async () => {
@@ -412,12 +414,16 @@ describe('QueuePage', () => {
         inFlightRow('x', { linkExpiresAt: expires.toISOString() }),
       ]);
       expect(entries()[0].textContent).toContain(
-        m.reviewer_inflight_link_left({ time: '47 h 05 m' }),
+        m.reviewer_inflight_link_left({
+          time: m.reviewer_duration_hm({ hours: 47, minutes: '05' }),
+        }),
       );
       vi.advanceTimersByTime(60 * 60 * 1000);
       await settle();
       expect(entries()[0].textContent).toContain(
-        m.reviewer_inflight_link_left({ time: '46 h 05 m' }),
+        m.reviewer_inflight_link_left({
+          time: m.reviewer_duration_hm({ hours: 46, minutes: '05' }),
+        }),
       );
       http.expectNone(() => true);
     });
@@ -553,13 +559,9 @@ describe('QueuePage', () => {
     const th = { locale: 'th' } as const;
     const title = m.reviewer_scheduler_stopped_title({}, th);
     const detail = m.reviewer_scheduler_stopped_detail({}, th);
-    // A missing `th` key falls back to English: prove these are translations.
-    expect(title).not.toBe(
-      m.reviewer_scheduler_stopped_title({}, { locale: 'en' }),
-    );
-    expect(detail).not.toBe(
-      m.reviewer_scheduler_stopped_detail({}, { locale: 'en' }),
-    );
+    // Thai is the only locale since #96: prove these are Thai sentences.
+    expect(title).toMatch(/[\u0E00-\u0E7F]/);
+    expect(detail).toMatch(/[\u0E00-\u0E7F]/);
 
     const originalGetLocale = getLocale;
     overwriteGetLocale(() => 'th');

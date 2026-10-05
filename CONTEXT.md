@@ -61,7 +61,7 @@ _Avoid_: Calculated field, computed column, enrichment
 The case's age in completed years at `onset_date` — a property of the case, not of the Request that pulled it. Anchoring it to the case is what lets two Extracts be compared or appended; an age measured from the submission date would report the same person differently in every Request. Empty when it cannot be computed honestly, never zero and never a sentinel.
 
 **epidem_health_zone**:
-The health region of `epidem_chw_code` — the address that answers *"cases I investigated"*. Deliberately not called `health_zone`: the source's column of that name follows `isolate_chw_code`, the treating unit's address, and the two disagree on roughly 7% of rows. The `epidem_` prefix says which address it came from.
+The health region of `epidem_chw_code` — the address that answers *"cases reported in my provinces"*. Deliberately not called `health_zone`: the source's column of that name follows `isolate_chw_code`, the treating unit's address, and the two disagree on roughly 7% of rows. The `epidem_` prefix says which address it came from.
 
 **Span builder**:
 The single function turning a Request into the half-open date range the service asks upstream for — `from` to `to` plus one day, because the human's `to` is inclusive and upstream's `end_date` is not. Both the Probe and the extraction job call it, which is the whole point: one expression of the range, so the two can never disagree about which days they covered. A second copy of that conversion is how 3,196 rows were once lost. It replaced a per-month chunk builder that had held the same guarantee as a side effect of tiling.

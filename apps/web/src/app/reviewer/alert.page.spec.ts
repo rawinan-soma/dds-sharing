@@ -134,7 +134,6 @@ describe('AlertPage', () => {
       m.reviewer_alert_outcome_unreachable(),
       m.reviewer_alert_outcome_no_action(),
     ]);
-    expect(text()).toContain(m.reviewer_alert_closed_set_note());
     expect(
       el.querySelector('input, textarea, select, [contenteditable]'),
     ).toBeNull();

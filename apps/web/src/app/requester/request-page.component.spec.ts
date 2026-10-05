@@ -148,7 +148,6 @@ describe('RequestPage', () => {
       const note = $('.map-pane [data-epidem-area]')!;
 
       expect(note.textContent).toContain(m.requester_epidem_area_label());
-      expect(note.textContent).toContain(m.requester_epidem_area_detail());
     });
 
     it('carries the email warning with the email field, and retention in the consent block', () => {

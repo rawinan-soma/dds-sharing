@@ -291,7 +291,6 @@ function renderQueueNotification(
         ),
         button(p.queueUrl, t('email_queue_open')),
         paragraph(t('email_queue_no_data_note')),
-        muted(t('email_queue_notification_note')),
       ].join(''),
     ),
   };

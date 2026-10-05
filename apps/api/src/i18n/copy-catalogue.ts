@@ -9,10 +9,9 @@ import { repoPath } from '../repo-paths';
 // (`/d/<token>`, `/link-expired`) read through this one module.
 //
 // The served language is whatever `project.inlang/settings.json`'s
-// `baseLocale` names — not a hardcoded locale. Today that is `"en"` (ADR
-// 0010's development matrix; the flip to Thai-only is #96), so this reader
-// automatically starts serving Thai the moment that file flips, with no code
-// change here.
+// `baseLocale` names — not a hardcoded locale. Since #96 that is `"th"`;
+// `messages/en.json` is still maintained beside it (ADR 0010) and is loaded
+// only by naming it.
 
 export interface ProjectSettings {
   baseLocale: string;
@@ -47,7 +46,7 @@ export function projectLocales(root: string): ProjectSettings {
 /**
  * `root` holds `project.inlang/settings.json` and `messages/` as siblings,
  * exactly as the repo root does. `locale` defaults to the served base locale;
- * naming another is for tests that render a language before #96 serves it.
+ * naming another is for tests that render a language the service does not serve.
  */
 export function loadCatalogue(
   root: string,

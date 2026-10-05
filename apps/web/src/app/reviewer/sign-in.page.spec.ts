@@ -135,7 +135,6 @@ describe('SignInPage', () => {
     expect(alert.classList).toContain('failed');
     expect(alert.textContent).toContain(m.reviewer_signin_failed_title());
     expect(alert.textContent).toContain(m.reviewer_signin_failed());
-    expect(alert.textContent).toContain(m.reviewer_signin_no_lockout());
     // Nothing on screen names a factor as the culprit.
     expect(alert.textContent).not.toMatch(/(only|just) the (password|code)/i);
   });

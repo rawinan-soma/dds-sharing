@@ -152,11 +152,7 @@ const ROW_COUNT_FORMAT = new Intl.NumberFormat('th-TH');
                     <dt>{{ copy.probe }}</dt>
                     <dd>
                       <span class="figure">{{ rowCount(d.rowCount) }}</span>
-                      <span class="note">{{
-                        d.rowCount === 'failed'
-                          ? copy.probeFailedNote
-                          : copy.probeNote
-                      }}</span>
+                      <span class="note">{{ copy.probeNote }}</span>
                     </dd>
                   </div>
                 </dl>
@@ -490,7 +486,6 @@ export class DossierPage {
     aheadLabel: m.reviewer_dossier_ahead_label(),
     probe: m.reviewer_probe_label(),
     probeNote: m.reviewer_probe_note(),
-    probeFailedNote: m.reviewer_probe_failed_note(),
     expired: m.reviewer_dossier_expired(),
     gone: m.reviewer_dossier_gone(),
     loadFailed: m.reviewer_dossier_load_failed(),

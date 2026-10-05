@@ -57,7 +57,6 @@ type View =
               <div>
                 <div class="head-tags">
                   <app-tag size="md" tone="inert">{{ copy.endedTag }}</app-tag>
-                  <span class="readonly">{{ copy.readonly }}</span>
                 </div>
                 <h2 tabindex="-1" class="figure">
                   {{ headline(r.reference) }}
@@ -177,7 +176,6 @@ type View =
               <h3 id="events" class="section-title tight">
                 {{ copy.eventsHeading }}
               </h3>
-              <p class="events-note">{{ copy.eventsNote }}</p>
               <div class="table-card">
                 <table class="zone-table events">
                   <colgroup>
@@ -217,19 +215,10 @@ type View =
     :host {
       display: block;
     }
-    .readonly {
-      font-size: 13px;
-      color: var(--muted-foreground);
-    }
     .table-card {
       border: 1px solid var(--border);
       border-radius: var(--radius-lg);
       overflow: hidden;
-    }
-    .events-note {
-      margin-bottom: 12px;
-      font-size: 13px;
-      color: var(--muted-foreground);
     }
     .events {
       font-size: 13px;
@@ -261,7 +250,6 @@ export class RecordPage {
   protected readonly copy = {
     notFound: m.reviewer_lookup_not_found(),
     loadFailed: m.reviewer_lookup_load_failed(),
-    readonly: m.reviewer_lookup_readonly(),
     endedTag: m.reviewer_lookup_ended_tag(),
     state: m.reviewer_col_state(),
     outcome: m.reviewer_lookup_outcome(),
@@ -283,7 +271,6 @@ export class RecordPage {
     downloads: m.reviewer_lookup_downloads(),
     noFiles: m.reviewer_lookup_no_files(),
     eventsHeading: m.reviewer_lookup_events_heading(),
-    eventsNote: m.reviewer_lookup_events_note(),
     when: m.reviewer_lookup_event_when(),
     what: m.reviewer_lookup_event_what(),
     who: m.reviewer_lookup_event_who(),

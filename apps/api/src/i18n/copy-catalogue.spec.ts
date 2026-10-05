@@ -87,10 +87,10 @@ describe('loadCatalogue', () => {
   });
 
   it("the app's own catalogue resolves against the real repo files", () => {
-    // Today's baseLocale is "en" (ADR 0010; the flip to Thai is #96), so this
-    // also proves the reader tracks project.inlang/settings.json rather than
-    // hardcoding a language.
-    expect(catalogue.locale).toBe('en');
-    expect(catalogue.t('app_telephone')).toBe(en.app_telephone);
+    // The baseLocale is "th" since the flip (#96), so this also proves the
+    // reader tracks project.inlang/settings.json rather than hardcoding a
+    // language.
+    expect(catalogue.locale).toBe('th');
+    expect(catalogue.t('app_telephone')).toBe(th.app_telephone);
   });
 });

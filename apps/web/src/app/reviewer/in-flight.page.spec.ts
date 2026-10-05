@@ -134,7 +134,7 @@ describe('InFlightPage', () => {
 
   it('heads the dossier with the time left on its link and the downloads, never the link', async () => {
     await load(ready());
-    expect(cell(m.reviewer_link_left_label())).toMatch(/\d+ h \d{2} m/);
+    expect(cell(m.reviewer_link_left_label())).toMatch(/^\d+ ชม\. \d{2} นาที$/);
     expect(
       el.querySelector('.head-cells dd.success')?.textContent?.trim(),
     ).toBe(cell(m.reviewer_link_left_label()));
@@ -187,7 +187,6 @@ describe('InFlightPage', () => {
   it('states that there is no way to correct the email address, and has no field for one', async () => {
     await load(ready());
     expect(text()).toContain(m.reviewer_no_email_edit_heading());
-    expect(text()).toContain(m.reviewer_no_email_edit_detail());
     expect(
       el.querySelector('input, textarea, select, [contenteditable]'),
     ).toBeNull();
