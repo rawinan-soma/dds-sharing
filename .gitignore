@@ -12,3 +12,9 @@ coverage
 
 # Deployment secrets; .env.example and apps/api/.env.test are the checked-in ones
 .env
+
+# Local tooling and scratch diagrams
+.playwright-mcp/
+.vscode/
+docs/diagrams/.$*.drawio.bkp
+docs/diagrams/ticket-dependencies.drawio
