@@ -1760,10 +1760,16 @@ SMTP_STARTTLS=true
 SMTP_SECURE=false     # explicit STARTTLS on submission, not implicit TLS
 SMTP_USER=envocc@ddc.mail.go.th
 SMTP_PASS=            # supplied at dev cycle
+SMTP_FROM=noreply-dds-sharing@ddc.mail.go.th
 FRONTEND_URL=         # supplied at dev cycle — absolute, never derived from Host
 ```
 
-Sender identity is `envocc@ddc.mail.go.th`. Rate limits were not asked about and
+Sender identity is `noreply-dds-sharing@ddc.mail.go.th`. **The From address must be
+on `ddc.mail.go.th`**, whose SPF record includes `_spf.uc-workd.com`; it need not
+be the login's own mailbox. A From domain that does not authorise the relay is
+accepted by the relay (`250 … queued`) and then silently dropped by Gmail —
+found on the Pilot 2026-10-05 with `noreply@dds-sharing.ddc.go.th`, which has no
+SPF record at all. Rate limits were not asked about and
 are not a design risk: volume is single-digit messages per Request. **Confirm the
 relay hostname verbatim before it lands in config** — `uc-workd` is close enough
 to a typo to be worth one deliberate check.

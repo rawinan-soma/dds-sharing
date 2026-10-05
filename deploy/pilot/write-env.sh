@@ -44,7 +44,7 @@ TUNNEL_TOKEN="$(ask_secret 'Cloudflare tunnel token')"
 SMTP_HOST="$(ask 'Relay host' 'mailrelay.uc-workd.com')"
 SMTP_USER="$(ask 'Relay user')"
 SMTP_PASS="$(ask_secret 'Relay password')"
-SMTP_FROM="$(ask 'Sender address (From)')"
+SMTP_FROM="$(ask 'Sender address (From), on @ddc.mail.go.th' noreply-dds-sharing@ddc.mail.go.th)"
 UPSTREAM_TOKEN="$(ask_secret 'Upstream (DDS) token')"
 
 POSTGRES_PASSWORD="$(secret)"
