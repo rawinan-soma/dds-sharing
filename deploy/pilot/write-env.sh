@@ -71,7 +71,7 @@ TUNNEL_TOKEN=$TUNNEL_TOKEN
 # --- postgres ---
 POSTGRES_PASSWORD=$POSTGRES_PASSWORD
 DATABASE_URL=postgres://postgres:$POSTGRES_PASSWORD@postgres:5432/dds_sharing
-# Replaces docker/postgres-init's dev password at every `make run`.
+# Replaces docker/postgres-init's dev password at every 'make run'.
 APP_DB_PASSWORD=$APP_DB_PASSWORD
 APP_DATABASE_URL=postgres://dds_app_login:$APP_DB_PASSWORD@postgres:5432/dds_sharing
 
