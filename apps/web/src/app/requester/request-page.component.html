@@ -224,6 +224,12 @@
                       <p>{{ m.error_range_reversed() }}</p>
                     </div>
                   }
+                  @case ('before-data') {
+                    <div class="date-panel one-line">
+                      <span class="alert-mark" aria-hidden="true">!</span>
+                      <p>{{ m.error_date_before_data() }}</p>
+                    </div>
+                  }
                   @case ('unreadable') {
                     <div class="date-panel one-line">
                       <span class="alert-mark" aria-hidden="true">!</span>

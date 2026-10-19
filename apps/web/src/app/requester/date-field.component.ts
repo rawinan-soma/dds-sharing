@@ -18,7 +18,7 @@ import {
 } from './be-date';
 import { type Bounds, type DateRange, calendarMonth } from './calendar';
 import { formatDay } from './format-day';
-import { shiftDay } from './span-cap';
+import { FIRST_DATA_DAY, shiftDay } from './span-cap';
 
 const WEEKDAY = new Intl.DateTimeFormat('th-TH', {
   weekday: 'narrow',
@@ -31,7 +31,7 @@ const WEEKDAYS = Array.from({ length: 7 }, (_, i) =>
 const BANGKOK_DAY = new Intl.DateTimeFormat('en-CA', {
   timeZone: 'Asia/Bangkok',
 });
-const YEARS_BACK = 20;
+const FIRST_DATA_MONTH = monthOfDay(FIRST_DATA_DAY);
 
 /** An update from the box: the stored day, or '' with `unreadable` set. */
 export interface DateChange {
@@ -102,6 +102,7 @@ export interface DateChange {
             type="button"
             class="calendar-step"
             [attr.aria-label]="m.requester_calendar_previous()"
+            [disabled]="atFirstMonth()"
             (click)="step(-1)"
           >
             ‹
@@ -247,9 +248,16 @@ export class DateField {
   protected readonly years = computed(() => {
     const now = Number(this.today.slice(0, 4));
     const shown = this.shown().year;
-    const first = Math.min(now - YEARS_BACK, shown);
+    const first = Math.min(FIRST_DATA_MONTH.year, shown);
     const last = Math.max(now, shown);
     return Array.from({ length: last - first + 1 }, (_, i) => last - i);
+  });
+  /** ‹ stops at the month of the first day of data. */
+  protected readonly atFirstMonth = computed(() => {
+    const { year, month } = this.shown();
+    return (
+      year * 12 + month <= FIRST_DATA_MONTH.year * 12 + FIRST_DATA_MONTH.month
+    );
   });
   protected readonly todayPickable = computed(() => {
     const { min, max } = this.bounds();

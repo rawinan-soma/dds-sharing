@@ -230,6 +230,25 @@ describe('RequestPage', () => {
       expect(checkRows()[1].classList).toContain('broken');
     });
 
+    it('says a typed date before 1 ม.ค. 2567 has no data, and fails the date rule', async () => {
+      await type('#date-from', '31/12/2566');
+
+      expect(root.textContent).toContain(m.error_date_before_data());
+      expect($('#date-from')!.getAttribute('aria-invalid')).toBe('true');
+      expect(checkRows()[1].classList).toContain('broken');
+    });
+
+    it('offers no year before 2567 and stops ‹ at ม.ค. 2567', async () => {
+      await type('#date-from', '15/1/2567');
+      await click($$<HTMLButtonElement>('.calendar-button')[0]);
+
+      const years = [
+        ...$<HTMLSelectElement>('.calendar select.figure')!.options,
+      ].map((o) => Number(o.textContent));
+      expect(Math.min(...years)).toBe(2567);
+      expect($$<HTMLButtonElement>('.calendar-step')[0].disabled).toBe(true);
+    });
+
     it('refuses an over-span range inline and never offers to split it', async () => {
       await type('#date-from', '1/1/2568');
       await type('#date-to', '2/1/2569');

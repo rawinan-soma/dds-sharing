@@ -537,6 +537,10 @@ on the check page for the same day.
   back in พ.ศ., so a Requester who types 2026 sees 2569 at once, not on 1b.
 - **It stores ISO** (Gregorian). The span, the 365-day cap and the Span builder
   never see a Buddhist year.
+- **Nothing before 1 ม.ค. 2567** (added 2026-10-19): upstream holds no earlier
+  data. The year select starts at 2567, days before it are disabled, ‹ stops at
+  ม.ค. 2567, and a typed earlier date fails the date rule with
+  *มีข้อมูลตั้งแต่ 1 ม.ค. 2567 เป็นต้นไป…*. The server re-checks it.
 - **One shared line under the pair**: the hint *ปี พ.ศ. เช่น 1/3/2569* when
   nothing is wrong; *อ่านวันที่ไม่ได้ พิมพ์เป็น วว/ดด/ปปปป ปี พ.ศ.…* for a date
   that does not parse (both through `invalid` plus the pair's shared message);

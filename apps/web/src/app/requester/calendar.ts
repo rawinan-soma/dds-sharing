@@ -1,4 +1,9 @@
-import { daysOfMonth, earliestFrom, latestTo } from './span-cap';
+import {
+  FIRST_DATA_DAY,
+  daysOfMonth,
+  earliestFrom,
+  latestTo,
+} from './span-cap';
 
 // The พ.ศ. calendar popover's model (docs/design/system.md "Date field"). The
 // other end of the range bounds the grid, so the picker can never produce a
@@ -20,16 +25,19 @@ export interface Bounds {
   max: string | null;
 }
 
+const notBeforeData = (day: string) =>
+  day < FIRST_DATA_DAY ? FIRST_DATA_DAY : day;
+
 /** The days the picker for one end may offer, given both ends as stored. */
 export function pickerBounds(end: RangeEnd, { from, to }: DateRange): Bounds {
   if (end === 'to') {
     return ISO_DAY.test(from)
-      ? { min: from, max: latestTo(from) }
-      : { min: null, max: null };
+      ? { min: notBeforeData(from), max: latestTo(from) }
+      : { min: FIRST_DATA_DAY, max: null };
   }
   return ISO_DAY.test(to)
-    ? { min: earliestFrom(to), max: to }
-    : { min: null, max: null };
+    ? { min: notBeforeData(earliestFrom(to)), max: to }
+    : { min: FIRST_DATA_DAY, max: null };
 }
 
 export interface CalendarDay {

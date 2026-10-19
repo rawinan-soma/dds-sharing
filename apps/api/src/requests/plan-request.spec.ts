@@ -131,6 +131,17 @@ describe('planRequest', () => {
 
       expect(errors.map((e) => e.field)).toEqual(['to']);
     });
+
+    it('refuses a day before the first day of data, 1 January 2024', () => {
+      const errors = refused(
+        plan({ ...valid, from: '2023-12-31', to: '2024-01-31' }),
+      );
+
+      expect(errors.map((e) => e.field)).toEqual(['from']);
+      expect(plan({ ...valid, from: '2024-01-01', to: '2024-01-31' }).ok).toBe(
+        true,
+      );
+    });
   });
 
   describe('area selection', () => {

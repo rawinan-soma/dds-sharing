@@ -34,6 +34,7 @@ describe('problemsOf', () => {
       missing: [],
       spanTooLong: false,
       reversed: false,
+      beforeData: false,
     });
   });
 
@@ -61,13 +62,30 @@ describe('problemsOf', () => {
       missing: [],
       spanTooLong: true,
       reversed: false,
+      beforeData: false,
     });
   });
 
   it('flags a `to` before `from`, so the check page is never reached with it', () => {
     expect(
       problemsOf({ ...complete, from: '2025-02-01', to: '2025-01-01' }),
-    ).toEqual({ missing: [], spanTooLong: false, reversed: true });
+    ).toEqual({
+      missing: [],
+      spanTooLong: false,
+      reversed: true,
+      beforeData: false,
+    });
+  });
+
+  it('flags a date before the first day of data, 1 ม.ค. 2567', () => {
+    expect(
+      problemsOf({ ...complete, from: '2023-12-31', to: '2024-01-31' })
+        .beforeData,
+    ).toBe(true);
+    expect(
+      problemsOf({ ...complete, from: '2024-01-01', to: '2024-01-31' })
+        .beforeData,
+    ).toBe(false);
   });
 
   it('needs a province when the area is one province, and a region when it is a region', () => {
@@ -117,6 +135,9 @@ describe('requirementsOf', () => {
       states({ ...complete, from: '2025-02-01', to: '2025-01-01' })[1],
     ).toBe('broken');
     expect(states({ ...complete, to: '' }, true)[1]).toBe('broken');
+    expect(
+      states({ ...complete, from: '2023-12-31', to: '2024-01-31' })[1],
+    ).toBe('broken');
   });
 
   it('names the fields to jump to for an unmet rule, first one first', () => {

@@ -122,6 +122,7 @@ export class RequestPage implements OnInit {
   /** The shared message under the date pair, if any. */
   protected readonly dateMessage = computed(() => {
     if (this.anyUnreadable()) return 'unreadable';
+    if (this.problems().beforeData) return 'before-data';
     if (this.problems().reversed) return 'reversed';
     if (this.problems().spanTooLong) return 'span';
     return null;

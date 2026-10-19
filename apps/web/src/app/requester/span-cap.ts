@@ -1,7 +1,9 @@
-// Two date rules, and the only date arithmetic in the SPA, the calendar's day
+// Three date rules, and the only date arithmetic in the SPA, the calendar's day
 // stepping included — which is why the tripwire in the API's span-builder-only
 // spec allows this file by name.
 //
+// - The first day of data: nothing before 1 ม.ค. 2567 can be asked for. The
+//   server re-checks it.
 // - The 365-day cap (spec §4.2): `to` may not be later than `from` + 365 days.
 //   The server re-checks the same rule and names it as upstream's.
 // - The picker span: the calendar offers one day less, `from` + 364.
@@ -10,6 +12,8 @@
 // home, in the API.
 
 const ONE_DAY_MS = 86_400_000;
+/** The first day upstream holds data for, 1 ม.ค. 2567. */
+export const FIRST_DATA_DAY = '2024-01-01';
 const MAX_SPAN_DAYS = 365;
 /**
  * The picker is stricter than the cap: it offers `from` + 364, 365 days
@@ -47,6 +51,11 @@ export function daysOfMonth(year: number, month: number): string[] {
   const days: string[] = [];
   for (let ms = first; ms < next; ms += ONE_DAY_MS) days.push(format(ms));
   return days;
+}
+
+/** Either end is a day before the first day of data. */
+export function beforeData(from: string, to: string): boolean {
+  return [from, to].some((day) => parse(day) !== null && day < FIRST_DATA_DAY);
 }
 
 export function exceedsCap(from: string, to: string): boolean {

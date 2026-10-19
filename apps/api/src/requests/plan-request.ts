@@ -17,6 +17,9 @@ export const MAX_SPAN_DAYS = 365;
 export const SPAN_TOO_LONG_MESSAGE =
   'The upstream DDC API limits one request to 365 days, so this date range cannot be accepted. It is not split for you: send more than one request.';
 
+/** The first day upstream holds data for, 1 ม.ค. 2567. Days compare as ISO strings. */
+export const FIRST_DATA_DAY = '2024-01-01';
+
 // A size guard on free text, not a format rule: nothing here is validated.
 const MAX_FREE_TEXT_LENGTH = 500;
 
@@ -99,6 +102,11 @@ export function planRequest(body: unknown, { provinces }: Context): PlanResult {
     }
   }
   if (datesValid) {
+    for (const field of ['from', 'to'] as const) {
+      if ((body[field] as string) < FIRST_DATA_DAY) {
+        fail(field, 'invalid', `There is no data before ${FIRST_DATA_DAY}.`);
+      }
+    }
     const span = daysBetween(body.from as string, body.to as string);
     if (span < 0) {
       fail('to', 'invalid', 'The last day is before the first day.');

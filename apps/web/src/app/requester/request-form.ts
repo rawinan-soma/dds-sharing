@@ -1,4 +1,4 @@
-import { dayCount, exceedsCap } from './span-cap';
+import { beforeData, dayCount, exceedsCap } from './span-cap';
 
 // The form's state and the rules that read it, kept out of the component so they
 // are testable without a DOM. Nothing here is validated for format: the contact
@@ -74,6 +74,8 @@ export interface Problems {
   spanTooLong: boolean;
   /** Both dates are present and `to` is before `from`. */
   reversed: boolean;
+  /** A date is before the first day of data, 1 ม.ค. 2567. */
+  beforeData: boolean;
 }
 
 export function problemsOf(form: FormState): Problems {
@@ -91,6 +93,7 @@ export function problemsOf(form: FormState): Problems {
     spanTooLong: exceedsCap(form.from, form.to),
     reversed:
       Boolean(form.from && form.to) && dayCount(form.from, form.to) === null,
+    beforeData: beforeData(form.from, form.to),
   };
 }
 
@@ -99,7 +102,8 @@ export type RequirementKey =
 
 /**
  * `unmet` is not done yet; `broken` is filled in but against a rule (a range
- * over the cap, backwards, or a date that does not read), shown as failed
+ * over the cap, backwards, before the data, or a date that does not read),
+ * shown as failed
  * before any attempt to send.
  */
 export type RequirementState = 'met' | 'unmet' | 'broken';
@@ -133,7 +137,10 @@ export function requirementsOf(
     const fields = REQUIREMENT_FIELDS[key].filter((f) => missing.has(f));
     const broken =
       key === 'dates' &&
-      (problems.spanTooLong || problems.reversed || unreadableDate);
+      (problems.spanTooLong ||
+        problems.reversed ||
+        problems.beforeData ||
+        unreadableDate);
     return {
       key,
       state: broken ? 'broken' : fields.length > 0 ? 'unmet' : 'met',

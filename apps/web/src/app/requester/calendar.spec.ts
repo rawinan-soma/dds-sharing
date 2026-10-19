@@ -16,14 +16,21 @@ describe('the bounds the picker offers', () => {
     });
   });
 
-  it('is open while the other end is empty or unreadable', () => {
+  it('starts at the first day of data while the other end is empty or unreadable', () => {
     expect(pickerBounds('to', { from: '', to: '' })).toEqual({
-      min: null,
+      min: '2024-01-01',
       max: null,
     });
     expect(pickerBounds('from', { from: '', to: '' })).toEqual({
-      min: null,
+      min: '2024-01-01',
       max: null,
+    });
+  });
+
+  it('never offers a day before the first day of data', () => {
+    expect(pickerBounds('from', { from: '', to: '2024-06-01' })).toEqual({
+      min: '2024-01-01',
+      max: '2024-06-01',
     });
   });
 });
