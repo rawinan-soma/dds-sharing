@@ -143,5 +143,6 @@ The service run by the department on a DDC VM, reached through the ministry-mana
 _Avoid_: Live, prod server
 
 **Pilot**:
-A second service for real Requesters, run on the repo owner's own server and domain and open to the internet — beside Production, never merged into it. Its Decisions and Extracts are real releases of DDS surveillance data; its audit record and its reference numbers are its own, and the record is disposable — losing the Pilot loses every trace of what it released.
-_Avoid_: Staging, test server, demo
+A service for real Requesters, run on the repo owner's own server and domain and open to the internet — beside Production, never merged into it. Its Decisions and Extracts are real releases of DDS surveillance data; its audit record and its reference numbers are its own, and the record is disposable — losing a Pilot loses every trace of what it released.
+There are two Pilots, identical twins that differ only in the stack they are built on: the **Node Pilot** and the **Gleam Pilot**. They behave the same in every way, each keeps its own record and reference numbers, and neither replaces the other.
+_Avoid_: Staging, test server, demo, new Pilot, Pilot 2
